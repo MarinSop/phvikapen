@@ -16,3 +16,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core library with the error type, `Result` alias and generated version header.
 - Ink sample and stroke types with incremental bounding boxes, and a monotonic UUIDv7 generator.
 - Google Benchmark suite for the core library, built by the release presets.
+- Platform interfaces for ink backends, PDF documents and updates, a placeholder for the native
+  Windows ink backend, and the Velopack startup hook.
