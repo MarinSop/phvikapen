@@ -1,0 +1,57 @@
+---
+# Enabled families: bugprone, cppcoreguidelines, modernize, performance, readability.
+#
+# Disabled checks and the reason for each:
+#   bugprone-easily-swappable-parameters
+#     Geometry and ink APIs legitimately take several same-typed values (x, y, pressure).
+#   cppcoreguidelines-owning-memory
+#     Qt object trees own children through parent pointers; `new QObject(parent)` is idiomatic.
+#   cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+#     Flags every operator[]; bounds are guaranteed by range-for loops and std::span at boundaries.
+#   modernize-use-trailing-return-type
+#     Purely stylistic; the codebase uses leading return types.
+#   readability-identifier-length
+#     Short names such as x, y and dt are the clearest choice in geometry code.
+#   readability-redundant-access-specifiers
+#     Qt classes repeat access specifiers to group signals, slots and properties.
+Checks: >-
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-redundant-access-specifiers
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/(src|tests|tools)/.*'
+ExcludeHeaderFilterRegex: '.*/build/.*'
+SystemHeaders: false
+FormatStyle: file
+CheckOptions:
+  cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
+  cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
+  readability-function-cognitive-complexity.Threshold: 25
+  readability-implicit-bool-conversion.AllowPointerConditions: true
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.FunctionCase: camelBack
+  readability-identifier-naming.MethodCase: camelBack
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.VariableCase: camelBack
+  readability-identifier-naming.PrivateMemberCase: camelBack
+  readability-identifier-naming.PrivateMemberPrefix: m_
+  readability-identifier-naming.ProtectedMemberCase: camelBack
+  readability-identifier-naming.ProtectedMemberPrefix: m_
+  readability-identifier-naming.ConstexprVariableCase: CamelCase
+  readability-identifier-naming.ConstexprVariablePrefix: k
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+...

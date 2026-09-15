@@ -1,0 +1,38 @@
+# Install the hooks once with `pre-commit install`.
+# Revisions are pinned to commit SHAs; update them with `pre-commit autoupdate --freeze`.
+minimum_pre_commit_version: "4.0.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-illegal-windows-names
+      - id: check-json
+      - id: check-yaml
+      - id: forbid-submodules
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: e2b496dc2bd8340c2524cb9a2d2a943cde1bb6df # frozen: v23.1.1
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]
+
+  - repo: https://github.com/crate-ci/typos
+    rev: 512fc24f32f44ab01972217aaaf3dc86ec234d53 # frozen: v1.50.2
+    hooks:
+      - id: typos
+
+  - repo: local
+    hooks:
+      - id: qmlformat
+        name: qmlformat
+        description: Format QML files with the qmlformat from the Qt installation in QT_ROOT_DIR.
+        language: system
+        entry: sh -c '"$QT_ROOT_DIR/bin/qmlformat" --inplace "$@"' --
+        files: \.qml$

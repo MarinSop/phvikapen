@@ -1,0 +1,25 @@
+# Build trees and package manager output
+build/
+vcpkg_installed/
+.cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Editors and IDEs
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+CMakeLists.txt.user*
