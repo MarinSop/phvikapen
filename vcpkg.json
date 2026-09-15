@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "phvikapen",
+  "description": "Pen-first note-taking application",
+  "license": "MIT",
+  "dependencies": [
+    "benchmark",
+    {
+      "name": "cppwinrt",
+      "platform": "windows"
+    },
+    "gtest",
+    "sentry-native",
+    {
+      "name": "spdlog",
+      "default-features": false
+    },
+    "sqlite3"
+  ]
+}

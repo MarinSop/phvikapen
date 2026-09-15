@@ -1,0 +1,244 @@
+{
+  "version": 12,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{QT_ROOT_DIR}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "mac-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_SYSROOT": "macosx",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx"
+      }
+    },
+    {
+      "name": "win-arm64-base",
+      "hidden": true,
+      "inherits": "base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "arm64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "cl",
+        "VCPKG_TARGET_TRIPLET": "arm64-windows"
+      }
+    },
+    {
+      "name": "mac-debug",
+      "displayName": "macOS Debug",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "mac-release",
+      "displayName": "macOS Release",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "mac-asan",
+      "displayName": "macOS Debug with ASan and UBSan",
+      "inherits": "mac-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PHVIKAPEN_ENABLE_SANITIZERS": "ON"
+      }
+    },
+    {
+      "name": "win-arm64-debug",
+      "displayName": "Windows ARM64 Debug",
+      "inherits": "win-arm64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "win-arm64-release",
+      "displayName": "Windows ARM64 Release",
+      "inherits": "win-arm64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "mac-build-base",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "win-build-base",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "mac-debug",
+      "inherits": "mac-build-base",
+      "configurePreset": "mac-debug"
+    },
+    {
+      "name": "mac-release",
+      "inherits": "mac-build-base",
+      "configurePreset": "mac-release"
+    },
+    {
+      "name": "mac-asan",
+      "inherits": "mac-build-base",
+      "configurePreset": "mac-asan"
+    },
+    {
+      "name": "win-arm64-debug",
+      "inherits": "win-build-base",
+      "configurePreset": "win-arm64-debug"
+    },
+    {
+      "name": "win-arm64-release",
+      "inherits": "win-build-base",
+      "configurePreset": "win-arm64-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-base",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "mac-test-base",
+      "hidden": true,
+      "inherits": "test-base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "win-test-base",
+      "hidden": true,
+      "inherits": "test-base",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "environment": {
+        "PATH": "$env{QT_ROOT_DIR}/bin;$penv{PATH}"
+      }
+    },
+    {
+      "name": "mac-debug",
+      "inherits": "mac-test-base",
+      "configurePreset": "mac-debug"
+    },
+    {
+      "name": "mac-release",
+      "inherits": "mac-test-base",
+      "configurePreset": "mac-release"
+    },
+    {
+      "name": "mac-asan",
+      "inherits": "mac-test-base",
+      "configurePreset": "mac-asan",
+      "environment": {
+        "UBSAN_OPTIONS": "print_stacktrace=1"
+      }
+    },
+    {
+      "name": "win-arm64-debug",
+      "inherits": "win-test-base",
+      "configurePreset": "win-arm64-debug"
+    },
+    {
+      "name": "win-arm64-release",
+      "inherits": "win-test-base",
+      "configurePreset": "win-arm64-release"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "mac-debug",
+      "steps": [
+        { "type": "configure", "name": "mac-debug" },
+        { "type": "build", "name": "mac-debug" },
+        { "type": "test", "name": "mac-debug" }
+      ]
+    },
+    {
+      "name": "mac-release",
+      "steps": [
+        { "type": "configure", "name": "mac-release" },
+        { "type": "build", "name": "mac-release" },
+        { "type": "test", "name": "mac-release" }
+      ]
+    },
+    {
+      "name": "mac-asan",
+      "steps": [
+        { "type": "configure", "name": "mac-asan" },
+        { "type": "build", "name": "mac-asan" },
+        { "type": "test", "name": "mac-asan" }
+      ]
+    },
+    {
+      "name": "win-arm64-debug",
+      "steps": [
+        { "type": "configure", "name": "win-arm64-debug" },
+        { "type": "build", "name": "win-arm64-debug" },
+        { "type": "test", "name": "win-arm64-debug" }
+      ]
+    },
+    {
+      "name": "win-arm64-release",
+      "steps": [
+        { "type": "configure", "name": "win-arm64-release" },
+        { "type": "build", "name": "win-arm64-release" },
+        { "type": "test", "name": "win-arm64-release" }
+      ]
+    }
+  ]
+}
