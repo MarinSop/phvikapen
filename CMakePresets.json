@@ -62,7 +62,8 @@
       "displayName": "macOS Release",
       "inherits": "mac-base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "PHVIKAPEN_BUILD_BENCHMARKS": "ON"
       }
     },
     {
@@ -87,7 +88,8 @@
       "displayName": "Windows ARM64 Release",
       "inherits": "win-arm64-base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "PHVIKAPEN_BUILD_BENCHMARKS": "ON"
       }
     }
   ],

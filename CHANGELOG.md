@@ -14,3 +14,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CMake build system with presets for macOS and Windows ARM64, a vcpkg manifest with a pinned
   baseline, warning, sanitizer and sccache configuration, and layering checks.
 - Core library with the error type, `Result` alias and generated version header.
+- Ink sample and stroke types with incremental bounding boxes, and a monotonic UUIDv7 generator.
+- Google Benchmark suite for the core library, built by the release presets.

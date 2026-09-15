@@ -9,6 +9,9 @@ configure_file(version.hpp.in "${generated_dir}/core/version.hpp" @ONLY)
 target_sources(phvikapen_core
     PRIVATE
         Error.cpp
+        id/Uuid.cpp
+        id/Uuid7Generator.cpp
+        ink/Stroke.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
@@ -16,6 +19,11 @@ target_sources(phvikapen_core
             "${generated_dir}"
         FILES
             Error.hpp
+            geometry/Rect.hpp
+            id/Uuid.hpp
+            id/Uuid7Generator.hpp
+            ink/InkSample.hpp
+            ink/Stroke.hpp
             "${generated_dir}/core/version.hpp"
 )
 

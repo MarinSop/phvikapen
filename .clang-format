@@ -11,8 +11,8 @@ NamespaceIndentation: None
 FixNamespaceComments: true
 PointerAlignment: Left
 ReferenceAlignment: Pointer
-AllowShortFunctionsOnASingleLine: InlineOnly
-AllowShortLambdasOnASingleLine: Inline
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 BreakBeforeBinaryOperators: NonAssignment
