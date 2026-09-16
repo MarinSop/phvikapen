@@ -23,7 +23,7 @@ namespace phvikapen::app {
 ///
 /// TODO(M2): Write on a storage thread instead of the thread that draws.
 /// TODO(M3): Replace the single page with the notebook, section and page hierarchy.
-class NotebookViewModel : public QObject, public platform::ink::IInkSink {
+class NotebookViewModel : public QObject {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
@@ -44,20 +44,36 @@ public:
 
     [[nodiscard]] int storedStrokeCount() const { return m_storedStrokeCount; }
 
-    void strokeStarted(const core::InkSample& sample) override;
-    void sampleAdded(const core::InkSample& sample) override;
-    void strokeFinished(const core::InkSample& sample) override;
-    void strokeCompleted(const core::Stroke& stroke) override;
-
 signals:
     void canvasChanged();
     void errorMessageChanged();
     void storedStrokeCountChanged();
 
 private:
+    /// Receives what the canvas reports and hands the finished strokes to the view model.
+    ///
+    /// The view model itself stays a plain QObject: QML can only create a type that is nothing
+    /// but a default constructible QObject, which a class that also implements an interface is
+    /// not.
+    class Sink final : public platform::ink::IInkSink {
+    public:
+        explicit Sink(NotebookViewModel* owner) noexcept : m_owner{owner} {}
+
+        void strokeStarted(const core::InkSample& sample) override;
+        void sampleAdded(const core::InkSample& sample) override;
+        void strokeFinished(const core::InkSample& sample) override;
+        void strokeCompleted(const core::Stroke& stroke) override;
+        void strokeCancelled() override;
+
+    private:
+        NotebookViewModel* m_owner;
+    };
+
     void openNotebook();
+    void storeStroke(const core::Stroke& stroke);
     void reportError(const QString& message);
 
+    Sink m_sink{this};
     std::optional<core::NotebookStore> m_store;
     core::Uuid m_pageId;
     platform::ink::QtInkItem* m_canvas{nullptr};

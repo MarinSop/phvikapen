@@ -5,8 +5,6 @@
 #include <QProperty>
 #include <QtQmlIntegration>
 
-#include <cstdint>
-
 namespace phvikapen::app {
 
 /// Tool selection and stroke appearance, shared by the toolbar and the canvases.
@@ -21,7 +19,9 @@ class ToolViewModel : public QObject {
                    BINDABLE bindableStrokeWidth FINAL)
 
 public:
-    enum class Tool : std::uint8_t {
+    // No explicit underlying type: the QML type registration cannot resolve std::uint8_t and
+    // warns about it, and an enum this small gains nothing from being narrowed.
+    enum class Tool {
         Pen,
         Eraser,
     };

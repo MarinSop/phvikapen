@@ -57,7 +57,7 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
     if (m_canvas == nullptr) {
         return;
     }
-    m_canvas->setSink(this);
+    m_canvas->setSink(&m_sink);
 
     if (!m_store) {
         return;
@@ -72,13 +72,20 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
     m_canvas->setStrokes(std::move(*strokes));
 }
 
-void NotebookViewModel::strokeStarted(const core::InkSample& /*sample*/) {}
+void NotebookViewModel::Sink::strokeStarted(const core::InkSample& /*sample*/) {}
 
-void NotebookViewModel::sampleAdded(const core::InkSample& /*sample*/) {}
+void NotebookViewModel::Sink::sampleAdded(const core::InkSample& /*sample*/) {}
 
-void NotebookViewModel::strokeFinished(const core::InkSample& /*sample*/) {}
+void NotebookViewModel::Sink::strokeFinished(const core::InkSample& /*sample*/) {}
 
-void NotebookViewModel::strokeCompleted(const core::Stroke& stroke) {
+void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
+    m_owner->storeStroke(stroke);
+}
+
+// An interrupted stroke never reaches the notebook, so there is nothing to undo here.
+void NotebookViewModel::Sink::strokeCancelled() {}
+
+void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     if (!m_store) {
         return;
     }
