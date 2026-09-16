@@ -9,6 +9,8 @@ configure_file(version.hpp.in "${generated_dir}/core/version.hpp" @ONLY)
 target_sources(phvikapen_core
     PRIVATE
         Error.cpp
+        filter/InkFilter.cpp
+        filter/OneEuroFilter.cpp
         id/Uuid.cpp
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
@@ -20,6 +22,8 @@ target_sources(phvikapen_core
             "${generated_dir}"
         FILES
             Error.hpp
+            filter/InkFilter.hpp
+            filter/OneEuroFilter.hpp
             geometry/Rect.hpp
             id/Uuid.hpp
             id/Uuid7Generator.hpp

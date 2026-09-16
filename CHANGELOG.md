@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- One Euro filter in the core library, with a pen filter that smooths position and pressure.
+
 ## [0.1.0] - 2026-09-16
 
 ### Added
