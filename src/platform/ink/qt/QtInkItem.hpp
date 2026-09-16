@@ -45,7 +45,7 @@ public:
     void setStrokeWidth(qreal width);
 
     /// Removes all strokes, including the one being written.
-    Q_INVOCABLE void clear();
+    Q_INVOKABLE void clear();
 
     [[nodiscard]] std::string_view name() const noexcept override;
     void setSink(IInkSink* sink) noexcept override;

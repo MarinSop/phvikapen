@@ -1,0 +1,7 @@
+# Spell checking. Qt macro names look like typos but must never be rewritten.
+
+[default.extend-identifiers]
+Q_INVOKABLE = "Q_INVOKABLE"
+
+[files]
+extend-exclude = ["build/", "*.qsb"]
