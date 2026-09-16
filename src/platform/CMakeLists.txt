@@ -2,11 +2,6 @@
 
 include(PhvikaPenVelopack)
 
-# QRhi is a semi-public Qt API with its own compatibility promise; its headers ship with the
-# GuiPrivate component, so the general warning about private modules does not apply here.
-set(QT_NO_PRIVATE_MODULE_WARNING ON)
-find_package(Qt6 6.11 REQUIRED COMPONENTS GuiPrivate)
-
 add_library(phvikapen_platform STATIC)
 add_library(PhvikaPen::platform ALIAS phvikapen_platform)
 
@@ -58,3 +53,6 @@ target_link_libraries(phvikapen_platform
 )
 
 target_compile_features(phvikapen_platform PUBLIC cxx_std_23)
+
+# The application registers QtInkItem in QML through QML_FOREIGN, which needs these metatypes.
+qt_extract_metatypes(phvikapen_platform)

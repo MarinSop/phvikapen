@@ -20,3 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Windows ink backend, and the Velopack startup hook.
 - Qt Quick ink backend that captures pen and mouse input and renders wet ink incrementally
   through QRhi, backed by pressure-aware stroke tessellation in the core library.
+- Application window with a tool bar, notebook tabs and the ink canvas, C++ view models exposed to
+  QML, and logging to a rotating file.
