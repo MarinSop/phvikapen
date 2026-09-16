@@ -10,8 +10,14 @@ struct InkFilterParameters {
     /// Pressure is smoothed more heavily than position by default.
     static constexpr float kPressureMinCutoff = 0.5F;
 
-    /// Position in page units. The starting point for tuning on recordings from the target device.
-    OneEuroParameters position{};
+    /// Provisional, chosen on a simulated stroke rather than measured on a pen: at 2500 page units
+    /// per second it leaves about a tenth of a frame of lag, while a resting pen is still smoothed
+    /// several times over. Without it the filter would lag a fast stroke badly. Tuned for real once
+    /// recordings from the target device exist.
+    static constexpr float kPositionBeta = 0.05F;
+
+    /// Position in page units.
+    OneEuroParameters position{.beta = kPositionBeta};
 
     /// Pressure in [0, 1]. Smoothed more gently than position, because pressure noise shows up as
     /// width wobble along the stroke rather than as a crooked line.

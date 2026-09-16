@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/filter/InkFilter.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
@@ -82,6 +83,9 @@ private:
     void cancelStroke();
 
     core::Uuid7Generator m_ids;
+    // Smooths what is drawn and stored. The sink keeps receiving the raw samples, as IInkBackend
+    // promises, so that recordings and measurements see what the device actually reported.
+    core::InkFilter m_filter;
     core::StrokeStyle m_style;
     IInkSink* m_sink{nullptr};
     std::optional<core::Stroke> m_activeStroke;

@@ -336,8 +336,9 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 
 void QtInkItem::beginStroke(const InkSample& sample) {
     cancelStroke();
+    m_filter.reset();
     m_activeStroke.emplace(m_ids.next(), m_style);
-    m_activeStroke->append(sample);
+    m_activeStroke->append(m_filter.filter(sample));
     m_activeStrokeFirstVertex = m_vertices.size();
     if (m_sink != nullptr) {
         m_sink->strokeStarted(sample);
@@ -349,8 +350,9 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
         return;
     }
     const InkSample previous = m_activeStroke->samples().back();
-    m_activeStroke->append(sample);
-    core::appendSegment(m_vertices, previous, sample, m_activeStroke->style());
+    const InkSample smoothed = m_filter.filter(sample);
+    m_activeStroke->append(smoothed);
+    core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
     if (m_sink != nullptr) {
         m_sink->sampleAdded(sample);
     }
@@ -362,9 +364,10 @@ void QtInkItem::endStroke(const InkSample& sample) {
         return;
     }
     const InkSample previous = m_activeStroke->samples().back();
-    m_activeStroke->append(sample);
+    const InkSample smoothed = m_filter.filter(sample);
+    m_activeStroke->append(smoothed);
     // A tap without movement becomes a dot.
-    core::appendSegment(m_vertices, previous, sample, m_activeStroke->style());
+    core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
 
     m_strokes.push_back(std::move(*m_activeStroke));
     m_activeStroke.reset();
