@@ -18,7 +18,9 @@ namespace phvikapen::tools {
 ///
 /// Tablet events are observed on the window, because Qt Quick items have no tablet event handler.
 /// Unlike the canvas, the recorder does not accept them: the samples are only written down, and
-/// nothing is drawn.
+/// nothing is drawn. A hovering pen is recorded as well, as a tablet event without pressure.
+/// Mouse hovering is not recorded: Qt Quick pairs every hover event with a synthesized one that
+/// carries no timestamp, and a hovering mouse says nothing about how a pen behaves.
 class RecorderItem : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
@@ -57,7 +59,6 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
-    void hoverMoveEvent(QHoverEvent* event) override;
 
     bool eventFilter(QObject* watched, QEvent* event) override;
 

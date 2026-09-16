@@ -3,7 +3,6 @@
 #include <QDateTime>
 #include <QDir>
 #include <QEventPoint>
-#include <QHoverEvent>
 #include <QMouseEvent>
 #include <QPointerEvent>
 #include <QPointingDevice>
@@ -40,7 +39,6 @@ constexpr int kPressureDecimals = 4;
 
 RecorderItem::RecorderItem(QQuickItem* parent) : QQuickItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton);
-    setAcceptHoverEvents(true);
     connect(this, &QQuickItem::windowChanged, this, &RecorderItem::observeWindow);
 }
 
@@ -134,11 +132,6 @@ void RecorderItem::mouseMoveEvent(QMouseEvent* event) {
 
 void RecorderItem::mouseReleaseEvent(QMouseEvent* event) {
     writeEvent(*event, event->points().constFirst(), u"release");
-    event->accept();
-}
-
-void RecorderItem::hoverMoveEvent(QHoverEvent* event) {
-    writeEvent(*event, event->points().constFirst(), u"hover");
     event->accept();
 }
 
