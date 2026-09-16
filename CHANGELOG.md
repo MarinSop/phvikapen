@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Binary stroke format that stores samples as varint differences, ready for notebook files.
 - Notebook files: a SQLite database per notebook, with a versioned schema and one transaction per
   stored stroke.
+- What is drawn is kept: finished strokes go into a notebook file and come back when the
+  application starts again.
 
 ### Changed
 

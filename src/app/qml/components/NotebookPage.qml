@@ -14,6 +14,10 @@ Item {
         strokeWidth: root.tools.strokeWidth
     }
 
+    NotebookViewModel {
+        canvas: canvas
+    }
+
     Connections {
         function onClearRequested() {
             canvas.clear();

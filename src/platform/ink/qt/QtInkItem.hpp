@@ -48,6 +48,10 @@ public:
     /// Removes all strokes, including the one being written.
     Q_INVOKABLE void clear();
 
+    /// Shows @p strokes instead of whatever is on the canvas now, for example when a page is
+    /// opened. The strokes are taken as they are: they were filtered before they were stored.
+    void setStrokes(std::vector<core::Stroke> strokes);
+
     [[nodiscard]] std::string_view name() const noexcept override;
     void setSink(IInkSink* sink) noexcept override;
     void setStrokeStyle(const core::StrokeStyle& style) override;

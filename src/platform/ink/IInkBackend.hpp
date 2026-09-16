@@ -25,6 +25,10 @@ public:
     /// The pen lifted. @p sample is the last sample of the stroke.
     virtual void strokeFinished(const core::InkSample& sample) = 0;
 
+    /// The finished stroke, as it should be drawn and stored. Unlike the calls above, which carry
+    /// the raw samples of the device, this one carries the stroke after filtering.
+    virtual void strokeCompleted(const core::Stroke& stroke) = 0;
+
     /// The stroke was interrupted, for example because the input device was lost.
     virtual void strokeCancelled() = 0;
 };

@@ -16,6 +16,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/AppInfo.cpp
         cpp/AppInfo.hpp
         cpp/InkCanvasForeign.hpp
+        cpp/NotebookViewModel.cpp
+        cpp/NotebookViewModel.hpp
         cpp/NotebooksViewModel.cpp
         cpp/NotebooksViewModel.hpp
         cpp/ToolViewModel.hpp

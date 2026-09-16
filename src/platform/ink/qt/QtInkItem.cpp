@@ -231,6 +231,30 @@ void QtInkItem::setStrokeWidth(qreal width) {
     emit strokeStyleChanged();
 }
 
+void QtInkItem::setStrokes(std::vector<core::Stroke> strokes) {
+    cancelStroke();
+    m_strokes = std::move(strokes);
+    m_vertices.clear();
+
+    for (const core::Stroke& stroke : m_strokes) {
+        const std::span<const InkSample> samples = stroke.samples();
+        if (samples.empty()) {
+            continue;
+        }
+        if (samples.size() == 1) {
+            // A tap was stored as a single sample and is drawn as a dot.
+            core::appendSegment(m_vertices, samples.front(), samples.front(), stroke.style());
+            continue;
+        }
+        for (std::size_t i = 1; i < samples.size(); ++i) {
+            core::appendSegment(m_vertices, samples[i - 1], samples[i], stroke.style());
+        }
+    }
+
+    ++m_generation;
+    update();
+}
+
 void QtInkItem::clear() {
     cancelStroke();
     m_strokes.clear();
@@ -373,6 +397,7 @@ void QtInkItem::endStroke(const InkSample& sample) {
     m_activeStroke.reset();
     if (m_sink != nullptr) {
         m_sink->strokeFinished(sample);
+        m_sink->strokeCompleted(m_strokes.back());
     }
     update();
 }
