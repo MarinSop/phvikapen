@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - One Euro filter in the core library, with a pen filter that smooths position and pressure.
 - Binary stroke format that stores samples as varint differences, ready for notebook files.
+- Notebook files: a SQLite database per notebook, with a versioned schema and one transaction per
+  stored stroke.
 
 ### Changed
 
