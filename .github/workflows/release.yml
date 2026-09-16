@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: 6.11.2
+  VELOPACK_VERSION: 1.2.0
+  VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  windows-arm64:
+    name: Windows on ARM installer
+    runs-on: windows-11-arm
+    permissions:
+      contents: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check that the tag matches the project version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $match = Select-String -Path CMakeLists.txt -Pattern 'VERSION\s+(\d+\.\d+\.\d+)' | Select-Object -First 1
+          $project = $match.Matches[0].Groups[1].Value
+          if ($tag -ne $project) {
+            throw "Tag $tag does not match the project version $project"
+          }
+          "VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Set up the MSVC ARM64 environment
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installation = & $vswhere -latest -products * -property installationPath
+          $vcvars = Join-Path $installation 'VC\Auxiliary\Build\vcvarsall.bat'
+          cmd /c "`"$vcvars`" arm64 && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$') {
+              "$($matches[1])=$($matches[2])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            }
+          }
+
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
+        with:
+          cmakeVersion: 4.4.3
+          ninjaVersion: 1.13.2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows_arm64
+          target: desktop
+          arch: win64_msvc2022_arm64
+          modules: qtshadertools
+          cache: true
+
+      - name: Restore built dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Set up vcpkg
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11.6
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Configure, build and test
+        run: cmake --workflow --preset win-arm64-release
+
+      - name: Stage the application
+        run: cmake --install build/win-arm64-release --prefix ${{ github.workspace }}/stage
+
+      - name: Deploy the Qt runtime
+        shell: pwsh
+        # The Visual C++ runtime comes from the Velopack bootstrapper instead.
+        run: |
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations `
+            --no-compiler-runtime --qmldir src "${{ github.workspace }}\stage\phvikapen.exe"
+
+      - name: Install the Velopack command line tool
+        run: dotnet tool install -g vpk --version ${{ env.VELOPACK_VERSION }}
+
+      - name: Download the previous release
+        # Delta packages are built against it. The very first release has nothing to download.
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the installer and update packages
+        run: >
+          vpk pack
+          --packId PhvikaPen
+          --packTitle PhvikaPen
+          --packAuthors "Marin Sop"
+          --packVersion ${{ env.VERSION }}
+          --packDir ${{ github.workspace }}/stage
+          --mainExe phvikapen.exe
+          --runtime win-arm64
+          --framework vcredist145-arm64
+
+      - name: Write the checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem Releases -File |
+            Where-Object { $_.Name -ne 'SHA256SUMS.txt' } |
+            ForEach-Object {
+              "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+            } | Out-File -FilePath Releases/SHA256SUMS.txt -Encoding utf8
+
+      - name: Publish the release
+        run: >
+          vpk upload github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --publish
+          --releaseName "PhvikaPen ${{ env.VERSION }}"
+          --tag ${{ github.ref_name }}
+          --merge
+
+      - name: Attach the checksums to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} Releases/SHA256SUMS.txt --clobber
+
+      - name: Keep the packages as a build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phvikapen-win-arm64-${{ env.VERSION }}
+          path: Releases

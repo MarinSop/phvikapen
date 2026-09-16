@@ -81,3 +81,8 @@ install(TARGETS phvikapen
     BUNDLE DESTINATION .
     RUNTIME DESTINATION .
 )
+
+if(WIN32)
+    # Velopack ships as a DLL and has to travel with the executable into the installer.
+    install(FILES "$<TARGET_FILE:Velopack::velopack>" DESTINATION .)
+endif()
