@@ -4,4 +4,7 @@ InheritParentConfig: true
 Checks: >-
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers
+CheckOptions:
+  # A test that checks many fields in a loop is not complex; the test macros make it look so.
+  readability-function-cognitive-complexity.IgnoreMacros: true
 ...

@@ -15,6 +15,7 @@ target_sources(phvikapen_core
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
         ink/StrokeMesh.cpp
+        storage/StrokeCodec.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS
@@ -30,6 +31,7 @@ target_sources(phvikapen_core
             ink/InkSample.hpp
             ink/Stroke.hpp
             ink/StrokeMesh.hpp
+            storage/StrokeCodec.hpp
             "${generated_dir}/core/version.hpp"
 )
 
