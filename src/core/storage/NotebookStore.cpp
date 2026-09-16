@@ -151,8 +151,13 @@ void NotebookStore::close() noexcept {
 }
 
 Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
+    // SQLite expects file names in UTF-8 on every platform, which the native encoding of a path
+    // is not on Windows.
+    const std::u8string utf8Path = path.u8string();
+    const std::string fileName{utf8Path.begin(), utf8Path.end()};
+
     sqlite3* database = nullptr;
-    const int status = sqlite3_open_v2(path.string().c_str(), &database,
+    const int status = sqlite3_open_v2(fileName.c_str(), &database,
                                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr);
     if (status != SQLITE_OK) {
         Error error = sqliteError(database, "could not open the notebook");
