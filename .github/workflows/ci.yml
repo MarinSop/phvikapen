@@ -128,7 +128,10 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          "$(brew --prefix llvm@23)/bin/run-clang-tidy" -p build/mac-debug -quiet \
+          prefix="$(brew --prefix llvm@23)"
+          # The formula is keg-only, so the wrapper cannot find clang-tidy on PATH by itself.
+          "$prefix/bin/run-clang-tidy" -p build/mac-debug -quiet \
+            -clang-tidy-binary "$prefix/bin/clang-tidy" \
             "^${PWD}/(src|tests|tools)/"
 
   windows-arm64:
