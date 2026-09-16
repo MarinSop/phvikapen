@@ -101,7 +101,11 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Darwin"
-      }
+      },
+      "targets": [
+        "all",
+        "all_qmllint"
+      ]
     },
     {
       "name": "win-build-base",
@@ -110,7 +114,11 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
-      }
+      },
+      "targets": [
+        "all",
+        "all_qmllint"
+      ]
     },
     {
       "name": "mac-debug",
