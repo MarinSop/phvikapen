@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(phvikapen_tests
     core/ErrorTest.cpp
+    core/StrokeMeshTest.cpp
     core/StrokeTest.cpp
     core/UuidTest.cpp
     core/VersionTest.cpp
