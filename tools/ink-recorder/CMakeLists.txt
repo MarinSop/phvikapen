@@ -29,4 +29,6 @@ target_link_libraries(ink_recorder
 set_target_properties(ink_recorder PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
+    # Its own directory, so that dependency copying does not collide with the other executables.
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )

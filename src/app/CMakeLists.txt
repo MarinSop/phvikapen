@@ -66,6 +66,10 @@ target_link_libraries(phvikapen
 set_target_properties(phvikapen PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
+    # Every executable keeps its own directory. On Windows the Qt project setup would otherwise
+    # put them all in the build root, where the dependency copying of two targets that link at
+    # the same time fights over the same DLL files.
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 if(WIN32)
