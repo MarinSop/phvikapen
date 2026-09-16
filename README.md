@@ -1,0 +1,119 @@
+# PhvikaPen
+
+A pen-first note-taking application for Windows on ARM. Notebooks open in tabs, pages are written
+on with a stylus, and imported PDFs and images can be annotated. Everything is stored locally: no
+account, no cloud.
+
+The target platform is Windows 11 on ARM64. Development happens on macOS, where the application
+builds and runs with a Qt-based ink canvas that accepts pen and mouse input.
+
+This repository currently contains the project skeleton: the build system, the domain types, the
+ink canvas, the application shell, the input recorder and the delivery pipeline.
+
+## Prerequisites
+
+The development machine is macOS on Apple Silicon.
+
+| Requirement | Notes |
+|---|---|
+| Xcode Command Line Tools | `xcode-select --install` |
+| CMake 4.4 or newer, Ninja | `brew install cmake ninja` |
+| sccache | `brew install sccache`, used automatically when present |
+| pkgconf | `brew install pkgconf`, required while vcpkg builds dependencies |
+| LLVM 23 | `brew install llvm@23`, provides clang-format, clang-tidy and run-clang-tidy |
+| pre-commit | `brew install pre-commit`, then `pre-commit install` |
+| vcpkg | Clone it outside this repository and set `VCPKG_ROOT` |
+| Qt 6.11 (Core, Gui, Quick, Quick Controls, Quick Test, Shader Tools) | Install with the Qt installer and set `QT_ROOT_DIR` to the `macos` directory |
+| .NET SDK | Only needed to cut a release, which uses the `vpk` tool |
+| actionlint, shellcheck | Optional, for checking the workflow files locally |
+
+Both environment variables are read by the CMake presets:
+
+```bash
+export VCPKG_ROOT="$HOME/vcpkg"
+export QT_ROOT_DIR="$HOME/Qt/6.11.2/macos"
+```
+
+## Building on macOS
+
+```bash
+export VCPKG_ROOT="$HOME/vcpkg" QT_ROOT_DIR="$HOME/Qt/6.11.2/macos"
+cmake --workflow --preset mac-debug
+open build/mac-debug/src/app/phvikapen.app
+```
+
+The first configure builds the dependencies from source, which takes a few minutes. Later builds
+reuse the vcpkg binary cache.
+
+## Presets
+
+| Preset | What it is for |
+|---|---|
+| `mac-debug` | Everyday development: debug build, tests, qmllint |
+| `mac-release` | Optimized build, also builds the benchmarks |
+| `mac-asan` | Debug build with AddressSanitizer and UndefinedBehaviorSanitizer |
+| `win-arm64-debug` | Windows on ARM, debug |
+| `win-arm64-release` | Windows on ARM, the configuration that is shipped |
+
+Each preset exists as a configure, build, test and workflow preset. `cmake --workflow --preset X`
+runs all three stages; the build stage also runs qmllint, and any QML warning fails the build.
+
+Run only the tests of an existing build with `ctest --preset mac-debug`, and the benchmarks with
+`./build/mac-release/tests/bench/phvikapen_bench`.
+
+## Code quality
+
+`pre-commit install` wires up formatting, spell checking and the usual file hygiene. The same
+checks run in continuous integration, together with clang-tidy:
+
+```bash
+git ls-files '*.cpp' '*.hpp' | xargs "$(brew --prefix llvm@23)/bin/clang-format" -i
+git ls-files '*.qml' | xargs "$QT_ROOT_DIR/bin/qmlformat" -i
+"$(brew --prefix llvm@23)/bin/run-clang-tidy" -p build/mac-debug -quiet "^${PWD}/(src|tests|tools)/"
+```
+
+## Recording pen input
+
+The ink recorder captures raw pen and mouse events so that filters can be tuned on real data from
+the target device:
+
+```bash
+open build/mac-debug/tools/ink-recorder/ink_recorder.app
+```
+
+Press **Start**, write across the window, then press **Stop**. Each recording is a CSV file below
+the application data directory, for example
+`~/Library/Application Support/PhvikaPen Ink Recorder/recordings/` on macOS.
+
+## Layout
+
+```
+src/core/       pure C++23: ink samples, strokes, geometry, identifiers
+src/platform/   ink backends, PDF and update interfaces
+src/app/        QML user interface and the view models behind it
+tests/          unit tests, QML tests, benchmarks, recordings
+tools/          the ink recorder
+```
+
+Dependencies point downward only: the application uses the platform layer, the platform layer uses
+the core, and the core depends on neither Qt nor the operating system. A test and a configure-time
+check enforce that.
+
+## Cutting a release
+
+1. Update the version in `project(... VERSION x.y.z ...)` in the top-level `CMakeLists.txt`.
+2. Move the entries of the release from `Unreleased` into a new section in `CHANGELOG.md`.
+3. Commit, then tag and push:
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The release workflow builds on Windows on ARM, refuses to continue if the tag and the project
+version disagree, deploys the Qt runtime, packages the installer and the update packages, and
+publishes them to a GitHub release together with their SHA-256 checksums.
+
+## License
+
+MIT, see `LICENSE`.

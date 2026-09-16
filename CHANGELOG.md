@@ -26,3 +26,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ink recorder tool that writes raw pen and mouse events to CSV for filter tuning.
 - Continuous integration on macOS and Windows on ARM, a release workflow that publishes the
   Windows installer and update packages with their checksums, and Dependabot updates.
+- README with prerequisites, build and release instructions, and architecture decision records for
+  the technology stack, the ink backend and the update framework.
