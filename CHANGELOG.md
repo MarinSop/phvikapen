@@ -23,3 +23,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Application window with a tool bar, notebook tabs and the ink canvas, C++ view models exposed to
   QML, and logging to a rotating file.
 - Qt Quick tests for the view models and the tool bar, and qmllint as part of every build.
+- Ink recorder tool that writes raw pen and mouse events to CSV for filter tuning.

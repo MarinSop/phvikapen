@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(PHVIKAPEN_BUILD_TESTS "Build the unit and QML tests" ON)
 option(PHVIKAPEN_BUILD_BENCHMARKS "Build the benchmarks" OFF)
+option(PHVIKAPEN_BUILD_TOOLS "Build the developer tools" ON)
 option(PHVIKAPEN_ENABLE_SANITIZERS "Instrument targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(PHVIKAPEN_USE_SCCACHE "Use sccache as the compiler launcher when it is available" ON)
 
@@ -40,4 +41,8 @@ endif()
 
 if(PHVIKAPEN_BUILD_BENCHMARKS)
     add_subdirectory(tests/bench)
+endif()
+
+if(PHVIKAPEN_BUILD_TOOLS)
+    add_subdirectory(tools/ink-recorder)
 endif()
