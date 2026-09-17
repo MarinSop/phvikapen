@@ -22,6 +22,8 @@ target_sources(phvikapen_core
         model/PageStyle.cpp
         model/StrokeGrid.cpp
         storage/NotebookStore.cpp
+        storage/Sqlite.cpp
+        storage/Sqlite.hpp
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
         undo/StrokeCommands.cpp

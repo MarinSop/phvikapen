@@ -1,6 +1,7 @@
 #include "core/storage/NotebookStore.hpp"
 
 #include "core/Error.hpp"
+#include "core/storage/Sqlite.hpp"
 #include "core/storage/StrokeCodec.hpp"
 
 #include <sqlite3.h>
@@ -38,81 +39,20 @@ constexpr std::array kMigrations{
     std::pair{2, kSchemaVersion2},
 };
 
-[[nodiscard]] Error sqliteError(sqlite3* database, std::string_view what) {
-    std::string message{what};
-    if (database != nullptr) {
-        message += ": ";
-        message += sqlite3_errmsg(database);
+[[nodiscard]] Result<std::int64_t> queryInteger(sqlite3* database, std::string_view sql) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(database, sql);
+    if (!statement) {
+        return std::unexpected{statement.error()};
     }
-    return Error{.code = ErrorCode::IoFailure, .message = std::move(message)};
-}
-
-[[nodiscard]] Result<void> execute(sqlite3* database, std::string_view sql) {
-    char* rawMessage = nullptr;
-    const int status =
-        sqlite3_exec(database, std::string{sql}.c_str(), nullptr, nullptr, &rawMessage);
-    if (status != SQLITE_OK) {
-        std::string message{"statement failed"};
-        if (rawMessage != nullptr) {
-            message += ": ";
-            message += rawMessage;
-            sqlite3_free(rawMessage);
-        }
-        return std::unexpected<Error>{Error{.code = ErrorCode::IoFailure, .message = message}};
+    const Result<bool> row = statement->step();
+    if (!row) {
+        return std::unexpected{row.error()};
     }
-    return {};
-}
-
-[[nodiscard]] Result<int> queryInteger(sqlite3* database, std::string_view sql) {
-    sqlite3_stmt* statement = nullptr;
-    if (sqlite3_prepare_v2(database, std::string{sql}.c_str(), -1, &statement, nullptr)
-        != SQLITE_OK) {
-        return std::unexpected{sqliteError(database, "could not prepare a query")};
-    }
-    int value = 0;
-    const int status = sqlite3_step(statement);
-    if (status == SQLITE_ROW) {
-        value = sqlite3_column_int(statement, 0);
-    }
-    sqlite3_finalize(statement);
-    if (status != SQLITE_ROW && status != SQLITE_DONE) {
-        return std::unexpected{sqliteError(database, "could not run a query")};
-    }
-    return value;
-}
-
-[[nodiscard]] Result<void> bindBlob(sqlite3_stmt* statement, int index,
-                                    std::span<const std::byte> bytes) {
-    const int status = sqlite3_bind_blob(statement, index, bytes.data(),
-                                         static_cast<int>(bytes.size()), SQLITE_TRANSIENT);
-    if (status != SQLITE_OK) {
-        return std::unexpected<Error>{
-            Error{.code = ErrorCode::IoFailure, .message = "could not bind a value"}};
-    }
-    return {};
-}
-
-[[nodiscard]] Result<void> bindInteger(sqlite3_stmt* statement, int index, std::int64_t value) {
-    if (sqlite3_bind_int64(statement, index, value) != SQLITE_OK) {
-        return std::unexpected<Error>{
-            Error{.code = ErrorCode::IoFailure, .message = "could not bind a value"}};
-    }
-    return {};
-}
-
-[[nodiscard]] std::span<const std::byte> idBytes(const Uuid& id) {
-    return std::as_bytes(std::span{id.bytes()});
-}
-
-[[nodiscard]] Result<void> rollbackWith(sqlite3* database, Error cause) {
-    if (const Result<void> rolledBack = execute(database, "ROLLBACK;"); !rolledBack) {
-        cause.message += " (the rollback failed as well: " + rolledBack.error().message + ")";
-    }
-    return std::unexpected{std::move(cause)};
+    return *row ? statement->integer(0) : 0;
 }
 
 [[nodiscard]] Result<void> migrate(sqlite3* database) {
-    const Result<int> version = queryInteger(database, "PRAGMA user_version;");
+    const Result<std::int64_t> version = queryInteger(database, "PRAGMA user_version;");
     if (!version) {
         return std::unexpected{version.error()};
     }
@@ -124,23 +64,24 @@ constexpr std::array kMigrations{
         return {};
     }
 
-    if (const Result<void> begun = execute(database, "BEGIN IMMEDIATE;"); !begun) {
-        return begun;
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
     }
     for (const auto& [stepVersion, sql] : kMigrations) {
         if (*version >= stepVersion) {
             continue;
         }
-        if (const Result<void> applied = execute(database, sql); !applied) {
-            return rollbackWith(database, applied.error());
+        if (const Result<void> applied = sqlite::execute(database, sql); !applied) {
+            return applied;
         }
     }
-    if (const Result<void> stamped = execute(
+    if (const Result<void> stamped = sqlite::execute(
             database, "PRAGMA user_version = " + std::to_string(kNotebookSchemaVersion) + ";");
         !stamped) {
-        return rollbackWith(database, stamped.error());
+        return stamped;
     }
-    return execute(database, "COMMIT;");
+    return transaction->commit();
 }
 
 }
@@ -178,7 +119,7 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
     const int status = sqlite3_open_v2(fileName.c_str(), &database,
                                        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr);
     if (status != SQLITE_OK) {
-        Error error = sqliteError(database, "could not open the notebook");
+        Error error = sqlite::lastError(database, "could not open the notebook");
         sqlite3_close(database);
         return std::unexpected{std::move(error)};
     }
@@ -190,7 +131,7 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
              "PRAGMA foreign_keys = ON;",
              "PRAGMA synchronous = NORMAL;",
          }) {
-        if (const Result<void> applied = execute(database, pragma); !applied) {
+        if (const Result<void> applied = sqlite::execute(database, pragma); !applied) {
             return std::unexpected{applied.error()};
         }
     }
@@ -202,126 +143,98 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
 }
 
 Result<void> NotebookStore::insertStroke(const Uuid& pageId, const PlacedStroke& placed) {
-    sqlite3_stmt* statement = nullptr;
-    if (sqlite3_prepare_v2(m_database,
-                           "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, ?, ?);",
-                           -1, &statement, nullptr)
-        != SQLITE_OK) {
-        return std::unexpected{sqliteError(m_database, "could not prepare the insert")};
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
     }
-
     const std::vector<std::byte> data = encodeStroke(placed.stroke);
-    const auto bindings = {
-        bindBlob(statement, 1, idBytes(placed.stroke.id())),
-        bindBlob(statement, 2, idBytes(pageId)),
-        bindInteger(statement, 3, placed.ordinal),
-        bindBlob(statement, 4, data),
-    };
-    for (const Result<void>& binding : bindings) {
-        if (!binding) {
-            sqlite3_finalize(statement);
-            return binding;
+    for (const Result<void>& bound : {
+             statement->bindId(1, placed.stroke.id()),
+             statement->bindId(2, pageId),
+             statement->bindInteger(3, placed.ordinal),
+             statement->bindBlob(4, data),
+         }) {
+        if (!bound) {
+            return bound;
         }
     }
-
-    const int status = sqlite3_step(statement);
-    sqlite3_finalize(statement);
-    if (status != SQLITE_DONE) {
-        return std::unexpected{sqliteError(m_database, "could not store the stroke")};
-    }
-    return {};
+    return statement->run();
 }
 
 Result<void> NotebookStore::removeStroke(const Uuid& pageId, const Uuid& strokeId) {
-    sqlite3_stmt* statement = nullptr;
-    if (sqlite3_prepare_v2(m_database, "DELETE FROM strokes WHERE page_id = ? AND id = ?;", -1,
-                           &statement, nullptr)
-        != SQLITE_OK) {
-        return std::unexpected{sqliteError(m_database, "could not prepare the delete")};
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM strokes WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
     }
-
-    const auto bindings = {
-        bindBlob(statement, 1, idBytes(pageId)),
-        bindBlob(statement, 2, idBytes(strokeId)),
-    };
-    for (const Result<void>& binding : bindings) {
-        if (!binding) {
-            sqlite3_finalize(statement);
-            return binding;
+    for (const Result<void>& bound : {
+             statement->bindId(1, pageId),
+             statement->bindId(2, strokeId),
+         }) {
+        if (!bound) {
+            return bound;
         }
     }
-
-    const int status = sqlite3_step(statement);
-    sqlite3_finalize(statement);
-    if (status != SQLITE_DONE) {
-        return std::unexpected{sqliteError(m_database, "could not remove the stroke")};
+    if (const Result<void> removed = statement->run(); !removed) {
+        return removed;
     }
-    if (sqlite3_changes(m_database) == 0) {
+    if (sqlite::changes(m_database) == 0) {
         return makeError(ErrorCode::NotFound, "the page does not hold that stroke");
     }
     return {};
 }
 
 Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
-    sqlite3_stmt* statement = nullptr;
-    if (sqlite3_prepare_v2(m_database, "DELETE FROM strokes WHERE page_id = ?;", -1, &statement,
-                           nullptr)
-        != SQLITE_OK) {
-        return std::unexpected{sqliteError(m_database, "could not prepare the delete")};
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM strokes WHERE page_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
     }
-    if (const Result<void> bound = bindBlob(statement, 1, idBytes(pageId)); !bound) {
-        sqlite3_finalize(statement);
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
         return std::unexpected{bound.error()};
     }
-
-    const int status = sqlite3_step(statement);
-    sqlite3_finalize(statement);
-    if (status != SQLITE_DONE) {
-        return std::unexpected{sqliteError(m_database, "could not empty the page")};
+    if (const Result<void> removed = statement->run(); !removed) {
+        return std::unexpected{removed.error()};
     }
-    return static_cast<std::size_t>(sqlite3_changes(m_database));
+    return static_cast<std::size_t>(sqlite::changes(m_database));
 }
 
 Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
-    sqlite3_stmt* statement = nullptr;
-    if (sqlite3_prepare_v2(m_database,
-                           "SELECT ordinal, data FROM strokes WHERE page_id = ? ORDER BY ordinal;",
-                           -1, &statement, nullptr)
-        != SQLITE_OK) {
-        return std::unexpected{sqliteError(m_database, "could not prepare the query")};
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT ordinal, data FROM strokes WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
     }
-    if (const Result<void> bound = bindBlob(statement, 1, idBytes(pageId)); !bound) {
-        sqlite3_finalize(statement);
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
         return std::unexpected{bound.error()};
     }
 
     std::vector<PlacedStroke> strokes;
     while (true) {
-        const int status = sqlite3_step(statement);
-        if (status == SQLITE_DONE) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
             break;
         }
-        if (status != SQLITE_ROW) {
-            sqlite3_finalize(statement);
-            return std::unexpected{sqliteError(m_database, "could not read the strokes")};
-        }
-
-        const std::int64_t ordinal = sqlite3_column_int64(statement, 0);
-        const auto* const data = static_cast<const std::byte*>(sqlite3_column_blob(statement, 1));
-        const auto size = static_cast<std::size_t>(sqlite3_column_bytes(statement, 1));
-        Result<Stroke> stroke = decodeStroke(std::span{data, size});
+        Result<Stroke> stroke = decodeStroke(statement->blob(1));
         if (!stroke) {
-            sqlite3_finalize(statement);
             return std::unexpected{stroke.error()};
         }
-        strokes.push_back(PlacedStroke{.ordinal = ordinal, .stroke = std::move(*stroke)});
+        strokes.push_back(
+            PlacedStroke{.ordinal = statement->integer(0), .stroke = std::move(*stroke)});
     }
-    sqlite3_finalize(statement);
     return strokes;
 }
 
 Result<int> NotebookStore::schemaVersion() const {
-    return queryInteger(m_database, "PRAGMA user_version;");
+    const Result<std::int64_t> version = queryInteger(m_database, "PRAGMA user_version;");
+    if (!version) {
+        return std::unexpected{version.error()};
+    }
+    return static_cast<int>(*version);
 }
 
 }
