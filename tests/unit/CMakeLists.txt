@@ -7,6 +7,7 @@ add_executable(phvikapen_tests
     core/ErrorTest.cpp
     core/NotebookStoreTest.cpp
     core/OneEuroFilterTest.cpp
+    core/PageStyleTest.cpp
     core/PageTest.cpp
     core/StrokeCodecTest.cpp
     core/StorageThreadTest.cpp

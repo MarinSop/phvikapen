@@ -19,6 +19,7 @@ target_sources(phvikapen_core
         ink/StrokeMesh.cpp
         ink/StrokeSpline.cpp
         model/Page.cpp
+        model/PageStyle.cpp
         model/StrokeGrid.cpp
         storage/NotebookStore.cpp
         storage/StorageThread.cpp
@@ -44,6 +45,7 @@ target_sources(phvikapen_core
             ink/StrokeMesh.hpp
             ink/StrokeSpline.hpp
             model/Page.hpp
+            model/PageStyle.hpp
             model/StrokeGrid.hpp
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
