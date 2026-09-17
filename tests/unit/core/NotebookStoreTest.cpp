@@ -1,69 +1,24 @@
 #include "core/storage/NotebookStore.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
+#include "support/TemporaryNotebook.hpp"
 
 #include <gtest/gtest.h>
 #include <sqlite3.h>
 
-#include <chrono>
+#include <cstddef>
 #include <filesystem>
 #include <string>
-#include <system_error>
-#include <utility>
+#include <vector>
 
 namespace phvikapen::core {
 namespace {
 
-using std::chrono::microseconds;
-
-/// A notebook file in the temporary directory, removed again when the test ends.
-class TemporaryNotebook {
-public:
-    TemporaryNotebook() {
-        Uuid7Generator ids;
-        m_path = std::filesystem::temp_directory_path()
-                 / ("phvikapen-" + ids.next().toString() + ".phvika");
-        // The write-ahead log leaves two files of its own next to the notebook. Their names are
-        // built here, where allocating may throw, so that the destructor cannot.
-        m_walPath = m_path.string() + "-wal";
-        m_shmPath = m_path.string() + "-shm";
-    }
-
-    ~TemporaryNotebook() {
-        std::error_code ignored;
-        std::filesystem::remove(m_path, ignored);
-        std::filesystem::remove(m_walPath, ignored);
-        std::filesystem::remove(m_shmPath, ignored);
-    }
-
-    TemporaryNotebook(const TemporaryNotebook&) = delete;
-    TemporaryNotebook& operator=(const TemporaryNotebook&) = delete;
-    TemporaryNotebook(TemporaryNotebook&&) = delete;
-    TemporaryNotebook& operator=(TemporaryNotebook&&) = delete;
-
-    [[nodiscard]] const std::filesystem::path& path() const { return m_path; }
-
-private:
-    std::filesystem::path m_path;
-    std::filesystem::path m_walPath;
-    std::filesystem::path m_shmPath;
-};
-
-[[nodiscard]] Stroke makeStroke(Uuid7Generator& ids, float originX) {
-    Stroke stroke{ids.next(), StrokeStyle{.width = 3.0F}};
-    for (int i = 0; i < 20; ++i) {
-        const auto step = static_cast<float>(i);
-        stroke.append(InkSample{
-            .x = originX + step,
-            .y = 50.0F + step,
-            .pressure = 0.7F,
-            .timestamp = microseconds{8'000 * i},
-        });
-    }
-    return stroke;
-}
+using test::makeStroke;
+using test::TemporaryNotebook;
 
 TEST(NotebookStoreTest, CreatesAFileWithTheCurrentSchema) {
     const TemporaryNotebook notebook;
@@ -118,6 +73,77 @@ TEST(NotebookStoreTest, KeepsPagesApart) {
     EXPECT_EQ(store->strokesOfPage(firstPage)->size(), 1U);
     EXPECT_EQ(store->strokesOfPage(secondPage)->size(), 2U);
     EXPECT_TRUE(store->strokesOfPage(ids.next())->empty());
+}
+
+TEST(NotebookStoreTest, RemovesOneStrokeAndLeavesTheRest) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    const Uuid page = ids.next();
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Stroke first = makeStroke(ids, 10.0F);
+    const Stroke second = makeStroke(ids, 100.0F);
+    ASSERT_TRUE(store->appendStroke(page, first).has_value());
+    ASSERT_TRUE(store->appendStroke(page, second).has_value());
+
+    EXPECT_TRUE(store->removeStroke(page, first.id()).has_value());
+
+    const Result<std::vector<Stroke>> strokes = store->strokesOfPage(page);
+    ASSERT_TRUE(strokes.has_value()) << strokes.error().message;
+    ASSERT_EQ(strokes->size(), 1U);
+    EXPECT_EQ(strokes->front().id(), second.id());
+}
+
+TEST(NotebookStoreTest, ReportsAStrokeThePageDoesNotHold) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    const Uuid page = ids.next();
+    const Uuid otherPage = ids.next();
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Stroke stroke = makeStroke(ids, 10.0F);
+    ASSERT_TRUE(store->appendStroke(page, stroke).has_value());
+
+    const Result<void> unknownStroke = store->removeStroke(page, ids.next());
+    ASSERT_FALSE(unknownStroke.has_value());
+    EXPECT_EQ(unknownStroke.error().code, ErrorCode::NotFound);
+
+    // The stroke exists, but not on the page it is asked for.
+    const Result<void> wrongPage = store->removeStroke(otherPage, stroke.id());
+    ASSERT_FALSE(wrongPage.has_value());
+    EXPECT_EQ(wrongPage.error().code, ErrorCode::NotFound);
+    EXPECT_EQ(store->strokesOfPage(page)->size(), 1U);
+}
+
+TEST(NotebookStoreTest, EmptiesOnePageAndCountsWhatItRemoved) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    const Uuid emptied = ids.next();
+    const Uuid kept = ids.next();
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    ASSERT_TRUE(store->appendStroke(emptied, makeStroke(ids, 0.0F)).has_value());
+    ASSERT_TRUE(store->appendStroke(emptied, makeStroke(ids, 50.0F)).has_value());
+    ASSERT_TRUE(store->appendStroke(kept, makeStroke(ids, 0.0F)).has_value());
+
+    const Result<std::size_t> removed = store->removeStrokesOfPage(emptied);
+
+    ASSERT_TRUE(removed.has_value()) << removed.error().message;
+    EXPECT_EQ(*removed, 2U);
+    EXPECT_TRUE(store->strokesOfPage(emptied)->empty());
+    EXPECT_EQ(store->strokesOfPage(kept)->size(), 1U);
+}
+
+TEST(NotebookStoreTest, EmptyingAPageWithoutStrokesRemovesNothing) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+
+    const Result<std::size_t> removed = store->removeStrokesOfPage(ids.next());
+
+    ASSERT_TRUE(removed.has_value()) << removed.error().message;
+    EXPECT_EQ(*removed, 0U);
 }
 
 TEST(NotebookStoreTest, RefusesANotebookFromANewerVersion) {

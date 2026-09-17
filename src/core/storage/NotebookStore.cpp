@@ -219,6 +219,56 @@ Result<void> NotebookStore::appendStroke(const Uuid& pageId, const Stroke& strok
     return {};
 }
 
+Result<void> NotebookStore::removeStroke(const Uuid& pageId, const Uuid& strokeId) {
+    sqlite3_stmt* statement = nullptr;
+    if (sqlite3_prepare_v2(m_database, "DELETE FROM strokes WHERE page_id = ? AND id = ?;", -1,
+                           &statement, nullptr)
+        != SQLITE_OK) {
+        return std::unexpected{sqliteError(m_database, "could not prepare the delete")};
+    }
+
+    const auto bindings = {
+        bindBlob(statement, 1, idBytes(pageId)),
+        bindBlob(statement, 2, idBytes(strokeId)),
+    };
+    for (const Result<void>& binding : bindings) {
+        if (!binding) {
+            sqlite3_finalize(statement);
+            return binding;
+        }
+    }
+
+    const int status = sqlite3_step(statement);
+    sqlite3_finalize(statement);
+    if (status != SQLITE_DONE) {
+        return std::unexpected{sqliteError(m_database, "could not remove the stroke")};
+    }
+    if (sqlite3_changes(m_database) == 0) {
+        return makeError(ErrorCode::NotFound, "the page does not hold that stroke");
+    }
+    return {};
+}
+
+Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
+    sqlite3_stmt* statement = nullptr;
+    if (sqlite3_prepare_v2(m_database, "DELETE FROM strokes WHERE page_id = ?;", -1, &statement,
+                           nullptr)
+        != SQLITE_OK) {
+        return std::unexpected{sqliteError(m_database, "could not prepare the delete")};
+    }
+    if (const Result<void> bound = bindBlob(statement, 1, idBytes(pageId)); !bound) {
+        sqlite3_finalize(statement);
+        return std::unexpected{bound.error()};
+    }
+
+    const int status = sqlite3_step(statement);
+    sqlite3_finalize(statement);
+    if (status != SQLITE_DONE) {
+        return std::unexpected{sqliteError(m_database, "could not empty the page")};
+    }
+    return static_cast<std::size_t>(sqlite3_changes(m_database));
+}
+
 Result<std::vector<Stroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(m_database,

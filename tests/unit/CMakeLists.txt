@@ -10,6 +10,7 @@ add_executable(phvikapen_tests
     core/NotebookStoreTest.cpp
     core/OneEuroFilterTest.cpp
     core/StrokeCodecTest.cpp
+    core/StrokeCommandsTest.cpp
     core/StrokeMeshTest.cpp
     core/StrokeTest.cpp
     core/UndoStackTest.cpp
@@ -26,7 +27,10 @@ target_link_libraries(phvikapen_tests
 )
 
 target_include_directories(phvikapen_tests
-    PRIVATE $<TARGET_PROPERTY:unofficial::sqlite3::sqlite3,INTERFACE_INCLUDE_DIRECTORIES>
+    PRIVATE
+        # So that a test reaches shared test code as "support/…", wherever the test itself lives.
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        $<TARGET_PROPERTY:unofficial::sqlite3::sqlite3,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 set_target_properties(phvikapen_tests PROPERTIES

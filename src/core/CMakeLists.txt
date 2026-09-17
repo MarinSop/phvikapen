@@ -19,6 +19,7 @@ target_sources(phvikapen_core
         ink/StrokeMesh.cpp
         storage/NotebookStore.cpp
         storage/StrokeCodec.cpp
+        undo/StrokeCommands.cpp
         undo/UndoStack.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -37,6 +38,7 @@ target_sources(phvikapen_core
             ink/StrokeMesh.hpp
             storage/NotebookStore.hpp
             storage/StrokeCodec.hpp
+            undo/StrokeCommands.hpp
             undo/UndoStack.hpp
             "${generated_dir}/core/version.hpp"
 )

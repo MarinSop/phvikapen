@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/Stroke.hpp"
 
+#include <cstddef>
 #include <filesystem>
 #include <vector>
 
@@ -43,6 +44,15 @@ public:
 
     /// Appends @p stroke to the page @p pageId, after the strokes already stored there.
     [[nodiscard]] Result<void> appendStroke(const Uuid& pageId, const Stroke& stroke);
+
+    /// Removes the stroke @p strokeId from the page @p pageId.
+    ///
+    /// Fails with ErrorCode::NotFound when the page does not hold that stroke, so that taking back
+    /// a change the notebook no longer has is reported rather than passing for success.
+    [[nodiscard]] Result<void> removeStroke(const Uuid& pageId, const Uuid& strokeId);
+
+    /// Removes every stroke of the page @p pageId and returns how many were removed.
+    [[nodiscard]] Result<std::size_t> removeStrokesOfPage(const Uuid& pageId);
 
     /// Returns the strokes of the page @p pageId, in the order they were drawn.
     [[nodiscard]] Result<std::vector<Stroke>> strokesOfPage(const Uuid& pageId) const;
