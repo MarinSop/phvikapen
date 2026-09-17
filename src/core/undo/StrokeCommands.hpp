@@ -2,7 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
-#include "core/ink/Stroke.hpp"
+#include "core/model/Page.hpp"
 #include "core/undo/UndoStack.hpp"
 
 #include <vector>
@@ -13,7 +13,7 @@ class NotebookStore;
 
 class AddStrokeCommand final : public ICommand {
 public:
-    AddStrokeCommand(NotebookStore* store, const Uuid& pageId, Stroke stroke) noexcept;
+    AddStrokeCommand(NotebookStore* store, const Uuid& pageId, PlacedStroke placed) noexcept;
 
     Result<void> apply() override;
     Result<void> revert() override;
@@ -21,7 +21,7 @@ public:
 private:
     NotebookStore* m_store;
     Uuid m_pageId;
-    Stroke m_stroke;
+    PlacedStroke m_placed;
 };
 
 class ClearPageCommand final : public ICommand {
@@ -34,7 +34,7 @@ public:
 private:
     NotebookStore* m_store;
     Uuid m_pageId;
-    std::vector<Stroke> m_removed;
+    std::vector<PlacedStroke> m_removed;
 };
 
 }

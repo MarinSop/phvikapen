@@ -5,7 +5,9 @@
 
 #include <sqlite3.h>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -25,6 +27,16 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     );
     CREATE INDEX strokes_by_page ON strokes (page_id, ordinal);
 )sql";
+
+constexpr std::string_view kSchemaVersion2 = R"sql(
+    DROP INDEX strokes_by_page;
+    CREATE UNIQUE INDEX strokes_by_page ON strokes (page_id, ordinal);
+)sql";
+
+constexpr std::array kMigrations{
+    std::pair{1, kSchemaVersion1},
+    std::pair{2, kSchemaVersion2},
+};
 
 [[nodiscard]] Error sqliteError(sqlite3* database, std::string_view what) {
     std::string message{what};
@@ -80,6 +92,14 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     return {};
 }
 
+[[nodiscard]] Result<void> bindInteger(sqlite3_stmt* statement, int index, std::int64_t value) {
+    if (sqlite3_bind_int64(statement, index, value) != SQLITE_OK) {
+        return std::unexpected<Error>{
+            Error{.code = ErrorCode::IoFailure, .message = "could not bind a value"}};
+    }
+    return {};
+}
+
 [[nodiscard]] std::span<const std::byte> idBytes(const Uuid& id) {
     return std::as_bytes(std::span{id.bytes()});
 }
@@ -107,8 +127,11 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     if (const Result<void> begun = execute(database, "BEGIN IMMEDIATE;"); !begun) {
         return begun;
     }
-    if (*version < 1) {
-        if (const Result<void> applied = execute(database, kSchemaVersion1); !applied) {
+    for (const auto& [stepVersion, sql] : kMigrations) {
+        if (*version >= stepVersion) {
+            continue;
+        }
+        if (const Result<void> applied = execute(database, sql); !applied) {
             return rollbackWith(database, applied.error());
         }
     }
@@ -178,22 +201,20 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
     return store;
 }
 
-Result<void> NotebookStore::appendStroke(const Uuid& pageId, const Stroke& stroke) {
+Result<void> NotebookStore::insertStroke(const Uuid& pageId, const PlacedStroke& placed) {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(m_database,
-                           "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, "
-                           "(SELECT COALESCE(MAX(ordinal) + 1, 0) FROM strokes WHERE page_id = ?),"
-                           " ?);",
+                           "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, ?, ?);",
                            -1, &statement, nullptr)
         != SQLITE_OK) {
         return std::unexpected{sqliteError(m_database, "could not prepare the insert")};
     }
 
-    const std::vector<std::byte> data = encodeStroke(stroke);
+    const std::vector<std::byte> data = encodeStroke(placed.stroke);
     const auto bindings = {
-        bindBlob(statement, 1, idBytes(stroke.id())),
+        bindBlob(statement, 1, idBytes(placed.stroke.id())),
         bindBlob(statement, 2, idBytes(pageId)),
-        bindBlob(statement, 3, idBytes(pageId)),
+        bindInteger(statement, 3, placed.ordinal),
         bindBlob(statement, 4, data),
     };
     for (const Result<void>& binding : bindings) {
@@ -261,11 +282,11 @@ Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
     return static_cast<std::size_t>(sqlite3_changes(m_database));
 }
 
-Result<std::vector<Stroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
+Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(m_database,
-                           "SELECT data FROM strokes WHERE page_id = ? ORDER BY ordinal;", -1,
-                           &statement, nullptr)
+                           "SELECT ordinal, data FROM strokes WHERE page_id = ? ORDER BY ordinal;",
+                           -1, &statement, nullptr)
         != SQLITE_OK) {
         return std::unexpected{sqliteError(m_database, "could not prepare the query")};
     }
@@ -274,7 +295,7 @@ Result<std::vector<Stroke>> NotebookStore::strokesOfPage(const Uuid& pageId) con
         return std::unexpected{bound.error()};
     }
 
-    std::vector<Stroke> strokes;
+    std::vector<PlacedStroke> strokes;
     while (true) {
         const int status = sqlite3_step(statement);
         if (status == SQLITE_DONE) {
@@ -285,14 +306,15 @@ Result<std::vector<Stroke>> NotebookStore::strokesOfPage(const Uuid& pageId) con
             return std::unexpected{sqliteError(m_database, "could not read the strokes")};
         }
 
-        const auto* const data = static_cast<const std::byte*>(sqlite3_column_blob(statement, 0));
-        const auto size = static_cast<std::size_t>(sqlite3_column_bytes(statement, 0));
+        const std::int64_t ordinal = sqlite3_column_int64(statement, 0);
+        const auto* const data = static_cast<const std::byte*>(sqlite3_column_blob(statement, 1));
+        const auto size = static_cast<std::size_t>(sqlite3_column_bytes(statement, 1));
         Result<Stroke> stroke = decodeStroke(std::span{data, size});
         if (!stroke) {
             sqlite3_finalize(statement);
             return std::unexpected{stroke.error()};
         }
-        strokes.push_back(std::move(*stroke));
+        strokes.push_back(PlacedStroke{.ordinal = ordinal, .stroke = std::move(*stroke)});
     }
     sqlite3_finalize(statement);
     return strokes;

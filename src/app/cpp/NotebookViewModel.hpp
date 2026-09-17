@@ -13,6 +13,7 @@
 #include <QString>
 #include <QtQmlIntegration>
 
+#include <cstdint>
 #include <optional>
 
 namespace phvikapen::app {
@@ -79,6 +80,7 @@ private:
     core::Uuid m_pageId;
     QPointer<platform::ink::QtInkItem> m_canvas;
     QString m_errorMessage;
+    std::int64_t m_nextOrdinal{0};
     int m_storedStrokeCount{0};
 };
 

@@ -2,7 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
-#include "core/ink/Stroke.hpp"
+#include "core/model/Page.hpp"
 
 #include <cstddef>
 #include <filesystem>
@@ -12,7 +12,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 1;
+inline constexpr int kNotebookSchemaVersion = 2;
 
 class NotebookStore {
 public:
@@ -26,13 +26,13 @@ public:
     NotebookStore(const NotebookStore&) = delete;
     NotebookStore& operator=(const NotebookStore&) = delete;
 
-    [[nodiscard]] Result<void> appendStroke(const Uuid& pageId, const Stroke& stroke);
+    [[nodiscard]] Result<void> insertStroke(const Uuid& pageId, const PlacedStroke& placed);
 
     [[nodiscard]] Result<void> removeStroke(const Uuid& pageId, const Uuid& strokeId);
 
     [[nodiscard]] Result<std::size_t> removeStrokesOfPage(const Uuid& pageId);
 
-    [[nodiscard]] Result<std::vector<Stroke>> strokesOfPage(const Uuid& pageId) const;
+    [[nodiscard]] Result<std::vector<PlacedStroke>> strokesOfPage(const Uuid& pageId) const;
 
     [[nodiscard]] Result<int> schemaVersion() const;
 

@@ -15,6 +15,7 @@ target_sources(phvikapen_core
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
         ink/StrokeMesh.cpp
+        model/Page.cpp
         storage/NotebookStore.cpp
         storage/StrokeCodec.cpp
         undo/StrokeCommands.cpp
@@ -34,6 +35,7 @@ target_sources(phvikapen_core
             ink/InkSample.hpp
             ink/Stroke.hpp
             ink/StrokeMesh.hpp
+            model/Page.hpp
             storage/NotebookStore.hpp
             storage/StrokeCodec.hpp
             undo/StrokeCommands.hpp

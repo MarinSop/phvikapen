@@ -11,22 +11,23 @@
 
 namespace phvikapen::core {
 
-AddStrokeCommand::AddStrokeCommand(NotebookStore* store, const Uuid& pageId, Stroke stroke) noexcept
-    : m_store{store}, m_pageId{pageId}, m_stroke{std::move(stroke)} {}
+AddStrokeCommand::AddStrokeCommand(NotebookStore* store, const Uuid& pageId,
+                                   PlacedStroke placed) noexcept
+    : m_store{store}, m_pageId{pageId}, m_placed{std::move(placed)} {}
 
 Result<void> AddStrokeCommand::apply() {
-    return m_store->appendStroke(m_pageId, m_stroke);
+    return m_store->insertStroke(m_pageId, m_placed);
 }
 
 Result<void> AddStrokeCommand::revert() {
-    return m_store->removeStroke(m_pageId, m_stroke.id());
+    return m_store->removeStroke(m_pageId, m_placed.stroke.id());
 }
 
 ClearPageCommand::ClearPageCommand(NotebookStore* store, const Uuid& pageId) noexcept
     : m_store{store}, m_pageId{pageId} {}
 
 Result<void> ClearPageCommand::apply() {
-    Result<std::vector<Stroke>> strokes = m_store->strokesOfPage(m_pageId);
+    Result<std::vector<PlacedStroke>> strokes = m_store->strokesOfPage(m_pageId);
     if (!strokes) {
         return std::unexpected{strokes.error()};
     }
@@ -39,8 +40,8 @@ Result<void> ClearPageCommand::apply() {
 }
 
 Result<void> ClearPageCommand::revert() {
-    for (const Stroke& stroke : m_removed) {
-        if (const Result<void> restored = m_store->appendStroke(m_pageId, stroke); !restored) {
+    for (const PlacedStroke& placed : m_removed) {
+        if (const Result<void> restored = m_store->insertStroke(m_pageId, placed); !restored) {
             return restored;
         }
     }

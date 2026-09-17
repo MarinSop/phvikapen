@@ -1,6 +1,7 @@
 #include "app/cpp/NotebookViewModel.hpp"
 
 #include "core/Error.hpp"
+#include "core/model/Page.hpp"
 #include "core/undo/StrokeCommands.hpp"
 
 #include <QDir>
@@ -8,6 +9,7 @@
 #include <QString>
 #include <QtLogging>
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <utility>
@@ -78,12 +80,13 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     if (!m_store) {
         return;
     }
-    const core::Result<void> stored =
-        m_history.run(std::make_unique<core::AddStrokeCommand>(&*m_store, m_pageId, stroke));
+    const core::Result<void> stored = m_history.run(std::make_unique<core::AddStrokeCommand>(
+        &*m_store, m_pageId, core::PlacedStroke{.ordinal = m_nextOrdinal, .stroke = stroke}));
     if (!stored) {
         reportError(QString::fromStdString(stored.error().message));
         return;
     }
+    ++m_nextOrdinal;
     ++m_storedStrokeCount;
     emit storedStrokeCountChanged();
     emit historyChanged();
@@ -131,16 +134,22 @@ void NotebookViewModel::reloadCanvas() {
     if (!m_store) {
         return;
     }
-    core::Result<std::vector<core::Stroke>> strokes = m_store->strokesOfPage(m_pageId);
-    if (!strokes) {
-        reportError(QString::fromStdString(strokes.error().message));
+    core::Result<std::vector<core::PlacedStroke>> placed = m_store->strokesOfPage(m_pageId);
+    if (!placed) {
+        reportError(QString::fromStdString(placed.error().message));
         return;
     }
-    m_storedStrokeCount = static_cast<int>(strokes->size());
+    m_nextOrdinal = placed->empty() ? 0 : placed->back().ordinal + 1;
+    m_storedStrokeCount = static_cast<int>(placed->size());
     emit storedStrokeCountChanged();
 
     if (!m_canvas.isNull()) {
-        m_canvas->setStrokes(std::move(*strokes));
+        std::vector<core::Stroke> strokes;
+        strokes.reserve(placed->size());
+        for (core::PlacedStroke& entry : *placed) {
+            strokes.push_back(std::move(entry.stroke));
+        }
+        m_canvas->setStrokes(std::move(strokes));
     }
 }
 

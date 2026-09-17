@@ -21,12 +21,12 @@ using test::TemporaryNotebook;
 
 [[nodiscard]] std::vector<Uuid> idsOnPage(const NotebookStore& store, const Uuid& page) {
     std::vector<Uuid> ids;
-    const Result<std::vector<Stroke>> strokes = store.strokesOfPage(page);
+    const Result<std::vector<PlacedStroke>> strokes = store.strokesOfPage(page);
     if (!strokes) {
         return ids;
     }
-    for (const Stroke& stroke : *strokes) {
-        ids.push_back(stroke.id());
+    for (const PlacedStroke& placed : *strokes) {
+        ids.push_back(placed.stroke.id());
     }
     return ids;
 }
@@ -38,7 +38,7 @@ TEST(AddStrokeCommandTest, PutsTheStrokeOnThePageAndTakesItOffAgain) {
     Result<NotebookStore> store = NotebookStore::open(notebook.path());
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const Stroke stroke = makeStroke(ids, 10.0F);
-    AddStrokeCommand command{&*store, page, stroke};
+    AddStrokeCommand command{&*store, page, {.ordinal = 0, .stroke = stroke}};
 
     ASSERT_TRUE(command.apply());
     EXPECT_EQ(idsOnPage(*store, page), std::vector<Uuid>{stroke.id()});
@@ -55,17 +55,17 @@ TEST(AddStrokeCommandTest, PutsTheStrokeBackWhereItWas) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const Stroke first = makeStroke(ids, 10.0F);
     const Stroke second = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->appendStroke(page, first));
-    AddStrokeCommand command{&*store, page, second};
+    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 0, .stroke = first}));
+    AddStrokeCommand command{&*store, page, {.ordinal = 1, .stroke = second}};
     ASSERT_TRUE(command.apply());
 
     ASSERT_TRUE(command.revert());
     ASSERT_TRUE(command.apply());
 
     EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
-    const Result<std::vector<Stroke>> strokes = store->strokesOfPage(page);
+    const Result<std::vector<PlacedStroke>> strokes = store->strokesOfPage(page);
     ASSERT_TRUE(strokes.has_value()) << strokes.error().message;
-    EXPECT_EQ(strokes->back().samples().size(), second.samples().size());
+    EXPECT_EQ(strokes->back().stroke.samples().size(), second.samples().size());
 }
 
 TEST(ClearPageCommandTest, EmptiesThePageAndBringsEverythingBackInOrder) {
@@ -76,8 +76,8 @@ TEST(ClearPageCommandTest, EmptiesThePageAndBringsEverythingBackInOrder) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const Stroke first = makeStroke(ids, 10.0F);
     const Stroke second = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->appendStroke(page, first));
-    ASSERT_TRUE(store->appendStroke(page, second));
+    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 0, .stroke = first}));
+    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 1, .stroke = second}));
     ClearPageCommand command{&*store, page};
 
     ASSERT_TRUE(command.apply());
@@ -94,9 +94,9 @@ TEST(ClearPageCommandTest, LeavesTheOtherPagesAlone) {
     const Uuid kept = ids.next();
     Result<NotebookStore> store = NotebookStore::open(notebook.path());
     ASSERT_TRUE(store.has_value()) << store.error().message;
-    ASSERT_TRUE(store->appendStroke(cleared, makeStroke(ids, 10.0F)));
+    ASSERT_TRUE(store->insertStroke(cleared, {.ordinal = 0, .stroke = makeStroke(ids, 10.0F)}));
     const Stroke elsewhere = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->appendStroke(kept, elsewhere));
+    ASSERT_TRUE(store->insertStroke(kept, {.ordinal = 1, .stroke = elsewhere}));
     ClearPageCommand command{&*store, cleared};
 
     ASSERT_TRUE(command.apply());
@@ -128,8 +128,10 @@ TEST(StrokeCommandsTest, DrawingAndClearingWalkBackAndForwardThroughTheHistory) 
     const Stroke second = makeStroke(ids, 100.0F);
     UndoStack history;
 
-    ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(&*store, page, first)));
-    ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(&*store, page, second)));
+    ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(
+        &*store, page, PlacedStroke{.ordinal = 0, .stroke = first})));
+    ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(
+        &*store, page, PlacedStroke{.ordinal = 1, .stroke = second})));
     ASSERT_TRUE(history.run(std::make_unique<ClearPageCommand>(&*store, page)));
     EXPECT_TRUE(idsOnPage(*store, page).empty());
 
