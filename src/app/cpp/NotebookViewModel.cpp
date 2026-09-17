@@ -12,6 +12,7 @@
 #include "core/undo/StrokeCommands.hpp"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QMetaObject>
 #include <QStandardPaths>
 #include <QString>
@@ -25,6 +26,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -52,6 +54,55 @@ constexpr float kEraserRadius = 8.0F;
 }
 
 NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {}
+
+NotebookViewModel::NotebookViewModel(QString path, QString startPage, QObject* parent)
+    : QObject(parent), m_notebookPath{std::move(path)}, m_startPage{std::move(startPage)},
+      m_completed{true} {
+    openNotebook();
+}
+
+QString NotebookViewModel::name() const {
+    return QFileInfo{m_notebookPath}.completeBaseName();
+}
+
+QString NotebookViewModel::currentPageId() const {
+    return m_currentPage.isNil() ? QString{} : QString::fromStdString(m_currentPage.toString());
+}
+
+void NotebookViewModel::setStartPage(const QString& pageId) {
+    if (m_startPage == pageId) {
+        return;
+    }
+    m_startPage = pageId;
+    emit startPageChanged();
+}
+
+bool NotebookViewModel::renameTo(const QString& path) {
+    if (path == m_notebookPath) {
+        return true;
+    }
+    m_startPage = currentPageId();
+    m_storage.reset();
+
+    const std::filesystem::path from{m_notebookPath.toStdU16String()};
+    const std::filesystem::path to{path.toStdU16String()};
+    std::error_code failure;
+    std::filesystem::rename(from, to, failure);
+    if (failure) {
+        reportError(tr("Could not rename %1").arg(m_notebookPath));
+        openNotebook();
+        return false;
+    }
+    for (const auto* suffix : {"-wal", "-shm"}) {
+        std::error_code ignored;
+        std::filesystem::rename(from.native() + suffix, to.native() + suffix, ignored);
+    }
+
+    m_notebookPath = path;
+    emit notebookPathChanged();
+    openNotebook();
+    return true;
+}
 
 NotebookViewModel::~NotebookViewModel() {
     if (!m_canvas.isNull()) {
@@ -132,6 +183,14 @@ void NotebookViewModel::showLoadedOutline(std::uint64_t opening,
     }
     m_outline = core::Outline{std::move(*outline)};
     publishOutline();
+    for (const core::SectionInfo& section : m_outline.sections()) {
+        for (const core::PageInfo& page : section.pages) {
+            if (QString::fromStdString(page.id.toString()) == m_startPage) {
+                goToPage(page.id);
+                return;
+            }
+        }
+    }
     if (!m_outline.sections().empty() && !m_outline.sections().front().pages.empty()) {
         goToPage(m_outline.sections().front().pages.front().id);
     }

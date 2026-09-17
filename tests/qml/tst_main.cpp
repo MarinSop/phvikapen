@@ -1,6 +1,8 @@
+#include <QCoreApplication>
 #include <QObject>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtQuickTest/quicktest.h>
 
@@ -8,6 +10,12 @@ class Setup : public QObject {
     Q_OBJECT
 
 public slots:
+
+    void applicationAvailable() {
+        QStandardPaths::setTestModeEnabled(true);
+        QCoreApplication::setOrganizationName(QStringLiteral("PhvikaPenTests"));
+        QCoreApplication::setApplicationName(QStringLiteral("PhvikaPenTests"));
+    }
 
     void qmlEngineAvailable(QQmlEngine* engine) {
         engine->rootContext()->setContextProperty(QStringLiteral("temporaryDirectory"),

@@ -20,6 +20,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/ToolViewModel.hpp
     QML_FILES
         qml/components/InkToolBar.qml
+        qml/components/MessageBar.qml
+        qml/components/NotebookTabs.qml
         qml/components/OutlineSidebar.qml
         qml/components/PageSetup.qml
         qml/components/NotebookPage.qml

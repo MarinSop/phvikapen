@@ -6,7 +6,7 @@ import PhvikaPen.Ui
 ColumnLayout {
     id: root
 
-    required property NotebookViewModel notebook
+    property NotebookViewModel notebook: null
     readonly property list<int> backgrounds: [PageOptions.Blank, PageOptions.Lined, PageOptions.Grid, PageOptions.Dotted]
     readonly property list<string> backgroundNames: [qsTr("Blank"), qsTr("Lined"), qsTr("Grid"), qsTr("Dotted")]
     readonly property list<int> papers: [PageOptions.Infinite, PageOptions.A3, PageOptions.A4, PageOptions.A5, PageOptions.Letter, PageOptions.Legal]
@@ -22,7 +22,7 @@ ColumnLayout {
         id: paperBox
 
         Layout.fillWidth: true
-        currentIndex: root.papers.indexOf(root.notebook.paper)
+        currentIndex: root.notebook === null ? -1 : root.papers.indexOf(root.notebook.paper)
         model: root.paperNames
         objectName: "paperBox"
 
@@ -33,7 +33,7 @@ ColumnLayout {
         id: backgroundBox
 
         Layout.fillWidth: true
-        currentIndex: root.backgrounds.indexOf(root.notebook.background)
+        currentIndex: root.notebook === null ? -1 : root.backgrounds.indexOf(root.notebook.background)
         model: root.backgroundNames
         objectName: "backgroundBox"
 
@@ -43,8 +43,8 @@ ColumnLayout {
     Switch {
         id: landscapeSwitch
 
-        checked: root.notebook.orientation === PageOptions.Landscape
-        enabled: root.notebook.paper !== PageOptions.Infinite
+        checked: root.notebook !== null && root.notebook.orientation === PageOptions.Landscape
+        enabled: root.notebook !== null && root.notebook.paper !== PageOptions.Infinite
         objectName: "landscapeSwitch"
         text: qsTr("Landscape")
 
@@ -53,7 +53,7 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
-        visible: root.notebook.background !== PageOptions.Blank
+        visible: root.notebook !== null && root.notebook.background !== PageOptions.Blank
 
         Label {
             text: qsTr("Spacing")
@@ -66,7 +66,7 @@ ColumnLayout {
             from: 2
             stepSize: 0.5
             to: 30
-            value: root.notebook.lineSpacing
+            value: root.notebook === null ? 7 : root.notebook.lineSpacing
 
             onMoved: root.notebook.lineSpacing = spacingSlider.value
         }

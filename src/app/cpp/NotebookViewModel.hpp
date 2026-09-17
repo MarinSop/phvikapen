@@ -35,6 +35,9 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     QML_ELEMENT
     Q_PROPERTY(QString notebookPath READ notebookPath WRITE setNotebookPath NOTIFY
                    notebookPathChanged FINAL)
+    Q_PROPERTY(QString name READ name NOTIFY notebookPathChanged FINAL)
+    Q_PROPERTY(QString currentPageId READ currentPageId NOTIFY currentPageChanged FINAL)
+    Q_PROPERTY(QString startPage READ startPage WRITE setStartPage NOTIFY startPageChanged FINAL)
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
                    canvasChanged FINAL)
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
@@ -64,6 +67,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
+    NotebookViewModel(QString path, QString startPage, QObject* parent);
     ~NotebookViewModel() override;
 
     NotebookViewModel(const NotebookViewModel&) = delete;
@@ -78,6 +82,16 @@ public:
     [[nodiscard]] QString notebookPath() const { return m_notebookPath; }
 
     void setNotebookPath(const QString& path);
+
+    [[nodiscard]] QString name() const;
+
+    [[nodiscard]] QString currentPageId() const;
+
+    [[nodiscard]] QString startPage() const { return m_startPage; }
+
+    void setStartPage(const QString& pageId);
+
+    [[nodiscard]] bool renameTo(const QString& path);
 
     [[nodiscard]] platform::ink::QtInkItem* canvas() const { return m_canvas; }
 
@@ -135,6 +149,7 @@ public:
 
 signals:
     void notebookPathChanged();
+    void startPageChanged();
     void canvasChanged();
     void loadedChanged();
     void errorMessageChanged();
@@ -197,6 +212,7 @@ private:
     OutlineListModel m_pagesModel;
     QPointer<platform::ink::QtInkItem> m_canvas;
     QString m_notebookPath;
+    QString m_startPage;
     QString m_errorMessage;
     std::uint64_t m_opening{0};
     bool m_completed{false};

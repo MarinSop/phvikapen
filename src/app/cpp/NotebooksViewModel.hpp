@@ -1,35 +1,89 @@
 #pragma once
 
+#include "app/cpp/NotebookViewModel.hpp"
+#include "platform/ink/qt/QtInkItem.hpp"
+
 #include <QObject>
-#include <QProperty>
+#include <QPointer>
+#include <QQmlParserStatus>
+#include <QString>
 #include <QStringList>
 #include <QtQmlIntegration>
 
+#include <memory>
+#include <vector>
+
 namespace phvikapen::app {
 
-// TODO(M3): Back this with notebooks on disk.
-class NotebooksViewModel : public QObject {
+class NotebooksViewModel : public QObject, public QQmlParserStatus {
     Q_OBJECT
+    Q_INTERFACES(QQmlParserStatus)
     QML_ELEMENT
-    Q_PROPERTY(QStringList titles READ titles NOTIFY titlesChanged BINDABLE bindableTitles FINAL)
+    Q_PROPERTY(QString directory READ directory WRITE setDirectory NOTIFY directoryChanged FINAL)
+    Q_PROPERTY(QStringList library READ library NOTIFY libraryChanged FINAL)
+    Q_PROPERTY(QStringList openNotebooks READ openNotebooks NOTIFY openNotebooksChanged FINAL)
+    Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentChanged FINAL)
+    Q_PROPERTY(phvikapen::app::NotebookViewModel* current READ current NOTIFY currentChanged FINAL)
+    Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
+                   canvasChanged FINAL)
 
 public:
     explicit NotebooksViewModel(QObject* parent = nullptr);
 
-    [[nodiscard]] QStringList titles() const { return m_titles.value(); }
+    void classBegin() override {}
 
-    [[nodiscard]] QBindable<QStringList> bindableTitles() { return {&m_titles}; }
+    void componentComplete() override;
 
-    Q_INVOKABLE void addNotebook();
+    [[nodiscard]] QString directory() const { return m_directory; }
 
+    void setDirectory(const QString& directory);
+
+    [[nodiscard]] QStringList library() const { return m_library; }
+
+    [[nodiscard]] QStringList openNotebooks() const;
+
+    [[nodiscard]] int currentIndex() const { return m_currentIndex; }
+
+    void setCurrentIndex(int index);
+    [[nodiscard]] NotebookViewModel* current() const;
+
+    [[nodiscard]] platform::ink::QtInkItem* canvas() const { return m_canvas; }
+
+    void setCanvas(platform::ink::QtInkItem* canvas);
+
+    Q_INVOKABLE void refreshLibrary();
+    Q_INVOKABLE [[nodiscard]] QString suggestedName() const;
+    Q_INVOKABLE [[nodiscard]] bool isNameFree(const QString& name) const;
+    Q_INVOKABLE void createNotebook(const QString& name);
+    Q_INVOKABLE void openNotebook(const QString& name);
     Q_INVOKABLE void closeNotebook(int index);
+    Q_INVOKABLE void renameNotebook(int index, const QString& name);
+    Q_INVOKABLE void deleteNotebook(const QString& name);
 
 signals:
-    void titlesChanged();
+    void directoryChanged();
+    void libraryChanged();
+    void openNotebooksChanged();
+    void currentChanged();
+    void canvasChanged();
+    void errorMessage(const QString& message);
 
 private:
-    Q_OBJECT_BINDABLE_PROPERTY(NotebooksViewModel, QStringList, m_titles,
-                               &NotebooksViewModel::titlesChanged)
+    [[nodiscard]] QString pathFor(const QString& name) const;
+    [[nodiscard]] int indexOf(const QString& name) const;
+    void show(int index);
+    void restoreSession();
+    void rememberSession() const;
+    static void rememberPage(const NotebookViewModel& notebook);
+    [[nodiscard]] static QString rememberedPage(const QString& name);
+
+    std::vector<std::unique_ptr<NotebookViewModel>> m_open;
+    QStringList m_library;
+    QString m_directory;
+    QPointer<platform::ink::QtInkItem> m_canvas;
+    int m_currentIndex{-1};
+    bool m_completed{false};
+    bool m_restoring{false};
 };
 
 }

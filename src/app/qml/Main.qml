@@ -7,13 +7,15 @@ import PhvikaPen.Ui
 ApplicationWindow {
     id: root
 
+    readonly property NotebookViewModel notebook: notebooks.current
+
     height: 800
-    title: qsTr("%1 — PhvikaPen %2").arg(notebookModel.title).arg(AppInfo.version)
+    title: root.notebook === null ? qsTr("PhvikaPen %1").arg(AppInfo.version) : qsTr("%1 — PhvikaPen %2").arg(root.notebook.title).arg(AppInfo.version)
     visible: true
     width: 1280
 
     header: InkToolBar {
-        notebook: notebookModel
+        notebook: root.notebook
         tools: toolState
     }
 
@@ -21,56 +23,87 @@ ApplicationWindow {
         id: toolState
     }
 
-    // TODO(M3): One model per notebook, following the tab in front.
-    NotebookViewModel {
-        id: notebookModel
+    NotebooksViewModel {
+        id: notebooks
+
+        onErrorMessage: message => messageBar.show(message)
     }
 
     Shortcut {
         sequences: [StandardKey.Undo]
 
-        onActivated: notebookModel.undo()
+        onActivated: root.notebook.undo()
     }
 
     Shortcut {
         sequences: [StandardKey.Redo]
 
-        onActivated: notebookModel.redo()
+        onActivated: root.notebook.redo()
     }
 
     Shortcut {
         sequences: [StandardKey.MoveToPreviousPage]
 
-        onActivated: notebookModel.previousPage()
+        onActivated: root.notebook.previousPage()
     }
 
     Shortcut {
         sequences: [StandardKey.MoveToNextPage]
 
-        onActivated: notebookModel.nextPage()
+        onActivated: root.notebook.nextPage()
     }
 
     Shortcut {
         sequences: [StandardKey.ZoomIn]
 
-        onActivated: notebookModel.canvas.zoomIn()
+        onActivated: notebooks.canvas.zoomIn()
     }
 
     Shortcut {
         sequences: [StandardKey.ZoomOut]
 
-        onActivated: notebookModel.canvas.zoomOut()
+        onActivated: notebooks.canvas.zoomOut()
     }
 
     Shortcut {
         sequences: ["Ctrl+0"]
 
-        onActivated: notebookModel.canvas.fitPage()
+        onActivated: notebooks.canvas.fitPage()
+    }
+
+    NotebookTabs {
+        id: tabs
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        notebooks: notebooks
     }
 
     NotebookPage {
-        anchors.fill: parent
-        notebook: notebookModel
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: tabs.bottom
+        notebooks: notebooks
         tools: toolState
+    }
+
+    MessageBar {
+        id: messageBar
+
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: 16
+    }
+
+    Connections {
+        function onErrorMessageChanged() {
+            if (root.notebook !== null && root.notebook.errorMessage !== "") {
+                messageBar.show(root.notebook.errorMessage);
+            }
+        }
+
+        target: root.notebook
     }
 }

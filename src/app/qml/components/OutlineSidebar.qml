@@ -8,7 +8,8 @@ import PhvikaPen.Ui
 Pane {
     id: root
 
-    required property NotebookViewModel notebook
+    property NotebookViewModel notebook: null
+    readonly property bool ready: root.notebook !== null && root.notebook.loaded
 
     function rename(sectionScope, index, current) {
         renameDialog.sectionScope = sectionScope;
@@ -29,10 +30,11 @@ Pane {
             Label {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
-                text: root.notebook.title
+                text: root.notebook === null ? "" : root.notebook.title
             }
 
             ToolButton {
+                enabled: root.ready
                 objectName: "addSectionButton"
                 text: qsTr("+")
                 ToolTip.text: qsTr("New section")
@@ -48,7 +50,7 @@ Pane {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(contentHeight, 140)
             clip: true
-            model: root.notebook.sections
+            model: root.ready ? root.notebook.sections : null
 
             delegate: ItemDelegate {
                 id: sectionDelegate
@@ -112,6 +114,7 @@ Pane {
             }
 
             ToolButton {
+                enabled: root.ready
                 objectName: "addPageButton"
                 text: qsTr("+")
                 ToolTip.text: qsTr("New page")
@@ -127,7 +130,7 @@ Pane {
             Layout.fillHeight: true
             Layout.fillWidth: true
             clip: true
-            model: root.notebook.pages
+            model: root.ready ? root.notebook.pages : null
 
             delegate: ItemDelegate {
                 id: pageDelegate
@@ -184,6 +187,7 @@ Pane {
         PageSetup {
             Layout.fillWidth: true
             notebook: root.notebook
+            visible: root.ready
         }
     }
 

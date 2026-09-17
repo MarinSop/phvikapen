@@ -5,19 +5,13 @@ import PhvikaPen.Ui
 RowLayout {
     id: root
 
-    required property NotebookViewModel notebook
+    required property NotebooksViewModel notebooks
     required property ToolViewModel tools
-
-    function attachWhenShown() {
-        if (root.visible) {
-            root.notebook.canvas = canvas;
-        }
-    }
+    readonly property NotebookViewModel notebook: root.notebooks.current
 
     spacing: 0
 
-    Component.onCompleted: root.attachWhenShown()
-    onVisibleChanged: root.attachWhenShown()
+    Component.onCompleted: root.notebooks.canvas = canvas
 
     OutlineSidebar {
         Layout.fillHeight: true
@@ -30,7 +24,7 @@ RowLayout {
 
         Layout.fillHeight: true
         Layout.fillWidth: true
-        enabled: root.notebook.loaded
+        enabled: root.notebook !== null && root.notebook.loaded
         erasing: root.tools.currentTool === ToolViewModel.Eraser
         strokeColor: root.tools.strokeColor
         strokeWidth: root.tools.strokeWidth
