@@ -87,6 +87,132 @@ TestCase {
         compare(notebook.strokeCount, 0);
     }
 
+    function test_everyPageKeepsItsOwnStrokes() {
+        const notebook = openNotebook(newNotebookPath());
+        compare(notebook.pageCount, 1);
+        compare(notebook.sectionCount, 1);
+        draw(notebook, 20, 20);
+
+        notebook.addPage();
+        compare(notebook.pageCount, 2);
+        compare(notebook.currentPage, 1);
+        compare(notebook.strokeCount, 0);
+        draw(notebook, 20, 20);
+        draw(notebook, 20, 100);
+
+        notebook.previousPage();
+        compare(notebook.currentPage, 0);
+        compare(notebook.strokeCount, 1);
+
+        notebook.nextPage();
+        compare(notebook.currentPage, 1);
+        compare(notebook.strokeCount, 2);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_undoGoesBackToThePageItChanges() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 20, 20);
+        notebook.addPage();
+        draw(notebook, 20, 20);
+        notebook.previousPage();
+        compare(notebook.currentPage, 0);
+
+        notebook.undo();
+
+        compare(notebook.currentPage, 1);
+        compare(notebook.strokeCount, 0);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aDeletedPageComesBackWithItsStrokes() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 20, 20);
+        notebook.addPage();
+        compare(notebook.pageCount, 2);
+
+        notebook.deletePage(0);
+        compare(notebook.pageCount, 1);
+        compare(notebook.strokeCount, 0);
+
+        notebook.undo();
+        compare(notebook.pageCount, 2);
+        notebook.currentPage = 0;
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theLastPageOfASectionStays() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.deletePage(0);
+
+        compare(notebook.pageCount, 1);
+        verify(notebook.errorMessage !== "");
+    }
+
+    function test_sectionsHoldTheirOwnPages() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        compare(notebook.pageCount, 2);
+
+        notebook.addSection();
+        compare(notebook.sectionCount, 2);
+        compare(notebook.currentSection, 1);
+        compare(notebook.pageCount, 1);
+        compare(notebook.sections.count, 2);
+        compare(notebook.pages.count, 1);
+
+        notebook.previousPage();
+        compare(notebook.currentSection, 0);
+        compare(notebook.currentPage, 1);
+
+        notebook.nextPage();
+        compare(notebook.currentSection, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_pageStyleChangesAndSurvivesReopening() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+        compare(first.paper, PageOptions.A4);
+        compare(first.background, PageOptions.Lined);
+
+        first.background = PageOptions.Grid;
+        first.paper = PageOptions.Infinite;
+        first.lineSpacing = 5;
+        compare(first.background, PageOptions.Grid);
+
+        first.undo();
+        compare(first.lineSpacing, 7);
+
+        first.destroy();
+        wait(0);
+
+        const reopened = openNotebook(path);
+        compare(reopened.paper, PageOptions.Infinite);
+        compare(reopened.background, PageOptions.Grid);
+        compare(reopened.errorMessage, "");
+    }
+
+    function test_theOutlineSurvivesReopening() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+        first.addPage();
+        first.addSection();
+        first.renameSection(1, "Physics");
+        first.destroy();
+        wait(0);
+
+        const reopened = openNotebook(path);
+        compare(reopened.sectionCount, 2);
+        compare(reopened.sections.count, 2);
+        compare(reopened.pageCount, 2);
+        reopened.currentSection = 1;
+        compare(reopened.pageCount, 1);
+        compare(reopened.errorMessage, "");
+    }
+
     function test_theCanvasZoomsAroundTheCursor() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
