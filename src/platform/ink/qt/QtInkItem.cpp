@@ -192,6 +192,11 @@ QtInkItem::QtInkItem(QQuickItem* parent) : QQuickRhiItem(parent) {
     connect(this, &QQuickItem::windowChanged, this, &QtInkItem::observeWindow);
 }
 
+QtInkItem::~QtInkItem() {
+    disconnect(this, &QQuickItem::windowChanged, this, &QtInkItem::observeWindow);
+    observeWindow(nullptr);
+}
+
 QColor QtInkItem::strokeColor() const {
     const core::Color& color = m_style.color;
     return QColor::fromRgb(color.red, color.green, color.blue, color.alpha);

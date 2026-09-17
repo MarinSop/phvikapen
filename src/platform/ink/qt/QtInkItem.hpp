@@ -32,6 +32,12 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
 
 public:
     explicit QtInkItem(QQuickItem* parent = nullptr);
+    ~QtInkItem() override;
+
+    QtInkItem(const QtInkItem&) = delete;
+    QtInkItem& operator=(const QtInkItem&) = delete;
+    QtInkItem(QtInkItem&&) = delete;
+    QtInkItem& operator=(QtInkItem&&) = delete;
 
     [[nodiscard]] QColor strokeColor() const;
     void setStrokeColor(const QColor& color);
