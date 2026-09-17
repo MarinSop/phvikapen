@@ -12,6 +12,7 @@ target_sources(phvikapen_core
         filter/InkFilter.cpp
         filter/OneEuroFilter.cpp
         geometry/Distance.cpp
+        geometry/Viewport.cpp
         id/Uuid.cpp
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
@@ -41,6 +42,7 @@ target_sources(phvikapen_core
             filter/OneEuroFilter.hpp
             geometry/Distance.hpp
             geometry/Rect.hpp
+            geometry/Viewport.hpp
             id/Uuid.hpp
             id/Uuid7Generator.hpp
             ink/InkSample.hpp

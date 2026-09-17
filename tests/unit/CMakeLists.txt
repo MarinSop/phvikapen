@@ -22,6 +22,7 @@ add_executable(phvikapen_tests
     core/StrokeTest.cpp
     core/UndoStackTest.cpp
     core/UuidTest.cpp
+    core/ViewportTest.cpp
     core/VersionTest.cpp
 )
 
