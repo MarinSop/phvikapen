@@ -1,15 +1,18 @@
 #pragma once
 
 #include "core/filter/InkFilter.hpp"
+#include "core/geometry/Viewport.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeMesh.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/PageStyle.hpp"
 #include "platform/ink/IInkBackend.hpp"
 
 #include <QColor>
+#include <QPointF>
 #include <QPointer>
 #include <QQuickRhiItem>
 #include <QQuickWindow>
@@ -21,7 +24,10 @@
 #include <string_view>
 #include <vector>
 
+class QNativeGestureEvent;
 class QTabletEvent;
+class QTouchEvent;
+class QWheelEvent;
 
 namespace phvikapen::platform::ink {
 
@@ -32,6 +38,8 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(
         qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY strokeStyleChanged FINAL)
     Q_PROPERTY(bool erasing READ erasing WRITE setErasing NOTIFY erasingChanged FINAL)
+    Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
+    Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
 public:
     explicit QtInkItem(QQuickItem* parent = nullptr);
@@ -50,7 +58,20 @@ public:
 
     Q_INVOKABLE void clear();
 
-    void showPage(const core::Page& page, std::span<const core::Uuid> hidden = {});
+    void showPage(const core::Page& page, const core::PageStyle& style,
+                  std::span<const core::Uuid> hidden = {});
+
+    [[nodiscard]] qreal zoom() const noexcept { return m_viewport.scale(); }
+
+    [[nodiscard]] QPointF viewOrigin() const noexcept;
+
+    [[nodiscard]] const core::Viewport& viewport() const noexcept { return m_viewport; }
+
+    [[nodiscard]] const core::PageStyle& pageStyle() const noexcept { return m_pageStyle; }
+
+    Q_INVOKABLE void zoomIn();
+    Q_INVOKABLE void zoomOut();
+    Q_INVOKABLE void fitPage();
 
     [[nodiscard]] std::string_view name() const noexcept override;
     void setSink(IInkSink* sink) noexcept override;
@@ -69,6 +90,7 @@ public:
 signals:
     void strokeStyleChanged();
     void erasingChanged();
+    void viewChanged();
 
 protected:
     [[nodiscard]] QQuickRhiItemRenderer* createRenderer() override;
@@ -77,12 +99,21 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseUngrabEvent() override;
+    void wheelEvent(QWheelEvent* event) override;
+    void touchEvent(QTouchEvent* event) override;
+    void touchUngrabEvent() override;
+    bool event(QEvent* event) override;
+    void geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry) override;
 
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     void observeWindow(QQuickWindow* window);
     [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
+    [[nodiscard]] bool handleNativeGesture(const QNativeGestureEvent& event);
+    [[nodiscard]] core::InkSample onPage(core::InkSample sample) const noexcept;
+    [[nodiscard]] core::ViewSize viewSize() const noexcept;
+    void changeView(const core::Viewport& viewport);
 
     void press(const core::InkSample& sample, bool eraserTip);
     void move(const core::InkSample& sample);
@@ -108,6 +139,12 @@ private:
     std::size_t m_activeStrokeFirstVertex{0};
     std::vector<core::InkVertex> m_vertices;
     std::uint64_t m_generation{0};
+    core::Viewport m_viewport;
+    core::PageStyle m_pageStyle;
+    core::Uuid m_shownPage;
+    bool m_viewFitted{false};
+    std::optional<QPointF> m_touchCentroid;
+    qreal m_touchSpread{0.0};
     QPointer<QQuickWindow> m_observedWindow;
 };
 

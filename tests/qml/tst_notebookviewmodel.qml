@@ -87,6 +87,38 @@ TestCase {
         compare(notebook.strokeCount, 0);
     }
 
+    function test_theCanvasZoomsAroundTheCursor() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        const fitted = canvas.zoom;
+
+        mouseWheel(canvas, 200, 150, 0, 120, Qt.NoButton, Qt.ControlModifier);
+        verify(canvas.zoom > fitted);
+
+        canvas.zoomOut();
+        fuzzyCompare(canvas.zoom, fitted, 0.0001);
+
+        canvas.zoomIn();
+        canvas.fitPage();
+        fuzzyCompare(canvas.zoom, fitted, 0.0001);
+    }
+
+    function test_drawingLandsWhereTheScrolledPageIs() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 150, 100);
+        const before = canvas.viewOrigin.y;
+
+        mouseWheel(canvas, 200, 150, 0, -120);
+        const shift = (canvas.viewOrigin.y - before) * canvas.zoom;
+        verify(shift > 10);
+
+        canvas.erasing = true;
+        mousePress(canvas, 150, 100 - shift);
+        mouseRelease(canvas, 150, 100 - shift);
+        compare(notebook.strokeCount, 0);
+    }
+
     function test_oneUndoBringsAClearedPageBack() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 20, 20);

@@ -5,6 +5,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/PageStyle.hpp"
 #include "core/undo/StrokeCommands.hpp"
 
 #include <QDir>
@@ -233,7 +234,8 @@ void NotebookViewModel::finishChange(const core::Result<void>& change) {
 
 void NotebookViewModel::refreshCanvas() {
     if (!m_canvas.isNull()) {
-        m_canvas->showPage(m_page, m_erasing);
+        const core::PageStyle style;
+        m_canvas->showPage(m_page, style, m_erasing);
     }
 }
 
