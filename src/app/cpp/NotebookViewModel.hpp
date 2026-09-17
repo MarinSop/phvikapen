@@ -12,18 +12,23 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QQmlParserStatus>
 #include <QString>
 #include <QtQmlIntegration>
 
+#include <cstdint>
 #include <optional>
 #include <vector>
 
 namespace phvikapen::app {
 
 // TODO(M3): Replace the single page with notebooks, sections and pages.
-class NotebookViewModel : public QObject {
+class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_OBJECT
+    Q_INTERFACES(QQmlParserStatus)
     QML_ELEMENT
+    Q_PROPERTY(QString notebookPath READ notebookPath WRITE setNotebookPath NOTIFY
+                   notebookPathChanged FINAL)
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
                    canvasChanged FINAL)
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
@@ -40,6 +45,14 @@ public:
     NotebookViewModel& operator=(const NotebookViewModel&) = delete;
     NotebookViewModel(NotebookViewModel&&) = delete;
     NotebookViewModel& operator=(NotebookViewModel&&) = delete;
+
+    void classBegin() override {}
+
+    void componentComplete() override;
+
+    [[nodiscard]] QString notebookPath() const { return m_notebookPath; }
+
+    void setNotebookPath(const QString& path);
 
     [[nodiscard]] platform::ink::QtInkItem* canvas() const { return m_canvas; }
 
@@ -60,6 +73,7 @@ public:
     Q_INVOKABLE void clearPage();
 
 signals:
+    void notebookPathChanged();
     void canvasChanged();
     void loadedChanged();
     void errorMessageChanged();
@@ -82,7 +96,8 @@ private:
     };
 
     void openNotebook();
-    void showLoadedPage(core::Result<std::vector<core::PlacedStroke>> strokes);
+    void showLoadedPage(std::uint64_t opening,
+                        core::Result<std::vector<core::PlacedStroke>> strokes);
     void storeStroke(const core::Stroke& stroke);
     void finishChange(const core::Result<void>& change);
     void refreshCanvas();
@@ -93,7 +108,10 @@ private:
     std::optional<core::StorageThread> m_storage;
     core::UndoStack m_history;
     QPointer<platform::ink::QtInkItem> m_canvas;
+    QString m_notebookPath;
     QString m_errorMessage;
+    std::uint64_t m_opening{0};
+    bool m_completed{false};
     bool m_loaded{false};
 };
 

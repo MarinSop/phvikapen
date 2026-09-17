@@ -11,6 +11,7 @@
 #include <QString>
 #include <QtLogging>
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <utility>
@@ -27,9 +28,7 @@ constexpr auto kDefaultNotebookName = "default.phvika";
 
 }
 
-NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent), m_page{core::Uuid{}} {
-    openNotebook();
-}
+NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent), m_page{core::Uuid{}} {}
 
 NotebookViewModel::~NotebookViewModel() {
     if (!m_canvas.isNull()) {
@@ -37,29 +36,71 @@ NotebookViewModel::~NotebookViewModel() {
     }
 }
 
-void NotebookViewModel::openNotebook() {
-    const QString directory = notebookDirectory();
-    if (!QDir().mkpath(directory)) {
-        reportError(tr("Could not create %1").arg(directory));
+void NotebookViewModel::componentComplete() {
+    m_completed = true;
+    openNotebook();
+}
+
+void NotebookViewModel::setNotebookPath(const QString& path) {
+    if (m_notebookPath == path) {
         return;
     }
+    m_notebookPath = path;
+    emit notebookPathChanged();
+    if (m_completed) {
+        openNotebook();
+    }
+}
 
-    const std::filesystem::path path =
-        std::filesystem::path{directory.toStdString()} / kDefaultNotebookName;
+void NotebookViewModel::openNotebook() {
+    m_history.clear();
+    m_storage.reset();
+    m_page = core::Page{m_page.id()};
+    const std::uint64_t opening = ++m_opening;
+    if (m_loaded) {
+        m_loaded = false;
+        emit loadedChanged();
+    }
+    if (!m_errorMessage.isEmpty()) {
+        m_errorMessage.clear();
+        emit errorMessageChanged();
+    }
+    emit pageChanged();
+    emit historyChanged();
+    refreshCanvas();
+
+    QString file = m_notebookPath;
+    if (file.isEmpty()) {
+        const QString directory = notebookDirectory();
+        if (!QDir().mkpath(directory)) {
+            reportError(tr("Could not create %1").arg(directory));
+            return;
+        }
+        file = directory + "/" + kDefaultNotebookName;
+    }
+
+    const std::filesystem::path path{file.toStdU16String()};
     m_storage.emplace(path, [this](const core::Error& error) {
         QMetaObject::invokeMethod(
             this, [this, message = QString::fromStdString(error.message)] { reportError(message); },
             Qt::QueuedConnection);
     });
-    m_storage->loadPage(m_page.id(), [this](core::Result<std::vector<core::PlacedStroke>> strokes) {
-        QMetaObject::invokeMethod(
-            this,
-            [this, strokes = std::move(strokes)] mutable { showLoadedPage(std::move(strokes)); },
-            Qt::QueuedConnection);
-    });
+    m_storage->loadPage(m_page.id(),
+                        [this, opening](core::Result<std::vector<core::PlacedStroke>> strokes) {
+                            QMetaObject::invokeMethod(
+                                this,
+                                [this, opening, strokes = std::move(strokes)] mutable {
+                                    showLoadedPage(opening, std::move(strokes));
+                                },
+                                Qt::QueuedConnection);
+                        });
 }
 
-void NotebookViewModel::showLoadedPage(core::Result<std::vector<core::PlacedStroke>> strokes) {
+void NotebookViewModel::showLoadedPage(std::uint64_t opening,
+                                       core::Result<std::vector<core::PlacedStroke>> strokes) {
+    if (opening != m_opening) {
+        return;
+    }
     if (!strokes) {
         reportError(QString::fromStdString(strokes.error().message));
         return;
