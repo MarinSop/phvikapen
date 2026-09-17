@@ -15,10 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stored stroke.
 - What is drawn is kept: finished strokes go into a notebook file and come back when the
   application starts again.
+- Undo and redo for drawing, clearing and erasing, from the tool bar and the standard shortcuts.
+- Eraser that removes whole strokes, from the eraser tool or the eraser end of the pen. One sweep
+  is one change for undo.
+- Finished strokes are drawn along a spline as one continuous strip.
 
 ### Changed
 
 - The ink canvas draws and stores smoothed samples, while ink backends keep reporting the raw ones.
+- Notebook files are read and written on a storage thread, so drawing never waits for the disk.
+- Every stroke keeps a fixed place on its page; notebooks from schema version 1 are upgraded.
+- Notebooks live in the application data folder instead of the local application data folder,
+  which the Windows installer deletes on uninstall.
+
+### Fixed
+
+- Removing an ink canvas no longer runs code on the half destroyed item.
 
 ## [0.1.0] - 2026-09-16
 
