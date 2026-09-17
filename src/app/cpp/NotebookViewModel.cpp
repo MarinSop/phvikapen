@@ -2,20 +2,28 @@
 
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
+#include "platform/pdf/PdfRenderer.hpp"
 
+#include <QCryptographicHash>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QMetaObject>
 #include <QStandardPaths>
 #include <QString>
+#include <QTimer>
+#include <QUrl>
 #include <QtLogging>
 
 #include <algorithm>
@@ -34,6 +42,33 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kDefaultNotebookName = "default.phvika";
+constexpr int kMaximumMediaPixels = 4096;
+constexpr qreal kMediaRedrawFactor = 1.4;
+constexpr int kMediaRedrawDelay = 200;
+
+[[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
+    const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
+    core::ContentId::Bytes bytes{};
+    if (static_cast<std::size_t>(digest.size()) == bytes.size()) {
+        std::ranges::transform(digest, bytes.begin(),
+                               [](char value) { return static_cast<std::uint8_t>(value); });
+    }
+    return core::ContentId{bytes};
+}
+
+[[nodiscard]] std::vector<std::byte> toBytes(const QByteArray& data) {
+    std::vector<std::byte> bytes(static_cast<std::size_t>(data.size()));
+    std::ranges::transform(data, bytes.begin(),
+                           [](char value) { return static_cast<std::byte>(value); });
+    return bytes;
+}
+
+[[nodiscard]] QByteArray toByteArray(const std::vector<std::byte>& bytes) {
+    QByteArray data(static_cast<qsizetype>(bytes.size()), Qt::Uninitialized);
+    std::ranges::transform(bytes, data.begin(),
+                           [](std::byte value) { return static_cast<char>(value); });
+    return data;
+}
 
 [[nodiscard]] QString notebookDirectory() {
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks";
@@ -52,7 +87,11 @@ constexpr auto kDefaultNotebookName = "default.phvika";
 
 }
 
-NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {}
+NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {
+    m_mediaTimer.setSingleShot(true);
+    m_mediaTimer.setInterval(kMediaRedrawDelay);
+    connect(&m_mediaTimer, &QTimer::timeout, this, &NotebookViewModel::drawMedia);
+}
 
 NotebookViewModel::NotebookViewModel(QString path, QString startPage, QObject* parent)
     : QObject(parent), m_notebookPath{std::move(path)}, m_startPage{std::move(startPage)},
@@ -206,12 +245,14 @@ void NotebookViewModel::goToPage(const core::Uuid& pageId) {
         setLoaded(true);
         emit pageChanged();
         refreshCanvas();
+        refreshMedia();
         return;
     }
 
     setLoaded(false);
     emit pageChanged();
     refreshCanvas();
+    refreshMedia();
     if (!m_storage) {
         return;
     }
@@ -275,7 +316,15 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
         return;
     }
     m_canvas->setSink(&m_sink);
+    connect(m_canvas, &platform::ink::QtInkItem::viewChanged, this, [this] {
+        const qreal scale = m_canvas.isNull() ? 0.0 : m_canvas->zoom();
+        if (scale > m_mediaScale * kMediaRedrawFactor
+            || scale * kMediaRedrawFactor < m_mediaScale) {
+            m_mediaTimer.start();
+        }
+    });
     refreshCanvas();
+    refreshMedia();
 }
 
 QString NotebookViewModel::title() const {
@@ -390,11 +439,16 @@ page_options::Paper NotebookViewModel::paper() const {
 }
 
 void NotebookViewModel::setPaper(page_options::Paper paper) {
-    if (const core::PageInfo* const info = currentPageInfo()) {
-        core::PageStyle style = info->style;
-        style.paper = static_cast<core::Paper>(paper);
-        changeStyle(style);
+    const core::PageInfo* const info = currentPageInfo();
+    if (info == nullptr) {
+        return;
     }
+    core::PageStyle style = info->style;
+    style.paper = static_cast<core::Paper>(paper);
+    if (style.paper == core::Paper::Custom && !core::paperSize(style)) {
+        return;
+    }
+    changeStyle(style);
 }
 
 page_options::Orientation NotebookViewModel::orientation() const {
@@ -685,6 +739,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
     emit pageStyleChanged();
     emit pageChanged();
     refreshCanvas();
+    refreshMedia();
 }
 
 void NotebookViewModel::publishOutline() {
@@ -713,6 +768,213 @@ void NotebookViewModel::publishOutline() {
     m_sectionsModel.setItems(std::move(sections));
     m_pagesModel.setItems(std::move(pages));
     emit outlineChanged();
+}
+
+void NotebookViewModel::refreshMedia() {
+    if (m_canvas.isNull()) {
+        return;
+    }
+    const core::PageInfo* const info = currentPageInfo();
+    if (info == nullptr || !info->media) {
+        m_openAsset = core::ContentId{};
+        m_mediaScale = 0.0;
+        m_canvas->clearMedia();
+        return;
+    }
+    if (info->media->asset == m_openAsset) {
+        drawMedia();
+        return;
+    }
+    if (!m_storage) {
+        return;
+    }
+    m_canvas->clearMedia();
+    const std::uint64_t opening = m_opening;
+    m_storage->loadAsset(info->media->asset, [this, opening](core::Result<core::Asset> asset) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, asset = std::move(asset)] mutable {
+                showAsset(opening, std::move(asset));
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::showAsset(std::uint64_t opening, core::Result<core::Asset> asset) {
+    if (opening != m_opening || m_canvas.isNull()) {
+        return;
+    }
+    if (!asset) {
+        reportError(QString::fromStdString(asset.error().message));
+        return;
+    }
+    const core::PageInfo* const info = currentPageInfo();
+    if (info == nullptr || !info->media || info->media->asset != asset->id) {
+        return;
+    }
+
+    if (asset->kind == core::AssetKind::Image) {
+        QImage image;
+        if (!image.loadFromData(toByteArray(asset->data))) {
+            reportError(tr("The picture could not be read"));
+            return;
+        }
+        m_openAsset = asset->id;
+        m_canvas->showMedia(image);
+        return;
+    }
+
+    if (!m_pdf) {
+        m_pdf.emplace();
+    }
+    m_openAsset = asset->id;
+    const std::uint64_t generation = m_opening;
+    m_pdf->open(std::move(*asset),
+                [this, generation](core::Result<std::vector<platform::pdf::PageSize>> pages) {
+                    QMetaObject::invokeMethod(
+                        this,
+                        [this, generation, ok = pages.has_value()] {
+                            if (generation == m_opening && ok) {
+                                drawMedia();
+                            }
+                        },
+                        Qt::QueuedConnection);
+                });
+}
+
+void NotebookViewModel::drawMedia() {
+    const core::PageInfo* const info = currentPageInfo();
+    if (m_canvas.isNull() || info == nullptr || !info->media || !m_pdf
+        || info->media->asset != m_openAsset) {
+        return;
+    }
+    const std::optional<core::PaperSize> paper = core::paperSize(info->style);
+    if (!paper) {
+        return;
+    }
+    const qreal scale = std::max(m_canvas->zoom(), 0.5);
+    const auto width = static_cast<int>(
+        std::clamp(static_cast<double>(paper->width) * scale, 1.0, double{kMaximumMediaPixels}));
+    const auto height = static_cast<int>(
+        std::clamp(static_cast<double>(paper->height) * scale, 1.0, double{kMaximumMediaPixels}));
+
+    m_mediaScale = scale;
+    const std::uint64_t opening = m_opening;
+    const core::ContentId asset = info->media->asset;
+    m_pdf->render(asset, info->media->index, width, height,
+                  [this, opening, asset](core::Result<platform::pdf::PageImage> image) {
+                      if (!image) {
+                          return;
+                      }
+                      QMetaObject::invokeMethod(
+                          this,
+                          [this, opening, asset, drawn = std::move(*image)] {
+                              showRenderedPage(opening, asset, drawn);
+                          },
+                          Qt::QueuedConnection);
+                  });
+}
+
+void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
+                                         const platform::pdf::PageImage& image) {
+    if (opening != m_opening || m_canvas.isNull() || asset != m_openAsset) {
+        return;
+    }
+    const QImage drawn{image.pixels.data(), image.width, image.height,
+                       static_cast<qsizetype>(image.width) * 4, QImage::Format_RGBA8888};
+    m_canvas->showMedia(drawn.copy());
+}
+
+void NotebookViewModel::importDocument(const QUrl& fileUrl) {
+    const std::optional<core::PagePlace> place = currentPlace();
+    if (!place || !m_storage) {
+        return;
+    }
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    QFile file{path};
+    if (!file.open(QIODevice::ReadOnly)) {
+        reportError(tr("Could not open %1").arg(QFileInfo{path}.fileName()));
+        return;
+    }
+    const QByteArray data = file.readAll();
+    if (data.isEmpty()) {
+        reportError(tr("%1 is empty").arg(QFileInfo{path}.fileName()));
+        return;
+    }
+
+    const bool isPdf = data.startsWith("%PDF");
+    core::Asset asset{
+        .id = hashOf(data),
+        .kind = isPdf ? core::AssetKind::Pdf : core::AssetKind::Image,
+        .name = QFileInfo{path}.fileName().toStdString(),
+        .data = toBytes(data),
+    };
+
+    if (!isPdf) {
+        QImage image;
+        if (!image.loadFromData(data)) {
+            reportError(tr("%1 is neither a PDF nor a picture").arg(QFileInfo{path}.fileName()));
+            return;
+        }
+        const core::PaperSize size{
+            .width = static_cast<float>(image.width()),
+            .height = static_cast<float>(image.height()),
+        };
+        const core::PageInfo page{
+            .id = m_ids.next(),
+            .title = asset.name,
+            .style = core::styleForPaper(size),
+            .media = core::PageMedia{.asset = asset.id, .index = 0},
+        };
+        std::vector<core::PageInfo> pages{page};
+        runCommand(std::make_unique<core::ImportPagesCommand>(
+            &m_outline, &*m_storage,
+            core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1},
+            std::move(asset), std::move(pages)));
+        return;
+    }
+
+    if (!m_pdf) {
+        m_pdf.emplace();
+    }
+    const std::uint64_t opening = m_opening;
+    m_pdf->open(asset, [this, opening,
+                        asset](core::Result<std::vector<platform::pdf::PageSize>> sizes) mutable {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, asset = std::move(asset), sizes = std::move(sizes)] mutable {
+                if (opening != m_opening) {
+                    return;
+                }
+                if (!sizes) {
+                    reportError(QString::fromStdString(sizes.error().message));
+                    return;
+                }
+                const std::optional<core::PagePlace> place = currentPlace();
+                if (!place || !m_storage || sizes->empty()) {
+                    return;
+                }
+                std::vector<core::PageInfo> pages;
+                pages.reserve(sizes->size());
+                for (std::size_t index = 0; index < sizes->size(); ++index) {
+                    const platform::pdf::PageSize& size = (*sizes)[index];
+                    pages.push_back(core::PageInfo{
+                        .id = m_ids.next(),
+                        .title = {},
+                        .style = core::styleForPaper(
+                            core::PaperSize{.width = size.width, .height = size.height}),
+                        .media =
+                            core::PageMedia{.asset = asset.id, .index = static_cast<int>(index)},
+                    });
+                }
+                m_openAsset = asset.id;
+                runCommand(std::make_unique<core::ImportPagesCommand>(
+                    &m_outline, &*m_storage,
+                    core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1},
+                    std::move(asset), std::move(pages)));
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 void NotebookViewModel::refreshCanvas() {

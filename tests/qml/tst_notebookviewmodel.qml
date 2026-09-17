@@ -102,6 +102,42 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_importingAPdfAddsAPagePerPageOfIt() {
+        const notebook = openNotebook(newNotebookPath());
+        compare(notebook.pageCount, 1);
+
+        notebook.importDocument("file://" + samplePdf);
+
+        tryCompare(notebook, "pageCount", 3);
+        compare(notebook.currentPage, 1);
+        compare(notebook.paper, PageOptions.Custom);
+        compare(notebook.background, PageOptions.Blank);
+        tryCompare(notebook, "loaded", true);
+        compare(notebook.errorMessage, "");
+
+        notebook.undo();
+        compare(notebook.pageCount, 1);
+
+        notebook.redo();
+        compare(notebook.pageCount, 3);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_animportedPageSurvivesReopening() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+        first.importDocument("file://" + samplePdf);
+        tryCompare(first, "pageCount", 3);
+        first.destroy();
+        wait(0);
+
+        const reopened = openNotebook(path);
+        compare(reopened.pageCount, 3);
+        reopened.currentPage = 1;
+        compare(reopened.paper, PageOptions.Custom);
+        compare(reopened.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

@@ -24,6 +24,7 @@ enum class Paper : quint8 {
     A5,
     Letter,
     Legal,
+    Custom,
 };
 Q_ENUM_NS(Paper)
 

@@ -6,6 +6,7 @@
 
 #include <rhi/qrhi.h>
 
+#include <QImage>
 #include <QQuickRhiItem>
 
 #include <cstddef>
@@ -18,6 +19,8 @@ class QSize;
 class QRhiGraphicsPipeline;
 class QRhiResourceUpdateBatch;
 class QRhiShaderResourceBindings;
+class QRhiSampler;
+class QRhiTexture;
 class QShader;
 
 namespace phvikapen::platform::ink {
@@ -41,6 +44,8 @@ private:
     void createBackgroundPipeline();
     void uploadVertices(QRhiResourceUpdateBatch& updates);
     void updateBackground(QRhiResourceUpdateBatch& updates);
+    void createMediaPipeline();
+    void updateMedia(QRhiResourceUpdateBatch& updates);
     [[nodiscard]] QRhiScissor inkScissor(const QSize& outputSize) const;
 
     std::unique_ptr<QRhiBuffer> m_vertexBuffer;
@@ -51,6 +56,14 @@ private:
     std::unique_ptr<QRhiBuffer> m_backgroundUniforms;
     std::unique_ptr<QRhiShaderResourceBindings> m_backgroundBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_backgroundPipeline;
+    std::unique_ptr<QRhiBuffer> m_mediaUniforms;
+    std::unique_ptr<QRhiTexture> m_mediaTexture;
+    std::unique_ptr<QRhiSampler> m_mediaSampler;
+    std::unique_ptr<QRhiShaderResourceBindings> m_mediaBindings;
+    std::unique_ptr<QRhiGraphicsPipeline> m_mediaPipeline;
+    QImage m_media;
+    std::uint64_t m_mediaGeneration{0};
+    bool m_mediaUploaded{false};
     bool m_backgroundVerticesUploaded{false};
     int m_sampleCount{0};
 

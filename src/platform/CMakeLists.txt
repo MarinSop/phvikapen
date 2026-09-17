@@ -8,6 +8,7 @@ target_sources(phvikapen_platform
         ink/qt/QtInkItem.cpp
         ink/qt/QtInkRenderer.cpp
         ink/qt/QtInkRenderer.hpp
+        pdf/PdfRenderer.cpp
         pdf/PdfiumDocument.cpp
         update/StartupHook.cpp
     PUBLIC
@@ -17,6 +18,7 @@ target_sources(phvikapen_platform
             ink/IInkBackend.hpp
             ink/qt/QtInkItem.hpp
             pdf/IPdfDocument.hpp
+            pdf/PdfRenderer.hpp
             pdf/PdfiumDocument.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
@@ -28,6 +30,8 @@ qt_add_shaders(phvikapen_platform "phvikapen_ink_shaders"
         ink/qt/shaders/background.vert
         ink/qt/shaders/background.frag
         ink/qt/shaders/ink.vert
+        ink/qt/shaders/media.vert
+        ink/qt/shaders/media.frag
         ink/qt/shaders/ink.frag
 )
 

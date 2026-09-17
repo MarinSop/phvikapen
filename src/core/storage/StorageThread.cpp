@@ -1,7 +1,9 @@
 #include "core/storage/StorageThread.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
@@ -34,6 +36,16 @@ void StorageThread::loadOutline(OutlineHandler onLoaded) {
             return;
         }
         onLoaded(m_store->readOutline());
+    });
+}
+
+void StorageThread::loadAsset(const ContentId& assetId, AssetHandler onLoaded) {
+    post([this, assetId, onLoaded = std::move(onLoaded)] {
+        if (!m_store) {
+            onLoaded(makeError(ErrorCode::IoFailure, "the notebook is not open"));
+            return;
+        }
+        onLoaded(m_store->asset(assetId));
     });
 }
 

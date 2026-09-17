@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 qt_add_executable(phvikapen_platform_tests
     main.cpp
+    PdfRendererTest.cpp
     PdfiumDocumentTest.cpp
 )
 

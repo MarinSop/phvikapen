@@ -2,6 +2,7 @@
 
 #include "platform/ink/qt/QtInkRenderer.hpp"
 
+#include <QImage>
 #include <QLineF>
 #include <QMouseEvent>
 #include <QNativeGestureEvent>
@@ -120,6 +121,21 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
     }
 
     ++m_generation;
+    update();
+}
+
+void QtInkItem::showMedia(const QImage& image) {
+    m_media = image;
+    ++m_mediaGeneration;
+    update();
+}
+
+void QtInkItem::clearMedia() {
+    if (m_media.isNull()) {
+        return;
+    }
+    m_media = QImage{};
+    ++m_mediaGeneration;
     update();
 }
 

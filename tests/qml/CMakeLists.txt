@@ -6,6 +6,7 @@ target_link_libraries(phvikapen_qml_tests
         phvikapen_uiplugin
         Qt6::Quick
         Qt6::QuickTest
+        Qt6::Gui
         phvikapen_warnings
         phvikapen_sanitizers
 )

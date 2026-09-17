@@ -12,6 +12,7 @@
 #include "platform/ink/IInkBackend.hpp"
 
 #include <QColor>
+#include <QImage>
 #include <QPointF>
 #include <QPointer>
 #include <QQuickRhiItem>
@@ -66,6 +67,13 @@ public:
 
     void showPage(const core::Page& page, const core::PageStyle& style,
                   std::span<const core::Uuid> hidden = {});
+
+    void showMedia(const QImage& image);
+    void clearMedia();
+
+    [[nodiscard]] const QImage& media() const noexcept { return m_media; }
+
+    [[nodiscard]] std::uint64_t mediaGeneration() const noexcept { return m_mediaGeneration; }
 
     [[nodiscard]] qreal zoom() const noexcept { return m_viewport.scale(); }
 
@@ -160,6 +168,8 @@ private:
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;
+    QImage m_media;
+    std::uint64_t m_mediaGeneration{0};
     core::Uuid m_shownPage;
     bool m_viewFitted{false};
     std::optional<QPointF> m_touchCentroid;

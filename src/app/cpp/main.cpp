@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
 
     const QGuiApplication application(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PhvikaPen"));
+    QGuiApplication::setOrganizationDomain(QStringLiteral("phvikapen.app"));
     QGuiApplication::setApplicationVersion(
         QString::fromLatin1(phvikapen::core::version::kString.data(),
                             static_cast<qsizetype>(phvikapen::core::version::kString.size())));

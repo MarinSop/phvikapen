@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
@@ -115,6 +116,16 @@ Pane {
 
             ToolButton {
                 enabled: root.ready
+                objectName: "importButton"
+                text: qsTr("⤓")
+                ToolTip.text: qsTr("Import a PDF or a picture")
+                ToolTip.visible: hovered
+
+                onClicked: importDialog.open()
+            }
+
+            ToolButton {
+                enabled: root.ready
                 objectName: "addPageButton"
                 text: qsTr("+")
                 ToolTip.text: qsTr("New page")
@@ -189,6 +200,15 @@ Pane {
             notebook: root.notebook
             visible: root.ready
         }
+    }
+
+    FileDialog {
+        id: importDialog
+
+        nameFilters: [qsTr("Documents and pictures (*.pdf *.png *.jpg *.jpeg *.webp)")]
+        title: qsTr("Import")
+
+        onAccepted: root.notebook.importDocument(importDialog.selectedFile)
     }
 
     Dialog {

@@ -8,7 +8,9 @@
 #include <rhi/qrhi.h>
 
 #include <QFile>
+#include <QImage>
 #include <QMatrix4x4>
+#include <QSize>
 
 #include <algorithm>
 #include <array>
@@ -25,6 +27,7 @@ using core::InkVertex;
 
 constexpr quint32 kInitialVertexBufferBytes = 64U * 1024U;
 constexpr quint32 kMatrixBytes = 64;
+constexpr quint32 kVectorBytes = 16;
 constexpr std::size_t kBackgroundUniformCount = 48;
 constexpr std::array<float, 12> kBackgroundCorners{
     0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F, 1.0F,
@@ -73,6 +76,7 @@ void QtInkRenderer::initialize(QRhiCommandBuffer* /*commandBuffer*/) {
     m_sampleCount = renderTarget()->sampleCount();
     createInkPipeline();
     createBackgroundPipeline();
+    createMediaPipeline();
 }
 
 void QtInkRenderer::createInkPipeline() {
@@ -167,6 +171,92 @@ void QtInkRenderer::createBackgroundPipeline() {
     m_backgroundPipeline->create();
 }
 
+void QtInkRenderer::createMediaPipeline() {
+    QRhi* const device = rhi();
+    if (!m_mediaUniforms) {
+        m_mediaUniforms.reset(device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer,
+                                                kMatrixBytes + kVectorBytes));
+        m_mediaUniforms->create();
+    }
+    if (!m_mediaSampler) {
+        m_mediaSampler.reset(device->newSampler(QRhiSampler::Linear, QRhiSampler::Linear,
+                                                QRhiSampler::Linear, QRhiSampler::ClampToEdge,
+                                                QRhiSampler::ClampToEdge));
+        m_mediaSampler->create();
+    }
+    if (!m_mediaTexture) {
+        m_mediaTexture.reset(device->newTexture(QRhiTexture::RGBA8, QSize{1, 1}));
+        m_mediaTexture->create();
+        m_mediaUploaded = false;
+    }
+    if (!m_mediaBindings) {
+        m_mediaBindings.reset(device->newShaderResourceBindings());
+        m_mediaBindings->setBindings({
+            QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage,
+                                                     m_mediaUniforms.get()),
+            QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
+                                                      m_mediaTexture.get(), m_mediaSampler.get()),
+        });
+        m_mediaBindings->create();
+    }
+
+    QRhiVertexInputLayout inputLayout;
+    inputLayout.setBindings({QRhiVertexInputBinding{2U * sizeof(float)}});
+    inputLayout.setAttributes({
+        QRhiVertexInputAttribute{0, 0, QRhiVertexInputAttribute::Float2, 0},
+    });
+
+    QRhiGraphicsPipeline::TargetBlend blend;
+    blend.enable = true;
+
+    m_mediaPipeline.reset(device->newGraphicsPipeline());
+    m_mediaPipeline->setShaderStages({
+        QRhiShaderStage{QRhiShaderStage::Vertex,
+                        loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/media.vert.qsb"))},
+        QRhiShaderStage{QRhiShaderStage::Fragment,
+                        loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/media.frag.qsb"))},
+    });
+    m_mediaPipeline->setTargetBlends({blend});
+    m_mediaPipeline->setSampleCount(m_sampleCount);
+    m_mediaPipeline->setVertexInputLayout(inputLayout);
+    m_mediaPipeline->setShaderResourceBindings(m_mediaBindings.get());
+    m_mediaPipeline->setRenderPassDescriptor(renderTarget()->renderPassDescriptor());
+    m_mediaPipeline->create();
+}
+
+void QtInkRenderer::updateMedia(QRhiResourceUpdateBatch& updates) {
+    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
+    std::array<float, (kMatrixBytes + kVectorBytes) / sizeof(float)> uniforms{};
+    QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
+    projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
+    projection.scale(m_viewport.scale());
+    projection.translate(-m_viewport.origin().x, -m_viewport.origin().y);
+    std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), uniforms.begin());
+    uniforms.at(kMatrixBytes / sizeof(float)) = paper ? paper->width : 0.0F;
+    uniforms.at((kMatrixBytes / sizeof(float)) + 1) = paper ? paper->height : 0.0F;
+    updates.updateDynamicBuffer(m_mediaUniforms.get(), 0,
+                                static_cast<quint32>(std::span{uniforms}.size_bytes()),
+                                uniforms.data());
+
+    if (m_mediaUploaded || m_media.isNull()) {
+        return;
+    }
+    const QImage image = m_media.convertToFormat(QImage::Format_RGBA8888);
+    if (m_mediaTexture->pixelSize() != image.size()) {
+        m_mediaTexture->setPixelSize(image.size());
+        m_mediaTexture->create();
+        m_mediaBindings->setBindings({
+            QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage,
+                                                     m_mediaUniforms.get()),
+            QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
+                                                      m_mediaTexture.get(), m_mediaSampler.get()),
+        });
+        m_mediaBindings->create();
+    }
+    updates.uploadTexture(m_mediaTexture.get(), image);
+    m_mediaUploaded = true;
+}
+
 void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     const auto* const inkItem = qobject_cast<QtInkItem*>(item);
     if (inkItem == nullptr) {
@@ -186,6 +276,11 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     m_logicalHeight = static_cast<float>(inkItem->height());
     m_viewport = inkItem->viewport();
     m_pageStyle = inkItem->pageStyle();
+    if (inkItem->mediaGeneration() != m_mediaGeneration) {
+        m_mediaGeneration = inkItem->mediaGeneration();
+        m_media = inkItem->media();
+        m_mediaUploaded = false;
+    }
 }
 
 void QtInkRenderer::uploadVertices(QRhiResourceUpdateBatch& updates) {
@@ -284,6 +379,7 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     QRhiResourceUpdateBatch* const updates = rhi()->nextResourceUpdateBatch();
     uploadVertices(*updates);
     updateBackground(*updates);
+    updateMedia(*updates);
 
     QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
@@ -301,6 +397,14 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     const QRhiCommandBuffer::VertexInput backgroundInput{m_backgroundVertices.get(), 0};
     commandBuffer->setVertexInput(0, 1, &backgroundInput);
     commandBuffer->draw(static_cast<quint32>(kBackgroundCorners.size() / 2));
+
+    if (!m_media.isNull() && core::paperSize(m_pageStyle)) {
+        commandBuffer->setGraphicsPipeline(m_mediaPipeline.get());
+        commandBuffer->setShaderResources();
+        const QRhiCommandBuffer::VertexInput mediaInput{m_backgroundVertices.get(), 0};
+        commandBuffer->setVertexInput(0, 1, &mediaInput);
+        commandBuffer->draw(static_cast<quint32>(kBackgroundCorners.size() / 2));
+    }
 
     if (!m_vertices.empty()) {
         commandBuffer->setGraphicsPipeline(m_pipeline.get());

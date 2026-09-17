@@ -2,10 +2,12 @@
 
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -13,11 +15,15 @@
 #include "core/undo/UndoStack.hpp"
 #include "platform/ink/IInkBackend.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
+#include "platform/pdf/PdfRenderer.hpp"
 
+#include <QImage>
 #include <QObject>
 #include <QPointer>
 #include <QQmlParserStatus>
 #include <QString>
+#include <QTimer>
+#include <QUrl>
 #include <QtQmlIntegration>
 
 #include <cstddef>
@@ -142,6 +148,8 @@ public:
     Q_INVOKABLE void movePage(int from, int to);
     Q_INVOKABLE void renamePage(int index, const QString& title);
 
+    Q_INVOKABLE void importDocument(const QUrl& fileUrl);
+
     Q_INVOKABLE void addSection();
     Q_INVOKABLE void deleteSection(int index);
     Q_INVOKABLE void moveSection(int from, int to);
@@ -199,6 +207,11 @@ private:
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
     void publishOutline();
     void refreshCanvas();
+    void refreshMedia();
+    void showAsset(std::uint64_t opening, core::Result<core::Asset> asset);
+    void drawMedia();
+    void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
+                          const platform::pdf::PageImage& image);
     void reportError(const QString& message);
 
     Sink m_sink{this};
@@ -208,6 +221,10 @@ private:
     std::optional<core::StorageThread> m_storage;
     core::UndoStack m_history;
     std::vector<core::Uuid> m_erasing;
+    std::optional<platform::pdf::PdfRenderer> m_pdf;
+    core::ContentId m_openAsset;
+    QTimer m_mediaTimer;
+    qreal m_mediaScale{0.0};
     core::Uuid m_currentPage;
     OutlineListModel m_sectionsModel;
     OutlineListModel m_pagesModel;
