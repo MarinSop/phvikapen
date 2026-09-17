@@ -14,6 +14,7 @@ ApplicationWindow {
     width: 1280
 
     header: InkToolBar {
+        notebook: notebookModel
         tools: toolState
     }
 
@@ -23,6 +24,23 @@ ApplicationWindow {
 
     NotebooksViewModel {
         id: notebooks
+    }
+
+    // TODO(M3): One model per notebook.
+    NotebookViewModel {
+        id: notebookModel
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Undo]
+
+        onActivated: notebookModel.undo()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Redo]
+
+        onActivated: notebookModel.redo()
     }
 
     ColumnLayout {
@@ -54,6 +72,7 @@ ApplicationWindow {
                 model: notebooks.titles
 
                 NotebookPage {
+                    notebook: notebookModel
                     tools: toolState
                 }
             }

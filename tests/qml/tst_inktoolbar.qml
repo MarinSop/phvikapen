@@ -20,6 +20,12 @@ TestCase {
         tools.currentTool = ToolViewModel.Pen;
     }
 
+    function test_c_historyButtonsStayDisabledWithoutANotebook() {
+        verify(!findChild(toolBar, "undoButton").enabled);
+        verify(!findChild(toolBar, "redoButton").enabled);
+        verify(!findChild(toolBar, "clearButton").enabled);
+    }
+
     height: 64
     name: "InkToolBar"
     visible: true

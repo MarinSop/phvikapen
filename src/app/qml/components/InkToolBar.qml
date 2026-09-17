@@ -6,6 +6,7 @@ import PhvikaPen.Ui
 ToolBar {
     id: root
 
+    property NotebookViewModel notebook: null
     required property ToolViewModel tools
 
     RowLayout {
@@ -32,6 +33,25 @@ ToolBar {
         ToolSeparator {
         }
 
+        ToolButton {
+            enabled: root.notebook !== null && root.notebook.canUndo
+            objectName: "undoButton"
+            text: qsTr("Undo")
+
+            onClicked: root.notebook.undo()
+        }
+
+        ToolButton {
+            enabled: root.notebook !== null && root.notebook.canRedo
+            objectName: "redoButton"
+            text: qsTr("Redo")
+
+            onClicked: root.notebook.redo()
+        }
+
+        ToolSeparator {
+        }
+
         Label {
             text: qsTr("Width")
         }
@@ -51,9 +71,11 @@ ToolBar {
         }
 
         ToolButton {
+            enabled: root.notebook !== null
+            objectName: "clearButton"
             text: qsTr("Clear")
 
-            onClicked: root.tools.clearRequested()
+            onClicked: root.notebook.clearPage()
         }
     }
 }

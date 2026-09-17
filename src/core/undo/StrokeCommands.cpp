@@ -11,8 +11,7 @@
 
 namespace phvikapen::core {
 
-AddStrokeCommand::AddStrokeCommand(NotebookStore* store, const Uuid& pageId,
-                                   Stroke stroke) noexcept
+AddStrokeCommand::AddStrokeCommand(NotebookStore* store, const Uuid& pageId, Stroke stroke) noexcept
     : m_store{store}, m_pageId{pageId}, m_stroke{std::move(stroke)} {}
 
 Result<void> AddStrokeCommand::apply() {

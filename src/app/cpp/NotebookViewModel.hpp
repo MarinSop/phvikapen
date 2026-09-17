@@ -4,10 +4,12 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/storage/NotebookStore.hpp"
+#include "core/undo/UndoStack.hpp"
 #include "platform/ink/IInkBackend.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
 
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QtQmlIntegration>
 
@@ -30,6 +32,8 @@ class NotebookViewModel : public QObject {
                    canvasChanged FINAL)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged FINAL)
     Q_PROPERTY(int storedStrokeCount READ storedStrokeCount NOTIFY storedStrokeCountChanged FINAL)
+    Q_PROPERTY(bool canUndo READ canUndo NOTIFY historyChanged FINAL)
+    Q_PROPERTY(bool canRedo READ canRedo NOTIFY historyChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -44,10 +48,19 @@ public:
 
     [[nodiscard]] int storedStrokeCount() const { return m_storedStrokeCount; }
 
+    [[nodiscard]] bool canUndo() const { return m_history.canUndo(); }
+
+    [[nodiscard]] bool canRedo() const { return m_history.canRedo(); }
+
+    Q_INVOKABLE void undo();
+    Q_INVOKABLE void redo();
+    Q_INVOKABLE void clearPage();
+
 signals:
     void canvasChanged();
     void errorMessageChanged();
     void storedStrokeCountChanged();
+    void historyChanged();
 
 private:
     /// Receives what the canvas reports and hands the finished strokes to the view model.
@@ -71,12 +84,14 @@ private:
 
     void openNotebook();
     void storeStroke(const core::Stroke& stroke);
+    void reloadCanvas();
     void reportError(const QString& message);
 
     Sink m_sink{this};
     std::optional<core::NotebookStore> m_store;
+    core::UndoStack m_history;
     core::Uuid m_pageId;
-    platform::ink::QtInkItem* m_canvas{nullptr};
+    QPointer<platform::ink::QtInkItem> m_canvas;
     QString m_errorMessage;
     int m_storedStrokeCount{0};
 };

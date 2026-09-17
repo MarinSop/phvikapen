@@ -55,10 +55,6 @@ signals:
     void strokeColorChanged();
     void strokeWidthChanged();
 
-    /// Asks the open canvases to drop their strokes.
-    /// TODO(M2): Replace with an undoable command on the document model.
-    void clearRequested();
-
 private:
     static constexpr qreal kDefaultStrokeWidth = 2.0;
 

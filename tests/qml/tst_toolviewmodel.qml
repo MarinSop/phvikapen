@@ -19,21 +19,14 @@ TestCase {
         compare(tools.currentTool, ToolViewModel.Pen);
     }
 
-    function test_c_forwardsTheClearRequest() {
-        tools.clearRequested();
-        compare(clearSpy.count, 1);
+    function test_c_changesTheStrokeWidth() {
+        tools.strokeWidth = 5;
+        compare(tools.strokeWidth, 5);
     }
 
     name: "ToolViewModel"
 
     ToolViewModel {
         id: tools
-    }
-
-    SignalSpy {
-        id: clearSpy
-
-        signalName: "clearRequested"
-        target: tools
     }
 }
