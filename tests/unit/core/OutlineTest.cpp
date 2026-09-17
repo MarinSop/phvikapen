@@ -14,6 +14,11 @@
 namespace phvikapen::core {
 namespace {
 
+[[nodiscard]] PageInfo blankPage(const Uuid& id) {
+    const PageStyle style;
+    return PageInfo{.id = id, .title = {}, .style = style, .media = std::nullopt};
+}
+
 struct Fixture {
     Uuid7Generator ids;
     Uuid firstSection = ids.next();
@@ -30,14 +35,14 @@ struct Fixture {
                     .title = "First",
                     .pages =
                         {
-                            PageInfo{.id = a, .title = {}, .style = {}},
-                            PageInfo{.id = b, .title = {}, .style = {}},
+                            blankPage(a),
+                            blankPage(b),
                         },
                 },
                 SectionInfo{
                     .id = secondSection,
                     .title = "Second",
-                    .pages = {PageInfo{.id = c, .title = {}, .style = {}}},
+                    .pages = {blankPage(c)},
                 },
             },
     }};
@@ -66,7 +71,7 @@ TEST(OutlineTest, InsertsAndRemovesPagesInPlace) {
     const Uuid inserted = fixture.ids.next();
 
     ASSERT_TRUE(fixture.outline.insertPage({.sectionId = fixture.firstSection, .index = 1},
-                                           PageInfo{.id = inserted, .title = {}, .style = {}}));
+                                           blankPage(inserted)));
     EXPECT_EQ(fixture.outline.pageOrder(fixture.firstSection),
               (std::vector<Uuid>{fixture.a, inserted, fixture.b}));
 
@@ -80,15 +85,12 @@ TEST(OutlineTest, InsertsAndRemovesPagesInPlace) {
 TEST(OutlineTest, RefusesPagesThatCannotBeInserted) {
     Fixture fixture;
 
-    const Result<void> duplicate =
-        fixture.outline.insertPage({.sectionId = fixture.secondSection, .index = 0},
-                                   PageInfo{.id = fixture.a, .title = {}, .style = {}});
-    const Result<void> outside =
-        fixture.outline.insertPage({.sectionId = fixture.secondSection, .index = 5},
-                                   PageInfo{.id = fixture.ids.next(), .title = {}, .style = {}});
-    const Result<void> nowhere =
-        fixture.outline.insertPage({.sectionId = Uuid{}, .index = 0},
-                                   PageInfo{.id = fixture.ids.next(), .title = {}, .style = {}});
+    const Result<void> duplicate = fixture.outline.insertPage(
+        {.sectionId = fixture.secondSection, .index = 0}, blankPage(fixture.a));
+    const Result<void> outside = fixture.outline.insertPage(
+        {.sectionId = fixture.secondSection, .index = 5}, blankPage(fixture.ids.next()));
+    const Result<void> nowhere = fixture.outline.insertPage({.sectionId = Uuid{}, .index = 0},
+                                                            blankPage(fixture.ids.next()));
 
     EXPECT_EQ(duplicate.error().code, ErrorCode::InvalidArgument);
     EXPECT_EQ(outside.error().code, ErrorCode::InvalidArgument);
@@ -161,12 +163,12 @@ TEST(OutlineTest, MovesAndRemovesSectionsTogetherWithTheirPages) {
 TEST(OutlineTest, RefusesASectionWhosePagesAreAlreadyElsewhere) {
     Fixture fixture;
 
-    const Result<void> inserted = fixture.outline.insertSection(
-        0, SectionInfo{
-               .id = fixture.ids.next(),
-               .title = "Copy",
-               .pages = {PageInfo{.id = fixture.c, .title = {}, .style = {}}},
-           });
+    const Result<void> inserted =
+        fixture.outline.insertSection(0, SectionInfo{
+                                             .id = fixture.ids.next(),
+                                             .title = "Copy",
+                                             .pages = {blankPage(fixture.c)},
+                                         });
 
     ASSERT_FALSE(inserted.has_value());
     EXPECT_EQ(fixture.outline.sections().size(), 2U);

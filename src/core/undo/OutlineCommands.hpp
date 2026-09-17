@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/undo/UndoStack.hpp"
@@ -9,6 +10,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace phvikapen::core {
 
@@ -95,6 +97,40 @@ private:
     StorageThread* m_storage;
     Uuid m_pageId;
     PageStyle m_style;
+};
+
+class SetPageMediaCommand final : public ICommand {
+public:
+    SetPageMediaCommand(Outline* outline, StorageThread* storage, const Uuid& pageId,
+                        std::optional<PageMedia> media) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Outline* m_outline;
+    StorageThread* m_storage;
+    Uuid m_pageId;
+    std::optional<PageMedia> m_media;
+};
+
+class ImportPagesCommand final : public ICommand {
+public:
+    ImportPagesCommand(Outline* outline, StorageThread* storage, PagePlace place, Asset asset,
+                       std::vector<PageInfo> pages) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Outline* m_outline;
+    StorageThread* m_storage;
+    PagePlace m_place;
+    Asset m_asset;
+    std::vector<PageInfo> m_pages;
+    bool m_stored{false};
 };
 
 class AddSectionCommand final : public ICommand {

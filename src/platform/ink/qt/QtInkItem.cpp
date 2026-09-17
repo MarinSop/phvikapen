@@ -180,7 +180,7 @@ core::ViewSize QtInkItem::viewSize() const noexcept {
 
 void QtInkItem::changeView(const core::Viewport& viewport) {
     core::Viewport kept = viewport;
-    kept.keepPaperInView(viewSize(), core::paperSize(m_pageStyle.paper, m_pageStyle.orientation));
+    kept.keepPaperInView(viewSize(), core::paperSize(m_pageStyle));
     if (kept == m_viewport) {
         return;
     }
@@ -207,7 +207,7 @@ void QtInkItem::fitPage() {
         return;
     }
     core::Viewport viewport;
-    viewport.fit(viewSize(), core::paperSize(m_pageStyle.paper, m_pageStyle.orientation));
+    viewport.fit(viewSize(), core::paperSize(m_pageStyle));
     m_viewFitted = true;
     m_viewport = viewport;
     emit viewChanged();
@@ -398,8 +398,7 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 }
 
 bool QtInkItem::onPaper(const InkSample& sample) const noexcept {
-    const std::optional<core::PaperSize> paper =
-        core::paperSize(m_pageStyle.paper, m_pageStyle.orientation);
+    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     if (!paper) {
         return true;
     }

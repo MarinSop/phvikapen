@@ -12,6 +12,7 @@ enum class Paper : std::uint8_t {
     A5,
     Letter,
     Legal,
+    Custom,
 };
 
 enum class Orientation : std::uint8_t {
@@ -49,11 +50,15 @@ struct PageStyle {
     Orientation orientation{Orientation::Portrait};
     Background background{Background::Lined};
     float spacing{kDefaultSpacing};
+    float customWidth{};
+    float customHeight{};
 
     friend constexpr bool operator==(const PageStyle&, const PageStyle&) = default;
 };
 
-[[nodiscard]] std::optional<PaperSize> paperSize(Paper paper, Orientation orientation) noexcept;
+[[nodiscard]] std::optional<PaperSize> paperSize(const PageStyle& style) noexcept;
+
+[[nodiscard]] PageStyle styleForPaper(PaperSize size) noexcept;
 
 [[nodiscard]] PageStyle normalized(PageStyle style) noexcept;
 

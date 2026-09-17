@@ -2,12 +2,14 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -16,7 +18,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 3;
+inline constexpr int kNotebookSchemaVersion = 4;
 
 class NotebookStore {
 public:
@@ -52,12 +54,21 @@ public:
 
     [[nodiscard]] Result<void> insertPage(const Uuid& sectionId, const PageInfo& page,
                                           std::span<const Uuid> pageOrder);
+    [[nodiscard]] Result<void> insertPages(const Uuid& sectionId, std::span<const PageInfo> pages,
+                                           std::span<const Uuid> pageOrder);
     [[nodiscard]] Result<void> renamePage(const Uuid& pageId, std::string_view title);
     [[nodiscard]] Result<void> setPageStyle(const Uuid& pageId, const PageStyle& style);
+    [[nodiscard]] Result<void> setPageMedia(const Uuid& pageId,
+                                            const std::optional<PageMedia>& media);
     [[nodiscard]] Result<void> trashPage(const Uuid& pageId);
     [[nodiscard]] Result<void> restorePage(const Uuid& sectionId, const Uuid& pageId,
                                            std::span<const Uuid> pageOrder);
+    [[nodiscard]] Result<void> restorePages(const Uuid& sectionId, std::span<const Uuid> pageIds,
+                                            std::span<const Uuid> pageOrder);
     [[nodiscard]] Result<void> orderPages(const Uuid& sectionId, std::span<const Uuid> pageOrder);
+
+    [[nodiscard]] Result<void> insertAsset(const Asset& asset);
+    [[nodiscard]] Result<Asset> asset(const ContentId& assetId) const;
 
     [[nodiscard]] Result<int> schemaVersion() const;
 
@@ -70,6 +81,7 @@ private:
     [[nodiscard]] Result<void> writeSectionOrder(std::span<const Uuid> sectionOrder);
     [[nodiscard]] Result<void> writePageOrder(const Uuid& sectionId,
                                               std::span<const Uuid> pageOrder);
+    [[nodiscard]] Result<void> writePage(const Uuid& sectionId, const PageInfo& page);
 
     sqlite3* m_database{nullptr};
 };

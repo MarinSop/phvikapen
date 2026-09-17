@@ -101,6 +101,10 @@ Result<void> Statement::bindText(int index, std::string_view text) {
                                        static_cast<int>(text.size()), SQLITE_TRANSIENT));
 }
 
+Result<void> Statement::bindNull(int index) {
+    return checkBind(sqlite3_bind_null(m_statement, index));
+}
+
 Result<bool> Statement::step() {
     const int status = sqlite3_step(m_statement);
     if (status == SQLITE_ROW) {

@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/PageStyle.hpp"
 
 #include <algorithm>
@@ -185,6 +186,15 @@ Result<PageStyle> Outline::setPageStyle(const Uuid& pageId, const PageStyle& sty
         return makeError(ErrorCode::NotFound, "the notebook has no such page");
     }
     return std::exchange(page->style, normalized(style));
+}
+
+Result<std::optional<PageMedia>> Outline::setPageMedia(const Uuid& pageId,
+                                                       const std::optional<PageMedia>& media) {
+    PageInfo* const page = findPage(pageId);
+    if (page == nullptr) {
+        return makeError(ErrorCode::NotFound, "the notebook has no such page");
+    }
+    return std::exchange(page->media, media);
 }
 
 Result<PagePlace> Outline::movePage(const Uuid& pageId, const PagePlace& place) {

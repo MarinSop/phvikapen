@@ -9,25 +9,28 @@ namespace phvikapen::core {
 namespace {
 
 TEST(PageStyleTest, AnInfinitePageHasNoSize) {
-    EXPECT_FALSE(paperSize(Paper::Infinite, Orientation::Portrait).has_value());
-    EXPECT_FALSE(paperSize(Paper::Infinite, Orientation::Landscape).has_value());
+    EXPECT_FALSE(paperSize(PageStyle{.paper = Paper::Infinite}).has_value());
+    EXPECT_FALSE(
+        paperSize(PageStyle{.paper = Paper::Infinite, .orientation = Orientation::Landscape})
+            .has_value());
 }
 
 TEST(PageStyleTest, PaperSizesAreInPageUnitsOfOneNinetySixthOfAnInch) {
-    const std::optional<PaperSize> a4 = paperSize(Paper::A4, Orientation::Portrait);
+    const std::optional<PaperSize> a4 = paperSize(PageStyle{.paper = Paper::A4});
     ASSERT_TRUE(a4.has_value());
     EXPECT_NEAR(a4->width, 793.7F, 0.1F);
     EXPECT_NEAR(a4->height, 1122.5F, 0.1F);
 
-    const std::optional<PaperSize> letter = paperSize(Paper::Letter, Orientation::Portrait);
+    const std::optional<PaperSize> letter = paperSize(PageStyle{.paper = Paper::Letter});
     ASSERT_TRUE(letter.has_value());
     EXPECT_FLOAT_EQ(letter->width, 816.0F);
     EXPECT_FLOAT_EQ(letter->height, 1056.0F);
 }
 
 TEST(PageStyleTest, LandscapeSwapsWidthAndHeight) {
-    const std::optional<PaperSize> portrait = paperSize(Paper::A5, Orientation::Portrait);
-    const std::optional<PaperSize> landscape = paperSize(Paper::A5, Orientation::Landscape);
+    const std::optional<PaperSize> portrait = paperSize(PageStyle{.paper = Paper::A5});
+    const std::optional<PaperSize> landscape =
+        paperSize(PageStyle{.paper = Paper::A5, .orientation = Orientation::Landscape});
     ASSERT_TRUE(portrait.has_value());
     ASSERT_TRUE(landscape.has_value());
 
@@ -37,7 +40,7 @@ TEST(PageStyleTest, LandscapeSwapsWidthAndHeight) {
 
 TEST(PageStyleTest, EveryFixedPaperIsTallerThanWideInPortrait) {
     for (const Paper paper : {Paper::A3, Paper::A4, Paper::A5, Paper::Letter, Paper::Legal}) {
-        const std::optional<PaperSize> size = paperSize(paper, Orientation::Portrait);
+        const std::optional<PaperSize> size = paperSize(PageStyle{.paper = paper});
         ASSERT_TRUE(size.has_value());
         EXPECT_GT(size->height, size->width);
     }

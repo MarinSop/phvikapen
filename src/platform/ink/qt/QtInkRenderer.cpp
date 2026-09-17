@@ -224,8 +224,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
         m_logicalWidth > 0.0F
             ? static_cast<float>(renderTarget()->pixelSize().width()) / m_logicalWidth
             : 1.0F;
-    const std::optional<core::PaperSize> paper =
-        core::paperSize(m_pageStyle.paper, m_pageStyle.orientation);
+    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     const bool lined = m_pageStyle.background == core::Background::Lined;
     const float lineWidth = kLineWidth * pixelRatio;
     const float dotRadius = kDotRadius * pixelRatio;
@@ -264,8 +263,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
 }
 
 QRhiScissor QtInkRenderer::inkScissor(const QSize& outputSize) const {
-    const std::optional<core::PaperSize> paper =
-        core::paperSize(m_pageStyle.paper, m_pageStyle.orientation);
+    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     if (!paper) {
         return QRhiScissor{0, 0, outputSize.width(), outputSize.height()};
     }

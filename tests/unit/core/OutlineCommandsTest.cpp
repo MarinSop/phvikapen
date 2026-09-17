@@ -1,8 +1,10 @@
 #include "core/undo/OutlineCommands.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/storage/NotebookStore.hpp"
@@ -27,6 +29,11 @@ using test::TemporaryNotebook;
     return store->readOutline().value_or(NotebookOutline{});
 }
 
+[[nodiscard]] PageInfo blankPage(const Uuid& id) {
+    const PageStyle style;
+    return PageInfo{.id = id, .title = {}, .style = style, .media = std::nullopt};
+}
+
 struct OpenNotebook {
     TemporaryNotebook file;
     Uuid7Generator ids;
@@ -38,9 +45,7 @@ struct OpenNotebook {
 
     [[nodiscard]] Uuid firstPage() const { return outline.sections().front().pages.front().id; }
 
-    [[nodiscard]] PageInfo newPage() {
-        return PageInfo{.id = ids.next(), .title = {}, .style = {}};
-    }
+    [[nodiscard]] PageInfo newPage() { return blankPage(ids.next()); }
 
     [[nodiscard]] NotebookOutline inFile() {
         storage.waitUntilIdle();
@@ -155,6 +160,71 @@ TEST(OutlineCommandsTest, RenamingAndRestylingAPageSwapBackAndForth) {
     ASSERT_TRUE(rename.apply());
     ASSERT_TRUE(restyle.apply());
     EXPECT_EQ(notebook.outline.page(page)->style, grid);
+    EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(OutlineCommandsTest, ImportingPagesAddsThemTogetherWithTheFile) {
+    OpenNotebook notebook;
+    const Asset asset{
+        .id = ContentId{ContentId::Bytes{9, 9, 9}},
+        .kind = AssetKind::Pdf,
+        .name = "lecture.pdf",
+        .data = std::vector<std::byte>{std::byte{'%'}, std::byte{'P'}},
+    };
+    std::vector<PageInfo> pages;
+    pages.reserve(3);
+    for (int index = 0; index < 3; ++index) {
+        pages.push_back(PageInfo{
+            .id = notebook.ids.next(),
+            .title = {},
+            .style = styleForPaper(PaperSize{.width = 500.0F, .height = 700.0F}),
+            .media = PageMedia{.asset = asset.id, .index = index},
+        });
+    }
+    const NotebookOutline before = notebook.outline.contents();
+    ImportPagesCommand command{&notebook.outline,
+                               &notebook.storage,
+                               {.sectionId = notebook.firstSection(), .index = 1},
+                               asset,
+                               pages};
+
+    ASSERT_TRUE(command.apply());
+    EXPECT_EQ(notebook.outline.sections().front().pages.size(), 4U);
+    EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
+    EXPECT_EQ(command.pageToShow(), pages.front().id);
+
+    ASSERT_TRUE(command.revert());
+    EXPECT_EQ(notebook.outline.contents(), before);
+    EXPECT_EQ(notebook.inFile(), before);
+
+    ASSERT_TRUE(command.apply());
+    EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
+    const PageInfo* const last = notebook.outline.page(pages[2].id);
+    ASSERT_NE(last, nullptr);
+    ASSERT_TRUE(last->media.has_value());
+    EXPECT_EQ(last->media->index, 2);
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(OutlineCommandsTest, ThePageBackgroundCanBeChangedAndTakenBack) {
+    OpenNotebook notebook;
+    const Asset asset{
+        .id = ContentId{ContentId::Bytes{5}},
+        .kind = AssetKind::Image,
+        .name = "photo.png",
+        .data = std::vector<std::byte>{std::byte{1}},
+    };
+    notebook.storage.submit([&asset](NotebookStore& store) { return store.insertAsset(asset); });
+    const PageMedia media{.asset = asset.id, .index = 2};
+    SetPageMediaCommand command{&notebook.outline, &notebook.storage, notebook.firstPage(), media};
+
+    ASSERT_TRUE(command.apply());
+    EXPECT_EQ(notebook.outline.page(notebook.firstPage())->media, media);
+    EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
+
+    ASSERT_TRUE(command.revert());
+    EXPECT_FALSE(notebook.outline.page(notebook.firstPage())->media.has_value());
     EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
     EXPECT_TRUE(notebook.errors.empty());
 }

@@ -37,6 +37,7 @@ public:
     [[nodiscard]] Result<void> bindInteger(int index, std::int64_t value);
     [[nodiscard]] Result<void> bindReal(int index, double value);
     [[nodiscard]] Result<void> bindText(int index, std::string_view text);
+    [[nodiscard]] Result<void> bindNull(int index);
 
     [[nodiscard]] Result<bool> step();
     [[nodiscard]] Result<void> run();

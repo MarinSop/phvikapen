@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/storage/NotebookStore.hpp"
@@ -172,6 +173,86 @@ Result<void> SetPageStyleCommand::revert() {
 
 std::optional<Uuid> SetPageStyleCommand::pageToShow() const {
     return m_pageId;
+}
+
+SetPageMediaCommand::SetPageMediaCommand(Outline* outline, StorageThread* storage,
+                                         const Uuid& pageId,
+                                         std::optional<PageMedia> media) noexcept
+    : m_outline{outline}, m_storage{storage}, m_pageId{pageId}, m_media{media} {}
+
+Result<void> SetPageMediaCommand::apply() {
+    Result<std::optional<PageMedia>> previous = m_outline->setPageMedia(m_pageId, m_media);
+    if (!previous) {
+        return std::unexpected{previous.error()};
+    }
+    m_storage->submit([pageId = m_pageId, media = m_media](NotebookStore& store) {
+        return store.setPageMedia(pageId, media);
+    });
+    m_media = *previous;
+    return {};
+}
+
+Result<void> SetPageMediaCommand::revert() {
+    return apply();
+}
+
+std::optional<Uuid> SetPageMediaCommand::pageToShow() const {
+    return m_pageId;
+}
+
+ImportPagesCommand::ImportPagesCommand(Outline* outline, StorageThread* storage, PagePlace place,
+                                       Asset asset, std::vector<PageInfo> pages) noexcept
+    : m_outline{outline}, m_storage{storage}, m_place{place}, m_asset{std::move(asset)},
+      m_pages{std::move(pages)} {}
+
+Result<void> ImportPagesCommand::apply() {
+    if (m_pages.empty()) {
+        return makeError(ErrorCode::InvalidArgument, "there are no pages to import");
+    }
+    std::size_t index = m_place.index;
+    for (const PageInfo& page : m_pages) {
+        const PagePlace place{.sectionId = m_place.sectionId, .index = index++};
+        if (const Result<void> inserted = m_outline->insertPage(place, page); !inserted) {
+            return inserted;
+        }
+    }
+
+    const Uuid sectionId = m_place.sectionId;
+    std::vector<Uuid> order = m_outline->pageOrder(sectionId);
+    if (m_stored) {
+        std::vector<Uuid> restored;
+        restored.reserve(m_pages.size());
+        for (const PageInfo& page : m_pages) {
+            restored.push_back(page.id);
+        }
+        m_storage->submit([sectionId, restored = std::move(restored),
+                           order = std::move(order)](NotebookStore& store) {
+            return store.restorePages(sectionId, restored, order);
+        });
+        return {};
+    }
+
+    m_storage->submit([asset = m_asset](NotebookStore& store) { return store.insertAsset(asset); });
+    m_storage->submit([sectionId, pages = m_pages, order = std::move(order)](NotebookStore& store) {
+        return store.insertPages(sectionId, pages, order);
+    });
+    m_stored = true;
+    return {};
+}
+
+Result<void> ImportPagesCommand::revert() {
+    for (const PageInfo& page : m_pages) {
+        if (const Result<RemovedPage> removed = m_outline->removePage(page.id); !removed) {
+            return std::unexpected{removed.error()};
+        }
+        m_storage->submit(
+            [pageId = page.id](NotebookStore& store) { return store.trashPage(pageId); });
+    }
+    return {};
+}
+
+std::optional<Uuid> ImportPagesCommand::pageToShow() const {
+    return m_pages.empty() ? std::nullopt : std::optional<Uuid>{m_pages.front().id};
 }
 
 AddSectionCommand::AddSectionCommand(Outline* outline, StorageThread* storage, std::size_t index,

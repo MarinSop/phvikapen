@@ -3,6 +3,7 @@
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/storage/Sqlite.hpp"
@@ -10,10 +11,12 @@
 
 #include <sqlite3.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -70,16 +73,30 @@ constexpr std::string_view kSchemaVersion3 = R"sql(
         FROM strokes GROUP BY page_id;
 )sql";
 
+constexpr std::string_view kSchemaVersion4 = R"sql(
+    CREATE TABLE assets (
+        id   BLOB PRIMARY KEY NOT NULL,
+        kind INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        data BLOB NOT NULL
+    );
+    ALTER TABLE pages ADD COLUMN custom_width REAL NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN custom_height REAL NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN media_asset BLOB REFERENCES assets (id);
+    ALTER TABLE pages ADD COLUMN media_index INTEGER NOT NULL DEFAULT 0;
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1},
     std::pair{2, kSchemaVersion2},
     std::pair{3, kSchemaVersion3},
+    std::pair{4, kSchemaVersion4},
 };
 
 constexpr std::string_view kDefaultSectionTitle = "Section 1";
 
 [[nodiscard]] Paper toPaper(std::int64_t value) noexcept {
-    return value >= 0 && value <= static_cast<std::int64_t>(Paper::Legal)
+    return value >= 0 && value <= static_cast<std::int64_t>(Paper::Custom)
                ? static_cast<Paper>(value)
                : PageStyle{}.paper;
 }
@@ -89,10 +106,27 @@ constexpr std::string_view kDefaultSectionTitle = "Section 1";
                                                                       : Orientation::Portrait;
 }
 
+[[nodiscard]] AssetKind toAssetKind(std::int64_t value) noexcept {
+    return value == static_cast<std::int64_t>(AssetKind::Image) ? AssetKind::Image : AssetKind::Pdf;
+}
+
+[[nodiscard]] ContentId toContentId(std::span<const std::byte> stored) noexcept {
+    ContentId::Bytes bytes{};
+    if (stored.size() == bytes.size()) {
+        std::ranges::transform(stored, bytes.begin(),
+                               [](std::byte value) { return static_cast<std::uint8_t>(value); });
+    }
+    return ContentId{bytes};
+}
+
 [[nodiscard]] Background toBackground(std::int64_t value) noexcept {
     return value >= 0 && value <= static_cast<std::int64_t>(Background::Dotted)
                ? static_cast<Background>(value)
                : PageStyle{}.background;
+}
+
+[[nodiscard]] std::span<const std::byte> contentBytes(const ContentId& id) {
+    return std::as_bytes(std::span{id.bytes()});
 }
 
 [[nodiscard]] Result<void> expectChange(sqlite3* database, std::string_view missing) {
@@ -359,7 +393,8 @@ Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
     }
     Uuid7Generator ids;
     for (const Uuid& sectionId : emptySections) {
-        const PageInfo page{.id = ids.next(), .title = {}, .style = {}};
+        const PageStyle style;
+        const PageInfo page{.id = ids.next(), .title = {}, .style = style, .media = std::nullopt};
         const std::array pageOrder{page.id};
         if (const Result<void> inserted = insertPage(sectionId, page, pageOrder); !inserted) {
             return inserted;
@@ -402,8 +437,10 @@ Result<NotebookOutline> NotebookStore::readOutline() const {
     }
 
     Result<sqlite::Statement> pages = sqlite::Statement::prepare(
-        m_database, "SELECT id, title, paper, orientation, background, spacing FROM pages "
-                    "WHERE section_id = ? AND trashed = 0 ORDER BY ordinal, rowid;");
+        m_database,
+        "SELECT id, title, paper, orientation, background, spacing, custom_width, custom_height, "
+        "media_asset, media_index FROM pages WHERE section_id = ? AND trashed = 0 "
+        "ORDER BY ordinal, rowid;");
     if (!pages) {
         return std::unexpected{pages.error()};
     }
@@ -421,7 +458,7 @@ Result<NotebookOutline> NotebookStore::readOutline() const {
                 break;
             }
             int column = 0;
-            section.pages.push_back(PageInfo{
+            PageInfo page{
                 .id = pages->id(column++),
                 .title = pages->text(column++),
                 .style = normalized(PageStyle{
@@ -429,8 +466,17 @@ Result<NotebookOutline> NotebookStore::readOutline() const {
                     .orientation = toOrientation(pages->integer(column++)),
                     .background = toBackground(pages->integer(column++)),
                     .spacing = static_cast<float>(pages->real(column++)),
+                    .customWidth = static_cast<float>(pages->real(column++)),
+                    .customHeight = static_cast<float>(pages->real(column++)),
                 }),
-            });
+                .media = std::nullopt,
+            };
+            const ContentId asset = toContentId(pages->blob(column++));
+            const auto mediaIndex = static_cast<int>(pages->integer(column++));
+            if (!asset.isEmpty()) {
+                page.media = PageMedia{.asset = asset, .index = mediaIndex};
+            }
+            section.pages.push_back(std::move(page));
         }
     }
     return outline;
@@ -557,15 +603,12 @@ Result<void> NotebookStore::orderSections(std::span<const Uuid> sectionOrder) {
     return writeSectionOrder(sectionOrder).and_then([&] { return transaction->commit(); });
 }
 
-Result<void> NotebookStore::insertPage(const Uuid& sectionId, const PageInfo& page,
-                                       std::span<const Uuid> pageOrder) {
-    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
-    if (!transaction) {
-        return std::unexpected{transaction.error()};
-    }
+Result<void> NotebookStore::writePage(const Uuid& sectionId, const PageInfo& page) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        m_database, "INSERT INTO pages (id, section_id, ordinal, title, paper, orientation, "
-                    "background, spacing) VALUES (?, ?, 0, ?, ?, ?, ?, ?);");
+        m_database,
+        "INSERT INTO pages (id, section_id, ordinal, title, paper, orientation, background, "
+        "spacing, custom_width, custom_height, media_asset, media_index) "
+        "VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -580,10 +623,33 @@ Result<void> NotebookStore::insertPage(const Uuid& sectionId, const PageInfo& pa
                        statement->bindInteger(index++,
                                               static_cast<std::int64_t>(page.style.background)),
                        statement->bindReal(index++, page.style.spacing),
+                       statement->bindReal(index++, page.style.customWidth),
+                       statement->bindReal(index++, page.style.customHeight),
+                       page.media ? statement->bindBlob(index++, contentBytes(page.media->asset))
+                                  : statement->bindNull(index++),
+                       statement->bindInteger(index++, page.media ? page.media->index : 0),
                    })
-        .and_then([&] { return statement->run(); })
-        .and_then([&] { return writePageOrder(sectionId, pageOrder); })
-        .and_then([&] { return transaction->commit(); });
+        .and_then([&] { return statement->run(); });
+}
+
+Result<void> NotebookStore::insertPage(const Uuid& sectionId, const PageInfo& page,
+                                       std::span<const Uuid> pageOrder) {
+    const std::array pages{page};
+    return insertPages(sectionId, pages, pageOrder);
+}
+
+Result<void> NotebookStore::insertPages(const Uuid& sectionId, std::span<const PageInfo> pages,
+                                        std::span<const Uuid> pageOrder) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    for (const PageInfo& page : pages) {
+        if (const Result<void> written = writePage(sectionId, page); !written) {
+            return written;
+        }
+    }
+    return writePageOrder(sectionId, pageOrder).and_then([&] { return transaction->commit(); });
 }
 
 Result<void> NotebookStore::renamePage(const Uuid& pageId, std::string_view title) {
@@ -599,8 +665,8 @@ Result<void> NotebookStore::renamePage(const Uuid& pageId, std::string_view titl
 
 Result<void> NotebookStore::setPageStyle(const Uuid& pageId, const PageStyle& style) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        m_database, "UPDATE pages SET paper = ?, orientation = ?, background = ?, spacing = ? "
-                    "WHERE id = ?;");
+        m_database, "UPDATE pages SET paper = ?, orientation = ?, background = ?, spacing = ?, "
+                    "custom_width = ?, custom_height = ? WHERE id = ?;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -611,10 +677,74 @@ Result<void> NotebookStore::setPageStyle(const Uuid& pageId, const PageStyle& st
                    statement->bindInteger(index++, static_cast<std::int64_t>(style.orientation)),
                    statement->bindInteger(index++, static_cast<std::int64_t>(style.background)),
                    statement->bindReal(index++, style.spacing),
+                   statement->bindReal(index++, style.customWidth),
+                   statement->bindReal(index++, style.customHeight),
                    statement->bindId(index++, pageId),
                })
         .and_then([&] { return statement->run(); })
         .and_then([&] { return expectChange(m_database, "no such page"); });
+}
+
+Result<void> NotebookStore::setPageMedia(const Uuid& pageId,
+                                         const std::optional<PageMedia>& media) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE pages SET media_asset = ?, media_index = ? WHERE id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    int index = 1;
+    return bindAll({
+                       media ? statement->bindBlob(index++, contentBytes(media->asset))
+                             : statement->bindNull(index++),
+                       statement->bindInteger(index++, media ? media->index : 0),
+                       statement->bindId(index++, pageId),
+                   })
+        .and_then([&] { return statement->run(); })
+        .and_then([&] { return expectChange(m_database, "no such page"); });
+}
+
+Result<void> NotebookStore::insertAsset(const Asset& asset) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT OR IGNORE INTO assets (id, kind, name, data) VALUES (?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    int index = 1;
+    return bindAll({
+                       statement->bindBlob(index++, contentBytes(asset.id)),
+                       statement->bindInteger(index++, static_cast<std::int64_t>(asset.kind)),
+                       statement->bindText(index++, asset.name),
+                       statement->bindBlob(index++, asset.data),
+                   })
+        .and_then([&] { return statement->run(); });
+}
+
+Result<Asset> NotebookStore::asset(const ContentId& assetId) const {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "SELECT kind, name, data FROM assets WHERE id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindBlob(1, contentBytes(assetId)); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    const Result<bool> row = statement->step();
+    if (!row) {
+        return std::unexpected{row.error()};
+    }
+    if (!*row) {
+        return makeError(ErrorCode::NotFound, "the notebook has no such file");
+    }
+    int column = 0;
+    const AssetKind kind = toAssetKind(statement->integer(column++));
+    std::string name = statement->text(column++);
+    const std::span<const std::byte> data = statement->blob(column++);
+    return Asset{
+        .id = assetId,
+        .kind = kind,
+        .name = std::move(name),
+        .data = std::vector<std::byte>{data.begin(), data.end()},
+    };
 }
 
 Result<void> NotebookStore::trashPage(const Uuid& pageId) {
@@ -630,6 +760,12 @@ Result<void> NotebookStore::trashPage(const Uuid& pageId) {
 
 Result<void> NotebookStore::restorePage(const Uuid& sectionId, const Uuid& pageId,
                                         std::span<const Uuid> pageOrder) {
+    const std::array pages{pageId};
+    return restorePages(sectionId, pages, pageOrder);
+}
+
+Result<void> NotebookStore::restorePages(const Uuid& sectionId, std::span<const Uuid> pageIds,
+                                         std::span<const Uuid> pageOrder) {
     Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
     if (!transaction) {
         return std::unexpected{transaction.error()};
@@ -639,11 +775,16 @@ Result<void> NotebookStore::restorePage(const Uuid& sectionId, const Uuid& pageI
     if (!statement) {
         return std::unexpected{statement.error()};
     }
-    return bindAll({statement->bindId(1, pageId)})
-        .and_then([&] { return statement->run(); })
-        .and_then([&] { return expectChange(m_database, "no such page"); })
-        .and_then([&] { return writePageOrder(sectionId, pageOrder); })
-        .and_then([&] { return transaction->commit(); });
+    for (const Uuid& pageId : pageIds) {
+        if (const Result<void> restored =
+                bindAll({statement->reset(), statement->bindId(1, pageId)})
+                    .and_then([&] { return statement->run(); })
+                    .and_then([&] { return expectChange(m_database, "no such page"); });
+            !restored) {
+            return restored;
+        }
+    }
+    return writePageOrder(sectionId, pageOrder).and_then([&] { return transaction->commit(); });
 }
 
 Result<void> NotebookStore::orderPages(const Uuid& sectionId, std::span<const Uuid> pageOrder) {

@@ -1,6 +1,8 @@
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/storage/NotebookStore.hpp"
@@ -11,6 +13,7 @@
 #include <sqlite3.h>
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +22,11 @@ namespace {
 
 using test::makeStroke;
 using test::TemporaryNotebook;
+
+[[nodiscard]] PageInfo blankPage(const Uuid& id) {
+    const PageStyle style;
+    return PageInfo{.id = id, .title = {}, .style = style, .media = std::nullopt};
+}
 
 [[nodiscard]] std::vector<Uuid> pageIds(const SectionInfo& section) {
     std::vector<Uuid> ids;
@@ -80,16 +88,13 @@ TEST(NotebookOutlineTest, SectionsPagesTitlesAndStylesSurviveReopening) {
         const Uuid firstSection = initial.sections.front().id;
         const Uuid secondSection = ids.next();
         const std::vector<Uuid> sectionOrder{firstSection, secondSection};
-        const PageInfo grid{
-            .id = ids.next(),
-            .title = "Physics",
-            .style =
-                {
-                    .paper = Paper::Infinite,
-                    .orientation = Orientation::Landscape,
-                    .background = Background::Grid,
-                    .spacing = 20.0F,
-                },
+        PageInfo grid = blankPage(ids.next());
+        grid.title = "Physics";
+        grid.style = PageStyle{
+            .paper = Paper::Infinite,
+            .orientation = Orientation::Landscape,
+            .background = Background::Grid,
+            .spacing = 20.0F,
         };
         const std::vector<Uuid> pageOrder{grid.id};
 
@@ -124,8 +129,8 @@ TEST(NotebookOutlineTest, PagesGoWhereTheOrderSays) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const SectionInfo section = store->readOutline().value().sections.front();
     const Uuid first = section.pages.front().id;
-    const PageInfo last{.id = ids.next(), .title = {}, .style = {}};
-    const PageInfo middle{.id = ids.next(), .title = {}, .style = {}};
+    const PageInfo last = blankPage(ids.next());
+    const PageInfo middle = blankPage(ids.next());
 
     ASSERT_TRUE(store->insertPage(section.id, last, std::vector<Uuid>{first, last.id}));
     ASSERT_TRUE(
@@ -149,7 +154,7 @@ TEST(NotebookOutlineTest, APageCanMoveToAnotherSection) {
     const Uuid moved = source.pages.front().id;
     const Uuid target = ids.next();
     ASSERT_TRUE(store->insertSection(target, "Target", std::vector<Uuid>{source.id, target}));
-    const PageInfo staying{.id = ids.next(), .title = {}, .style = {}};
+    const PageInfo staying = blankPage(ids.next());
     ASSERT_TRUE(store->insertPage(target, staying, std::vector<Uuid>{staying.id}));
 
     ASSERT_TRUE(store->orderPages(target, std::vector<Uuid>{moved, staying.id}));
@@ -166,7 +171,7 @@ TEST(NotebookOutlineTest, ATrashedPageIsHiddenUntilItIsRestoredToItsPlace) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const SectionInfo section = store->readOutline().value().sections.front();
     const Uuid first = section.pages.front().id;
-    const PageInfo second{.id = ids.next(), .title = {}, .style = {}};
+    const PageInfo second = blankPage(ids.next());
     const std::vector<Uuid> both{first, second.id};
     ASSERT_TRUE(store->insertPage(section.id, second, both));
     const Stroke kept = makeStroke(ids, 0.0F);
@@ -197,6 +202,42 @@ TEST(NotebookOutlineTest, ATrashedSectionTakesItsPagesOutOfSight) {
     EXPECT_EQ(sectionIds(store->readOutline().value()), both);
 }
 
+TEST(NotebookOutlineTest, KeepsImportedFilesAndWhatPagesShowOfThem) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = store->readOutline().value().sections.front().pages.front().id;
+    const Asset asset{
+        .id = ContentId{ContentId::Bytes{1, 2, 3}},
+        .kind = AssetKind::Pdf,
+        .name = "lecture.pdf",
+        .data = std::vector<std::byte>{std::byte{'%'}, std::byte{'P'}, std::byte{'D'}},
+    };
+    const PageMedia media{.asset = asset.id, .index = 4};
+
+    ASSERT_TRUE(store->insertAsset(asset));
+    ASSERT_TRUE(store->insertAsset(asset));
+    ASSERT_TRUE(store->setPageMedia(page, media));
+    ASSERT_TRUE(store->setPageStyle(
+        page, PageStyle{.paper = Paper::Custom, .customWidth = 500.0F, .customHeight = 700.0F}));
+
+    const Result<Asset> stored = store->asset(asset.id);
+    ASSERT_TRUE(stored.has_value()) << stored.error().message;
+    EXPECT_EQ(*stored, asset);
+
+    const NotebookOutline outline = store->readOutline().value();
+    const PageInfo& info = outline.sections.front().pages.front();
+    EXPECT_EQ(info.media, media);
+    EXPECT_EQ(info.style.paper, Paper::Custom);
+    EXPECT_FLOAT_EQ(info.style.customWidth, 500.0F);
+    EXPECT_FLOAT_EQ(info.style.customHeight, 700.0F);
+
+    ASSERT_TRUE(store->setPageMedia(page, std::nullopt));
+    EXPECT_FALSE(store->readOutline().value().sections.front().pages.front().media.has_value());
+    EXPECT_EQ(store->asset(ContentId{}).error().code, ErrorCode::NotFound);
+}
+
 TEST(NotebookOutlineTest, ChangingSomethingThatDoesNotExistIsReported) {
     const TemporaryNotebook notebook;
     Uuid7Generator ids;
@@ -223,7 +264,7 @@ TEST(NotebookOutlineTest, AFailedChangeLeavesTheOutlineAsItWas) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const NotebookOutline before = store->readOutline().value();
     const Uuid section = before.sections.front().id;
-    const PageInfo page{.id = ids.next(), .title = {}, .style = {}};
+    const PageInfo page = blankPage(ids.next());
 
     const Result<void> inserted =
         store->insertPage(section, page, std::vector<Uuid>{page.id, ids.next()});

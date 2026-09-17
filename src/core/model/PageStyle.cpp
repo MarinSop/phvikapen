@@ -36,21 +36,43 @@ constexpr PaperSize kLegal = inches(8.5F, 14.0F);
         return kLetter;
     case Paper::Legal:
         return kLegal;
+    case Paper::Custom:
+        return std::nullopt;
     }
     return std::nullopt;
 }
 
 }
 
-std::optional<PaperSize> paperSize(Paper paper, Orientation orientation) noexcept {
-    std::optional<PaperSize> size = portraitSize(paper);
-    if (size && orientation == Orientation::Landscape) {
+std::optional<PaperSize> paperSize(const PageStyle& style) noexcept {
+    if (style.paper == Paper::Custom) {
+        if (style.customWidth <= 0.0F || style.customHeight <= 0.0F) {
+            return std::nullopt;
+        }
+        return PaperSize{.width = style.customWidth, .height = style.customHeight};
+    }
+    std::optional<PaperSize> size = portraitSize(style.paper);
+    if (size && style.orientation == Orientation::Landscape) {
         std::swap(size->width, size->height);
     }
     return size;
 }
 
+PageStyle styleForPaper(PaperSize size) noexcept {
+    return PageStyle{
+        .paper = Paper::Custom,
+        .background = Background::Blank,
+        .customWidth = size.width,
+        .customHeight = size.height,
+    };
+}
+
 PageStyle normalized(PageStyle style) noexcept {
+    if (!std::isfinite(style.customWidth) || !std::isfinite(style.customHeight)
+        || style.customWidth < 0.0F || style.customHeight < 0.0F) {
+        style.customWidth = 0.0F;
+        style.customHeight = 0.0F;
+    }
     if (!std::isfinite(style.spacing)) {
         style.spacing = PageStyle::kDefaultSpacing;
     }

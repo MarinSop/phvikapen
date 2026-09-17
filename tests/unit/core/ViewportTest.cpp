@@ -67,7 +67,7 @@ TEST(ViewportTest, FitsAnInfiniteCanvasAtItsNaturalSize) {
 
 TEST(ViewportTest, CentersPaperThatIsNarrowerThanTheView) {
     Viewport viewport;
-    const PaperSize a4 = paperSize(Paper::A4, Orientation::Portrait).value_or(PaperSize{});
+    const PaperSize a4 = paperSize(PageStyle{}).value_or(PaperSize{});
 
     viewport.fit(kLaptopView, a4);
 
@@ -81,7 +81,7 @@ TEST(ViewportTest, CentersPaperThatIsNarrowerThanTheView) {
 TEST(ViewportTest, ShrinksPaperThatIsWiderThanTheView) {
     Viewport viewport;
     const ViewSize narrow{.width = 600.0F, .height = 800.0F};
-    const PaperSize a4 = paperSize(Paper::A4, Orientation::Portrait).value_or(PaperSize{});
+    const PaperSize a4 = paperSize(PageStyle{}).value_or(PaperSize{});
 
     viewport.fit(narrow, a4);
 
@@ -94,7 +94,7 @@ TEST(ViewportTest, ShrinksPaperThatIsWiderThanTheView) {
 
 TEST(ViewportTest, KeepsPaperFromDriftingOutOfView) {
     Viewport viewport;
-    const PaperSize a4 = paperSize(Paper::A4, Orientation::Portrait).value_or(PaperSize{});
+    const PaperSize a4 = paperSize(PageStyle{}).value_or(PaperSize{});
     viewport.fit(kLaptopView, a4);
 
     viewport.panBy(5000.0F, 5000.0F);

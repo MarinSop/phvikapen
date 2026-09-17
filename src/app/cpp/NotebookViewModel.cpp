@@ -549,7 +549,12 @@ void NotebookViewModel::addPage() {
     if (!place || info == nullptr || !m_storage) {
         return;
     }
-    const core::PageInfo page{.id = m_ids.next(), .title = {}, .style = info->style};
+    const core::PageInfo page{
+        .id = m_ids.next(),
+        .title = {},
+        .style = info->style,
+        .media = std::nullopt,
+    };
     m_pages.emplace(page.id, std::make_unique<core::Page>(page.id));
     runCommand(std::make_unique<core::AddPageCommand>(
         &m_outline, &*m_storage,
@@ -601,11 +606,13 @@ void NotebookViewModel::addSection() {
     if (!m_storage) {
         return;
     }
+    const core::PageStyle defaultStyle;
     const core::PageInfo* const info = currentPageInfo();
     const core::PageInfo page{
         .id = m_ids.next(),
         .title = {},
-        .style = info == nullptr ? core::PageStyle{} : info->style,
+        .style = info == nullptr ? defaultStyle : info->style,
+        .media = std::nullopt,
     };
     const std::size_t index = m_outline.sections().size();
     core::SectionInfo section{

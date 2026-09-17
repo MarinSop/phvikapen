@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/PageStyle.hpp"
 
 #include <cstddef>
@@ -16,6 +17,7 @@ struct PageInfo {
     Uuid id;
     std::string title;
     PageStyle style;
+    std::optional<PageMedia> media;
 
     friend bool operator==(const PageInfo&, const PageInfo&) = default;
 };
@@ -79,6 +81,8 @@ public:
     [[nodiscard]] Result<RemovedPage> removePage(const Uuid& pageId);
     [[nodiscard]] Result<std::string> renamePage(const Uuid& pageId, std::string title);
     [[nodiscard]] Result<PageStyle> setPageStyle(const Uuid& pageId, const PageStyle& style);
+    [[nodiscard]] Result<std::optional<PageMedia>>
+    setPageMedia(const Uuid& pageId, const std::optional<PageMedia>& media);
     [[nodiscard]] Result<PagePlace> movePage(const Uuid& pageId, const PagePlace& place);
 
 private:

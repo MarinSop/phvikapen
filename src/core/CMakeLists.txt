@@ -13,6 +13,7 @@ target_sources(phvikapen_core
         filter/OneEuroFilter.cpp
         geometry/Distance.cpp
         geometry/Viewport.cpp
+        id/ContentId.cpp
         id/Uuid.cpp
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
@@ -43,6 +44,7 @@ target_sources(phvikapen_core
             geometry/Distance.hpp
             geometry/Rect.hpp
             geometry/Viewport.hpp
+            id/ContentId.hpp
             id/Uuid.hpp
             id/Uuid7Generator.hpp
             ink/InkSample.hpp
@@ -50,6 +52,7 @@ target_sources(phvikapen_core
             ink/StrokeHitTest.hpp
             ink/StrokeMesh.hpp
             ink/StrokeSpline.hpp
+            model/Asset.hpp
             model/Outline.hpp
             model/Page.hpp
             model/PageStyle.hpp
