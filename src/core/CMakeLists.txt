@@ -27,6 +27,7 @@ target_sources(phvikapen_core
         storage/Sqlite.hpp
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
+        undo/OutlineCommands.cpp
         undo/StrokeCommands.cpp
         undo/UndoStack.cpp
     PUBLIC
@@ -54,6 +55,7 @@ target_sources(phvikapen_core
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
             storage/StrokeCodec.hpp
+            undo/OutlineCommands.hpp
             undo/StrokeCommands.hpp
             undo/UndoStack.hpp
             "${generated_dir}/core/version.hpp"

@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
 
@@ -24,6 +25,20 @@ StorageThread::StorageThread(std::filesystem::path path, ErrorHandler onError)
 StorageThread::~StorageThread() {
     m_thread.request_stop();
     m_thread.join();
+}
+
+void StorageThread::loadOutline(OutlineHandler onLoaded) {
+    post([this, onLoaded = std::move(onLoaded)] {
+        if (!m_store) {
+            onLoaded(makeError(ErrorCode::IoFailure, "the notebook is not open"));
+            return;
+        }
+        onLoaded(m_store->readOutline());
+    });
+}
+
+void StorageThread::submit(Change change) {
+    post([this, change = std::move(change)] { write(change); });
 }
 
 void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
@@ -82,7 +97,7 @@ void StorageThread::open(const std::filesystem::path& path) {
     m_store = std::move(*opened);
 }
 
-void StorageThread::write(const std::function<Result<void>(NotebookStore&)>& change) {
+void StorageThread::write(const Change& change) {
     if (!m_store) {
         return;
     }

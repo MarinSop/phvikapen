@@ -5,6 +5,7 @@
 #include "core/model/Page.hpp"
 #include "core/undo/UndoStack.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace phvikapen::core {
@@ -17,6 +18,7 @@ public:
 
     Result<void> apply() override;
     Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
 
 private:
     Page* m_page;
@@ -30,6 +32,7 @@ public:
 
     Result<void> apply() override;
     Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
 
 private:
     Page* m_page;
@@ -43,6 +46,7 @@ public:
 
     Result<void> apply() override;
     Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
 
 private:
     Page* m_page;

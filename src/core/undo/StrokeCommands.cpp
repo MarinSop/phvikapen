@@ -5,6 +5,7 @@
 #include "core/model/Page.hpp"
 #include "core/storage/StorageThread.hpp"
 
+#include <optional>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -83,6 +84,18 @@ Result<void> EraseStrokesCommand::apply() {
 
 Result<void> EraseStrokesCommand::revert() {
     return restoreStrokes(*m_page, *m_storage, std::exchange(m_erased, {}));
+}
+
+std::optional<Uuid> AddStrokeCommand::pageToShow() const {
+    return m_page->id();
+}
+
+std::optional<Uuid> ClearPageCommand::pageToShow() const {
+    return m_page->id();
+}
+
+std::optional<Uuid> EraseStrokesCommand::pageToShow() const {
+    return m_page->id();
 }
 
 }

@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
 
@@ -21,6 +22,8 @@ class StorageThread {
 public:
     using ErrorHandler = std::function<void(const Error&)>;
     using PageHandler = std::function<void(Result<std::vector<PlacedStroke>>)>;
+    using OutlineHandler = std::function<void(Result<NotebookOutline>)>;
+    using Change = std::function<Result<void>(NotebookStore&)>;
 
     StorageThread(std::filesystem::path path, ErrorHandler onError);
     ~StorageThread();
@@ -30,7 +33,9 @@ public:
     StorageThread(StorageThread&&) = delete;
     StorageThread& operator=(StorageThread&&) = delete;
 
+    void loadOutline(OutlineHandler onLoaded);
     void loadPage(const Uuid& pageId, PageHandler onLoaded);
+    void submit(Change change);
     void insertStroke(const Uuid& pageId, PlacedStroke placed);
     void removeStroke(const Uuid& pageId, const Uuid& strokeId);
     void removeStrokesOfPage(const Uuid& pageId);
@@ -43,7 +48,7 @@ private:
     void post(Task task);
     void run(const std::stop_token& stopToken);
     void open(const std::filesystem::path& path);
-    void write(const std::function<Result<void>(NotebookStore&)>& change);
+    void write(const Change& change);
 
     ErrorHandler m_onError;
     std::optional<NotebookStore> m_store;

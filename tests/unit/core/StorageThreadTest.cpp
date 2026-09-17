@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
 #include "support/TemporaryNotebook.hpp"
@@ -114,6 +115,25 @@ TEST(StorageThreadTest, LoadsAPageInDrawingOrder) {
     EXPECT_EQ((*loaded)->front().stroke.id(), early.id());
     EXPECT_EQ((*loaded)->back().ordinal, 4);
     EXPECT_EQ((*loaded)->back().stroke.id(), late.id());
+}
+
+TEST(StorageThreadTest, LoadsTheOutlineAndCarriesOutSubmittedChanges) {
+    const TemporaryNotebook notebook;
+    ErrorLog log;
+    StorageThread storage{notebook.path(), log.handler()};
+    std::optional<Result<NotebookOutline>> loaded;
+
+    storage.submit([](NotebookStore& store) { return store.setTitle("Renamed"); });
+    storage.submit([](NotebookStore& store) { return store.trashPage(Uuid{}); });
+    storage.loadOutline([&](Result<NotebookOutline> outline) { loaded = std::move(outline); });
+    storage.waitUntilIdle();
+
+    ASSERT_TRUE(loaded.has_value());
+    ASSERT_TRUE(loaded->has_value()) << loaded->error().message;
+    EXPECT_EQ((*loaded)->title, "Renamed");
+    EXPECT_EQ((*loaded)->sections.size(), 1U);
+    ASSERT_EQ(log.errors().size(), 1U);
+    EXPECT_EQ(log.errors().front().code, ErrorCode::NotFound);
 }
 
 TEST(StorageThreadTest, FinishesEveryQueuedWriteBeforeItStops) {

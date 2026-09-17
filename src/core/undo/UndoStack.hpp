@@ -1,9 +1,11 @@
 #pragma once
 
 #include "core/Error.hpp"
+#include "core/id/Uuid.hpp"
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace phvikapen::core {
@@ -21,6 +23,8 @@ public:
     [[nodiscard]] virtual Result<void> apply() = 0;
 
     [[nodiscard]] virtual Result<void> revert() = 0;
+
+    [[nodiscard]] virtual std::optional<Uuid> pageToShow() const { return std::nullopt; }
 };
 
 class UndoStack {
@@ -40,6 +44,10 @@ public:
     [[nodiscard]] Result<void> redo();
 
     void clear() noexcept;
+
+    [[nodiscard]] const ICommand* nextUndo() const noexcept;
+
+    [[nodiscard]] const ICommand* nextRedo() const noexcept;
 
     [[nodiscard]] std::size_t undoCount() const noexcept { return m_applied; }
 

@@ -53,6 +53,14 @@ Result<void> UndoStack::redo() {
     return {};
 }
 
+const ICommand* UndoStack::nextUndo() const noexcept {
+    return canUndo() ? m_commands[m_applied - 1].get() : nullptr;
+}
+
+const ICommand* UndoStack::nextRedo() const noexcept {
+    return canRedo() ? m_commands[m_applied].get() : nullptr;
+}
+
 void UndoStack::clear() noexcept {
     m_commands.clear();
     m_applied = 0;

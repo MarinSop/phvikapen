@@ -58,6 +58,25 @@ TEST(UndoStackTest, AnEmptyHistoryHasNothingToUndoOrRedo) {
     EXPECT_EQ(stack.redoCount(), 0U);
 }
 
+TEST(UndoStackTest, ShowsTheCommandsNextInLine) {
+    std::vector<std::string> log;
+    UndoStack stack;
+    std::unique_ptr<RecordingCommand> first = recording(&log, "a");
+    std::unique_ptr<RecordingCommand> second = recording(&log, "b");
+    const ICommand* const firstAddress = first.get();
+    const ICommand* const secondAddress = second.get();
+    EXPECT_EQ(stack.nextUndo(), nullptr);
+
+    ASSERT_TRUE(stack.run(std::move(first)));
+    ASSERT_TRUE(stack.run(std::move(second)));
+    EXPECT_EQ(stack.nextUndo(), secondAddress);
+    EXPECT_EQ(stack.nextRedo(), nullptr);
+
+    ASSERT_TRUE(stack.undo());
+    EXPECT_EQ(stack.nextUndo(), firstAddress);
+    EXPECT_EQ(stack.nextRedo(), secondAddress);
+}
+
 TEST(UndoStackTest, RunningACommandAppliesItOnce) {
     std::vector<std::string> log;
     UndoStack stack;
