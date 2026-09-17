@@ -73,13 +73,7 @@ set_target_properties(phvikapen PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-if(WIN32)
-    add_custom_command(TARGET phvikapen POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "$<TARGET_RUNTIME_DLLS:phvikapen>" "$<TARGET_FILE_DIR:phvikapen>"
-        COMMAND_EXPAND_LISTS
-    )
-endif()
+phvikapen_copy_runtime_dlls(phvikapen)
 
 install(TARGETS phvikapen
     BUNDLE DESTINATION .

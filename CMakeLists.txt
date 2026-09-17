@@ -22,6 +22,7 @@ include(PhvikaPenWarnings)
 include(PhvikaPenSanitizers)
 include(PhvikaPenLayering)
 include(PhvikaPenPdfium)
+include(PhvikaPenRuntimeDlls)
 
 if(APPLE)
     list(APPEND CMAKE_BUILD_RPATH "${PHVIKAPEN_PDFIUM_DIR}/lib")

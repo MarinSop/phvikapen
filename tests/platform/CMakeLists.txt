@@ -22,13 +22,7 @@ set_target_properties(phvikapen_platform_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-if(WIN32)
-    add_custom_command(TARGET phvikapen_platform_tests POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-            "$<TARGET_FILE:PDFium::pdfium>" "$<TARGET_FILE_DIR:phvikapen_platform_tests>"
-        VERBATIM
-    )
-endif()
+phvikapen_copy_runtime_dlls(phvikapen_platform_tests)
 
 include(GoogleTest)
 gtest_discover_tests(phvikapen_platform_tests

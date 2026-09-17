@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <optional>
@@ -40,7 +41,7 @@ constexpr int kResolution = 150;
         painter.end();
     }
 
-    std::ifstream file{path.toStdString(), std::ios::binary};
+    std::ifstream file{std::filesystem::path{path.toStdU16String()}, std::ios::binary};
     const std::string contents{std::istreambuf_iterator<char>{file},
                                std::istreambuf_iterator<char>{}};
     std::vector<std::byte> data(contents.size());

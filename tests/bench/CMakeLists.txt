@@ -19,3 +19,5 @@ set_target_properties(phvikapen_bench PROPERTIES
     AUTORCC OFF
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
+
+phvikapen_copy_runtime_dlls(phvikapen_bench)

@@ -47,5 +47,7 @@ set_target_properties(phvikapen_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
+phvikapen_copy_runtime_dlls(phvikapen_tests)
+
 include(GoogleTest)
 gtest_discover_tests(phvikapen_tests DISCOVERY_MODE PRE_TEST)

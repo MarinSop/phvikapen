@@ -28,3 +28,5 @@ set_target_properties(ink_recorder PROPERTIES
     MACOSX_BUNDLE TRUE
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
+
+phvikapen_copy_runtime_dlls(ink_recorder)

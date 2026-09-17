@@ -19,6 +19,8 @@ set_target_properties(phvikapen_qml_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
+phvikapen_copy_runtime_dlls(phvikapen_qml_tests)
+
 add_test(NAME qml.components COMMAND phvikapen_qml_tests)
 
 set_tests_properties(qml.components PROPERTIES
