@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace phvikapen::core {
@@ -154,6 +155,50 @@ TEST(ClearPageCommandTest, ClearingAnEmptyPageCanStillBeUndone) {
     EXPECT_TRUE(command.revert());
     EXPECT_TRUE(idsOn(notebook.page).empty());
     EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(EraseStrokesCommandTest, ErasesSeveralStrokesAndPutsThemBackInTheirPlaces) {
+    OpenNotebook notebook;
+    const Stroke first = makeStroke(notebook.ids, 10.0F);
+    const Stroke second = makeStroke(notebook.ids, 100.0F);
+    const Stroke third = makeStroke(notebook.ids, 200.0F);
+    for (const auto& [ordinal, stroke] :
+         {std::pair{0, first}, std::pair{1, second}, std::pair{2, third}}) {
+        AddStrokeCommand add{
+            &notebook.page, &notebook.storage, {.ordinal = ordinal, .stroke = stroke}};
+        ASSERT_TRUE(add.apply());
+    }
+    EraseStrokesCommand command{&notebook.page, &notebook.storage, {third.id(), first.id()}};
+
+    ASSERT_TRUE(command.apply());
+    EXPECT_EQ(idsOn(notebook.page), std::vector<Uuid>{second.id()});
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{second.id()});
+
+    ASSERT_TRUE(command.revert());
+    const std::vector<Uuid> all{first.id(), second.id(), third.id()};
+    EXPECT_EQ(idsOn(notebook.page), all);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), all);
+
+    ASSERT_TRUE(command.apply());
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{second.id()});
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(EraseStrokesCommandTest, ErasesNothingWhenOneStrokeIsMissing) {
+    OpenNotebook notebook;
+    const Stroke kept = makeStroke(notebook.ids, 10.0F);
+    AddStrokeCommand add{&notebook.page, &notebook.storage, {.ordinal = 0, .stroke = kept}};
+    ASSERT_TRUE(add.apply());
+    EraseStrokesCommand command{
+        &notebook.page, &notebook.storage, {kept.id(), notebook.ids.next()}};
+
+    const Result<void> applied = command.apply();
+
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(applied.error().code, ErrorCode::NotFound);
+    EXPECT_EQ(idsOn(notebook.page), std::vector<Uuid>{kept.id()});
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{kept.id()});
     EXPECT_TRUE(notebook.errors.empty());
 }
 

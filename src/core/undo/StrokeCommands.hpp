@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/Error.hpp"
+#include "core/id/Uuid.hpp"
 #include "core/model/Page.hpp"
 #include "core/undo/UndoStack.hpp"
 
@@ -34,6 +35,20 @@ private:
     Page* m_page;
     StorageThread* m_storage;
     std::vector<PlacedStroke> m_removed;
+};
+
+class EraseStrokesCommand final : public ICommand {
+public:
+    EraseStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+
+private:
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_strokeIds;
+    std::vector<PlacedStroke> m_erased;
 };
 
 }
