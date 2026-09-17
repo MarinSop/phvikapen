@@ -19,14 +19,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Eraser that removes whole strokes, from the eraser tool or the eraser end of the pen. One sweep
   is one change for undo.
 - Finished strokes are drawn along a spline as one continuous strip.
+- Notebooks hold sections and pages. Pages carry their own paper size, orientation, background and
+  line spacing, and can be added, deleted, moved and renamed, all of it undoable.
+- The page is shown through a viewport that scrolls and zooms with the wheel, the trackpad, a pinch
+  or the fingers on a touch screen, while the pen keeps drawing.
+- Paper and its ruling are drawn on the GPU: a sheet on a desk, or an endless canvas, blank, lined,
+  squared or dotted.
+- A sidebar with the sections and pages of the notebook and the page setup, and page navigation in
+  the tool bar and from the keyboard.
+- Several notebooks open at once in tabs, created, opened, renamed and deleted from the tab bar.
+  The notebooks that were open, and the page each was left on, come back at the next start.
+- Three pens, a highlighter and an eraser whose size can be set, with a colour palette. The tools
+  are remembered between sessions.
+- Messages that used to go only to the log are shown in the window.
 
 ### Changed
 
 - The ink canvas draws and stores smoothed samples, while ink backends keep reporting the raw ones.
 - Notebook files are read and written on a storage thread, so drawing never waits for the disk.
-- Every stroke keeps a fixed place on its page; notebooks from schema version 1 are upgraded.
+- Every stroke keeps a fixed place on its page; notebooks from earlier schema versions are upgraded.
 - Notebooks live in the application data folder instead of the local application data folder,
   which the Windows installer deletes on uninstall.
+- Ink stays on the sheet: a stroke cannot be started beside fixed paper and is clipped to it.
 
 ### Fixed
 

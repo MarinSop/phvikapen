@@ -7,8 +7,19 @@ account, no cloud.
 The target platform is Windows 11 on ARM64. Development happens on macOS, where the application
 builds and runs with a Qt-based ink canvas that accepts pen and mouse input.
 
-This repository currently contains the project skeleton: the build system, the domain types, the
-ink canvas, the application shell, the input recorder and the delivery pipeline.
+What works today: notebooks in tabs, each with sections and pages, written on with a pen, a mouse
+or a finger on a touch screen. Pages are paper of a chosen size or an endless canvas, blank, lined,
+squared or dotted. Three pens, a highlighter and an eraser share a colour palette and their widths,
+every change can be undone, and everything is written to the notebook file as it happens.
+
+Still to come: PDF and image import, export to PDF, settings and automatic updates.
+
+## Where notebooks are kept
+
+One notebook is one SQLite file with the `.phvika` suffix, in the application data folder:
+`%AppData%\PhvikaPen\notebooks` on Windows and `~/Library/Application Support/PhvikaPen/notebooks`
+on macOS. The file name is the name of the notebook. Deleting a notebook moves it to the trash.
+The location is deliberate and is explained in `docs/adr/0004-notebook-location.md`.
 
 ## Prerequisites
 
