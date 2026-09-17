@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Three pens, a highlighter and an eraser whose size can be set, with a colour palette. The tools
   are remembered between sessions.
 - Messages that used to go only to the log are shown in the window.
+- PDFs and pictures can be imported: a PDF adds a page per page of it, a picture adds one page, and
+  both are drawn behind the ink so they can be written on. The files are kept inside the notebook.
 
 ### Changed
 
@@ -41,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notebooks live in the application data folder instead of the local application data folder,
   which the Windows installer deletes on uninstall.
 - Ink stays on the sheet: a stroke cannot be started beside fixed paper and is clipped to it.
+- Settings are stored under the application's own domain instead of the placeholder Qt falls back to.
 
 ### Fixed
 

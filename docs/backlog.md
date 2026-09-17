@@ -28,6 +28,16 @@ into a real problem earlier.
 - **Loading a large notebook.** Opening a page reads and decodes all of its strokes at once. A page
   with tens of thousands of strokes has not been measured, and there is no benchmark for it.
 
+## Imported documents
+
+- **Pictures are decoded on the thread that draws.** PDF pages are read and drawn on their own
+  thread, but a picture is decoded where the view model runs, which a very large photograph would
+  be felt on.
+- **A page of a document is one texture.** The whole page is drawn again whenever the zoom changes
+  enough, instead of only the part in view, which will matter on large pages at high zoom.
+- **Nothing removes a file that no page shows any more.** Undoing an import leaves the file in the
+  notebook, and emptying the trash should take it with it.
+
 ## Experience
 
 - **The highlighter darkens where it crosses itself.** Translucent ink is blended per segment, so a
