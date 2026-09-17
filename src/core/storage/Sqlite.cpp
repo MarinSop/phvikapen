@@ -162,7 +162,7 @@ Uuid Statement::id(int column) const noexcept {
 Transaction::Transaction(sqlite3* database) noexcept : m_database{database} {}
 
 Result<Transaction> Transaction::begin(sqlite3* database) {
-    if (const Result<void> begun = execute(database, "BEGIN IMMEDIATE;"); !begun) {
+    if (const Result<void> begun = execute(database, "SAVEPOINT change;"); !begun) {
         return std::unexpected{begun.error()};
     }
     return Transaction{database};
@@ -170,7 +170,7 @@ Result<Transaction> Transaction::begin(sqlite3* database) {
 
 Transaction::~Transaction() {
     if (m_database != nullptr) {
-        sqlite3_exec(m_database, "ROLLBACK;", nullptr, nullptr, nullptr);
+        sqlite3_exec(m_database, "ROLLBACK TO change; RELEASE change;", nullptr, nullptr, nullptr);
     }
 }
 
@@ -178,7 +178,7 @@ Transaction::Transaction(Transaction&& other) noexcept
     : m_database{std::exchange(other.m_database, nullptr)} {}
 
 Result<void> Transaction::commit() {
-    if (const Result<void> committed = execute(m_database, "COMMIT;"); !committed) {
+    if (const Result<void> committed = execute(m_database, "RELEASE change;"); !committed) {
         return committed;
     }
     m_database = nullptr;

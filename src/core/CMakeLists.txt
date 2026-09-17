@@ -46,6 +46,7 @@ target_sources(phvikapen_core
             ink/StrokeHitTest.hpp
             ink/StrokeMesh.hpp
             ink/StrokeSpline.hpp
+            model/Outline.hpp
             model/Page.hpp
             model/PageStyle.hpp
             model/StrokeGrid.hpp
