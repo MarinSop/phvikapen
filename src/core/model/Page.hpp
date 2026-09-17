@@ -3,6 +3,8 @@
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeHitTest.hpp"
+#include "core/model/StrokeGrid.hpp"
 
 #include <cstdint>
 #include <span>
@@ -32,9 +34,12 @@ public:
 
     [[nodiscard]] std::vector<PlacedStroke> takeAll() noexcept;
 
+    [[nodiscard]] std::vector<Uuid> strokesTouchedBy(const EraserSweep& sweep) const;
+
 private:
     Uuid m_id;
     std::vector<PlacedStroke> m_strokes;
+    StrokeGrid m_grid;
 };
 
 }

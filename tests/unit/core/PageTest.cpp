@@ -3,6 +3,7 @@
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
+#include "core/ink/StrokeHitTest.hpp"
 #include "support/TemporaryNotebook.hpp"
 
 #include <gtest/gtest.h>
@@ -110,6 +111,48 @@ TEST(PageTest, ReportsAStrokeItDoesNotHold) {
 
     ASSERT_FALSE(removed.has_value());
     EXPECT_EQ(removed.error().code, ErrorCode::NotFound);
+}
+
+TEST(PageTest, FindsTheStrokesAnEraserTouches) {
+    Uuid7Generator ids;
+    Page page{ids.next()};
+    const PlacedStroke near{.ordinal = 0, .stroke = makeStroke(ids, 0.0F)};
+    const PlacedStroke far{.ordinal = 1, .stroke = makeStroke(ids, 1000.0F)};
+    ASSERT_TRUE(page.insert(near));
+    ASSERT_TRUE(page.insert(far));
+
+    const EraserSweep sweep{
+        .from = {.x = 5.0F, .y = 55.0F},
+        .to = {.x = 5.0F, .y = 55.0F},
+        .radius = 2.0F,
+    };
+
+    EXPECT_EQ(page.strokesTouchedBy(sweep), std::vector<Uuid>{near.stroke.id()});
+}
+
+TEST(PageTest, AnErasedStrokeCanNoLongerBeTouched) {
+    Uuid7Generator ids;
+    Page page{ids.next()};
+    const PlacedStroke placed{.ordinal = 0, .stroke = makeStroke(ids, 0.0F)};
+    ASSERT_TRUE(page.insert(placed));
+    const EraserSweep sweep{
+        .from = {.x = 5.0F, .y = 55.0F},
+        .to = {.x = 5.0F, .y = 55.0F},
+        .radius = 2.0F,
+    };
+
+    ASSERT_TRUE(page.remove(placed.stroke.id()));
+    EXPECT_TRUE(page.strokesTouchedBy(sweep).empty());
+
+    ASSERT_TRUE(page.insert(placed));
+    EXPECT_EQ(page.strokesTouchedBy(sweep), std::vector<Uuid>{placed.stroke.id()});
+
+    page = Page{page.id(), page.takeAll()};
+    EXPECT_EQ(page.strokesTouchedBy(sweep), std::vector<Uuid>{placed.stroke.id()});
+
+    const std::vector<PlacedStroke> taken = page.takeAll();
+    EXPECT_EQ(taken.size(), 1U);
+    EXPECT_TRUE(page.strokesTouchedBy(sweep).empty());
 }
 
 TEST(PageTest, HandsOverEverythingAtOnce) {

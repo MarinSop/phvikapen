@@ -11,11 +11,14 @@ target_sources(phvikapen_core
         Error.cpp
         filter/InkFilter.cpp
         filter/OneEuroFilter.cpp
+        geometry/Distance.cpp
         id/Uuid.cpp
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
+        ink/StrokeHitTest.cpp
         ink/StrokeMesh.cpp
         model/Page.cpp
+        model/StrokeGrid.cpp
         storage/NotebookStore.cpp
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
@@ -30,13 +33,16 @@ target_sources(phvikapen_core
             Error.hpp
             filter/InkFilter.hpp
             filter/OneEuroFilter.hpp
+            geometry/Distance.hpp
             geometry/Rect.hpp
             id/Uuid.hpp
             id/Uuid7Generator.hpp
             ink/InkSample.hpp
             ink/Stroke.hpp
+            ink/StrokeHitTest.hpp
             ink/StrokeMesh.hpp
             model/Page.hpp
+            model/StrokeGrid.hpp
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
             storage/StrokeCodec.hpp

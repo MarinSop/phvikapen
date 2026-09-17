@@ -14,6 +14,11 @@ struct Rect {
 
     [[nodiscard]] constexpr float height() const noexcept { return bottom - top; }
 
+    [[nodiscard]] constexpr bool intersects(const Rect& other) const noexcept {
+        return left <= other.right && other.left <= right && top <= other.bottom
+               && other.top <= bottom;
+    }
+
     [[nodiscard]] constexpr Rect united(const Rect& other) const noexcept {
         return {
             .left = std::min(left, other.left),

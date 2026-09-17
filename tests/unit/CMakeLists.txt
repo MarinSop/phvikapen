@@ -3,6 +3,7 @@ find_package(GTest CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_executable(phvikapen_tests
+    core/DistanceTest.cpp
     core/ErrorTest.cpp
     core/NotebookStoreTest.cpp
     core/OneEuroFilterTest.cpp
@@ -10,6 +11,8 @@ add_executable(phvikapen_tests
     core/StrokeCodecTest.cpp
     core/StorageThreadTest.cpp
     core/StrokeCommandsTest.cpp
+    core/StrokeGridTest.cpp
+    core/StrokeHitTestTest.cpp
     core/StrokeMeshTest.cpp
     core/StrokeTest.cpp
     core/UndoStackTest.cpp
