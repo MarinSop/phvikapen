@@ -8,6 +8,7 @@ add_executable(phvikapen_tests
     core/OneEuroFilterTest.cpp
     core/PageTest.cpp
     core/StrokeCodecTest.cpp
+    core/StorageThreadTest.cpp
     core/StrokeCommandsTest.cpp
     core/StrokeMeshTest.cpp
     core/StrokeTest.cpp

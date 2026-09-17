@@ -17,6 +17,7 @@ target_sources(phvikapen_core
         ink/StrokeMesh.cpp
         model/Page.cpp
         storage/NotebookStore.cpp
+        storage/StorageThread.cpp
         storage/StrokeCodec.cpp
         undo/StrokeCommands.cpp
         undo/UndoStack.cpp
@@ -37,6 +38,7 @@ target_sources(phvikapen_core
             ink/StrokeMesh.hpp
             model/Page.hpp
             storage/NotebookStore.hpp
+            storage/StorageThread.hpp
             storage/StrokeCodec.hpp
             undo/StrokeCommands.hpp
             undo/UndoStack.hpp
