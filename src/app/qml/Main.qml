@@ -2,14 +2,13 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import PhvikaPen.Ui
 
 ApplicationWindow {
     id: root
 
     height: 800
-    title: qsTr("PhvikaPen %1").arg(AppInfo.version)
+    title: qsTr("%1 — PhvikaPen %2").arg(notebookModel.title).arg(AppInfo.version)
     visible: true
     width: 1280
 
@@ -22,11 +21,7 @@ ApplicationWindow {
         id: toolState
     }
 
-    NotebooksViewModel {
-        id: notebooks
-    }
-
-    // TODO(M3): One model per notebook.
+    // TODO(M3): One model per notebook, following the tab in front.
     NotebookViewModel {
         id: notebookModel
     }
@@ -43,39 +38,39 @@ ApplicationWindow {
         onActivated: notebookModel.redo()
     }
 
-    ColumnLayout {
+    Shortcut {
+        sequences: [StandardKey.MoveToPreviousPage]
+
+        onActivated: notebookModel.previousPage()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.MoveToNextPage]
+
+        onActivated: notebookModel.nextPage()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.ZoomIn]
+
+        onActivated: notebookModel.canvas.zoomIn()
+    }
+
+    Shortcut {
+        sequences: [StandardKey.ZoomOut]
+
+        onActivated: notebookModel.canvas.zoomOut()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+0"]
+
+        onActivated: notebookModel.canvas.fitPage()
+    }
+
+    NotebookPage {
         anchors.fill: parent
-        spacing: 0
-
-        TabBar {
-            id: tabBar
-
-            Layout.fillWidth: true
-
-            Repeater {
-                model: notebooks.titles
-
-                TabButton {
-                    required property string modelData
-
-                    text: modelData
-                }
-            }
-        }
-
-        StackLayout {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            currentIndex: tabBar.currentIndex
-
-            Repeater {
-                model: notebooks.titles
-
-                NotebookPage {
-                    notebook: notebookModel
-                    tools: toolState
-                }
-            }
-        }
+        notebook: notebookModel
+        tools: toolState
     }
 }

@@ -110,6 +110,7 @@ void QtInkRenderer::createInkPipeline() {
         QRhiShaderStage{QRhiShaderStage::Fragment,
                         loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/ink.frag.qsb"))},
     });
+    m_pipeline->setFlags(QRhiGraphicsPipeline::UsesScissor);
     m_pipeline->setTargetBlends({blend});
     m_pipeline->setSampleCount(m_sampleCount);
     m_pipeline->setVertexInputLayout(inputLayout);
@@ -262,6 +263,25 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
                                 uniforms.data());
 }
 
+QRhiScissor QtInkRenderer::inkScissor(const QSize& outputSize) const {
+    const std::optional<core::PaperSize> paper =
+        core::paperSize(m_pageStyle.paper, m_pageStyle.orientation);
+    if (!paper) {
+        return QRhiScissor{0, 0, outputSize.width(), outputSize.height()};
+    }
+    const float pixelRatio =
+        m_logicalWidth > 0.0F ? static_cast<float>(outputSize.width()) / m_logicalWidth : 1.0F;
+    const core::Point topLeft = m_viewport.toView({.x = 0.0F, .y = 0.0F});
+    const core::Point bottomRight = m_viewport.toView({.x = paper->width, .y = paper->height});
+    const int left = std::clamp(static_cast<int>(topLeft.x * pixelRatio), 0, outputSize.width());
+    const int right =
+        std::clamp(static_cast<int>(bottomRight.x * pixelRatio), 0, outputSize.width());
+    const int top = std::clamp(static_cast<int>(topLeft.y * pixelRatio), 0, outputSize.height());
+    const int bottom =
+        std::clamp(static_cast<int>(bottomRight.y * pixelRatio), 0, outputSize.height());
+    return QRhiScissor{left, outputSize.height() - bottom, right - left, bottom - top};
+}
+
 void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     QRhiResourceUpdateBatch* const updates = rhi()->nextResourceUpdateBatch();
     uploadVertices(*updates);
@@ -286,6 +306,7 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
 
     if (!m_vertices.empty()) {
         commandBuffer->setGraphicsPipeline(m_pipeline.get());
+        commandBuffer->setScissor(inkScissor(outputSize));
         commandBuffer->setShaderResources();
         const QRhiCommandBuffer::VertexInput vertexInput{m_vertexBuffer.get(), 0};
         commandBuffer->setVertexInput(0, 1, &vertexInput);

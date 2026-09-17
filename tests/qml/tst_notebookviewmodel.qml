@@ -34,7 +34,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         verify(!notebook.canUndo);
 
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
         compare(notebook.strokeCount, 1);
         verify(notebook.canUndo);
 
@@ -50,18 +50,18 @@ TestCase {
 
     function test_oneSweepOfTheEraserIsOneChange() {
         const notebook = openNotebook(newNotebookPath());
-        draw(notebook, 20, 20);
-        draw(notebook, 20, 100);
+        draw(notebook, 40, 40);
+        draw(notebook, 40, 120);
         draw(notebook, 200, 200);
         const canvas = notebook.canvas;
         canvas.erasing = true;
 
-        mousePress(canvas, 20, 0);
-        mouseMove(canvas, 20, 60, -1, Qt.LeftButton);
-        mouseMove(canvas, 20, 150, -1, Qt.LeftButton);
+        mousePress(canvas, 40, 30);
+        mouseMove(canvas, 40, 80, -1, Qt.LeftButton);
+        mouseMove(canvas, 40, 150, -1, Qt.LeftButton);
         compare(notebook.strokeCount, 3);
 
-        mouseRelease(canvas, 20, 150);
+        mouseRelease(canvas, 40, 150);
         compare(notebook.strokeCount, 1);
 
         notebook.undo();
@@ -74,7 +74,7 @@ TestCase {
 
     function test_theEraserLeavesUntouchedStrokesAlone() {
         const notebook = openNotebook(newNotebookPath());
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
         const canvas = notebook.canvas;
         canvas.erasing = true;
 
@@ -87,18 +87,33 @@ TestCase {
         compare(notebook.strokeCount, 0);
     }
 
+    function test_inkStaysOnTheSheet() {
+        const notebook = openNotebook(newNotebookPath());
+
+        draw(notebook, 2, 120);
+        compare(notebook.strokeCount, 0);
+
+        draw(notebook, 200, 120);
+        compare(notebook.strokeCount, 1);
+
+        notebook.paper = PageOptions.Infinite;
+        draw(notebook, 2, 120);
+        compare(notebook.strokeCount, 2);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
         compare(notebook.sectionCount, 1);
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
 
         notebook.addPage();
         compare(notebook.pageCount, 2);
         compare(notebook.currentPage, 1);
         compare(notebook.strokeCount, 0);
-        draw(notebook, 20, 20);
-        draw(notebook, 20, 100);
+        draw(notebook, 40, 40);
+        draw(notebook, 40, 120);
 
         notebook.previousPage();
         compare(notebook.currentPage, 0);
@@ -112,9 +127,9 @@ TestCase {
 
     function test_undoGoesBackToThePageItChanges() {
         const notebook = openNotebook(newNotebookPath());
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
         notebook.addPage();
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
         notebook.previousPage();
         compare(notebook.currentPage, 0);
 
@@ -127,7 +142,7 @@ TestCase {
 
     function test_aDeletedPageComesBackWithItsStrokes() {
         const notebook = openNotebook(newNotebookPath());
-        draw(notebook, 20, 20);
+        draw(notebook, 40, 40);
         notebook.addPage();
         compare(notebook.pageCount, 2);
 
@@ -247,8 +262,8 @@ TestCase {
 
     function test_oneUndoBringsAClearedPageBack() {
         const notebook = openNotebook(newNotebookPath());
-        draw(notebook, 20, 20);
-        draw(notebook, 20, 100);
+        draw(notebook, 40, 40);
+        draw(notebook, 40, 120);
 
         notebook.clearPage();
         compare(notebook.strokeCount, 0);
@@ -261,8 +276,8 @@ TestCase {
     function test_strokesSurviveReopeningTheNotebook() {
         const path = newNotebookPath();
         const first = openNotebook(path);
-        draw(first, 20, 20);
-        draw(first, 20, 100);
+        draw(first, 40, 40);
+        draw(first, 40, 120);
         first.clearPage();
         first.undo();
         first.destroy();

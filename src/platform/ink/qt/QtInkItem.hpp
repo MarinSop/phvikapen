@@ -112,6 +112,7 @@ private:
     [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
     [[nodiscard]] bool handleNativeGesture(const QNativeGestureEvent& event);
     [[nodiscard]] core::InkSample onPage(core::InkSample sample) const noexcept;
+    [[nodiscard]] bool onPaper(const core::InkSample& sample) const noexcept;
     [[nodiscard]] core::ViewSize viewSize() const noexcept;
     void changeView(const core::Viewport& viewport);
 

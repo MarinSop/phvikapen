@@ -378,7 +378,20 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
     return true;
 }
 
+bool QtInkItem::onPaper(const InkSample& sample) const noexcept {
+    const std::optional<core::PaperSize> paper =
+        core::paperSize(m_pageStyle.paper, m_pageStyle.orientation);
+    if (!paper) {
+        return true;
+    }
+    return sample.x >= 0.0F && sample.y >= 0.0F && sample.x <= paper->width
+           && sample.y <= paper->height;
+}
+
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    if (!m_erasing && !eraserTip && !onPaper(sample)) {
+        return;
+    }
     if (m_erasing || eraserTip) {
         beginErase(sample);
     } else {

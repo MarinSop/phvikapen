@@ -4,6 +4,8 @@
 #include "core/ink/StrokeMesh.hpp"
 #include "core/model/PageStyle.hpp"
 
+#include <rhi/qrhi.h>
+
 #include <QQuickRhiItem>
 
 #include <cstddef>
@@ -12,6 +14,7 @@
 #include <vector>
 
 class QRhiBuffer;
+class QSize;
 class QRhiGraphicsPipeline;
 class QRhiResourceUpdateBatch;
 class QRhiShaderResourceBindings;
@@ -38,6 +41,7 @@ private:
     void createBackgroundPipeline();
     void uploadVertices(QRhiResourceUpdateBatch& updates);
     void updateBackground(QRhiResourceUpdateBatch& updates);
+    [[nodiscard]] QRhiScissor inkScissor(const QSize& outputSize) const;
 
     std::unique_ptr<QRhiBuffer> m_vertexBuffer;
     std::unique_ptr<QRhiBuffer> m_uniformBuffer;

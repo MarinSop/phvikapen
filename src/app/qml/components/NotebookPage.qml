@@ -1,7 +1,8 @@
 import QtQuick
+import QtQuick.Layouts
 import PhvikaPen.Ui
 
-Item {
+RowLayout {
     id: root
 
     required property NotebookViewModel notebook
@@ -13,13 +14,22 @@ Item {
         }
     }
 
+    spacing: 0
+
     Component.onCompleted: root.attachWhenShown()
     onVisibleChanged: root.attachWhenShown()
+
+    OutlineSidebar {
+        Layout.fillHeight: true
+        Layout.preferredWidth: 220
+        notebook: root.notebook
+    }
 
     InkCanvas {
         id: canvas
 
-        anchors.fill: parent
+        Layout.fillHeight: true
+        Layout.fillWidth: true
         enabled: root.notebook.loaded
         erasing: root.tools.currentTool === ToolViewModel.Eraser
         strokeColor: root.tools.strokeColor
