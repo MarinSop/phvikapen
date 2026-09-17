@@ -6,6 +6,8 @@ add_library(PhvikaPen::platform ALIAS phvikapen_platform)
 target_sources(phvikapen_platform
     PRIVATE
         ink/qt/QtInkItem.cpp
+        ink/qt/QtInkRenderer.cpp
+        ink/qt/QtInkRenderer.hpp
         update/StartupHook.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -21,6 +23,8 @@ target_sources(phvikapen_platform
 qt_add_shaders(phvikapen_platform "phvikapen_ink_shaders"
     PREFIX "/phvikapen"
     FILES
+        ink/qt/shaders/background.vert
+        ink/qt/shaders/background.frag
         ink/qt/shaders/ink.vert
         ink/qt/shaders/ink.frag
 )

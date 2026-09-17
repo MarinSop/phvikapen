@@ -1,10 +1,8 @@
 #include "platform/ink/qt/QtInkItem.hpp"
 
-#include <rhi/qrhi.h>
+#include "platform/ink/qt/QtInkRenderer.hpp"
 
-#include <QFile>
 #include <QLineF>
-#include <QMatrix4x4>
 #include <QMouseEvent>
 #include <QNativeGestureEvent>
 #include <QPointingDevice>
@@ -29,8 +27,6 @@ using core::InkSample;
 using core::InkVertex;
 
 constexpr std::chrono::microseconds::rep kMicrosecondsPerMillisecond = 1000;
-constexpr quint32 kInitialVertexBufferBytes = 64U * 1024U;
-constexpr quint32 kMatrixBytes = 64;
 constexpr float kZoomStep = 1.25F;
 constexpr float kDegreesPerWheelNotch = 120.0F;
 constexpr float kWheelPixelsPerDegree = 0.5F;
@@ -55,153 +51,6 @@ constexpr float kWheelPixelsPerDegree = 0.5F;
 
 [[nodiscard]] InkSample makeSample(const QMouseEvent& event) {
     return makeSample(event.position(), 1.0, 0.0, 0.0, event.timestamp());
-}
-
-[[nodiscard]] QShader loadShader(const QString& path) {
-    QFile file{path};
-    return file.open(QIODevice::ReadOnly) ? QShader::fromSerialized(file.readAll()) : QShader{};
-}
-
-class QtInkRenderer final : public QQuickRhiItemRenderer {
-public:
-    void initialize(QRhiCommandBuffer* commandBuffer) override;
-    void synchronize(QQuickRhiItem* item) override;
-    void render(QRhiCommandBuffer* commandBuffer) override;
-
-private:
-    void uploadVertices(QRhiResourceUpdateBatch& updates);
-
-    std::unique_ptr<QRhiBuffer> m_vertexBuffer;
-    std::unique_ptr<QRhiBuffer> m_uniformBuffer;
-    std::unique_ptr<QRhiShaderResourceBindings> m_bindings;
-    std::unique_ptr<QRhiGraphicsPipeline> m_pipeline;
-    int m_sampleCount{0};
-
-    std::vector<InkVertex> m_vertices;
-    std::size_t m_uploadedVertexCount{0};
-    std::uint64_t m_generation{0};
-    float m_logicalWidth{0.0F};
-    float m_logicalHeight{0.0F};
-    core::Viewport m_viewport;
-};
-
-void QtInkRenderer::initialize(QRhiCommandBuffer* /*commandBuffer*/) {
-    if (m_pipeline && m_sampleCount == renderTarget()->sampleCount()) {
-        return;
-    }
-    m_sampleCount = renderTarget()->sampleCount();
-    QRhi* const device = rhi();
-
-    if (!m_uniformBuffer) {
-        m_uniformBuffer.reset(
-            device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, kMatrixBytes));
-        m_uniformBuffer->create();
-    }
-    if (!m_bindings) {
-        m_bindings.reset(device->newShaderResourceBindings());
-        m_bindings->setBindings({
-            QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage,
-                                                     m_uniformBuffer.get()),
-        });
-        m_bindings->create();
-    }
-
-    QRhiVertexInputLayout inputLayout;
-    inputLayout.setBindings({QRhiVertexInputBinding{static_cast<quint32>(sizeof(InkVertex))}});
-    inputLayout.setAttributes({
-        QRhiVertexInputAttribute{0, 0, QRhiVertexInputAttribute::Float2,
-                                 static_cast<quint32>(offsetof(InkVertex, x))},
-        QRhiVertexInputAttribute{0, 1, QRhiVertexInputAttribute::Float4,
-                                 static_cast<quint32>(offsetof(InkVertex, red))},
-    });
-
-    QRhiGraphicsPipeline::TargetBlend blend;
-    blend.enable = true;
-
-    m_pipeline.reset(device->newGraphicsPipeline());
-    m_pipeline->setShaderStages({
-        QRhiShaderStage{QRhiShaderStage::Vertex,
-                        loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/ink.vert.qsb"))},
-        QRhiShaderStage{QRhiShaderStage::Fragment,
-                        loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/ink.frag.qsb"))},
-    });
-    m_pipeline->setTargetBlends({blend});
-    m_pipeline->setSampleCount(m_sampleCount);
-    m_pipeline->setVertexInputLayout(inputLayout);
-    m_pipeline->setShaderResourceBindings(m_bindings.get());
-    m_pipeline->setRenderPassDescriptor(renderTarget()->renderPassDescriptor());
-    m_pipeline->create();
-}
-
-void QtInkRenderer::synchronize(QQuickRhiItem* item) {
-    const auto* const inkItem = qobject_cast<QtInkItem*>(item);
-    if (inkItem == nullptr) {
-        return;
-    }
-
-    const std::vector<InkVertex>& source = inkItem->vertices();
-    if (inkItem->generation() != m_generation || source.size() < m_vertices.size()) {
-        m_generation = inkItem->generation();
-        m_vertices.clear();
-        m_uploadedVertexCount = 0;
-    }
-    const auto newVertices = std::span{source}.subspan(m_vertices.size());
-    m_vertices.insert(m_vertices.end(), newVertices.begin(), newVertices.end());
-
-    m_logicalWidth = static_cast<float>(inkItem->width());
-    m_logicalHeight = static_cast<float>(inkItem->height());
-    m_viewport = inkItem->viewport();
-}
-
-void QtInkRenderer::uploadVertices(QRhiResourceUpdateBatch& updates) {
-    const auto requiredBytes = static_cast<quint32>(m_vertices.size() * sizeof(InkVertex));
-    if (requiredBytes == 0) {
-        return;
-    }
-
-    if (!m_vertexBuffer || m_vertexBuffer->size() < requiredBytes) {
-        quint32 capacity = m_vertexBuffer ? m_vertexBuffer->size() : kInitialVertexBufferBytes;
-        while (capacity < requiredBytes) {
-            capacity *= 2U;
-        }
-        m_vertexBuffer.reset(
-            rhi()->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer, capacity));
-        m_vertexBuffer->create();
-        m_uploadedVertexCount = 0;
-    }
-
-    if (m_uploadedVertexCount < m_vertices.size()) {
-        const auto pending = std::span{m_vertices}.subspan(m_uploadedVertexCount);
-        const auto offset = static_cast<quint32>(m_uploadedVertexCount * sizeof(InkVertex));
-        updates.updateDynamicBuffer(m_vertexBuffer.get(), offset,
-                                    static_cast<quint32>(pending.size_bytes()), pending.data());
-        m_uploadedVertexCount = m_vertices.size();
-    }
-}
-
-void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
-    QRhiResourceUpdateBatch* const updates = rhi()->nextResourceUpdateBatch();
-    uploadVertices(*updates);
-
-    QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
-    projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
-    projection.scale(m_viewport.scale());
-    projection.translate(-m_viewport.origin().x, -m_viewport.origin().y);
-    updates->updateDynamicBuffer(m_uniformBuffer.get(), 0, kMatrixBytes, projection.constData());
-
-    commandBuffer->beginPass(renderTarget(), Qt::white, {1.0F, 0}, updates);
-    const QSize outputSize = renderTarget()->pixelSize();
-    commandBuffer->setViewport(QRhiViewport{0.0F, 0.0F, static_cast<float>(outputSize.width()),
-                                            static_cast<float>(outputSize.height())});
-
-    if (!m_vertices.empty()) {
-        commandBuffer->setGraphicsPipeline(m_pipeline.get());
-        commandBuffer->setShaderResources();
-        const QRhiCommandBuffer::VertexInput vertexInput{m_vertexBuffer.get(), 0};
-        commandBuffer->setVertexInput(0, 1, &vertexInput);
-        commandBuffer->draw(static_cast<quint32>(m_vertices.size()));
-    }
-    commandBuffer->endPass();
 }
 
 }
