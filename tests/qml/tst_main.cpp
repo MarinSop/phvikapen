@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtQuickTest/quicktest.h>
@@ -15,6 +16,8 @@ public slots:
         QStandardPaths::setTestModeEnabled(true);
         QCoreApplication::setOrganizationName(QStringLiteral("PhvikaPenTests"));
         QCoreApplication::setApplicationName(QStringLiteral("PhvikaPenTests"));
+        QSettings settings;
+        settings.clear();
     }
 
     void qmlEngineAvailable(QQmlEngine* engine) {

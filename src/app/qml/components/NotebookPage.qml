@@ -25,7 +25,9 @@ RowLayout {
         Layout.fillHeight: true
         Layout.fillWidth: true
         enabled: root.notebook !== null && root.notebook.loaded
+        eraserRadius: root.tools.eraserRadius
         erasing: root.tools.currentTool === ToolViewModel.Eraser
+        pressureSensitive: root.tools.pressureSensitive
         strokeColor: root.tools.strokeColor
         strokeWidth: root.tools.strokeWidth
     }

@@ -17,11 +17,13 @@ qt_add_qml_module(phvikapen_ui
         cpp/OutlineModels.cpp
         cpp/OutlineModels.hpp
         cpp/NotebooksViewModel.hpp
+        cpp/ToolViewModel.cpp
         cpp/ToolViewModel.hpp
     QML_FILES
         qml/components/InkToolBar.qml
         qml/components/MessageBar.qml
         qml/components/NotebookTabs.qml
+        qml/components/PenSwatch.qml
         qml/components/OutlineSidebar.qml
         qml/components/PageSetup.qml
         qml/components/NotebookPage.qml

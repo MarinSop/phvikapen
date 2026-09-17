@@ -38,10 +38,16 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(
         qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY strokeStyleChanged FINAL)
     Q_PROPERTY(bool erasing READ erasing WRITE setErasing NOTIFY erasingChanged FINAL)
+    Q_PROPERTY(
+        qreal eraserRadius READ eraserRadius WRITE setEraserRadius NOTIFY eraserRadiusChanged FINAL)
+    Q_PROPERTY(bool pressureSensitive READ pressureSensitive WRITE setPressureSensitive NOTIFY
+                   pressureSensitiveChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
 public:
+    static constexpr qreal kDefaultEraserRadius = 8.0;
+
     explicit QtInkItem(QQuickItem* parent = nullptr);
     ~QtInkItem() override;
 
@@ -81,6 +87,14 @@ public:
 
     void setErasing(bool erasing) override;
 
+    [[nodiscard]] qreal eraserRadius() const noexcept { return m_eraserRadius; }
+
+    void setEraserRadius(qreal radius);
+
+    [[nodiscard]] bool pressureSensitive() const noexcept { return m_pressureSensitive; }
+
+    void setPressureSensitive(bool sensitive);
+
     [[nodiscard]] const std::vector<core::InkVertex>& vertices() const noexcept {
         return m_vertices;
     }
@@ -90,6 +104,8 @@ public:
 signals:
     void strokeStyleChanged();
     void erasingChanged();
+    void eraserRadiusChanged();
+    void pressureSensitiveChanged();
     void viewChanged();
 
 protected:
@@ -137,6 +153,8 @@ private:
     std::optional<core::Stroke> m_activeStroke;
     std::optional<core::InkSample> m_eraserPosition;
     bool m_erasing{false};
+    bool m_pressureSensitive{true};
+    qreal m_eraserRadius{kDefaultEraserRadius};
     std::size_t m_activeStrokeFirstVertex{0};
     std::vector<core::InkVertex> m_vertices;
     std::uint64_t m_generation{0};

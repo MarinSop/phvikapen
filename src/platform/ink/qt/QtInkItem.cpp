@@ -154,6 +154,22 @@ void QtInkItem::setErasing(bool erasing) {
     emit erasingChanged();
 }
 
+void QtInkItem::setEraserRadius(qreal radius) {
+    if (qFuzzyCompare(radius, m_eraserRadius)) {
+        return;
+    }
+    m_eraserRadius = radius;
+    emit eraserRadiusChanged();
+}
+
+void QtInkItem::setPressureSensitive(bool sensitive) {
+    if (sensitive == m_pressureSensitive) {
+        return;
+    }
+    m_pressureSensitive = sensitive;
+    emit pressureSensitiveChanged();
+}
+
 QPointF QtInkItem::viewOrigin() const noexcept {
     return {m_viewport.origin().x, m_viewport.origin().y};
 }
@@ -211,6 +227,9 @@ InkSample QtInkItem::onPage(InkSample sample) const noexcept {
     const core::Point page = m_viewport.toPage({.x = sample.x, .y = sample.y});
     sample.x = page.x;
     sample.y = page.y;
+    if (!m_pressureSensitive) {
+        sample.pressure = 1.0F;
+    }
     return sample;
 }
 
@@ -425,7 +444,7 @@ void QtInkItem::beginErase(const InkSample& sample) {
     finishErase();
     m_eraserPosition = sample;
     if (m_sink != nullptr) {
-        m_sink->eraserMoved(sample, sample);
+        m_sink->eraserMoved(sample, sample, static_cast<float>(m_eraserRadius));
     }
 }
 
@@ -435,7 +454,7 @@ void QtInkItem::moveEraser(const InkSample& sample) {
     }
     const InkSample from = std::exchange(*m_eraserPosition, sample);
     if (m_sink != nullptr) {
-        m_sink->eraserMoved(from, sample);
+        m_sink->eraserMoved(from, sample, static_cast<float>(m_eraserRadius));
     }
 }
 

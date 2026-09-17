@@ -22,7 +22,8 @@ public:
 
     virtual void strokeCancelled() = 0;
 
-    virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to) = 0;
+    virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to,
+                             float radius) = 0;
 
     virtual void eraseFinished() = 0;
 };

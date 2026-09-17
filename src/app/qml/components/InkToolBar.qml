@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,27 +9,128 @@ ToolBar {
     id: root
 
     property NotebookViewModel notebook: null
-    readonly property InkCanvas canvas: root.notebook === null ? null : root.notebook.canvas
     required property ToolViewModel tools
+    readonly property InkCanvas canvas: root.notebook === null ? null : root.notebook.canvas
 
     RowLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 6
 
         ToolButton {
             checkable: true
             checked: root.tools.currentTool === ToolViewModel.Pen
+            objectName: "penButton"
             text: qsTr("Pen")
 
             onClicked: root.tools.currentTool = ToolViewModel.Pen
         }
 
+        Repeater {
+            model: root.tools.penCount
+
+            PenSwatch {
+                required property int index
+
+                checked: root.tools.pen === index && root.tools.currentTool !== ToolViewModel.Eraser
+                color: root.tools.colorOfPen(index)
+                penWidth: root.tools.widthOfPen(index)
+
+                onClicked: {
+                    root.tools.pen = index;
+                    root.tools.currentTool = ToolViewModel.Pen;
+                }
+            }
+        }
+
+        ToolButton {
+            checkable: true
+            checked: root.tools.currentTool === ToolViewModel.Highlighter
+            objectName: "highlighterButton"
+            text: qsTr("Highlighter")
+
+            onClicked: root.tools.currentTool = ToolViewModel.Highlighter
+        }
+
         ToolButton {
             checkable: true
             checked: root.tools.currentTool === ToolViewModel.Eraser
+            objectName: "eraserButton"
             text: qsTr("Eraser")
 
             onClicked: root.tools.currentTool = ToolViewModel.Eraser
+        }
+
+        ToolSeparator {
+        }
+
+        ToolButton {
+            objectName: "colorButton"
+            text: qsTr("Color")
+
+            onClicked: colorMenu.popup()
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.margins: 4
+                color: root.tools.strokeColor
+                height: 3
+                width: parent.width - 16
+            }
+
+            Menu {
+                id: colorMenu
+
+                GridLayout {
+                    columns: 4
+
+                    Repeater {
+                        model: root.tools.palette
+
+                        Rectangle {
+                            id: swatch
+
+                            required property color modelData
+
+                            Layout.margins: 4
+                            border.color: Qt.darker(swatch.modelData, 1.4)
+                            border.width: root.tools.strokeColor.toString() === swatch.modelData.toString() ? 2 : 1
+                            color: swatch.modelData
+                            implicitHeight: 24
+                            implicitWidth: 24
+                            radius: 4
+
+                            TapHandler {
+                                onTapped: {
+                                    root.tools.strokeColor = swatch.modelData;
+                                    colorMenu.close();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Label {
+            text: root.tools.currentTool === ToolViewModel.Eraser ? qsTr("Eraser") : qsTr("Width")
+        }
+
+        Slider {
+            id: sizeSlider
+
+            Layout.preferredWidth: 140
+            from: root.tools.currentTool === ToolViewModel.Eraser ? 4 : 0.5
+            to: root.tools.currentTool === ToolViewModel.Eraser ? 40 : 24
+            value: root.tools.currentTool === ToolViewModel.Eraser ? root.tools.eraserRadius : root.tools.strokeWidth
+
+            onMoved: {
+                if (root.tools.currentTool === ToolViewModel.Eraser) {
+                    root.tools.eraserRadius = sizeSlider.value;
+                } else {
+                    root.tools.strokeWidth = sizeSlider.value;
+                }
+            }
         }
 
         ToolSeparator {
@@ -47,23 +150,6 @@ ToolBar {
             text: qsTr("Redo")
 
             onClicked: root.notebook.redo()
-        }
-
-        ToolSeparator {
-        }
-
-        Label {
-            text: qsTr("Width")
-        }
-
-        Slider {
-            id: widthSlider
-
-            from: 1
-            to: 12
-            value: root.tools.strokeWidth
-
-            onMoved: root.tools.strokeWidth = widthSlider.value
         }
 
         Item {

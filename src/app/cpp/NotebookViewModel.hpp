@@ -169,7 +169,8 @@ private:
         void strokeFinished(const core::InkSample& sample) override;
         void strokeCompleted(const core::Stroke& stroke) override;
         void strokeCancelled() override;
-        void eraserMoved(const core::InkSample& from, const core::InkSample& to) override;
+        void eraserMoved(const core::InkSample& from, const core::InkSample& to,
+                         float radius) override;
         void eraseFinished() override;
 
     private:
@@ -192,7 +193,7 @@ private:
     void changeStyle(const core::PageStyle& style);
 
     void storeStroke(const core::Stroke& stroke);
-    void erase(const core::InkSample& from, const core::InkSample& to);
+    void erase(const core::InkSample& from, const core::InkSample& to, float radius);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);

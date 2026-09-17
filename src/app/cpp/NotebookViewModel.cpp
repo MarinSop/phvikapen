@@ -34,7 +34,6 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kDefaultNotebookName = "default.phvika";
-constexpr float kEraserRadius = 8.0F;
 
 [[nodiscard]] QString notebookDirectory() {
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks";
@@ -461,8 +460,9 @@ void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
 
 void NotebookViewModel::Sink::strokeCancelled() {}
 
-void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to) {
-    m_owner->erase(from, to);
+void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to,
+                                          float radius) {
+    m_owner->erase(from, to, radius);
 }
 
 void NotebookViewModel::Sink::eraseFinished() {
@@ -486,7 +486,8 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     emit historyChanged();
 }
 
-void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to) {
+void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to,
+                              float radius) {
     const core::Page* const page = currentPageData();
     if (!m_loaded || page == nullptr) {
         return;
@@ -494,7 +495,7 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
     const core::EraserSweep sweep{
         .from = {.x = from.x, .y = from.y},
         .to = {.x = to.x, .y = to.y},
-        .radius = kEraserRadius,
+        .radius = radius,
     };
     bool found = false;
     for (const core::Uuid& strokeId : page->strokesTouchedBy(sweep)) {

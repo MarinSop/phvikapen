@@ -2,66 +2,101 @@
 
 #include <QColor>
 #include <QObject>
-#include <QProperty>
+#include <QQmlParserStatus>
+#include <QVariantList>
 #include <QtQmlIntegration>
+#include <QtTypes>
+
+#include <array>
+#include <cstddef>
 
 namespace phvikapen::app {
 
-class ToolViewModel : public QObject {
+class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_OBJECT
+    Q_INTERFACES(QQmlParserStatus)
     QML_ELEMENT
-    Q_PROPERTY(Tool currentTool READ currentTool WRITE setCurrentTool NOTIFY currentToolChanged
-                   BINDABLE bindableCurrentTool FINAL)
-    Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY strokeColorChanged
-                   BINDABLE bindableStrokeColor FINAL)
-    Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY strokeWidthChanged
-                   BINDABLE bindableStrokeWidth FINAL)
+    Q_PROPERTY(
+        Tool currentTool READ currentTool WRITE setCurrentTool NOTIFY currentToolChanged FINAL)
+    Q_PROPERTY(int pen READ pen WRITE setPen NOTIFY penChanged FINAL)
+    Q_PROPERTY(int penCount READ penCount CONSTANT FINAL)
+    Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY toolChanged FINAL)
+    Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY toolChanged FINAL)
+    Q_PROPERTY(bool pressureSensitive READ pressureSensitive NOTIFY toolChanged FINAL)
+    Q_PROPERTY(
+        qreal eraserRadius READ eraserRadius WRITE setEraserRadius NOTIFY eraserChanged FINAL)
+    Q_PROPERTY(QVariantList palette READ palette CONSTANT FINAL)
 
 public:
-    // No std::uint8_t base: the QML type registrar cannot resolve it.
-    enum class Tool {
+    enum class Tool : quint8 {
         Pen,
+        Highlighter,
         Eraser,
     };
     Q_ENUM(Tool)
 
-    explicit ToolViewModel(QObject* parent = nullptr) : QObject(parent) {
-        m_strokeColor = QColor(Qt::black);
-        m_strokeWidth = kDefaultStrokeWidth;
-    }
+    static constexpr qreal kMinimumWidth = 0.5;
+    static constexpr qreal kMaximumWidth = 24.0;
+    static constexpr qreal kDefaultEraser = 8.0;
+    static constexpr qreal kMinimumEraser = 4.0;
+    static constexpr qreal kMaximumEraser = 40.0;
 
-    [[nodiscard]] Tool currentTool() const { return m_currentTool.value(); }
+    explicit ToolViewModel(QObject* parent = nullptr);
 
-    void setCurrentTool(Tool tool) { m_currentTool = tool; }
+    void classBegin() override {}
 
-    [[nodiscard]] QBindable<Tool> bindableCurrentTool() { return {&m_currentTool}; }
+    void componentComplete() override;
 
-    [[nodiscard]] QColor strokeColor() const { return m_strokeColor.value(); }
+    [[nodiscard]] Tool currentTool() const { return m_currentTool; }
 
-    void setStrokeColor(const QColor& color) { m_strokeColor = color; }
+    void setCurrentTool(Tool tool);
 
-    [[nodiscard]] QBindable<QColor> bindableStrokeColor() { return {&m_strokeColor}; }
+    [[nodiscard]] int pen() const { return m_pen; }
 
-    [[nodiscard]] qreal strokeWidth() const { return m_strokeWidth.value(); }
+    void setPen(int index);
 
-    void setStrokeWidth(qreal width) { m_strokeWidth = width; }
+    [[nodiscard]] static int penCount() { return static_cast<int>(kPenCount); }
 
-    [[nodiscard]] QBindable<qreal> bindableStrokeWidth() { return {&m_strokeWidth}; }
+    [[nodiscard]] QColor strokeColor() const;
+    void setStrokeColor(const QColor& color);
+    [[nodiscard]] qreal strokeWidth() const;
+    void setStrokeWidth(qreal width);
+    [[nodiscard]] bool pressureSensitive() const;
+
+    [[nodiscard]] qreal eraserRadius() const { return m_eraserRadius; }
+
+    void setEraserRadius(qreal radius);
+
+    [[nodiscard]] static QVariantList palette();
+
+    Q_INVOKABLE [[nodiscard]] QColor colorOfPen(int index) const;
+    Q_INVOKABLE [[nodiscard]] qreal widthOfPen(int index) const;
 
 signals:
     void currentToolChanged();
-    void strokeColorChanged();
-    void strokeWidthChanged();
+    void penChanged();
+    void toolChanged();
+    void eraserChanged();
 
 private:
-    static constexpr qreal kDefaultStrokeWidth = 2.0;
+    struct Nib {
+        QColor color;
+        qreal width{};
+    };
 
-    Q_OBJECT_BINDABLE_PROPERTY(ToolViewModel, Tool, m_currentTool,
-                               &ToolViewModel::currentToolChanged)
-    Q_OBJECT_BINDABLE_PROPERTY(ToolViewModel, QColor, m_strokeColor,
-                               &ToolViewModel::strokeColorChanged)
-    Q_OBJECT_BINDABLE_PROPERTY(ToolViewModel, qreal, m_strokeWidth,
-                               &ToolViewModel::strokeWidthChanged)
+    static constexpr std::size_t kPenCount = 3;
+
+    [[nodiscard]] Nib& activeNib();
+    [[nodiscard]] const Nib& activeNib() const;
+    void remember() const;
+    void restore();
+
+    std::array<Nib, kPenCount> m_pens;
+    Nib m_highlighter;
+    Tool m_currentTool{Tool::Pen};
+    qreal m_eraserRadius{kDefaultEraser};
+    int m_pen{0};
+    bool m_completed{false};
 };
 
 }
