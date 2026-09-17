@@ -1,4 +1,5 @@
 add_subdirectory(unit)
+add_subdirectory(platform)
 add_subdirectory(qml)
 
 add_test(NAME architecture.core_is_qt_free

@@ -12,7 +12,7 @@ class Setup : public QObject {
 
 public slots:
 
-    void applicationAvailable() {
+    static void applicationAvailable() {
         QStandardPaths::setTestModeEnabled(true);
         QCoreApplication::setOrganizationName(QStringLiteral("PhvikaPenTests"));
         QCoreApplication::setApplicationName(QStringLiteral("PhvikaPenTests"));

@@ -21,6 +21,11 @@ include(PhvikaPenSccache)
 include(PhvikaPenWarnings)
 include(PhvikaPenSanitizers)
 include(PhvikaPenLayering)
+include(PhvikaPenPdfium)
+
+if(APPLE)
+    list(APPEND CMAKE_BUILD_RPATH "${PHVIKAPEN_PDFIUM_DIR}/lib")
+endif()
 
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 

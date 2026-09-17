@@ -2,6 +2,9 @@
 
 #include "core/Error.hpp"
 
+#include <cstdint>
+#include <vector>
+
 namespace phvikapen::platform::pdf {
 
 struct PageSize {
@@ -11,14 +14,28 @@ struct PageSize {
     friend constexpr bool operator==(const PageSize&, const PageSize&) = default;
 };
 
-// TODO(M4): Implement with PDFium.
+struct PageImage {
+    int width{};
+    int height{};
+    std::vector<std::uint8_t> pixels;
+};
+
 class IPdfDocument {
 public:
+    IPdfDocument() = default;
     virtual ~IPdfDocument() = default;
+
+    IPdfDocument(const IPdfDocument&) = delete;
+    IPdfDocument& operator=(const IPdfDocument&) = delete;
+    IPdfDocument(IPdfDocument&&) = delete;
+    IPdfDocument& operator=(IPdfDocument&&) = delete;
 
     [[nodiscard]] virtual int pageCount() const noexcept = 0;
 
     [[nodiscard]] virtual core::Result<PageSize> pageSize(int pageIndex) const = 0;
+
+    [[nodiscard]] virtual core::Result<PageImage> renderPage(int pageIndex, int widthInPixels,
+                                                             int heightInPixels) const = 0;
 };
 
 }

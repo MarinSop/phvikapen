@@ -8,6 +8,7 @@ target_sources(phvikapen_platform
         ink/qt/QtInkItem.cpp
         ink/qt/QtInkRenderer.cpp
         ink/qt/QtInkRenderer.hpp
+        pdf/PdfiumDocument.cpp
         update/StartupHook.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -16,6 +17,7 @@ target_sources(phvikapen_platform
             ink/IInkBackend.hpp
             ink/qt/QtInkItem.hpp
             pdf/IPdfDocument.hpp
+            pdf/PdfiumDocument.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
 )
@@ -49,6 +51,7 @@ target_link_libraries(phvikapen_platform
     PRIVATE
         Qt6::GuiPrivate
         Velopack::velopack
+        PDFium::pdfium
         phvikapen_warnings
         phvikapen_sanitizers
 )
