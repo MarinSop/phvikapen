@@ -237,21 +237,10 @@ void QtInkItem::showPage(const core::Page& page, std::span<const core::Uuid> hid
     m_vertices.clear();
 
     for (const core::PlacedStroke& placed : page.strokes()) {
-        const core::Stroke& stroke = placed.stroke;
-        if (std::ranges::find(hidden, stroke.id()) != hidden.end()) {
+        if (std::ranges::find(hidden, placed.stroke.id()) != hidden.end()) {
             continue;
         }
-        const std::span<const InkSample> samples = stroke.samples();
-        if (samples.empty()) {
-            continue;
-        }
-        if (samples.size() == 1) {
-            core::appendSegment(m_vertices, samples.front(), samples.front(), stroke.style());
-            continue;
-        }
-        for (std::size_t i = 1; i < samples.size(); ++i) {
-            core::appendSegment(m_vertices, samples[i - 1], samples[i], stroke.style());
-        }
+        core::appendStroke(m_vertices, placed.stroke);
     }
 
     ++m_generation;
@@ -458,6 +447,9 @@ void QtInkItem::endStroke(const InkSample& sample) {
 
     const core::Stroke finished = std::move(*m_activeStroke);
     m_activeStroke.reset();
+    m_vertices.resize(m_activeStrokeFirstVertex);
+    core::appendStroke(m_vertices, finished);
+    ++m_generation;
     if (m_sink != nullptr) {
         m_sink->strokeFinished(sample);
         m_sink->strokeCompleted(finished);

@@ -1,8 +1,14 @@
 #include "core/ink/StrokeMesh.hpp"
 
+#include "core/id/Uuid.hpp"
+#include "core/ink/InkSample.hpp"
+#include "core/ink/Stroke.hpp"
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
 #include <vector>
 
 namespace phvikapen::core {
@@ -36,6 +42,36 @@ TEST(StrokeMeshTest, ZeroLengthSegmentProducesSquareDot) {
     EXPECT_FLOAT_EQ(maxX.x, 6.0F);
     EXPECT_FLOAT_EQ(minY.y, 4.0F);
     EXPECT_FLOAT_EQ(maxY.y, 6.0F);
+}
+
+TEST(StrokeMeshTest, AStrokeIsOneStripWithoutGapsBetweenSegments) {
+    std::vector<InkVertex> vertices;
+    Stroke stroke{Uuid{}, StrokeStyle{.width = 4.0F}};
+    for (const float x : {0.0F, 10.0F, 20.0F}) {
+        stroke.append(InkSample{.x = x, .y = 10.0F});
+    }
+
+    appendStroke(vertices, stroke);
+
+    ASSERT_FALSE(vertices.empty());
+    ASSERT_EQ(vertices.size() % 6, 0U);
+    for (std::size_t first = 0; first + 6 < vertices.size(); first += 6) {
+        EXPECT_EQ(vertices[first + 2], vertices[first + 6]);
+        EXPECT_EQ(vertices[first + 5], vertices[first + 7]);
+    }
+    for (const InkVertex& vertex : vertices) {
+        EXPECT_NEAR(std::abs(vertex.y - 10.0F), 2.0F, 1e-4F);
+    }
+}
+
+TEST(StrokeMeshTest, AStrokeOfOneSampleIsADot) {
+    std::vector<InkVertex> vertices;
+    Stroke stroke{Uuid{}, StrokeStyle{.width = 2.0F}};
+    stroke.append(InkSample{.x = 5.0F, .y = 5.0F});
+
+    appendStroke(vertices, stroke);
+
+    EXPECT_EQ(vertices.size(), 6U);
 }
 
 }

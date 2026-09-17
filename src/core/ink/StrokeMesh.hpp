@@ -18,8 +18,9 @@ struct InkVertex {
     friend constexpr bool operator==(const InkVertex&, const InkVertex&) = default;
 };
 
-// TODO(M2): Replace with spline-fitted geometry.
 void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, const InkSample& to,
                    const StrokeStyle& style);
+
+void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke);
 
 }
