@@ -27,7 +27,7 @@ constexpr auto kDefaultNotebookName = "default.phvika";
 constexpr float kEraserRadius = 8.0F;
 
 [[nodiscard]] QString notebookDirectory() {
-    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/notebooks";
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks";
 }
 
 }
