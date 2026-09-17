@@ -21,6 +21,7 @@ Item {
 
         anchors.fill: parent
         enabled: root.notebook.loaded
+        erasing: root.tools.currentTool === ToolViewModel.Eraser
         strokeColor: root.tools.strokeColor
         strokeWidth: root.tools.strokeWidth
     }

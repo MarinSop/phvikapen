@@ -14,4 +14,8 @@ void WinInkBackend::setStrokeStyle(const core::StrokeStyle& style) {
     m_style = style;
 }
 
+void WinInkBackend::setErasing(bool erasing) {
+    m_erasing = erasing;
+}
+
 }

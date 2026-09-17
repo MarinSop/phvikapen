@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/filter/InkFilter.hpp"
+#include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
@@ -16,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -29,6 +31,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
         QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY strokeStyleChanged FINAL)
     Q_PROPERTY(
         qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY strokeStyleChanged FINAL)
+    Q_PROPERTY(bool erasing READ erasing WRITE setErasing NOTIFY erasingChanged FINAL)
 
 public:
     explicit QtInkItem(QQuickItem* parent = nullptr);
@@ -47,11 +50,15 @@ public:
 
     Q_INVOKABLE void clear();
 
-    void showPage(const core::Page& page);
+    void showPage(const core::Page& page, std::span<const core::Uuid> hidden = {});
 
     [[nodiscard]] std::string_view name() const noexcept override;
     void setSink(IInkSink* sink) noexcept override;
     void setStrokeStyle(const core::StrokeStyle& style) override;
+
+    [[nodiscard]] bool erasing() const noexcept { return m_erasing; }
+
+    void setErasing(bool erasing) override;
 
     [[nodiscard]] const std::vector<core::InkVertex>& vertices() const noexcept {
         return m_vertices;
@@ -61,6 +68,7 @@ public:
 
 signals:
     void strokeStyleChanged();
+    void erasingChanged();
 
 protected:
     [[nodiscard]] QQuickRhiItemRenderer* createRenderer() override;
@@ -76,6 +84,15 @@ private:
     void observeWindow(QQuickWindow* window);
     [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
 
+    void press(const core::InkSample& sample, bool eraserTip);
+    void move(const core::InkSample& sample);
+    void release(const core::InkSample& sample);
+    [[nodiscard]] bool isTracking() const noexcept;
+
+    void beginErase(const core::InkSample& sample);
+    void moveEraser(const core::InkSample& sample);
+    void finishErase();
+
     void beginStroke(const core::InkSample& sample);
     void appendToStroke(const core::InkSample& sample);
     void endStroke(const core::InkSample& sample);
@@ -86,6 +103,8 @@ private:
     core::StrokeStyle m_style;
     IInkSink* m_sink{nullptr};
     std::optional<core::Stroke> m_activeStroke;
+    std::optional<core::InkSample> m_eraserPosition;
+    bool m_erasing{false};
     std::size_t m_activeStrokeFirstVertex{0};
     std::vector<core::InkVertex> m_vertices;
     std::uint64_t m_generation{0};

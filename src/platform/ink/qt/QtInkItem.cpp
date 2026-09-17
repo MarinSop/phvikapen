@@ -5,13 +5,16 @@
 #include <QFile>
 #include <QMatrix4x4>
 #include <QMouseEvent>
+#include <QPointingDevice>
 #include <QTabletEvent>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace phvikapen::platform::ink {
@@ -229,12 +232,15 @@ void QtInkItem::setStrokeWidth(qreal width) {
     emit strokeStyleChanged();
 }
 
-void QtInkItem::showPage(const core::Page& page) {
+void QtInkItem::showPage(const core::Page& page, std::span<const core::Uuid> hidden) {
     cancelStroke();
     m_vertices.clear();
 
     for (const core::PlacedStroke& placed : page.strokes()) {
         const core::Stroke& stroke = placed.stroke;
+        if (std::ranges::find(hidden, stroke.id()) != hidden.end()) {
+            continue;
+        }
         const std::span<const InkSample> samples = stroke.samples();
         if (samples.empty()) {
             continue;
@@ -275,31 +281,36 @@ void QtInkItem::setStrokeStyle(const core::StrokeStyle& style) {
     emit strokeStyleChanged();
 }
 
+void QtInkItem::setErasing(bool erasing) {
+    if (erasing == m_erasing) {
+        return;
+    }
+    m_erasing = erasing;
+    emit erasingChanged();
+}
+
 QQuickRhiItemRenderer* QtInkItem::createRenderer() {
     return new QtInkRenderer;
 }
 
 void QtInkItem::mousePressEvent(QMouseEvent* event) {
-    beginStroke(makeSample(*event));
+    press(makeSample(*event), false);
     event->accept();
 }
 
 void QtInkItem::mouseMoveEvent(QMouseEvent* event) {
-    if (m_activeStroke) {
-        appendToStroke(makeSample(*event));
-    }
+    move(makeSample(*event));
     event->accept();
 }
 
 void QtInkItem::mouseReleaseEvent(QMouseEvent* event) {
-    if (m_activeStroke) {
-        endStroke(makeSample(*event));
-    }
+    release(makeSample(*event));
     event->accept();
 }
 
 void QtInkItem::mouseUngrabEvent() {
     cancelStroke();
+    finishErase();
 }
 
 bool QtInkItem::eventFilter(QObject* watched, QEvent* event) {
@@ -330,19 +341,19 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
         if (!isVisible() || !isEnabled() || !contains(position)) {
             return false;
         }
-        beginStroke(sample);
+        press(sample, event.pointerType() == QPointingDevice::PointerType::Eraser);
         break;
     case QEvent::TabletMove:
-        if (!m_activeStroke) {
+        if (!isTracking()) {
             return false;
         }
-        appendToStroke(sample);
+        move(sample);
         break;
     case QEvent::TabletRelease:
-        if (!m_activeStroke) {
+        if (!isTracking()) {
             return false;
         }
-        endStroke(sample);
+        release(sample);
         break;
     default:
         return false;
@@ -352,7 +363,66 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
     return true;
 }
 
+void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    if (m_erasing || eraserTip) {
+        beginErase(sample);
+    } else {
+        beginStroke(sample);
+    }
+}
+
+void QtInkItem::move(const InkSample& sample) {
+    if (m_eraserPosition) {
+        moveEraser(sample);
+    } else {
+        appendToStroke(sample);
+    }
+}
+
+void QtInkItem::release(const InkSample& sample) {
+    if (m_eraserPosition) {
+        moveEraser(sample);
+        finishErase();
+    } else {
+        endStroke(sample);
+    }
+}
+
+bool QtInkItem::isTracking() const noexcept {
+    return m_activeStroke.has_value() || m_eraserPosition.has_value();
+}
+
+void QtInkItem::beginErase(const InkSample& sample) {
+    cancelStroke();
+    finishErase();
+    m_eraserPosition = sample;
+    if (m_sink != nullptr) {
+        m_sink->eraserMoved(sample, sample);
+    }
+}
+
+void QtInkItem::moveEraser(const InkSample& sample) {
+    if (!m_eraserPosition) {
+        return;
+    }
+    const InkSample from = std::exchange(*m_eraserPosition, sample);
+    if (m_sink != nullptr) {
+        m_sink->eraserMoved(from, sample);
+    }
+}
+
+void QtInkItem::finishErase() {
+    if (!m_eraserPosition) {
+        return;
+    }
+    m_eraserPosition.reset();
+    if (m_sink != nullptr) {
+        m_sink->eraseFinished();
+    }
+}
+
 void QtInkItem::beginStroke(const InkSample& sample) {
+    finishErase();
     cancelStroke();
     m_filter.reset();
     m_activeStroke.emplace(m_ids.next(), m_style);

@@ -21,6 +21,10 @@ public:
     virtual void strokeCompleted(const core::Stroke& stroke) = 0;
 
     virtual void strokeCancelled() = 0;
+
+    virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to) = 0;
+
+    virtual void eraseFinished() = 0;
 };
 
 class IInkBackend {
@@ -32,6 +36,8 @@ public:
     virtual void setSink(IInkSink* sink) noexcept = 0;
 
     virtual void setStrokeStyle(const core::StrokeStyle& style) = 0;
+
+    virtual void setErasing(bool erasing) = 0;
 };
 
 }

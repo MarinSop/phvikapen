@@ -14,9 +14,12 @@ public:
 
     void setStrokeStyle(const core::StrokeStyle& style) override;
 
+    void setErasing(bool erasing) override;
+
 private:
     IInkSink* m_sink{nullptr};
     core::StrokeStyle m_style;
+    bool m_erasing{false};
 };
 
 }

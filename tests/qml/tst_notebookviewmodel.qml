@@ -48,6 +48,45 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_oneSweepOfTheEraserIsOneChange() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 20, 20);
+        draw(notebook, 20, 100);
+        draw(notebook, 200, 200);
+        const canvas = notebook.canvas;
+        canvas.erasing = true;
+
+        mousePress(canvas, 20, 0);
+        mouseMove(canvas, 20, 60, -1, Qt.LeftButton);
+        mouseMove(canvas, 20, 150, -1, Qt.LeftButton);
+        compare(notebook.strokeCount, 3);
+
+        mouseRelease(canvas, 20, 150);
+        compare(notebook.strokeCount, 1);
+
+        notebook.undo();
+        compare(notebook.strokeCount, 3);
+
+        notebook.redo();
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theEraserLeavesUntouchedStrokesAlone() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 20, 20);
+        const canvas = notebook.canvas;
+        canvas.erasing = true;
+
+        mousePress(canvas, 300, 250);
+        mouseRelease(canvas, 300, 250);
+
+        compare(notebook.strokeCount, 1);
+        verify(notebook.canUndo);
+        notebook.undo();
+        compare(notebook.strokeCount, 0);
+    }
+
     function test_oneUndoBringsAClearedPageBack() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 20, 20);

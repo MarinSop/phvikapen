@@ -90,6 +90,8 @@ private:
         void strokeFinished(const core::InkSample& sample) override;
         void strokeCompleted(const core::Stroke& stroke) override;
         void strokeCancelled() override;
+        void eraserMoved(const core::InkSample& from, const core::InkSample& to) override;
+        void eraseFinished() override;
 
     private:
         NotebookViewModel* m_owner;
@@ -99,6 +101,8 @@ private:
     void showLoadedPage(std::uint64_t opening,
                         core::Result<std::vector<core::PlacedStroke>> strokes);
     void storeStroke(const core::Stroke& stroke);
+    void erase(const core::InkSample& from, const core::InkSample& to);
+    void finishErasing();
     void finishChange(const core::Result<void>& change);
     void refreshCanvas();
     void reportError(const QString& message);
@@ -107,6 +111,7 @@ private:
     core::Page m_page;
     std::optional<core::StorageThread> m_storage;
     core::UndoStack m_history;
+    std::vector<core::Uuid> m_erasing;
     QPointer<platform::ink::QtInkItem> m_canvas;
     QString m_notebookPath;
     QString m_errorMessage;

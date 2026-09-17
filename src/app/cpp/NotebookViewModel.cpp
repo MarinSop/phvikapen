@@ -2,6 +2,8 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/ink/InkSample.hpp"
+#include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Page.hpp"
 #include "core/undo/StrokeCommands.hpp"
 
@@ -11,6 +13,7 @@
 #include <QString>
 #include <QtLogging>
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -21,6 +24,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kDefaultNotebookName = "default.phvika";
+constexpr float kEraserRadius = 8.0F;
 
 [[nodiscard]] QString notebookDirectory() {
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/notebooks";
@@ -54,6 +58,7 @@ void NotebookViewModel::setNotebookPath(const QString& path) {
 
 void NotebookViewModel::openNotebook() {
     m_history.clear();
+    m_erasing.clear();
     m_storage.reset();
     m_page = core::Page{m_page.id()};
     const std::uint64_t opening = ++m_opening;
@@ -141,6 +146,14 @@ void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
 
 void NotebookViewModel::Sink::strokeCancelled() {}
 
+void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to) {
+    m_owner->erase(from, to);
+}
+
+void NotebookViewModel::Sink::eraseFinished() {
+    m_owner->finishErasing();
+}
+
 void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     if (!m_loaded || !m_storage) {
         refreshCanvas();
@@ -158,19 +171,52 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     emit historyChanged();
 }
 
+void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to) {
+    if (!m_loaded) {
+        return;
+    }
+    const core::EraserSweep sweep{
+        .from = {.x = from.x, .y = from.y},
+        .to = {.x = to.x, .y = to.y},
+        .radius = kEraserRadius,
+    };
+    bool found = false;
+    for (const core::Uuid& strokeId : m_page.strokesTouchedBy(sweep)) {
+        if (std::ranges::find(m_erasing, strokeId) == m_erasing.end()) {
+            m_erasing.push_back(strokeId);
+            found = true;
+        }
+    }
+    if (found) {
+        refreshCanvas();
+    }
+}
+
+void NotebookViewModel::finishErasing() {
+    if (m_erasing.empty() || !m_storage) {
+        m_erasing.clear();
+        return;
+    }
+    finishChange(m_history.run(std::make_unique<core::EraseStrokesCommand>(
+        &m_page, &*m_storage, std::exchange(m_erasing, {}))));
+}
+
 void NotebookViewModel::undo() {
+    m_erasing.clear();
     if (m_history.canUndo()) {
         finishChange(m_history.undo());
     }
 }
 
 void NotebookViewModel::redo() {
+    m_erasing.clear();
     if (m_history.canRedo()) {
         finishChange(m_history.redo());
     }
 }
 
 void NotebookViewModel::clearPage() {
+    m_erasing.clear();
     if (m_loaded && m_storage) {
         finishChange(m_history.run(std::make_unique<core::ClearPageCommand>(&m_page, &*m_storage)));
     }
@@ -187,7 +233,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change) {
 
 void NotebookViewModel::refreshCanvas() {
     if (!m_canvas.isNull()) {
-        m_canvas->showPage(m_page);
+        m_canvas->showPage(m_page, m_erasing);
     }
 }
 
