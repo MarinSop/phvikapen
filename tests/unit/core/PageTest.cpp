@@ -31,6 +31,17 @@ TEST(PageTest, StartsEmptyWithTheFirstPlaceFree) {
     EXPECT_EQ(page.nextOrdinal(), 0);
 }
 
+TEST(PageTest, SortsTheStrokesItStartsWith) {
+    Uuid7Generator ids;
+    const PlacedStroke early{.ordinal = 2, .stroke = makeStroke(ids, 0.0F)};
+    const PlacedStroke late{.ordinal = 8, .stroke = makeStroke(ids, 10.0F)};
+
+    const Page page{ids.next(), {late, early}};
+
+    EXPECT_EQ(idsOn(page), (std::vector<Uuid>{early.stroke.id(), late.stroke.id()}));
+    EXPECT_EQ(page.nextOrdinal(), 9);
+}
+
 TEST(PageTest, KeepsStrokesInDrawingOrderWhateverOrderTheyArriveIn) {
     Uuid7Generator ids;
     Page page{ids.next()};

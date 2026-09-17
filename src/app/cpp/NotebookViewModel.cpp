@@ -1,15 +1,16 @@
 #include "app/cpp/NotebookViewModel.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/Uuid.hpp"
 #include "core/model/Page.hpp"
 #include "core/undo/StrokeCommands.hpp"
 
 #include <QDir>
+#include <QMetaObject>
 #include <QStandardPaths>
 #include <QString>
 #include <QtLogging>
 
-#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <utility>
@@ -26,8 +27,14 @@ constexpr auto kDefaultNotebookName = "default.phvika";
 
 }
 
-NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {
+NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent), m_page{core::Uuid{}} {
     openNotebook();
+}
+
+NotebookViewModel::~NotebookViewModel() {
+    if (!m_canvas.isNull()) {
+        m_canvas->setSink(nullptr);
+    }
 }
 
 void NotebookViewModel::openNotebook() {
@@ -39,12 +46,29 @@ void NotebookViewModel::openNotebook() {
 
     const std::filesystem::path path =
         std::filesystem::path{directory.toStdString()} / kDefaultNotebookName;
-    core::Result<core::NotebookStore> store = core::NotebookStore::open(path);
-    if (!store) {
-        reportError(QString::fromStdString(store.error().message));
+    m_storage.emplace(path, [this](const core::Error& error) {
+        QMetaObject::invokeMethod(
+            this, [this, message = QString::fromStdString(error.message)] { reportError(message); },
+            Qt::QueuedConnection);
+    });
+    m_storage->loadPage(m_page.id(), [this](core::Result<std::vector<core::PlacedStroke>> strokes) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, strokes = std::move(strokes)] mutable { showLoadedPage(std::move(strokes)); },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::showLoadedPage(core::Result<std::vector<core::PlacedStroke>> strokes) {
+    if (!strokes) {
+        reportError(QString::fromStdString(strokes.error().message));
         return;
     }
-    m_store = std::move(*store);
+    m_page = core::Page{m_page.id(), std::move(*strokes)};
+    m_loaded = true;
+    emit loadedChanged();
+    emit pageChanged();
+    refreshCanvas();
 }
 
 void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
@@ -61,7 +85,7 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
         return;
     }
     m_canvas->setSink(&m_sink);
-    reloadCanvas();
+    refreshCanvas();
 }
 
 void NotebookViewModel::Sink::strokeStarted(const core::InkSample& /*sample*/) {}
@@ -77,79 +101,52 @@ void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
 void NotebookViewModel::Sink::strokeCancelled() {}
 
 void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
-    if (!m_store) {
+    if (!m_loaded || !m_storage) {
+        refreshCanvas();
         return;
     }
     const core::Result<void> stored = m_history.run(std::make_unique<core::AddStrokeCommand>(
-        &*m_store, m_pageId, core::PlacedStroke{.ordinal = m_nextOrdinal, .stroke = stroke}));
+        &m_page, &*m_storage,
+        core::PlacedStroke{.ordinal = m_page.nextOrdinal(), .stroke = stroke}));
     if (!stored) {
         reportError(QString::fromStdString(stored.error().message));
+        refreshCanvas();
         return;
     }
-    ++m_nextOrdinal;
-    ++m_storedStrokeCount;
-    emit storedStrokeCountChanged();
+    emit pageChanged();
     emit historyChanged();
 }
 
 void NotebookViewModel::undo() {
-    if (!m_history.canUndo()) {
-        return;
+    if (m_history.canUndo()) {
+        finishChange(m_history.undo());
     }
-    if (const core::Result<void> done = m_history.undo(); !done) {
-        reportError(QString::fromStdString(done.error().message));
-        return;
-    }
-    reloadCanvas();
-    emit historyChanged();
 }
 
 void NotebookViewModel::redo() {
-    if (!m_history.canRedo()) {
-        return;
+    if (m_history.canRedo()) {
+        finishChange(m_history.redo());
     }
-    if (const core::Result<void> done = m_history.redo(); !done) {
-        reportError(QString::fromStdString(done.error().message));
-        return;
-    }
-    reloadCanvas();
-    emit historyChanged();
 }
 
 void NotebookViewModel::clearPage() {
-    if (!m_store) {
-        return;
+    if (m_loaded && m_storage) {
+        finishChange(m_history.run(std::make_unique<core::ClearPageCommand>(&m_page, &*m_storage)));
     }
-    const core::Result<void> cleared =
-        m_history.run(std::make_unique<core::ClearPageCommand>(&*m_store, m_pageId));
-    if (!cleared) {
-        reportError(QString::fromStdString(cleared.error().message));
-        return;
+}
+
+void NotebookViewModel::finishChange(const core::Result<void>& change) {
+    if (!change) {
+        reportError(QString::fromStdString(change.error().message));
     }
-    reloadCanvas();
+    refreshCanvas();
+    emit pageChanged();
     emit historyChanged();
 }
 
-void NotebookViewModel::reloadCanvas() {
-    if (!m_store) {
-        return;
-    }
-    core::Result<std::vector<core::PlacedStroke>> placed = m_store->strokesOfPage(m_pageId);
-    if (!placed) {
-        reportError(QString::fromStdString(placed.error().message));
-        return;
-    }
-    m_nextOrdinal = placed->empty() ? 0 : placed->back().ordinal + 1;
-    m_storedStrokeCount = static_cast<int>(placed->size());
-    emit storedStrokeCountChanged();
-
+void NotebookViewModel::refreshCanvas() {
     if (!m_canvas.isNull()) {
-        std::vector<core::Stroke> strokes;
-        strokes.reserve(placed->size());
-        for (core::PlacedStroke& entry : *placed) {
-            strokes.push_back(std::move(entry.stroke));
-        }
-        m_canvas->setStrokes(std::move(strokes));
+        m_canvas->showPage(m_page);
     }
 }
 

@@ -12,6 +12,11 @@ namespace phvikapen::core {
 
 Page::Page(const Uuid& id) noexcept : m_id{id} {}
 
+Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes)
+    : m_id{id}, m_strokes{std::move(strokes)} {
+    std::ranges::stable_sort(m_strokes, {}, &PlacedStroke::ordinal);
+}
+
 std::int64_t Page::nextOrdinal() const noexcept {
     return m_strokes.empty() ? 0 : m_strokes.back().ordinal + 1;
 }

@@ -1,51 +1,50 @@
 #include "core/undo/StrokeCommands.hpp"
 
 #include "core/Error.hpp"
-#include "core/id/Uuid.hpp"
-#include "core/ink/Stroke.hpp"
-#include "core/storage/NotebookStore.hpp"
+#include "core/model/Page.hpp"
+#include "core/storage/StorageThread.hpp"
 
-#include <cstddef>
 #include <utility>
 #include <vector>
 
 namespace phvikapen::core {
 
-AddStrokeCommand::AddStrokeCommand(NotebookStore* store, const Uuid& pageId,
-                                   PlacedStroke placed) noexcept
-    : m_store{store}, m_pageId{pageId}, m_placed{std::move(placed)} {}
+AddStrokeCommand::AddStrokeCommand(Page* page, StorageThread* storage, PlacedStroke placed) noexcept
+    : m_page{page}, m_storage{storage}, m_placed{std::move(placed)} {}
 
 Result<void> AddStrokeCommand::apply() {
-    return m_store->insertStroke(m_pageId, m_placed);
+    if (const Result<void> inserted = m_page->insert(m_placed); !inserted) {
+        return inserted;
+    }
+    m_storage->insertStroke(m_page->id(), m_placed);
+    return {};
 }
 
 Result<void> AddStrokeCommand::revert() {
-    return m_store->removeStroke(m_pageId, m_placed.stroke.id());
-}
-
-ClearPageCommand::ClearPageCommand(NotebookStore* store, const Uuid& pageId) noexcept
-    : m_store{store}, m_pageId{pageId} {}
-
-Result<void> ClearPageCommand::apply() {
-    Result<std::vector<PlacedStroke>> strokes = m_store->strokesOfPage(m_pageId);
-    if (!strokes) {
-        return std::unexpected{strokes.error()};
-    }
-    const Result<std::size_t> removed = m_store->removeStrokesOfPage(m_pageId);
-    if (!removed) {
+    if (const Result<PlacedStroke> removed = m_page->remove(m_placed.stroke.id()); !removed) {
         return std::unexpected{removed.error()};
     }
-    m_removed = std::move(*strokes);
+    m_storage->removeStroke(m_page->id(), m_placed.stroke.id());
+    return {};
+}
+
+ClearPageCommand::ClearPageCommand(Page* page, StorageThread* storage) noexcept
+    : m_page{page}, m_storage{storage} {}
+
+Result<void> ClearPageCommand::apply() {
+    m_removed = m_page->takeAll();
+    m_storage->removeStrokesOfPage(m_page->id());
     return {};
 }
 
 Result<void> ClearPageCommand::revert() {
-    for (const PlacedStroke& placed : m_removed) {
-        if (const Result<void> restored = m_store->insertStroke(m_pageId, placed); !restored) {
-            return restored;
+    std::vector<PlacedStroke> removed = std::exchange(m_removed, {});
+    for (PlacedStroke& placed : removed) {
+        if (const Result<void> inserted = m_page->insert(placed); !inserted) {
+            return inserted;
         }
+        m_storage->insertStroke(m_page->id(), std::move(placed));
     }
-    m_removed.clear();
     return {};
 }
 

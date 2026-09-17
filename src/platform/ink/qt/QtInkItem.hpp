@@ -5,6 +5,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeMesh.hpp"
+#include "core/model/Page.hpp"
 #include "platform/ink/IInkBackend.hpp"
 
 #include <QColor>
@@ -40,7 +41,7 @@ public:
 
     Q_INVOKABLE void clear();
 
-    void setStrokes(std::vector<core::Stroke> strokes);
+    void showPage(const core::Page& page);
 
     [[nodiscard]] std::string_view name() const noexcept override;
     void setSink(IInkSink* sink) noexcept override;
@@ -80,7 +81,6 @@ private:
     IInkSink* m_sink{nullptr};
     std::optional<core::Stroke> m_activeStroke;
     std::size_t m_activeStrokeFirstVertex{0};
-    std::vector<core::Stroke> m_strokes;
     std::vector<core::InkVertex> m_vertices;
     std::uint64_t m_generation{0};
     QPointer<QQuickWindow> m_observedWindow;

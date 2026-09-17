@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/Error.hpp"
-#include "core/id/Uuid.hpp"
 #include "core/model/Page.hpp"
 #include "core/undo/UndoStack.hpp"
 
@@ -9,31 +8,31 @@
 
 namespace phvikapen::core {
 
-class NotebookStore;
+class StorageThread;
 
 class AddStrokeCommand final : public ICommand {
 public:
-    AddStrokeCommand(NotebookStore* store, const Uuid& pageId, PlacedStroke placed) noexcept;
+    AddStrokeCommand(Page* page, StorageThread* storage, PlacedStroke placed) noexcept;
 
     Result<void> apply() override;
     Result<void> revert() override;
 
 private:
-    NotebookStore* m_store;
-    Uuid m_pageId;
+    Page* m_page;
+    StorageThread* m_storage;
     PlacedStroke m_placed;
 };
 
 class ClearPageCommand final : public ICommand {
 public:
-    ClearPageCommand(NotebookStore* store, const Uuid& pageId) noexcept;
+    ClearPageCommand(Page* page, StorageThread* storage) noexcept;
 
     Result<void> apply() override;
     Result<void> revert() override;
 
 private:
-    NotebookStore* m_store;
-    Uuid m_pageId;
+    Page* m_page;
+    StorageThread* m_storage;
     std::vector<PlacedStroke> m_removed;
 };
 

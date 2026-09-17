@@ -18,6 +18,7 @@ struct PlacedStroke {
 class Page {
 public:
     explicit Page(const Uuid& id) noexcept;
+    Page(const Uuid& id, std::vector<PlacedStroke> strokes);
 
     [[nodiscard]] const Uuid& id() const noexcept { return m_id; }
 

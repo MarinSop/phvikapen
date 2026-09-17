@@ -4,7 +4,9 @@
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
+#include "core/storage/StorageThread.hpp"
 #include "core/undo/UndoStack.hpp"
 #include "support/TemporaryNotebook.hpp"
 
@@ -19,9 +21,30 @@ namespace {
 using test::makeStroke;
 using test::TemporaryNotebook;
 
-[[nodiscard]] std::vector<Uuid> idsOnPage(const NotebookStore& store, const Uuid& page) {
+struct OpenNotebook {
+    TemporaryNotebook file;
+    Uuid7Generator ids;
+    Page page{ids.next()};
+    std::vector<Error> errors;
+    StorageThread storage{file.path(), [this](const Error& error) { errors.push_back(error); }};
+};
+
+[[nodiscard]] std::vector<Uuid> idsOn(const Page& page) {
     std::vector<Uuid> ids;
-    const Result<std::vector<PlacedStroke>> strokes = store.strokesOfPage(page);
+    for (const PlacedStroke& placed : page.strokes()) {
+        ids.push_back(placed.stroke.id());
+    }
+    return ids;
+}
+
+[[nodiscard]] std::vector<Uuid> idsInFile(OpenNotebook& notebook, const Uuid& page) {
+    notebook.storage.waitUntilIdle();
+    std::vector<Uuid> ids;
+    const Result<NotebookStore> store = NotebookStore::open(notebook.file.path());
+    if (!store) {
+        return ids;
+    }
+    const Result<std::vector<PlacedStroke>> strokes = store->strokesOfPage(page);
     if (!strokes) {
         return ids;
     }
@@ -32,120 +55,137 @@ using test::TemporaryNotebook;
 }
 
 TEST(AddStrokeCommandTest, PutsTheStrokeOnThePageAndTakesItOffAgain) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid page = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    const Stroke stroke = makeStroke(ids, 10.0F);
-    AddStrokeCommand command{&*store, page, {.ordinal = 0, .stroke = stroke}};
+    OpenNotebook notebook;
+    const Stroke stroke = makeStroke(notebook.ids, 10.0F);
+    AddStrokeCommand command{&notebook.page, &notebook.storage, {.ordinal = 0, .stroke = stroke}};
 
     ASSERT_TRUE(command.apply());
-    EXPECT_EQ(idsOnPage(*store, page), std::vector<Uuid>{stroke.id()});
+    EXPECT_EQ(idsOn(notebook.page), std::vector<Uuid>{stroke.id()});
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{stroke.id()});
 
     ASSERT_TRUE(command.revert());
-    EXPECT_TRUE(idsOnPage(*store, page).empty());
+    EXPECT_TRUE(idsOn(notebook.page).empty());
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
 TEST(AddStrokeCommandTest, PutsTheStrokeBackWhereItWas) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid page = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    const Stroke first = makeStroke(ids, 10.0F);
-    const Stroke second = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 0, .stroke = first}));
-    AddStrokeCommand command{&*store, page, {.ordinal = 1, .stroke = second}};
-    ASSERT_TRUE(command.apply());
+    OpenNotebook notebook;
+    const Stroke first = makeStroke(notebook.ids, 10.0F);
+    const Stroke second = makeStroke(notebook.ids, 100.0F);
+    const Stroke third = makeStroke(notebook.ids, 200.0F);
+    AddStrokeCommand addFirst{&notebook.page, &notebook.storage, {.ordinal = 0, .stroke = first}};
+    AddStrokeCommand addSecond{&notebook.page, &notebook.storage, {.ordinal = 1, .stroke = second}};
+    AddStrokeCommand addThird{&notebook.page, &notebook.storage, {.ordinal = 2, .stroke = third}};
+    ASSERT_TRUE(addFirst.apply());
+    ASSERT_TRUE(addSecond.apply());
+    ASSERT_TRUE(addThird.apply());
 
-    ASSERT_TRUE(command.revert());
-    ASSERT_TRUE(command.apply());
+    ASSERT_TRUE(addSecond.revert());
+    ASSERT_TRUE(addSecond.apply());
 
-    EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
-    const Result<std::vector<PlacedStroke>> strokes = store->strokesOfPage(page);
-    ASSERT_TRUE(strokes.has_value()) << strokes.error().message;
-    EXPECT_EQ(strokes->back().stroke.samples().size(), second.samples().size());
+    const std::vector<Uuid> expected{first.id(), second.id(), third.id()};
+    EXPECT_EQ(idsOn(notebook.page), expected);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), expected);
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(AddStrokeCommandTest, WritesNothingWhenThePlaceIsTaken) {
+    OpenNotebook notebook;
+    const Stroke kept = makeStroke(notebook.ids, 10.0F);
+    AddStrokeCommand addKept{&notebook.page, &notebook.storage, {.ordinal = 0, .stroke = kept}};
+    AddStrokeCommand addClash{&notebook.page,
+                              &notebook.storage,
+                              {.ordinal = 0, .stroke = makeStroke(notebook.ids, 20.0F)}};
+    ASSERT_TRUE(addKept.apply());
+
+    const Result<void> applied = addClash.apply();
+
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(applied.error().code, ErrorCode::InvalidArgument);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{kept.id()});
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
 TEST(ClearPageCommandTest, EmptiesThePageAndBringsEverythingBackInOrder) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid page = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    const Stroke first = makeStroke(ids, 10.0F);
-    const Stroke second = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 0, .stroke = first}));
-    ASSERT_TRUE(store->insertStroke(page, {.ordinal = 1, .stroke = second}));
-    ClearPageCommand command{&*store, page};
+    OpenNotebook notebook;
+    const Stroke first = makeStroke(notebook.ids, 10.0F);
+    const Stroke second = makeStroke(notebook.ids, 100.0F);
+    AddStrokeCommand addFirst{&notebook.page, &notebook.storage, {.ordinal = 0, .stroke = first}};
+    AddStrokeCommand addSecond{&notebook.page, &notebook.storage, {.ordinal = 1, .stroke = second}};
+    ASSERT_TRUE(addFirst.apply());
+    ASSERT_TRUE(addSecond.apply());
+    ClearPageCommand command{&notebook.page, &notebook.storage};
 
     ASSERT_TRUE(command.apply());
-    EXPECT_TRUE(idsOnPage(*store, page).empty());
+    EXPECT_TRUE(idsOn(notebook.page).empty());
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
 
     ASSERT_TRUE(command.revert());
-    EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
+    const std::vector<Uuid> expected{first.id(), second.id()};
+    EXPECT_EQ(idsOn(notebook.page), expected);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), expected);
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
-TEST(ClearPageCommandTest, LeavesTheOtherPagesAlone) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid cleared = ids.next();
-    const Uuid kept = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    ASSERT_TRUE(store->insertStroke(cleared, {.ordinal = 0, .stroke = makeStroke(ids, 10.0F)}));
-    const Stroke elsewhere = makeStroke(ids, 100.0F);
-    ASSERT_TRUE(store->insertStroke(kept, {.ordinal = 1, .stroke = elsewhere}));
-    ClearPageCommand command{&*store, cleared};
+TEST(ClearPageCommandTest, LeavesTheOtherPagesInTheFileAlone) {
+    OpenNotebook notebook;
+    const Uuid otherPage = notebook.ids.next();
+    const Stroke elsewhere = makeStroke(notebook.ids, 100.0F);
+    notebook.storage.insertStroke(otherPage, {.ordinal = 0, .stroke = elsewhere});
+    AddStrokeCommand add{&notebook.page,
+                         &notebook.storage,
+                         {.ordinal = 0, .stroke = makeStroke(notebook.ids, 10.0F)}};
+    ASSERT_TRUE(add.apply());
+    ClearPageCommand command{&notebook.page, &notebook.storage};
 
     ASSERT_TRUE(command.apply());
 
-    EXPECT_TRUE(idsOnPage(*store, cleared).empty());
-    EXPECT_EQ(idsOnPage(*store, kept), std::vector<Uuid>{elsewhere.id()});
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_EQ(idsInFile(notebook, otherPage), std::vector<Uuid>{elsewhere.id()});
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
 TEST(ClearPageCommandTest, ClearingAnEmptyPageCanStillBeUndone) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid page = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    ClearPageCommand command{&*store, page};
+    OpenNotebook notebook;
+    ClearPageCommand command{&notebook.page, &notebook.storage};
 
     EXPECT_TRUE(command.apply());
     EXPECT_TRUE(command.revert());
-    EXPECT_TRUE(idsOnPage(*store, page).empty());
+    EXPECT_TRUE(idsOn(notebook.page).empty());
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
 TEST(StrokeCommandsTest, DrawingAndClearingWalkBackAndForwardThroughTheHistory) {
-    const TemporaryNotebook notebook;
-    Uuid7Generator ids;
-    const Uuid page = ids.next();
-    Result<NotebookStore> store = NotebookStore::open(notebook.path());
-    ASSERT_TRUE(store.has_value()) << store.error().message;
-    const Stroke first = makeStroke(ids, 10.0F);
-    const Stroke second = makeStroke(ids, 100.0F);
+    OpenNotebook notebook;
+    const Stroke first = makeStroke(notebook.ids, 10.0F);
+    const Stroke second = makeStroke(notebook.ids, 100.0F);
+    const std::vector<Uuid> both{first.id(), second.id()};
     UndoStack history;
 
     ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(
-        &*store, page, PlacedStroke{.ordinal = 0, .stroke = first})));
+        &notebook.page, &notebook.storage, PlacedStroke{.ordinal = 0, .stroke = first})));
     ASSERT_TRUE(history.run(std::make_unique<AddStrokeCommand>(
-        &*store, page, PlacedStroke{.ordinal = 1, .stroke = second})));
-    ASSERT_TRUE(history.run(std::make_unique<ClearPageCommand>(&*store, page)));
-    EXPECT_TRUE(idsOnPage(*store, page).empty());
+        &notebook.page, &notebook.storage, PlacedStroke{.ordinal = 1, .stroke = second})));
+    ASSERT_TRUE(history.run(std::make_unique<ClearPageCommand>(&notebook.page, &notebook.storage)));
+    EXPECT_TRUE(idsOn(notebook.page).empty());
 
     ASSERT_TRUE(history.undo());
-    EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
+    EXPECT_EQ(idsOn(notebook.page), both);
 
     ASSERT_TRUE(history.undo());
-    EXPECT_EQ(idsOnPage(*store, page), std::vector<Uuid>{first.id()});
+    EXPECT_EQ(idsOn(notebook.page), std::vector<Uuid>{first.id()});
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), std::vector<Uuid>{first.id()});
 
     ASSERT_TRUE(history.redo());
-    EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
+    EXPECT_EQ(idsOn(notebook.page), both);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()), both);
 
     ASSERT_TRUE(history.redo());
-    EXPECT_TRUE(idsOnPage(*store, page).empty());
+    EXPECT_TRUE(idsOn(notebook.page).empty());
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_TRUE(notebook.errors.empty());
 }
 
 }

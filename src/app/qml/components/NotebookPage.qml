@@ -20,6 +20,7 @@ Item {
         id: canvas
 
         anchors.fill: parent
+        enabled: root.notebook.loaded
         strokeColor: root.tools.strokeColor
         strokeWidth: root.tools.strokeWidth
     }

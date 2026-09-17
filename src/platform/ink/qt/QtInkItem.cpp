@@ -224,12 +224,12 @@ void QtInkItem::setStrokeWidth(qreal width) {
     emit strokeStyleChanged();
 }
 
-void QtInkItem::setStrokes(std::vector<core::Stroke> strokes) {
+void QtInkItem::showPage(const core::Page& page) {
     cancelStroke();
-    m_strokes = std::move(strokes);
     m_vertices.clear();
 
-    for (const core::Stroke& stroke : m_strokes) {
+    for (const core::PlacedStroke& placed : page.strokes()) {
+        const core::Stroke& stroke = placed.stroke;
         const std::span<const InkSample> samples = stroke.samples();
         if (samples.empty()) {
             continue;
@@ -249,7 +249,6 @@ void QtInkItem::setStrokes(std::vector<core::Stroke> strokes) {
 
 void QtInkItem::clear() {
     cancelStroke();
-    m_strokes.clear();
     m_vertices.clear();
     ++m_generation;
     update();
@@ -382,11 +381,11 @@ void QtInkItem::endStroke(const InkSample& sample) {
     m_activeStroke->append(smoothed);
     core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
 
-    m_strokes.push_back(std::move(*m_activeStroke));
+    const core::Stroke finished = std::move(*m_activeStroke);
     m_activeStroke.reset();
     if (m_sink != nullptr) {
         m_sink->strokeFinished(sample);
-        m_sink->strokeCompleted(m_strokes.back());
+        m_sink->strokeCompleted(finished);
     }
     update();
 }
