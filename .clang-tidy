@@ -1,19 +1,4 @@
 ---
-# Enabled families: bugprone, cppcoreguidelines, modernize, performance, readability.
-#
-# Disabled checks and the reason for each:
-#   bugprone-easily-swappable-parameters
-#     Geometry and ink APIs legitimately take several same-typed values (x, y, pressure).
-#   cppcoreguidelines-owning-memory
-#     Qt object trees own children through parent pointers; `new QObject(parent)` is idiomatic.
-#   cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
-#     Flags every operator[]; bounds are guaranteed by range-for loops and std::span at boundaries.
-#   modernize-use-trailing-return-type
-#     Purely stylistic; the codebase uses leading return types.
-#   readability-identifier-length
-#     Short names such as x, y and dt are the clearest choice in geometry code.
-#   readability-redundant-access-specifiers
-#     Qt classes repeat access specifiers to group signals, slots and properties.
 Checks: >-
   -*,
   bugprone-*,

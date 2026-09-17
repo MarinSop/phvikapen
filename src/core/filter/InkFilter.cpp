@@ -20,4 +20,4 @@ void InkFilter::reset() noexcept {
     m_pressure.reset();
 }
 
-} // namespace phvikapen::core
+}

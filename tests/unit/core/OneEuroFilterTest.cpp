@@ -13,9 +13,8 @@ namespace {
 
 using std::chrono::microseconds;
 
-constexpr microseconds kSamplePeriod{8'000}; // 125 Hz, a common pen report rate.
+constexpr microseconds kSamplePeriod{8'000};
 
-/// Deterministic zig-zag noise, so that the tests do not depend on a random engine.
 [[nodiscard]] float noiseAt(int index) {
     return (index % 2 == 0) ? 0.5F : -0.5F;
 }
@@ -59,12 +58,11 @@ TEST(OneEuroFilterTest, RemovesJitterFromAStandingPen) {
         filtered.push_back(filter.filter(sample, now));
     }
 
-    // The filtered signal has to sit far closer to the true position than the raw one.
     EXPECT_LT(meanDistanceFrom(filtered, 100.0F), meanDistanceFrom(raw, 100.0F) / 3.0F);
 }
 
 TEST(OneEuroFilterTest, SpeedAdaptationReducesLagOnFastMovement) {
-    constexpr float kStep = 20.0F; // Page units per sample, a fast stroke.
+    constexpr float kStep = 20.0F;
     constexpr int kSampleCount = 40;
 
     const auto lagOf = [](float beta) {
@@ -130,16 +128,14 @@ TEST(InkFilterTest, SmoothsPositionAndPressureAndKeepsTheRest) {
     EXPECT_EQ(filter.filter(first), first);
     const InkSample filtered = filter.filter(jump);
 
-    // The jump is damped, but the filter still moves towards it.
     EXPECT_GT(filtered.x, first.x);
     EXPECT_LT(filtered.x, jump.x);
     EXPECT_GT(filtered.pressure, first.pressure);
     EXPECT_LT(filtered.pressure, jump.pressure);
-    // Everything the filter does not touch survives unchanged.
     EXPECT_FLOAT_EQ(filtered.tiltX, jump.tiltX);
     EXPECT_FLOAT_EQ(filtered.tiltY, jump.tiltY);
     EXPECT_EQ(filtered.timestamp, jump.timestamp);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

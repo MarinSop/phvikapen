@@ -10,7 +10,7 @@
 #include <cstdlib>
 
 int main(int argc, char* argv[]) {
-    // Installer and updater hooks run first; this call may restart or end the process.
+    // Must run first: it may restart or end the process.
     phvikapen::platform::update::runStartupHook();
 
     const QGuiApplication application(argc, argv);
@@ -21,7 +21,6 @@ int main(int argc, char* argv[]) {
 
     phvikapen::app::initializeLogging();
 
-    // A Windows 11 look, available on every platform Qt supports.
     QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
 
     QQmlApplicationEngine engine;

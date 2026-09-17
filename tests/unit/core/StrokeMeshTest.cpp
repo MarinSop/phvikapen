@@ -16,7 +16,6 @@ TEST(StrokeMeshTest, SegmentWidthFollowsPressureAtEachEnd) {
                   InkSample{.x = 8.0F, .y = 10.0F, .pressure = 0.5F}, style);
 
     ASSERT_EQ(vertices.size(), 6U);
-    // Triangles: (fromLeft, fromRight, toLeft) and (toLeft, fromRight, toRight).
     EXPECT_EQ(vertices.front(), (InkVertex{.x = 0.0F, .y = 12.0F, .red = 1.0F, .alpha = 1.0F}));
     EXPECT_FLOAT_EQ(vertices.at(1).y, 8.0F);
     EXPECT_FLOAT_EQ(vertices.at(2).x, 8.0F);
@@ -39,5 +38,5 @@ TEST(StrokeMeshTest, ZeroLengthSegmentProducesSquareDot) {
     EXPECT_FLOAT_EQ(maxY.y, 6.0F);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

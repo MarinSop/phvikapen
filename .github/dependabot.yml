@@ -10,7 +10,6 @@ updates:
     labels:
       - dependencies
 
-  # Moves the vcpkg baseline forward; the pinned library versions follow from it.
   - package-ecosystem: vcpkg
     directory: /
     schedule:

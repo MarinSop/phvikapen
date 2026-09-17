@@ -6,7 +6,6 @@
 
 namespace phvikapen::app {
 
-/// Facts about the running application, for display in the user interface.
 class AppInfo : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -22,4 +21,4 @@ private:
     QString m_version;
 };
 
-} // namespace phvikapen::app
+}

@@ -7,9 +7,7 @@
 
 namespace phvikapen::app {
 
-/// The notebooks that are currently open, one per tab.
-///
-/// TODO(M3): Back this with notebooks on disk instead of in-memory placeholders.
+// TODO(M3): Back this with notebooks on disk.
 class NotebooksViewModel : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -22,10 +20,8 @@ public:
 
     [[nodiscard]] QBindable<QStringList> bindableTitles() { return {&m_titles}; }
 
-    /// Opens another placeholder notebook.
     Q_INVOKABLE void addNotebook();
 
-    /// Closes the notebook at @p index, ignoring an index outside the list.
     Q_INVOKABLE void closeNotebook(int index);
 
 signals:
@@ -36,4 +32,4 @@ private:
                                &NotebooksViewModel::titlesChanged)
 };
 
-} // namespace phvikapen::app
+}

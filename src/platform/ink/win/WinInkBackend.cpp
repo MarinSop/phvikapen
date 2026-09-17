@@ -14,4 +14,4 @@ void WinInkBackend::setStrokeStyle(const core::StrokeStyle& style) {
     m_style = style;
 }
 
-} // namespace phvikapen::platform::ink
+}

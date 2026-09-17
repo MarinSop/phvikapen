@@ -26,5 +26,5 @@ void formatUuid(benchmark::State& state) {
 
 BENCHMARK(formatUuid);
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

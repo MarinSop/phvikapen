@@ -9,8 +9,6 @@ namespace {
 
 constexpr float kMicrosecondsPerSecond = 1e6F;
 
-/// Smoothing factor of an exponential filter with the given cutoff frequency, from the time
-/// constant tau = 1 / (2 * pi * cutoff) and the sampling period.
 [[nodiscard]] float smoothingFactor(float cutoff, float samplingPeriod) noexcept {
     const float timeConstant = 1.0F / (2.0F * std::numbers::pi_v<float> * cutoff);
     return 1.0F / (1.0F + (timeConstant / samplingPeriod));
@@ -20,7 +18,7 @@ constexpr float kMicrosecondsPerSecond = 1e6F;
     return (alpha * value) + ((1.0F - alpha) * previous);
 }
 
-} // namespace
+}
 
 OneEuroFilter::OneEuroFilter(OneEuroParameters parameters) noexcept : m_parameters{parameters} {}
 
@@ -43,7 +41,6 @@ float OneEuroFilter::filter(float value, std::chrono::microseconds timestamp) no
     const float smoothedSpeed =
         smooth(smoothingFactor(m_parameters.derivativeCutoff, samplingPeriod), speed, m_lastSpeed);
 
-    // The faster the signal moves, the higher the cutoff and the less smoothing is applied.
     const float cutoff = m_parameters.minCutoff + (m_parameters.beta * std::abs(smoothedSpeed));
     const float filtered =
         smooth(smoothingFactor(cutoff, samplingPeriod), value, m_lastFilteredValue);
@@ -62,4 +59,4 @@ void OneEuroFilter::reset() noexcept {
     m_lastSpeed = 0.0F;
 }
 
-} // namespace phvikapen::core
+}

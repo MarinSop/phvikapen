@@ -14,14 +14,12 @@ target_compile_definitions(phvikapen_qml_tests
     PRIVATE QUICK_TEST_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# Its own directory, so that dependency copying does not collide with the other executables.
 set_target_properties(phvikapen_qml_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 add_test(NAME qml.components COMMAND phvikapen_qml_tests)
 
-# The tests run without a window server, so that they also work on build machines.
 set_tests_properties(qml.components PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software"
 )

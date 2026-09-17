@@ -20,4 +20,4 @@ std::string_view toString(ErrorCode code) noexcept {
     return "unknown";
 }
 
-} // namespace phvikapen::core
+}

@@ -53,7 +53,6 @@ jobs:
       - name: Install CMake and Ninja
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          # Ranges, because the action only knows the releases that existed when it was published.
           cmakeVersion: ~4.4.0
           ninjaVersion: ~1.13.0
 
@@ -88,7 +87,6 @@ jobs:
 
       - name: Deploy the Qt runtime
         shell: pwsh
-        # The Visual C++ runtime comes from the Velopack bootstrapper instead.
         run: |
           & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations `
             --no-compiler-runtime --qmldir src "${{ github.workspace }}\stage\phvikapen.exe"
@@ -97,7 +95,6 @@ jobs:
         run: dotnet tool install -g vpk --version ${{ env.VELOPACK_VERSION }}
 
       - name: Download the previous release
-        # Delta packages are built against it. The very first release has nothing to download.
         continue-on-error: true
         run: >
           vpk download github

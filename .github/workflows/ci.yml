@@ -14,7 +14,6 @@ concurrency:
 
 env:
   QT_VERSION: 6.11.2
-  # Built dependencies are cached as files, so that actions/cache can carry them between runs.
   VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite
   SCCACHE_GHA_ENABLED: "true"
 
@@ -31,13 +30,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install pkgconf
-        # vcpkg repairs pkgconfig files during installation and needs pkg-config for that.
         run: brew install pkgconf
 
       - name: Install CMake and Ninja
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          # Ranges, because the action only knows the releases that existed when it was published.
           cmakeVersion: ~4.4.0
           ninjaVersion: ~1.13.0
 
@@ -80,7 +77,6 @@ jobs:
       - name: Install CMake and Ninja
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          # Ranges, because the action only knows the releases that existed when it was published.
           cmakeVersion: ~4.4.0
           ninjaVersion: ~1.13.0
 
@@ -108,7 +104,6 @@ jobs:
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
       - name: Build
-        # Also runs qmllint, which the build presets build next to the code.
         run: cmake --workflow --preset mac-debug
 
       - name: Check C++ formatting
@@ -129,7 +124,6 @@ jobs:
       - name: Run clang-tidy
         run: |
           prefix="$(brew --prefix llvm@23)"
-          # The formula is keg-only, so the wrapper cannot find clang-tidy on PATH by itself.
           "$prefix/bin/run-clang-tidy" -p build/mac-debug -quiet \
             -clang-tidy-binary "$prefix/bin/clang-tidy" \
             "^${PWD}/(src|tests|tools)/"
@@ -156,7 +150,6 @@ jobs:
       - name: Install CMake and Ninja
         uses: lukka/get-cmake@fffaaafeea488556c2c12dad60690008bc1caacb # v4.4.2
         with:
-          # Ranges, because the action only knows the releases that existed when it was published.
           cmakeVersion: ~4.4.0
           ninjaVersion: ~1.13.0
 

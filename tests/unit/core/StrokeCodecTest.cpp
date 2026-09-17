@@ -17,7 +17,6 @@ namespace {
 
 using std::chrono::microseconds;
 
-/// A stroke that looks like handwriting: a smooth arc sampled at 125 Hz.
 [[nodiscard]] Stroke makeHandwrittenStroke(int sampleCount) {
     Uuid7Generator ids;
     Stroke stroke{ids.next(),
@@ -62,7 +61,6 @@ TEST(StrokeCodecTest, RoundTripKeepsSamplesWithinTheStoredPrecision) {
         EXPECT_NEAR(after.pressure, before.pressure, 1.0F / kStoredPressureSteps);
         EXPECT_NEAR(after.tiltX, before.tiltX, 1.0F / kStoredTiltStepsPerDegree);
         EXPECT_NEAR(after.tiltY, before.tiltY, 1.0F / kStoredTiltStepsPerDegree);
-        // Time is stored exactly, because replaying input depends on it.
         EXPECT_EQ(after.timestamp, before.timestamp);
     }
 }
@@ -83,7 +81,6 @@ TEST(StrokeCodecTest, HandwritingCostsOnlyAFewBytesPerSample) {
 
     const std::vector<std::byte> encoded = encodeStroke(stroke);
 
-    // The raw samples are 24 bytes each; differences of a smooth stroke are far smaller.
     const std::size_t bytesPerSample = encoded.size() / stroke.samples().size();
     EXPECT_LT(bytesPerSample, 10U) << "encoded size " << encoded.size();
 }
@@ -124,5 +121,5 @@ TEST(StrokeCodecTest, RejectsANewerFormatVersion) {
     EXPECT_EQ(decoded.error().code, ErrorCode::Unsupported);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

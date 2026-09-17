@@ -1,5 +1,3 @@
-# Interface target carrying the project-wide warning policy. Every warning is an error.
-
 add_library(phvikapen_warnings INTERFACE)
 
 set(_phvikapen_msvc_warnings /W4 /WX /permissive- /utf-8)

@@ -28,5 +28,5 @@ void appendSamples(benchmark::State& state) {
 
 BENCHMARK(appendSamples)->Range(64, 4096)->Complexity(benchmark::oN);
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

@@ -16,14 +16,13 @@
 namespace phvikapen::app {
 namespace {
 
-/// Name of the notebook the application opens at startup.
 constexpr auto kDefaultNotebookName = "default.phvika";
 
 [[nodiscard]] QString notebookDirectory() {
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/notebooks";
 }
 
-} // namespace
+}
 
 NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {
     openNotebook();
@@ -73,7 +72,6 @@ void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
     m_owner->storeStroke(stroke);
 }
 
-// An interrupted stroke never reaches the notebook, so there is nothing to undo here.
 void NotebookViewModel::Sink::strokeCancelled() {}
 
 void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
@@ -152,4 +150,4 @@ void NotebookViewModel::reportError(const QString& message) {
     emit errorMessageChanged();
 }
 
-} // namespace phvikapen::app
+}

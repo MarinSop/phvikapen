@@ -19,7 +19,6 @@ namespace {
 using test::makeStroke;
 using test::TemporaryNotebook;
 
-/// The ids of the strokes on @p page, in the order they are stored.
 [[nodiscard]] std::vector<Uuid> idsOnPage(const NotebookStore& store, const Uuid& page) {
     std::vector<Uuid> ids;
     const Result<std::vector<Stroke>> strokes = store.strokesOfPage(page);
@@ -63,7 +62,6 @@ TEST(AddStrokeCommandTest, PutsTheStrokeBackWhereItWas) {
     ASSERT_TRUE(command.revert());
     ASSERT_TRUE(command.apply());
 
-    // The stroke is the last one again, and it still carries what was drawn.
     EXPECT_EQ(idsOnPage(*store, page), (std::vector<Uuid>{first.id(), second.id()}));
     const Result<std::vector<Stroke>> strokes = store->strokesOfPage(page);
     ASSERT_TRUE(strokes.has_value()) << strokes.error().message;
@@ -148,5 +146,5 @@ TEST(StrokeCommandsTest, DrawingAndClearingWalkBackAndForwardThroughTheHistory) 
     EXPECT_TRUE(idsOnPage(*store, page).empty());
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

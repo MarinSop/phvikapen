@@ -62,5 +62,5 @@ TEST(StrokeTest, KeepsSamplesInInputOrder) {
     EXPECT_EQ(stroke.samples().back(), second);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

@@ -19,7 +19,6 @@ using std::chrono::milliseconds;
     return [now] { return now; };
 }
 
-/// Deterministic random source returning 0, 1, 2, ...
 [[nodiscard]] Uuid7Generator::RandomSource sequentialRandom() {
     return [value = std::uint64_t{0}] mutable { return value++; };
 }
@@ -50,7 +49,6 @@ TEST(Uuid7GeneratorTest, EncodesUnixTimestampInFirst48Bits) {
 }
 
 TEST(Uuid7GeneratorTest, IsStrictlyIncreasingWithinOneMillisecond) {
-    // More values than the 12-bit counter can hold, so counter exhaustion is exercised too.
     Uuid7Generator generator{fixedClock(milliseconds{1'700'000'000'000}), sequentialRandom()};
 
     Uuid previous = generator.next();
@@ -79,5 +77,5 @@ TEST(Uuid7GeneratorTest, StaysIncreasingWhenClockStepsBack) {
     EXPECT_LT(second, third);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

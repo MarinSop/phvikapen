@@ -25,7 +25,6 @@ Result<void> UndoStack::run(std::unique_ptr<ICommand> command) {
                      m_commands.end());
     m_commands.push_back(std::move(command));
     if (m_commands.size() > m_depthLimit) {
-        // The oldest command is forgotten. What it did stays done, it can only no longer be undone.
         m_commands.erase(m_commands.begin());
     }
     m_applied = m_commands.size();
@@ -59,4 +58,4 @@ void UndoStack::clear() noexcept {
     m_applied = 0;
 }
 
-} // namespace phvikapen::core
+}

@@ -14,13 +14,6 @@ class QTabletEvent;
 
 namespace phvikapen::tools {
 
-/// Captures raw pen and mouse input and appends one CSV row per event.
-///
-/// Tablet events are observed on the window, because Qt Quick items have no tablet event handler.
-/// Unlike the canvas, the recorder does not accept them: the samples are only written down, and
-/// nothing is drawn. A hovering pen is recorded as well, as a tablet event without pressure.
-/// Mouse hovering is not recorded: Qt Quick pairs every hover event with a synthesized one that
-/// carries no timestamp, and a hovering mouse says nothing about how a pen behaves.
 class RecorderItem : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
@@ -43,10 +36,8 @@ public:
 
     [[nodiscard]] int sampleCount() const { return m_sampleCount; }
 
-    /// Opens a new recording file below QStandardPaths::AppLocalDataLocation.
     Q_INVOKABLE void start();
 
-    /// Closes the current recording file.
     Q_INVOKABLE void stop();
 
 signals:
@@ -73,4 +64,4 @@ private:
     QPointer<QQuickWindow> m_observedWindow;
 };
 
-} // namespace phvikapen::tools
+}

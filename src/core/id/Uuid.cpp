@@ -12,10 +12,9 @@ namespace {
 
 constexpr std::size_t kCanonicalLength = 36;
 
-// Byte offsets in front of which the canonical form places a hyphen (8-4-4-4-12 hex digits).
 constexpr std::array<std::size_t, 4> kHyphenOffsets{4, 6, 8, 10};
 
-} // namespace
+}
 
 std::string Uuid::toString() const {
     std::string text;
@@ -31,4 +30,4 @@ std::string Uuid::toString() const {
     return text;
 }
 
-} // namespace phvikapen::core
+}

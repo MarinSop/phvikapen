@@ -22,7 +22,7 @@ ToolBar {
         }
 
         ToolButton {
-            // TODO(M2): Erasing needs the stroke model and a spatial index.
+            // TODO(M2): Erasing needs a spatial index.
             checkable: true
             checked: root.tools.currentTool === ToolViewModel.Eraser
             text: qsTr("Eraser")

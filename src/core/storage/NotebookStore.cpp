@@ -15,8 +15,7 @@
 namespace phvikapen::core {
 namespace {
 
-/// Statements that create the first version of the schema. Later versions append their own step
-/// to this list and never edit an earlier one, so that an old file upgrades in order.
+// Add new schema versions as new steps; never edit a released one.
 constexpr std::string_view kSchemaVersion1 = R"sql(
     CREATE TABLE strokes (
         id        BLOB PRIMARY KEY NOT NULL,
@@ -52,7 +51,6 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     return {};
 }
 
-/// Runs a statement that returns a single integer, such as a pragma.
 [[nodiscard]] Result<int> queryInteger(sqlite3* database, std::string_view sql) {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(database, std::string{sql}.c_str(), -1, &statement, nullptr)
@@ -86,7 +84,6 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     return std::as_bytes(std::span{id.bytes()});
 }
 
-/// Abandons a half applied migration and returns @p cause, the error that made it necessary.
 [[nodiscard]] Result<void> rollbackWith(sqlite3* database, Error cause) {
     if (const Result<void> rolledBack = execute(database, "ROLLBACK;"); !rolledBack) {
         cause.message += " (the rollback failed as well: " + rolledBack.error().message + ")";
@@ -94,7 +91,6 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     return std::unexpected{std::move(cause)};
 }
 
-/// Brings the schema of an open database up to kNotebookSchemaVersion.
 [[nodiscard]] Result<void> migrate(sqlite3* database) {
     const Result<int> version = queryInteger(database, "PRAGMA user_version;");
     if (!version) {
@@ -124,7 +120,7 @@ constexpr std::string_view kSchemaVersion1 = R"sql(
     return execute(database, "COMMIT;");
 }
 
-} // namespace
+}
 
 NotebookStore::NotebookStore(sqlite3* database) noexcept : m_database{database} {}
 
@@ -151,8 +147,7 @@ void NotebookStore::close() noexcept {
 }
 
 Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
-    // SQLite expects file names in UTF-8 on every platform, which the native encoding of a path
-    // is not on Windows.
+    // SQLite expects UTF-8, which path::string() is not on Windows.
     const std::u8string utf8Path = path.u8string();
     const std::string fileName{utf8Path.begin(), utf8Path.end()};
 
@@ -167,7 +162,6 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
 
     NotebookStore store{database};
 
-    // Readers never block the writer, and a finished stroke survives a crash of the application.
     for (const std::string_view pragma : {
              "PRAGMA journal_mode = WAL;",
              "PRAGMA foreign_keys = ON;",
@@ -185,8 +179,6 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
 }
 
 Result<void> NotebookStore::appendStroke(const Uuid& pageId, const Stroke& stroke) {
-    // The ordinal is chosen inside the statement, so that choosing it and inserting the row are
-    // one atomic step.
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(m_database,
                            "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, "
@@ -310,4 +302,4 @@ Result<int> NotebookStore::schemaVersion() const {
     return queryInteger(m_database, "PRAGMA user_version;");
 }
 
-} // namespace phvikapen::core
+}

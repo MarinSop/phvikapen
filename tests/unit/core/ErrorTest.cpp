@@ -35,5 +35,5 @@ TEST(ErrorCodeTest, HasStableIdentifiers) {
     EXPECT_EQ(toString(ErrorCode::Unsupported), "unsupported");
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

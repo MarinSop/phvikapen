@@ -11,7 +11,6 @@
 
 namespace phvikapen::core {
 
-/// 8-bit per channel color with straight (non-premultiplied) alpha.
 struct Color {
     static constexpr std::uint8_t kOpaque = 255;
 
@@ -23,18 +22,15 @@ struct Color {
     friend constexpr bool operator==(const Color&, const Color&) = default;
 };
 
-/// Appearance of a stroke.
 struct StrokeStyle {
     static constexpr float kDefaultWidth = 2.0F;
 
     Color color{};
-    /// Nominal width in page units at full pressure.
     float width{kDefaultWidth};
 
     friend constexpr bool operator==(const StrokeStyle&, const StrokeStyle&) = default;
 };
 
-/// A single continuous pen stroke: its samples in input order and the style it is drawn with.
 class Stroke {
 public:
     explicit Stroke(Uuid id, StrokeStyle style = {}) noexcept;
@@ -47,11 +43,8 @@ public:
 
     [[nodiscard]] bool empty() const noexcept { return m_samples.empty(); }
 
-    /// Appends a sample and extends the bounds. Amortized O(1).
     void append(const InkSample& sample);
 
-    /// Bounds of the rendered stroke: the sample positions grown by half the nominal width.
-    /// Returns std::nullopt for a stroke without samples.
     [[nodiscard]] std::optional<Rect> boundingBox() const noexcept;
 
 private:
@@ -61,4 +54,4 @@ private:
     std::optional<Rect> m_sampleBounds;
 };
 
-} // namespace phvikapen::core
+}

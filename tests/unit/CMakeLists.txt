@@ -1,8 +1,5 @@
 find_package(GTest CONFIG REQUIRED)
 
-# The notebook test forges a file from a future schema version, which needs the SQLite header.
-# The library itself arrives through the core library, so linking it again here would put the
-# same archive on the link line twice.
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_executable(phvikapen_tests
@@ -28,7 +25,6 @@ target_link_libraries(phvikapen_tests
 
 target_include_directories(phvikapen_tests
     PRIVATE
-        # So that a test reaches shared test code as "support/…", wherever the test itself lives.
         "${CMAKE_CURRENT_SOURCE_DIR}"
         $<TARGET_PROPERTY:unofficial::sqlite3::sqlite3,INTERFACE_INCLUDE_DIRECTORIES>
 )
@@ -37,7 +33,6 @@ set_target_properties(phvikapen_tests PROPERTIES
     AUTOMOC OFF
     AUTOUIC OFF
     AUTORCC OFF
-    # Its own directory, so that dependency copying does not collide with the other executables.
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 

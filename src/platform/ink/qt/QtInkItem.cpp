@@ -26,7 +26,6 @@ constexpr quint32 kMatrixBytes = 64;
 
 [[nodiscard]] InkSample makeSample(const QPointF& position, qreal pressure, qreal tiltX,
                                    qreal tiltY, quint64 timestampMs) {
-    // Qt reports event timestamps in milliseconds.
     return InkSample{
         .x = static_cast<float>(position.x()),
         .y = static_cast<float>(position.y()),
@@ -40,7 +39,6 @@ constexpr quint32 kMatrixBytes = 64;
 }
 
 [[nodiscard]] InkSample makeSample(const QMouseEvent& event) {
-    // Mice have no pressure sensor; draw at full pressure.
     return makeSample(event.position(), 1.0, 0.0, 0.0, event.timestamp());
 }
 
@@ -49,7 +47,6 @@ constexpr quint32 kMatrixBytes = 64;
     return file.open(QIODevice::ReadOnly) ? QShader::fromSerialized(file.readAll()) : QShader{};
 }
 
-/// Draws the tessellated wet ink of a QtInkItem on the render thread.
 class QtInkRenderer final : public QQuickRhiItemRenderer {
 public:
     void initialize(QRhiCommandBuffer* commandBuffer) override;
@@ -102,7 +99,6 @@ void QtInkRenderer::initialize(QRhiCommandBuffer* /*commandBuffer*/) {
                                  static_cast<quint32>(offsetof(InkVertex, red))},
     });
 
-    // Shaders output premultiplied alpha; the default blend factors match that.
     QRhiGraphicsPipeline::TargetBlend blend;
     blend.enable = true;
 
@@ -133,7 +129,6 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
         m_vertices.clear();
         m_uploadedVertexCount = 0;
     }
-    // Only vertices added since the last frame are copied.
     const auto newVertices = std::span{source}.subspan(m_vertices.size());
     m_vertices.insert(m_vertices.end(), newVertices.begin(), newVertices.end());
 
@@ -148,7 +143,6 @@ void QtInkRenderer::uploadVertices(QRhiResourceUpdateBatch& updates) {
     }
 
     if (!m_vertexBuffer || m_vertexBuffer->size() < requiredBytes) {
-        // Grow geometrically so that appending samples stays amortized O(1).
         quint32 capacity = m_vertexBuffer ? m_vertexBuffer->size() : kInitialVertexBufferBytes;
         while (capacity < requiredBytes) {
             capacity *= 2U;
@@ -172,7 +166,6 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     QRhiResourceUpdateBatch* const updates = rhi()->nextResourceUpdateBatch();
     uploadVertices(*updates);
 
-    // Page coordinates are logical pixels with y pointing down.
     QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
     updates->updateDynamicBuffer(m_uniformBuffer.get(), 0, kMatrixBytes, projection.constData());
@@ -192,7 +185,7 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     commandBuffer->endPass();
 }
 
-} // namespace
+}
 
 QtInkItem::QtInkItem(QQuickItem* parent) : QQuickRhiItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton);
@@ -242,7 +235,6 @@ void QtInkItem::setStrokes(std::vector<core::Stroke> strokes) {
             continue;
         }
         if (samples.size() == 1) {
-            // A tap was stored as a single sample and is drawn as a dot.
             core::appendSegment(m_vertices, samples.front(), samples.front(), stroke.style());
             continue;
         }
@@ -280,7 +272,6 @@ void QtInkItem::setStrokeStyle(const core::StrokeStyle& style) {
 }
 
 QQuickRhiItemRenderer* QtInkItem::createRenderer() {
-    // Ownership passes to Qt Quick, which destroys the renderer on the render thread.
     return new QtInkRenderer;
 }
 
@@ -353,7 +344,6 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
         return false;
     }
 
-    // Accepted tablet events are not converted into mouse events.
     event.accept();
     return true;
 }
@@ -390,7 +380,6 @@ void QtInkItem::endStroke(const InkSample& sample) {
     const InkSample previous = m_activeStroke->samples().back();
     const InkSample smoothed = m_filter.filter(sample);
     m_activeStroke->append(smoothed);
-    // A tap without movement becomes a dot.
     core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
 
     m_strokes.push_back(std::move(*m_activeStroke));
@@ -415,4 +404,4 @@ void QtInkItem::cancelStroke() {
     update();
 }
 
-} // namespace phvikapen::platform::ink
+}

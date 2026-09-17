@@ -12,7 +12,6 @@
 namespace phvikapen::core {
 namespace {
 
-/// Command that writes what it was asked to do into a shared log, and can be made to fail.
 class RecordingCommand final : public ICommand {
 public:
     RecordingCommand(std::vector<std::string>* log, std::string label) noexcept
@@ -223,5 +222,5 @@ TEST(UndoStackTest, ClearingForgetsEverything) {
     EXPECT_FALSE(stack.canRedo());
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

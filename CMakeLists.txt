@@ -22,9 +22,6 @@ include(PhvikaPenWarnings)
 include(PhvikaPenSanitizers)
 include(PhvikaPenLayering)
 
-# QRhi, used by the ink canvas, is a semi-public Qt API with its own compatibility promise; its
-# headers ship with the GuiPrivate component, so the general warning about private modules does
-# not apply here.
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 
 find_package(Qt6 6.11 REQUIRED

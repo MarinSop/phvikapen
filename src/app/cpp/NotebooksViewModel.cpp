@@ -23,4 +23,4 @@ void NotebooksViewModel::closeNotebook(int index) {
     m_titles = updated;
 }
 
-} // namespace phvikapen::app
+}

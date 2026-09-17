@@ -4,7 +4,6 @@
 
 namespace phvikapen::core {
 
-/// Axis-aligned rectangle in page coordinates (y grows downwards).
 struct Rect {
     float left{};
     float top{};
@@ -15,7 +14,6 @@ struct Rect {
 
     [[nodiscard]] constexpr float height() const noexcept { return bottom - top; }
 
-    /// Returns the smallest rectangle that contains both this rectangle and @p other.
     [[nodiscard]] constexpr Rect united(const Rect& other) const noexcept {
         return {
             .left = std::min(left, other.left),
@@ -25,7 +23,6 @@ struct Rect {
         };
     }
 
-    /// Returns this rectangle grown by @p margin on every side.
     [[nodiscard]] constexpr Rect inflated(float margin) const noexcept {
         return {
             .left = left - margin,
@@ -38,4 +35,4 @@ struct Rect {
     friend constexpr bool operator==(const Rect&, const Rect&) = default;
 };
 
-} // namespace phvikapen::core
+}

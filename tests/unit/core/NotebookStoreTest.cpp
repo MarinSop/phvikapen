@@ -52,7 +52,6 @@ TEST(NotebookStoreTest, StrokesSurviveClosingAndReopening) {
     ASSERT_TRUE(strokes.has_value()) << strokes.error().message;
 
     ASSERT_EQ(strokes->size(), 2U);
-    // The order the strokes were drawn in is the order they come back in.
     EXPECT_EQ(strokes->front().id(), first.id());
     EXPECT_EQ(strokes->back().id(), second.id());
     EXPECT_EQ(strokes->front().samples().size(), first.samples().size());
@@ -108,7 +107,6 @@ TEST(NotebookStoreTest, ReportsAStrokeThePageDoesNotHold) {
     ASSERT_FALSE(unknownStroke.has_value());
     EXPECT_EQ(unknownStroke.error().code, ErrorCode::NotFound);
 
-    // The stroke exists, but not on the page it is asked for.
     const Result<void> wrongPage = store->removeStroke(otherPage, stroke.id());
     ASSERT_FALSE(wrongPage.has_value());
     EXPECT_EQ(wrongPage.error().code, ErrorCode::NotFound);
@@ -153,7 +151,6 @@ TEST(NotebookStoreTest, RefusesANotebookFromANewerVersion) {
         ASSERT_TRUE(store.has_value()) << store.error().message;
     }
 
-    // Pretend a later version of the application wrote this file.
     const std::filesystem::path& path = notebook.path();
     {
         sqlite3* raw = nullptr;
@@ -183,5 +180,5 @@ TEST(NotebookStoreTest, ReportsAPathItCannotOpen) {
     EXPECT_EQ(store.error().code, ErrorCode::IoFailure);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

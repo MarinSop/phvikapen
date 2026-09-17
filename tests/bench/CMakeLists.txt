@@ -17,6 +17,5 @@ set_target_properties(phvikapen_bench PROPERTIES
     AUTOMOC OFF
     AUTOUIC OFF
     AUTORCC OFF
-    # Its own directory, so that dependency copying does not collide with the other executables.
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )

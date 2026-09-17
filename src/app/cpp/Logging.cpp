@@ -19,7 +19,6 @@ namespace {
 
 constexpr std::size_t kMaxLogFileBytes = std::size_t{5} * 1024 * 1024;
 constexpr std::size_t kMaxLogFiles = 3;
-// Written out regularly, so that a crash costs at most the last seconds of the log.
 constexpr std::chrono::seconds kFlushInterval{2};
 
 void forwardQtMessage(QtMsgType type, const QMessageLogContext& context, const QString& message) {
@@ -45,7 +44,7 @@ void forwardQtMessage(QtMsgType type, const QMessageLogContext& context, const Q
     }
 }
 
-} // namespace
+}
 
 void initializeLogging() {
     const QString directory =
@@ -71,4 +70,4 @@ void initializeLogging() {
     spdlog::info("Log file: {}", file.toStdString());
 }
 
-} // namespace phvikapen::app
+}

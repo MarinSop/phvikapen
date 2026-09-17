@@ -1,6 +1,3 @@
-# Velopack client library (installer hooks and updates), downloaded as a prebuilt release
-# archive pinned by version and SHA-256 into the build tree. Defines Velopack::velopack.
-
 include_guard(GLOBAL)
 include(FetchContent)
 
@@ -24,7 +21,6 @@ endif()
 set(_phvikapen_velopack_dir "${velopack_libc_SOURCE_DIR}")
 
 if(WIN32)
-    # Shipped next to the executable, as the Velopack C++ documentation recommends.
     set(_phvikapen_velopack_name "velopack_libc_win_${_phvikapen_velopack_arch}_msvc")
     add_library(Velopack::velopack SHARED IMPORTED GLOBAL)
     set_target_properties(Velopack::velopack PROPERTIES
@@ -32,8 +28,6 @@ if(WIN32)
         IMPORTED_IMPLIB "${_phvikapen_velopack_dir}/lib/${_phvikapen_velopack_name}.dll.lib"
     )
 elseif(APPLE)
-    # macOS is a development platform only. The static archive avoids the absolute install name
-    # embedded in the prebuilt dylib.
     add_library(Velopack::velopack STATIC IMPORTED GLOBAL)
     set_target_properties(Velopack::velopack PROPERTIES
         IMPORTED_LOCATION

@@ -1,7 +1,3 @@
-# Fails when a core source file includes Qt, platform or app headers.
-#
-# Usage: cmake -D CORE_DIR=<path to src/core> -P CheckCoreIncludes.cmake
-
 if(NOT DEFINED CORE_DIR)
     message(FATAL_ERROR "CORE_DIR is not set")
 endif()

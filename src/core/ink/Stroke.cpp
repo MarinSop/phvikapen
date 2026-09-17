@@ -7,7 +7,7 @@ namespace {
 
 constexpr float kHalf = 0.5F;
 
-} // namespace
+}
 
 Stroke::Stroke(Uuid id, StrokeStyle style) noexcept : m_id{id}, m_style{style} {}
 
@@ -25,4 +25,4 @@ std::optional<Rect> Stroke::boundingBox() const noexcept {
     return m_sampleBounds->inflated(m_style.width * kHalf);
 }
 
-} // namespace phvikapen::core
+}

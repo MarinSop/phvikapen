@@ -15,5 +15,5 @@ TEST(VersionTest, StringMatchesComponents) {
     EXPECT_EQ(version::kString, expected);
 }
 
-} // namespace
-} // namespace phvikapen::core
+}
+}

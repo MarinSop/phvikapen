@@ -1,7 +1,3 @@
-# Enforcement of the layer dependency rule (app -> platform -> core).
-
-# Fails the configure step if <target> links Qt, directly or through its usage requirements.
-# The check runs once the whole project has been configured, so links added later are caught too.
 function(phvikapen_forbid_qt_dependency target)
     cmake_language(EVAL CODE "
         cmake_language(DEFER DIRECTORY [[${PROJECT_SOURCE_DIR}]]

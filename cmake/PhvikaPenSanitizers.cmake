@@ -1,6 +1,3 @@
-# Interface target that instruments its consumers with AddressSanitizer and
-# UndefinedBehaviorSanitizer when PHVIKAPEN_ENABLE_SANITIZERS is ON.
-
 add_library(phvikapen_sanitizers INTERFACE)
 
 if(NOT PHVIKAPEN_ENABLE_SANITIZERS)

@@ -35,7 +35,7 @@ constexpr int kPressureDecimals = 4;
     return QStringLiteral("unknown");
 }
 
-} // namespace
+}
 
 RecorderItem::RecorderItem(QQuickItem* parent) : QQuickItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton);
@@ -161,7 +161,6 @@ bool RecorderItem::eventFilter(QObject* watched, QEvent* event) {
         break;
     }
 
-    // Not accepted: the samples are only recorded, never consumed.
     return false;
 }
 
@@ -175,4 +174,4 @@ void RecorderItem::observeWindow(QQuickWindow* window) {
     }
 }
 
-} // namespace phvikapen::tools
+}

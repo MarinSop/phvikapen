@@ -34,7 +34,6 @@ Result<void> ClearPageCommand::apply() {
     if (!removed) {
         return std::unexpected{removed.error()};
     }
-    // Only kept once the rows are really gone, so that a failed clear leaves nothing to put back.
     m_removed = std::move(*strokes);
     return {};
 }
@@ -49,4 +48,4 @@ Result<void> ClearPageCommand::revert() {
     return {};
 }
 
-} // namespace phvikapen::core
+}

@@ -8,4 +8,4 @@ void runStartupHook() {
     Velopack::VelopackApp::Build().Run();
 }
 
-} // namespace phvikapen::platform::update
+}

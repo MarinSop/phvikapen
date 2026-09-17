@@ -11,15 +11,12 @@
 
 namespace phvikapen::test {
 
-/// A notebook file in the temporary directory, removed again when the test ends.
 class TemporaryNotebook {
 public:
     TemporaryNotebook() {
         core::Uuid7Generator ids;
         m_path = std::filesystem::temp_directory_path()
                  / ("phvikapen-" + ids.next().toString() + ".phvika");
-        // The write-ahead log leaves two files of its own next to the notebook. Their names are
-        // built here, where allocating may throw, so that the destructor cannot.
         m_walPath = m_path.string() + "-wal";
         m_shmPath = m_path.string() + "-shm";
     }
@@ -44,7 +41,6 @@ private:
     std::filesystem::path m_shmPath;
 };
 
-/// A short stroke that starts at @p originX, long enough to be worth encoding.
 [[nodiscard]] inline core::Stroke makeStroke(core::Uuid7Generator& ids, float originX) {
     core::Stroke stroke{ids.next(), core::StrokeStyle{.width = 3.0F}};
     for (int i = 0; i < 20; ++i) {
@@ -59,4 +55,4 @@ private:
     return stroke;
 }
 
-} // namespace phvikapen::test
+}

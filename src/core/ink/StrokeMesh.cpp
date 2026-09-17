@@ -15,7 +15,7 @@ constexpr float kMinSegmentLength = 1e-4F;
     return static_cast<float>(channel) / kMaxChannel;
 }
 
-} // namespace
+}
 
 void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, const InkSample& to,
                    const StrokeStyle& style) {
@@ -27,8 +27,6 @@ void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, cons
     const float halfFrom = style.width * from.pressure * kHalf;
     const float halfTo = style.width * to.pressure * kHalf;
 
-    // Unit direction along the segment and its normal. A dot is extended along x as well,
-    // so that it becomes a square.
     const float directionX = isDot ? 1.0F : dx / length;
     const float directionY = isDot ? 0.0F : dy / length;
     const float normalX = -directionY;
@@ -57,4 +55,4 @@ void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, cons
     vertices.insert(vertices.end(), {fromLeft, fromRight, toLeft, toLeft, fromRight, toRight});
 }
 
-} // namespace phvikapen::core
+}

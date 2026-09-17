@@ -1,5 +1,3 @@
-# Install the hooks once with `pre-commit install`.
-# Revisions are pinned to commit SHAs; update them with `pre-commit autoupdate --freeze`.
 minimum_pre_commit_version: "4.0.0"
 
 repos:

@@ -1,5 +1,3 @@
-# Operating-system specific services behind interfaces: ink input, PDF documents and updates.
-
 include(PhvikaPenVelopack)
 
 add_library(phvikapen_platform STATIC)
@@ -28,7 +26,6 @@ qt_add_shaders(phvikapen_platform "phvikapen_ink_shaders"
 )
 
 if(WIN32)
-    # C++/WinRT projection for the native low-latency Windows ink backend.
     find_package(cppwinrt CONFIG REQUIRED)
     target_sources(phvikapen_platform
         PRIVATE
@@ -54,5 +51,4 @@ target_link_libraries(phvikapen_platform
 
 target_compile_features(phvikapen_platform PUBLIC cxx_std_23)
 
-# The application registers QtInkItem in QML through QML_FOREIGN, which needs these metatypes.
 qt_extract_metatypes(phvikapen_platform)

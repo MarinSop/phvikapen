@@ -1,5 +1,3 @@
-# Pure C++23 domain layer. It must never depend on Qt.
-
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_library(phvikapen_core STATIC)
@@ -51,7 +49,6 @@ target_link_libraries(phvikapen_core
         phvikapen_sanitizers
 )
 
-# qt_standard_project_setup() enables the Qt code generators for every target; core has no Qt code.
 set_target_properties(phvikapen_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 phvikapen_forbid_qt_dependency(phvikapen_core)

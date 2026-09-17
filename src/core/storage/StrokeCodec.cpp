@@ -20,11 +20,8 @@ constexpr std::uint64_t kVarintPayloadMask = 0x7F;
 constexpr std::uint64_t kVarintContinuation = 0x80;
 constexpr unsigned kMaxVarintBytes = 10;
 
-/// Maps a signed value onto an unsigned one that stays small for small magnitudes, so that the
-/// varint of a tiny negative difference is as short as that of a tiny positive one.
 [[nodiscard]] std::uint64_t zigzag(std::int64_t value) noexcept {
     const auto unsignedValue = static_cast<std::uint64_t>(value);
-    // All ones for a negative value, all zeros otherwise, without shifting a signed operand.
     const std::uint64_t signMask = value < 0 ? ~std::uint64_t{0} : std::uint64_t{0};
     return (unsignedValue << 1U) ^ signMask;
 }
@@ -41,7 +38,6 @@ void appendVarint(std::vector<std::byte>& out, std::uint64_t value) {
     out.push_back(static_cast<std::byte>(value));
 }
 
-/// Cursor over the encoded bytes. Every read either advances it or marks it failed.
 class Reader {
 public:
     explicit Reader(std::span<const std::byte> bytes) noexcept : m_bytes{bytes} {}
@@ -93,7 +89,6 @@ private:
     return static_cast<float>(static_cast<double>(value) / static_cast<double>(step));
 }
 
-/// The quantized fields of one sample, which are stored as differences between samples.
 struct QuantizedSample {
     std::int64_t x{};
     std::int64_t y{};
@@ -147,7 +142,7 @@ void appendSampleDifference(std::vector<std::byte>& out, const QuantizedSample& 
     return sample;
 }
 
-} // namespace
+}
 
 std::vector<std::byte> encodeStroke(const Stroke& stroke) {
     std::vector<std::byte> out;
@@ -221,4 +216,4 @@ Result<Stroke> decodeStroke(std::span<const std::byte> bytes) {
     return stroke;
 }
 
-} // namespace phvikapen::core
+}
