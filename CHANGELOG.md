@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was actually drawn, and which one is chosen is remembered between sessions.
 - A page can be duplicated with everything on it, and pages can be put in another order by dragging
   them in the sidebar.
+- The sidebar shows a small picture of every page, drawn when the page comes into view and drawn
+  again whenever the page changes.
 
 ### Changed
 

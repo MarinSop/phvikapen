@@ -76,6 +76,11 @@ into a real problem earlier.
 
 ## Pages
 
+- **The small pictures leave out imported pages.** A page of a PDF or a picture is not in the
+  picture the sidebar shows, only the paper and the ink on it.
+- **Every picture is drawn on the thread that draws the window.** A page with a lot of ink is
+  painted small where the window runs, and nothing limits how many are kept.
+
 - **Only pages can be dragged, and only inside their section.** Sections are still moved through
   their menu, a page cannot be dragged into another section, and nothing is shown between the rows
   to say where the page would land.

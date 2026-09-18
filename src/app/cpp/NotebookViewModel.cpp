@@ -1,6 +1,7 @@
 #include "app/cpp/NotebookViewModel.hpp"
 
 #include "app/cpp/OutlineModels.hpp"
+#include "app/cpp/Thumbnails.hpp"
 #include "core/Error.hpp"
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
@@ -14,6 +15,7 @@
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
+#include "platform/render/PagePainter.hpp"
 #include "platform/render/PdfExporter.hpp"
 
 #include <QCryptographicHash>
@@ -22,6 +24,7 @@
 #include <QFileInfo>
 #include <QImage>
 #include <QMetaObject>
+#include <QPainter>
 #include <QStandardPaths>
 #include <QString>
 #include <QTimer>
@@ -548,6 +551,7 @@ void NotebookViewModel::Sink::eraseFinished() {
 }
 
 void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
+    forgetThumbnail(m_currentPage);
     core::Page* const page = currentPageData();
     if (!m_loaded || page == nullptr || !m_storage) {
         refreshCanvas();
@@ -809,6 +813,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
     if (!change) {
         reportError(QString::fromStdString(change.error().message));
     }
+    forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
     emit historyChanged();
 
     if (pageToShow && *pageToShow != m_currentPage && m_outline.page(*pageToShow) != nullptr) {
@@ -833,12 +838,85 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
     refreshMedia();
 }
 
+void NotebookViewModel::wantThumbnail(int index) {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section || !m_storage) {
+        return;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    const std::optional<std::size_t> at = checkedIndex(index, pages.size());
+    if (!at || m_thumbnails.contains(pages[*at].id)) {
+        return;
+    }
+    const core::PageInfo page = pages[*at];
+
+    if (const auto cached = m_pages.find(page.id); cached != m_pages.end()) {
+        paintThumbnail(page, cached->second->strokes());
+        return;
+    }
+
+    const std::uint64_t opening = m_opening;
+    const auto wanted = std::make_shared<const core::PageInfo>(page);
+    m_storage->loadPage(
+        wanted->id, [this, opening, wanted](core::Result<std::vector<core::PlacedStroke>> strokes) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, wanted, strokes = std::move(strokes)] {
+                    if (opening != m_opening || !strokes) {
+                        return;
+                    }
+                    paintThumbnail(*wanted, *strokes);
+                },
+                Qt::QueuedConnection);
+        });
+}
+
+void NotebookViewModel::paintThumbnail(const core::PageInfo& page,
+                                       std::span<const core::PlacedStroke> strokes) {
+    const platform::render::PageContents contents{
+        .style = page.style,
+        .strokes = strokes,
+        .media = nullptr,
+    };
+    const core::Rect area = platform::render::pageArea(contents);
+    if (area.width() <= 0.0F || area.height() <= 0.0F) {
+        return;
+    }
+
+    const int height = std::max(
+        1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * area.height() / area.width()));
+    QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
+    picture.fill(Qt::white);
+    {
+        QPainter painter{&picture};
+        painter.scale(static_cast<double>(thumbnails::kWidth) / static_cast<double>(area.width()),
+                      static_cast<double>(height) / static_cast<double>(area.height()));
+        platform::render::paintPage(painter, contents, area);
+    }
+
+    const int revision = ++m_thumbnailRevision;
+    m_thumbnails[page.id] = revision;
+    thumbnails::put(
+        QStringLiteral("%1-%2").arg(QString::fromStdString(page.id.toString())).arg(revision),
+        picture);
+    publishOutline();
+}
+
+void NotebookViewModel::forgetThumbnail(const core::Uuid& pageId) {
+    if (m_thumbnails.erase(pageId) == 0) {
+        return;
+    }
+    thumbnails::forget(QString::fromStdString(pageId.toString()));
+    publishOutline();
+}
+
 void NotebookViewModel::publishOutline() {
     std::vector<OutlineItem> sections;
     sections.reserve(m_outline.sections().size());
     for (const core::SectionInfo& section : m_outline.sections()) {
         sections.push_back(OutlineItem{
             .title = QString::fromStdString(section.title),
+            .thumbnail = {},
             .count = static_cast<int>(section.pages.size()),
         });
     }
@@ -848,9 +926,16 @@ void NotebookViewModel::publishOutline() {
         const std::vector<core::PageInfo>& infos = m_outline.sections()[*section].pages;
         pages.reserve(infos.size());
         for (std::size_t i = 0; i < infos.size(); ++i) {
+            const auto revision = m_thumbnails.find(infos[i].id);
+            const QString drawn = revision == m_thumbnails.end()
+                                      ? QString{}
+                                      : QStringLiteral("image://pages/%1-%2")
+                                            .arg(QString::fromStdString(infos[i].id.toString()))
+                                            .arg(revision->second);
             pages.push_back(OutlineItem{
                 .title = infos[i].title.empty() ? tr("Page %1").arg(i + 1)
                                                 : QString::fromStdString(infos[i].title),
+                .thumbnail = drawn,
                 .count = 0,
             });
         }

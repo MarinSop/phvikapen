@@ -45,6 +45,7 @@ Q_ENUM_NS(Background)
 
 struct OutlineItem {
     QString title;
+    QString thumbnail;
     int count{0};
 
     friend bool operator==(const OutlineItem&, const OutlineItem&) = default;
@@ -93,6 +94,7 @@ class OutlineListModel : public QAbstractListModel {
 public:
     static constexpr int kTitleRole = Qt::UserRole + 1;
     static constexpr int kCountRole = Qt::UserRole + 2;
+    static constexpr int kThumbnailRole = Qt::UserRole + 3;
 
     explicit OutlineListModel(QObject* parent = nullptr);
 

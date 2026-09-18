@@ -400,6 +400,33 @@ TestCase {
         compare(reopened.errorMessage, "");
     }
 
+    function test_theSidebarGetsAPictureOfEveryPage() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 120, 120);
+        compare(notebook.pages.count, 1);
+
+        notebook.wantThumbnail(0);
+
+        tryVerify(() => notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3) !== "");
+        const drawn = notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3);
+        verify(drawn.startsWith("image://pages/"));
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_thePictureOfAPageIsThrownAwayWhenThePageChanges() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.wantThumbnail(0);
+        tryVerify(() => notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3) !== "");
+        const before = notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3);
+
+        draw(notebook, 120, 120);
+        notebook.wantThumbnail(0);
+
+        tryVerify(() => notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3) !== "");
+        const after = notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3);
+        verify(after !== before);
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

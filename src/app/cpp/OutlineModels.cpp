@@ -28,6 +28,8 @@ QVariant OutlineListModel::data(const QModelIndex& index, int role) const {
         return item.title;
     case kCountRole:
         return item.count;
+    case kThumbnailRole:
+        return item.thumbnail;
     default:
         return {};
     }
@@ -37,6 +39,7 @@ QHash<int, QByteArray> OutlineListModel::roleNames() const {
     return {
         {kTitleRole, "title"},
         {kCountRole, "count"},
+        {kThumbnailRole, "thumbnail"},
     };
 }
 

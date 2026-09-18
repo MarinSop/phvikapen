@@ -21,6 +21,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/SettingsViewModel.cpp
         cpp/SettingsViewModel.hpp
         cpp/NotebooksViewModel.hpp
+        cpp/Thumbnails.cpp
+        cpp/Thumbnails.hpp
         cpp/ToolViewModel.cpp
         cpp/ToolViewModel.hpp
         cpp/UpdateViewModel.cpp

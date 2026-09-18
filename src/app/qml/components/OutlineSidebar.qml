@@ -197,17 +197,44 @@ Pane {
                 id: pageDelegate
 
                 required property int index
+                required property string thumbnail
                 required property string title
 
                 Drag.active: pageDrag.active
                 Drag.hotSpot.x: width / 2
                 Drag.hotSpot.y: height / 2
                 Drag.source: pageDelegate
+                height: 64
                 highlighted: pageDelegate.index === root.notebook.currentPage
-                text: pageDelegate.title
                 width: pageList.width
                 z: pageDrag.active ? 2 : 1
 
+                contentItem: RowLayout {
+                    spacing: 8
+
+                    Image {
+                        Layout.preferredHeight: 56
+                        Layout.preferredWidth: 44
+                        asynchronous: true
+                        cache: false
+                        fillMode: Image.PreserveAspectFit
+                        source: pageDelegate.thumbnail
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: pageDelegate.title
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+
+                Component.onCompleted: root.notebook.wantThumbnail(pageDelegate.index)
+                onThumbnailChanged: {
+                    if (pageDelegate.thumbnail === "") {
+                        root.notebook.wantThumbnail(pageDelegate.index);
+                    }
+                }
                 onClicked: root.notebook.currentPage = pageDelegate.index
                 onPressAndHold: pageMenu.popup()
 

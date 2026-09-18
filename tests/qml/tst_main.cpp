@@ -1,3 +1,5 @@
+#include "app/cpp/Thumbnails.hpp"
+
 #include <QColor>
 #include <QCoreApplication>
 #include <QObject>
@@ -28,6 +30,8 @@ public slots:
     }
 
     void qmlEngineAvailable(QQmlEngine* engine) {
+        engine->addImageProvider(QStringLiteral("pages"),
+                                 phvikapen::app::thumbnails::makeProvider());
         engine->rootContext()->setContextProperty(QStringLiteral("temporaryDirectory"),
                                                   m_directory.path());
         engine->rootContext()->setContextProperty(QStringLiteral("samplePdf"), writeSamplePdf());

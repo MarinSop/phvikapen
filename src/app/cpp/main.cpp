@@ -1,4 +1,5 @@
 #include "app/cpp/Logging.hpp"
+#include "app/cpp/Thumbnails.hpp"
 #include "core/version.hpp"
 #include "platform/update/StartupHook.hpp"
 
@@ -25,6 +26,7 @@ int main(int argc, char* argv[]) {
     QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
 
     QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("pages"), phvikapen::app::thumbnails::makeProvider());
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &application,
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);

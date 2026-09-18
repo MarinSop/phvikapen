@@ -157,6 +157,7 @@ public:
     Q_INVOKABLE void deletePage(int index);
     Q_INVOKABLE void movePage(int from, int to);
     Q_INVOKABLE void duplicatePage(int index);
+    Q_INVOKABLE void wantThumbnail(int index);
     Q_INVOKABLE void renamePage(int index, const QString& title);
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
@@ -240,6 +241,8 @@ private:
     void showLoadedPage(std::uint64_t opening, const core::Uuid& pageId,
                         core::Result<std::vector<core::PlacedStroke>> strokes);
     void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes);
+    void paintThumbnail(const core::PageInfo& page, std::span<const core::PlacedStroke> strokes);
+    void forgetThumbnail(const core::Uuid& pageId);
     void goToPage(const core::Uuid& pageId);
     void goToPlace(std::size_t section, std::size_t page);
     void setLoaded(bool loaded);
@@ -288,6 +291,8 @@ private:
     bool m_exporting{false};
     core::Uuid m_currentPage;
     std::map<core::Uuid, core::Viewport> m_views;
+    std::map<core::Uuid, int> m_thumbnails;
+    int m_thumbnailRevision{0};
     std::vector<core::Stroke> m_clipboard;
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
