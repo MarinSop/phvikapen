@@ -5,6 +5,7 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QKeySequence>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>
@@ -15,6 +16,11 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
+constexpr auto kShortcutPrefix = "shortcuts/";
+
+[[nodiscard]] QString keysOf(const QString& sequence) {
+    return QKeySequence{sequence, QKeySequence::PortableText}.toString(QKeySequence::PortableText);
+}
 
 }
 
@@ -24,6 +30,13 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     const QSettings settings;
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
     m_style = defaults::pageStyle();
+    for (const Command& command : commands()) {
+        const QString kept = settings.value(kShortcutPrefix + command.id).toString();
+        if (!kept.isEmpty()) {
+            m_shortcuts.insert(command.id, kept);
+        }
+    }
+    m_shortcutList.setSequences(m_shortcuts);
 }
 
 void SettingsViewModel::setLookForUpdates(bool wanted) {
@@ -88,6 +101,51 @@ void SettingsViewModel::changeStyle(const core::PageStyle& style) {
     m_style = style;
     defaults::setPageStyle(style);
     emit pageStyleChanged();
+}
+
+}
+
+namespace phvikapen::app {
+
+QString SettingsViewModel::conflictWith(const QString& commandId, const QString& sequence) const {
+    const QString wanted = keysOf(sequence);
+    if (wanted.isEmpty()) {
+        return {};
+    }
+    for (const Command& command : commands()) {
+        if (command.id == commandId) {
+            continue;
+        }
+        const QString theirs = keysOf(m_shortcuts.value(command.id, command.fallback).toString());
+        if (theirs == wanted) {
+            return command.name;
+        }
+    }
+    return {};
+}
+
+bool SettingsViewModel::changeShortcut(const QString& commandId, const QString& sequence) {
+    const QString wanted = keysOf(sequence);
+    if (wanted.isEmpty() || !conflictWith(commandId, wanted).isEmpty()) {
+        return false;
+    }
+
+    QSettings settings;
+    m_shortcuts.insert(commandId, wanted);
+    settings.setValue(kShortcutPrefix + commandId, wanted);
+    m_shortcutList.setSequences(m_shortcuts);
+    emit shortcutsChanged();
+    return true;
+}
+
+void SettingsViewModel::resetShortcut(const QString& commandId) {
+    if (m_shortcuts.remove(commandId) == 0) {
+        return;
+    }
+    QSettings settings;
+    settings.remove(kShortcutPrefix + commandId);
+    m_shortcutList.setSequences(m_shortcuts);
+    emit shortcutsChanged();
 }
 
 }

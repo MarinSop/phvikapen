@@ -18,26 +18,34 @@ TestCase {
     }
 
     function openLibrary(directory) {
-        const notebooks = createTemporaryObject(notebooksComponent, testCase, {
+        return createTemporaryObject(notebooksComponent, testCase, {
             directory: directory
         });
-        tryVerify(() => notebooks.current !== null);
-        tryCompare(notebooks.current, "loaded", true);
+    }
+
+    function libraryWithOne(directory) {
+        const notebooks = openLibrary(directory);
+        testCase.addNotebook(notebooks, "Notes");
         return notebooks;
     }
 
-    function test_a_startsWithOneNotebook() {
+    function test_a_startsWithNoNotebookAtAll() {
         const notebooks = openLibrary(newLibrary());
+
+        compare(notebooks.current, null);
+        compare(notebooks.openNotebooks.length, 0);
+        compare(notebooks.library.length, 0);
+
+        testCase.addNotebook(notebooks, "Notes");
 
         compare(notebooks.openNotebooks.length, 1);
         compare(notebooks.library.length, 1);
-        compare(notebooks.currentIndex, 0);
-        compare(notebooks.current.name, notebooks.openNotebooks[0]);
+        compare(notebooks.current.name, "Notes");
         compare(notebooks.current.pageCount, 1);
     }
 
     function test_b_createsAndSwitchesBetweenNotebooks() {
-        const notebooks = openLibrary(newLibrary());
+        const notebooks = libraryWithOne(newLibrary());
         const first = notebooks.current.name;
 
         testCase.addNotebook(notebooks, "Physics");
@@ -56,7 +64,7 @@ TestCase {
     }
 
     function test_c_refusesANameThatIsTaken() {
-        const notebooks = openLibrary(newLibrary());
+        const notebooks = libraryWithOne(newLibrary());
         const taken = notebooks.current.name;
         const failures = createTemporaryObject(spyComponent, testCase, {
             target: notebooks,
@@ -71,7 +79,7 @@ TestCase {
 
     function test_d_renamesANotebookWithItsFile() {
         const directory = newLibrary();
-        const notebooks = openLibrary(directory);
+        const notebooks = libraryWithOne(directory);
         testCase.addNotebook(notebooks, "Physics");
         notebooks.current.addPage();
         compare(notebooks.current.pageCount, 2);
@@ -85,8 +93,8 @@ TestCase {
         compare(notebooks.current.pageCount, 2);
     }
 
-    function test_e_keepsOneNotebookOpen() {
-        const notebooks = openLibrary(newLibrary());
+    function test_e_theLastNotebookCanBeClosedToo() {
+        const notebooks = libraryWithOne(newLibrary());
         testCase.addNotebook(notebooks, "Physics");
 
         notebooks.closeNotebook(1);
@@ -94,11 +102,27 @@ TestCase {
         compare(notebooks.currentIndex, 0);
 
         notebooks.closeNotebook(0);
-        compare(notebooks.openNotebooks.length, 1);
+        compare(notebooks.openNotebooks.length, 0);
+        compare(notebooks.current, null);
+        compare(notebooks.library.length, 2);
+    }
+
+    function test_e2_everyNotebookCanBeDeleted() {
+        const notebooks = libraryWithOne(newLibrary());
+        testCase.addNotebook(notebooks, "Physics");
+        compare(notebooks.library.length, 2);
+
+        for (const name of notebooks.library.slice()) {
+            notebooks.deleteNotebook(name);
+        }
+
+        compare(notebooks.library.length, 0);
+        compare(notebooks.openNotebooks.length, 0);
+        compare(notebooks.current, null);
     }
 
     function test_f_deletesANotebookFromTheLibrary() {
-        const notebooks = openLibrary(newLibrary());
+        const notebooks = libraryWithOne(newLibrary());
         testCase.addNotebook(notebooks, "Physics");
         compare(notebooks.library.length, 2);
 
@@ -111,7 +135,7 @@ TestCase {
 
     function test_g_opensTheSameNotebooksAgainLater() {
         const directory = newLibrary();
-        const before = openLibrary(directory);
+        const before = libraryWithOne(directory);
         testCase.addNotebook(before, "Physics");
         testCase.addNotebook(before, "History");
         before.currentIndex = 1;
@@ -121,8 +145,21 @@ TestCase {
 
         const after = openLibrary(directory);
 
+        tryVerify(() => after.current !== null);
         compare(after.openNotebooks.join(","), expected);
         compare(after.current.name, "Physics");
+    }
+
+    function test_y_aNewNotebookCanBeGivenItsPaperWhenItIsMade() {
+        const notebooks = openLibrary(newLibrary());
+
+        notebooks.createNotebookWithSetup("Maths", PageOptions.A5, PageOptions.Grid, true);
+
+        tryCompare(notebooks.current, "loaded", true);
+        compare(notebooks.current.name, "Maths");
+        tryCompare(notebooks.current, "paper", PageOptions.A5);
+        compare(notebooks.current.background, PageOptions.Grid);
+        compare(notebooks.current.orientation, PageOptions.Landscape);
     }
 
     function test_z_aNewNotebookStartsOnThePaperThatWasChosen() {

@@ -168,13 +168,25 @@ bool NotebooksViewModel::isNameFree(const QString& name) const {
 }
 
 void NotebooksViewModel::createNotebook(const QString& name) {
+    createNotebookWithSetup(name, -1, -1, false);
+}
+
+void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper, int background,
+                                                 bool landscape) {
     if (!isNameFree(name)) {
         emit errorMessage(tr("A notebook called %1 is already there").arg(name));
         return;
     }
     openNotebook(name);
     if (NotebookViewModel* const made = current(); made != nullptr) {
-        const core::PageStyle wanted = defaults::pageStyle();
+        core::PageStyle wanted = defaults::pageStyle();
+        if (paper >= 0 && paper <= static_cast<int>(core::Paper::Custom)) {
+            wanted.paper = static_cast<core::Paper>(paper);
+        }
+        if (background >= 0 && background <= static_cast<int>(core::Background::Dotted)) {
+            wanted.background = static_cast<core::Background>(background);
+        }
+        wanted.orientation = landscape ? core::Orientation::Landscape : core::Orientation::Portrait;
         if (made->loaded()) {
             made->applyStyle(wanted);
         } else {
@@ -214,10 +226,6 @@ void NotebooksViewModel::openNotebook(const QString& name) {
 
 void NotebooksViewModel::closeNotebook(int index) {
     if (index < 0 || std::cmp_greater_equal(index, m_open.size())) {
-        return;
-    }
-    if (m_open.size() == 1 && m_completed) {
-        emit errorMessage(tr("One notebook stays open"));
         return;
     }
     const auto position = static_cast<std::size_t>(index);
@@ -273,9 +281,6 @@ void NotebooksViewModel::restoreSession() {
     const QSettings settings;
     QStringList names = settings.value(kOpenSetting).toStringList();
     names.removeIf([this](const QString& name) { return !m_library.contains(name); });
-    if (names.isEmpty()) {
-        names.append(m_library.isEmpty() ? suggestedName() : m_library.first());
-    }
     for (const QString& name : names) {
         openNotebook(name);
     }

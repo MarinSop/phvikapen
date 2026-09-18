@@ -49,6 +49,39 @@ TestCase {
         compare(later.landscape, true);
     }
 
+    function test_f_keysComeWithTheirUsualValues() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        verify(settings.shortcutList.count > 10);
+        compare(settings.shortcuts["undo"], undefined);
+        const row = settings.shortcutList.index(0, 0);
+        compare(settings.shortcutList.data(row, Qt.UserRole + 1), "undo");
+        compare(settings.shortcutList.data(row, Qt.UserRole + 3), "Ctrl+Z");
+        compare(settings.shortcutList.data(row, Qt.UserRole + 4), false);
+    }
+
+    function test_g_aKeyCanBeChangedAndPutBack() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        verify(settings.changeShortcut("undo", "Ctrl+Alt+Z"));
+
+        compare(settings.shortcuts["undo"], "Ctrl+Alt+Z");
+        const later = createTemporaryObject(settingsComponent, testCase);
+        compare(later.shortcuts["undo"], "Ctrl+Alt+Z");
+
+        settings.resetShortcut("undo");
+        compare(settings.shortcuts["undo"], undefined);
+    }
+
+    function test_h_aKeyThatIsTakenIsRefused() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        compare(settings.conflictWith("undo", "Ctrl+C"), "Copy");
+        verify(!settings.changeShortcut("undo", "Ctrl+C"));
+        compare(settings.shortcuts["undo"], undefined);
+        compare(settings.conflictWith("undo", "Ctrl+Alt+Q"), "");
+    }
+
     name: "SettingsViewModel"
 
     Component {

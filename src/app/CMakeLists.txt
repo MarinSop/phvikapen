@@ -46,6 +46,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/PageDefaults.cpp
         cpp/PageDefaults.hpp
         cpp/SettingsViewModel.cpp
+        cpp/Shortcuts.cpp
+        cpp/Shortcuts.hpp
         cpp/SettingsViewModel.hpp
         cpp/NotebooksViewModel.hpp
         cpp/Thumbnails.cpp
@@ -60,9 +62,12 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
+        qml/components/EmptyState.qml
         qml/components/MenuCommand.qml
         qml/components/MessageBar.qml
         qml/components/NotebookTabs.qml
+        qml/components/NewNotebookDialog.qml
+        qml/components/NumberField.qml
         qml/components/OptionsBar.qml
         qml/components/PagePanel.qml
         qml/components/PagesPanel.qml
@@ -70,6 +75,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
+        qml/components/ShortcutField.qml
         qml/components/ToolPalette.qml
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml

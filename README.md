@@ -23,7 +23,11 @@ The window is laid out the way drawing and document applications are: text menus
 the notebook beside it, the sheet in the middle, the page setup on the right, and the page and zoom
 at the bottom. Menus carry the commands and their shortcuts; the palette carries only the tools that
 are used on the sheet, each with a tooltip that names it. On Windows the menus sit in the window; on
-macOS they sit in the menu bar at the top of the screen, as that platform expects.
+macOS they sit in the menu bar at the top of the screen, as that platform expects. The keys the
+commands answer to can be changed in the settings.
+
+The application opens the notebooks that were left open, and nothing at all the first time: a
+notebook is made from the File menu, which asks for its name and the paper its pages start on.
 
 ## Updates
 

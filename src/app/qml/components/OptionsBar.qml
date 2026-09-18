@@ -119,20 +119,19 @@ ToolBar {
             visible: root.draws || root.erases
         }
 
-        Slider {
-            id: sizeSlider
-
-            Layout.preferredWidth: 140
-            from: root.erases ? 4 : 0.5
-            to: root.erases ? 40 : 24
-            value: root.erases ? root.tools.eraserRadius : root.tools.strokeWidth
+        NumberField {
+            maximum: root.erases ? 40 : 24
+            minimum: root.erases ? 4 : 0.5
+            number: root.erases ? root.tools.eraserRadius : root.tools.strokeWidth
+            objectName: "widthField"
+            step: root.erases ? 1 : 0.5
             visible: root.draws || root.erases
 
-            onMoved: {
+            onNumberEdited: value => {
                 if (root.erases) {
-                    root.tools.eraserRadius = sizeSlider.value;
+                    root.tools.eraserRadius = value;
                 } else {
-                    root.tools.strokeWidth = sizeSlider.value;
+                    root.tools.strokeWidth = value;
                 }
             }
         }

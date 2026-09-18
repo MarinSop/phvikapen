@@ -20,6 +20,10 @@ namespace {
 
 AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} {}
 
+QString AppInfo::keyName(int key) {
+    return QKeySequence{key}.toString(QKeySequence::PortableText);
+}
+
 QString AppInfo::shortcutText(const QVariant& shortcut) {
     if (shortcut.typeId() == QMetaType::QString) {
         return QKeySequence{shortcut.toString()}.toString(QKeySequence::NativeText);

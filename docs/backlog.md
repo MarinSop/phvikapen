@@ -58,22 +58,28 @@ into a real problem earlier.
 
 ## Picking strokes
 
-- **Only whole strokes, and no resizing.** A stroke is picked when all of it is inside the loop, so
-  a long line through the middle of a paragraph cannot be picked by its middle, and what is picked
-  can be moved, copied, recoloured and deleted, but not resized or turned.
+- **A rectangle, and no resizing.** Strokes are picked with a rectangle, so a stroke cannot be
+  picked out of a crowd by drawing a loop around it, and what is picked can be moved, copied,
+  recoloured and deleted, but not resized or turned by its corners.
 - **What was copied is only kept in the notebook it came from.** Strokes cannot be pasted into
   another notebook, and nothing is put on the system clipboard.
 - **The picture of a picked stroke is worked out again after every move.** Moving rewrites each
   stroke in the notebook file and throws its shape away, so a large selection costs as much as
   drawing it again.
 
+## Keys
+
+- **Only the listed commands can be changed.** The settings list twenty commands; the rest of the
+  keys, including the ones for the marker, the shape and the eraser tools, are fixed.
+- **A key is taken or free, nothing in between.** There is no way to give one command two keys, or
+  to clear a key so a command has none.
+
 ## Shapes
 
-- **A shape is only made when the stroke is let go.** Nothing shows what the shape will look like
-  while it is being drawn, and once it is drawn it is an ordinary stroke: it cannot be turned back
-  into what was drawn, or resized by its corners.
-- **A box is always upright.** Boxes and ovals take the upright rectangle around what was drawn, so
-  a box cannot be drawn at an angle, and there is no snapping to a square or a circle.
+- **Once drawn, a shape is an ordinary stroke.** It cannot be turned back into what was drawn, or
+  resized by its corners afterwards.
+- **A box is always upright.** Boxes and circles are drawn between the two ends of the stroke, so
+  they cannot be drawn at an angle.
 
 ## Pages
 
@@ -100,6 +106,10 @@ into a real problem earlier.
   opens.
 
 ## Experience
+
+- **The eraser cuts at the samples it was given.** A piece is cut where the samples are, so a long
+  straight stroke drawn with few samples is cut coarsely, and the pieces are written to the notebook
+  as whole new strokes rather than as a shortening of the old one.
 
 - **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the
   size of the whole canvas every frame it changes, and always goes under the pen, so a highlighter

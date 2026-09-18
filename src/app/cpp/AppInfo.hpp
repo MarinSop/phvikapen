@@ -20,6 +20,8 @@ public:
 
     Q_INVOKABLE [[nodiscard]] static QString shortcutText(const QVariant& shortcut);
 
+    Q_INVOKABLE [[nodiscard]] static QString keyName(int key);
+
 private:
     QString m_version;
 };

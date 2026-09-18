@@ -86,10 +86,15 @@ TestCase {
         directory: temporaryDirectory + "/palette"
     }
 
+    SettingsViewModel {
+        id: settings
+    }
+
     AppActions {
         id: actions
 
         notebooks: notebooks
+        settings: settings
         tools: tools
     }
 

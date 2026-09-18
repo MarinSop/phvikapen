@@ -1,11 +1,13 @@
 #pragma once
 
 #include "app/cpp/OutlineModels.hpp"
+#include "app/cpp/Shortcuts.hpp"
 #include "core/model/PageStyle.hpp"
 
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariantMap>
 #include <QtQmlIntegration>
 
 namespace phvikapen::app {
@@ -21,6 +23,8 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(phvikapen::app::page_options::Background background READ background WRITE
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool landscape READ landscape WRITE setLandscape NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY shortcutsChanged FINAL)
+    Q_PROPERTY(phvikapen::app::ShortcutListModel* shortcutList READ shortcutList CONSTANT FINAL)
 
 public:
     explicit SettingsViewModel(QObject* parent = nullptr);
@@ -38,16 +42,28 @@ public:
     [[nodiscard]] bool landscape() const;
     void setLandscape(bool landscape);
 
+    [[nodiscard]] QVariantMap shortcuts() const { return m_shortcuts; }
+
+    [[nodiscard]] ShortcutListModel* shortcutList() { return &m_shortcutList; }
+
+    Q_INVOKABLE bool changeShortcut(const QString& commandId, const QString& sequence);
+    Q_INVOKABLE void resetShortcut(const QString& commandId);
+    Q_INVOKABLE [[nodiscard]] QString conflictWith(const QString& commandId,
+                                                   const QString& sequence) const;
+
     Q_INVOKABLE void showNotebookFolder();
 
 signals:
     void lookForUpdatesChanged();
     void pageStyleChanged();
+    void shortcutsChanged();
 
 private:
     void changeStyle(const core::PageStyle& style);
 
     core::PageStyle m_style;
+    QVariantMap m_shortcuts;
+    ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};
 };

@@ -87,10 +87,15 @@ TestCase {
         directory: temporaryDirectory + "/menus"
     }
 
+    SettingsViewModel {
+        id: settings
+    }
+
     AppActions {
         id: actions
 
         notebooks: notebooks
+        settings: settings
         tools: tools
     }
 

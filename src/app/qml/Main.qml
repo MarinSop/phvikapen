@@ -82,6 +82,7 @@ ApplicationWindow {
         id: appActions
 
         notebooks: notebooks
+        settings: settings
         tools: toolState
 
         onAboutWanted: aboutDialog.open()
@@ -98,7 +99,7 @@ ApplicationWindow {
             exportDialog.open();
         }
         onImportWanted: importDialog.open()
-        onNewNotebookWanted: notebooks.createNotebook(notebooks.suggestedName())
+        onNewNotebookWanted: newNotebookDialog.open()
         onSettingsWanted: settingsDialog.open()
         onTrashWanted: trashDialog.open()
     }
@@ -116,7 +117,15 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: 220
             actions: appActions
-            visible: root.pagesPanelShown
+            visible: root.pagesPanelShown && root.notebook !== null
+        }
+
+        EmptyState {
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            actions: appActions
+            notebooks: notebooks
+            visible: root.notebook === null
         }
 
         InkCanvas {
@@ -125,6 +134,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.fillWidth: true
             enabled: root.notebook !== null && root.notebook.loaded
+            visible: root.notebook !== null
             eraserRadius: toolState.eraserRadius
             erasing: toolState.currentTool === ToolViewModel.Eraser
             panning: toolState.currentTool === ToolViewModel.Hand
@@ -139,7 +149,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: 220
             actions: appActions
-            visible: root.pagePanelShown
+            visible: root.pagePanelShown && root.notebook !== null
         }
     }
 
@@ -149,6 +159,13 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.margins: 16
+    }
+
+    NewNotebookDialog {
+        id: newNotebookDialog
+
+        notebooks: notebooks
+        settings: settings
     }
 
     SettingsDialog {

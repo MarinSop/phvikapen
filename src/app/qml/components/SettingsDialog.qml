@@ -17,7 +17,7 @@ Dialog {
     standardButtons: Dialog.Close
     title: qsTr("Settings")
     width: 460
-    height: 560
+    height: 720
 
     ColumnLayout {
         anchors.fill: parent
@@ -136,7 +136,83 @@ Dialog {
         }
 
         Label {
+            font.bold: true
+            text: qsTr("Keys")
+        }
+
+        Label {
+            Layout.fillWidth: true
+            color: palette.placeholderText
+            text: keysMessage.text === "" ? qsTr("Click a key field and press the keys you want.") : keysMessage.text
+            wrapMode: Text.WordWrap
+        }
+
+        ListView {
+            id: keyList
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.minimumHeight: 160
+            clip: true
+            model: root.settings.shortcutList
+            objectName: "shortcutList"
+
+            delegate: RowLayout {
+                id: keyRow
+
+                required property bool changed
+                required property string commandId
+                required property string name
+                required property string sequence
+
+                spacing: 8
+                width: keyList.width
+
+                Label {
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                    text: keyRow.name
+                }
+
+                ShortcutField {
+                    sequence: keyRow.sequence
+
+                    onCaptured: wanted => {
+                        const taken = root.settings.conflictWith(keyRow.commandId, wanted);
+                        if (taken !== "") {
+                            keysMessage.text = qsTr("%1 already uses %2").arg(taken).arg(wanted);
+                            return;
+                        }
+                        if (root.settings.changeShortcut(keyRow.commandId, wanted)) {
+                            keysMessage.text = "";
+                        }
+                    }
+                }
+
+                ToolButton {
+                    enabled: keyRow.changed
+                    text: qsTr("Reset")
+
+                    onClicked: {
+                        root.settings.resetShortcut(keyRow.commandId);
+                        keysMessage.text = "";
+                    }
+                }
+            }
+        }
+
+        MenuSeparator {
+            Layout.fillWidth: true
+        }
+
+        Label {
             text: qsTr("PhvikaPen %1").arg(AppInfo.version)
+        }
+
+        QtObject {
+            id: keysMessage
+
+            property string text: ""
         }
     }
 }

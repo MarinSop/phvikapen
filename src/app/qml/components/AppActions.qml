@@ -8,6 +8,7 @@ Item {
     id: root
 
     required property NotebooksViewModel notebooks
+    required property SettingsViewModel settings
     required property ToolViewModel tools
     readonly property InkCanvas canvas: root.notebooks.canvas
     readonly property NotebookViewModel notebook: root.notebooks.current
@@ -17,7 +18,7 @@ Item {
         checkable: true
         checked: root.tools.currentTool === ToolViewModel.Selection
         icon.source: Icons.select
-        shortcut: "V"
+        shortcut: root.keysFor("selectTool", "V")
         text: qsTr("Select")
 
         onTriggered: root.tools.currentTool = ToolViewModel.Selection
@@ -26,7 +27,7 @@ Item {
         checkable: true
         checked: root.tools.currentTool === ToolViewModel.Hand
         icon.source: Icons.hand
-        shortcut: "H"
+        shortcut: root.keysFor("handTool", "H")
         text: qsTr("Hand")
 
         onTriggered: root.tools.currentTool = ToolViewModel.Hand
@@ -35,7 +36,7 @@ Item {
         checkable: true
         checked: root.tools.currentTool === ToolViewModel.Pen && root.tools.shape === ToolViewModel.Freehand
         icon.source: Icons.pen
-        shortcut: "P"
+        shortcut: root.keysFor("penTool", "P")
         text: qsTr("Pen")
 
         onTriggered: {
@@ -79,7 +80,7 @@ Item {
     readonly property Action undo: Action {
         enabled: root.notebook !== null && root.notebook.canUndo
         icon.source: Icons.undo
-        shortcut: StandardKey.Undo
+        shortcut: root.keysFor("undo", AppInfo.shortcutText(StandardKey.Undo))
         text: qsTr("Undo")
 
         onTriggered: root.notebook.undo()
@@ -87,7 +88,7 @@ Item {
     readonly property Action redo: Action {
         enabled: root.notebook !== null && root.notebook.canRedo
         icon.source: Icons.redo
-        shortcut: StandardKey.Redo
+        shortcut: root.keysFor("redo", AppInfo.shortcutText(StandardKey.Redo))
         text: qsTr("Redo")
 
         onTriggered: root.notebook.redo()
@@ -95,7 +96,7 @@ Item {
     readonly property Action copy: Action {
         enabled: root.hasSelection
         icon.source: Icons.copy
-        shortcut: StandardKey.Copy
+        shortcut: root.keysFor("copy", AppInfo.shortcutText(StandardKey.Copy))
         text: qsTr("Copy")
 
         onTriggered: root.notebook.copySelection()
@@ -103,7 +104,7 @@ Item {
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
         icon.source: Icons.paste
-        shortcut: StandardKey.Paste
+        shortcut: root.keysFor("paste", AppInfo.shortcutText(StandardKey.Paste))
         text: qsTr("Paste")
 
         onTriggered: root.notebook.pasteStrokes()
@@ -111,7 +112,7 @@ Item {
     readonly property Action remove: Action {
         enabled: root.hasSelection
         icon.source: Icons.trash
-        shortcut: StandardKey.Delete
+        shortcut: root.keysFor("delete", AppInfo.shortcutText(StandardKey.Delete))
         text: qsTr("Delete")
 
         onTriggered: root.notebook.deleteSelection()
@@ -125,7 +126,7 @@ Item {
     readonly property Action zoomIn: Action {
         enabled: root.canvas !== null
         icon.source: Icons.zoomIn
-        shortcut: StandardKey.ZoomIn
+        shortcut: root.keysFor("zoomIn", AppInfo.shortcutText(StandardKey.ZoomIn))
         text: qsTr("Zoom In")
 
         onTriggered: root.canvas.zoomIn()
@@ -133,7 +134,7 @@ Item {
     readonly property Action zoomOut: Action {
         enabled: root.canvas !== null
         icon.source: Icons.zoomOut
-        shortcut: StandardKey.ZoomOut
+        shortcut: root.keysFor("zoomOut", AppInfo.shortcutText(StandardKey.ZoomOut))
         text: qsTr("Zoom Out")
 
         onTriggered: root.canvas.zoomOut()
@@ -141,7 +142,7 @@ Item {
     readonly property Action fitPage: Action {
         enabled: root.canvas !== null
         icon.source: Icons.fit
-        shortcut: "Ctrl+0"
+        shortcut: root.keysFor("fitPage", "Ctrl+0")
         text: qsTr("Fit Page")
 
         onTriggered: root.canvas.fitPage()
@@ -149,7 +150,7 @@ Item {
     readonly property Action previousPage: Action {
         enabled: root.notebook !== null && root.notebook.hasPreviousPage
         icon.source: Icons.chevronLeft
-        shortcut: StandardKey.MoveToPreviousPage
+        shortcut: root.keysFor("previousPage", AppInfo.shortcutText(StandardKey.MoveToPreviousPage))
         text: qsTr("Previous Page")
 
         onTriggered: root.notebook.previousPage()
@@ -157,7 +158,7 @@ Item {
     readonly property Action nextPage: Action {
         enabled: root.notebook !== null && root.notebook.hasNextPage
         icon.source: Icons.chevronRight
-        shortcut: StandardKey.MoveToNextPage
+        shortcut: root.keysFor("nextPage", AppInfo.shortcutText(StandardKey.MoveToNextPage))
         text: qsTr("Next Page")
 
         onTriggered: root.notebook.nextPage()
@@ -165,7 +166,7 @@ Item {
     readonly property Action addPage: Action {
         enabled: root.hasNotebook
         icon.source: Icons.plus
-        shortcut: "Ctrl+Shift+P"
+        shortcut: root.keysFor("addPage", "Ctrl+Shift+P")
         text: qsTr("Page")
 
         onTriggered: root.notebook.addPage()
@@ -183,14 +184,14 @@ Item {
         onTriggered: root.notebook.duplicatePage(root.notebook.currentPage)
     }
     readonly property Action newNotebook: Action {
-        shortcut: StandardKey.New
+        shortcut: root.keysFor("newNotebook", AppInfo.shortcutText(StandardKey.New))
         text: qsTr("New Notebook")
 
         onTriggered: root.newNotebookWanted()
     }
     readonly property Action closeNotebook: Action {
         enabled: root.notebook !== null
-        shortcut: StandardKey.Close
+        shortcut: root.keysFor("closeNotebook", AppInfo.shortcutText(StandardKey.Close))
         text: qsTr("Close Notebook")
 
         onTriggered: root.notebooks.closeNotebook(root.notebooks.currentIndex)
@@ -198,7 +199,7 @@ Item {
     readonly property Action importDocument: Action {
         enabled: root.hasNotebook
         icon.source: Icons.importDocument
-        shortcut: "Ctrl+I"
+        shortcut: root.keysFor("import", "Ctrl+I")
         text: qsTr("PDF or Picture…")
 
         onTriggered: root.importWanted()
@@ -206,14 +207,14 @@ Item {
     readonly property Action exportPdf: Action {
         enabled: root.hasNotebook && !root.notebook.exporting
         icon.source: Icons.exportDocument
-        shortcut: "Ctrl+E"
+        shortcut: root.keysFor("exportPdf", "Ctrl+E")
         text: qsTr("Export as PDF…")
 
         onTriggered: root.exportWanted()
     }
     readonly property Action saveCopy: Action {
         enabled: root.hasNotebook
-        shortcut: StandardKey.SaveAs
+        shortcut: root.keysFor("saveCopy", AppInfo.shortcutText(StandardKey.SaveAs))
         text: qsTr("Save a Copy…")
 
         onTriggered: root.copyWanted()
@@ -225,7 +226,7 @@ Item {
         onTriggered: root.trashWanted()
     }
     readonly property Action showSettings: Action {
-        shortcut: StandardKey.Preferences
+        shortcut: root.keysFor("settings", AppInfo.shortcutText(StandardKey.Preferences))
         text: qsTr("Settings…")
 
         onTriggered: root.settingsWanted()
@@ -249,4 +250,9 @@ Item {
     signal newNotebookWanted
     signal settingsWanted
     signal trashWanted
+
+    function keysFor(commandId, fallback) {
+        const kept = root.settings.shortcuts[commandId];
+        return kept === undefined || kept === "" ? fallback : kept;
+    }
 }

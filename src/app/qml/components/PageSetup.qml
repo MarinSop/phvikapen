@@ -59,16 +59,16 @@ ColumnLayout {
             text: qsTr("Spacing")
         }
 
-        Slider {
-            id: spacingSlider
-
+        NumberField {
             Layout.fillWidth: true
-            from: 2
-            stepSize: 0.5
-            to: 30
-            value: root.notebook === null ? 7 : root.notebook.lineSpacing
+            maximum: 30
+            minimum: 2
+            number: root.notebook === null ? 7 : root.notebook.lineSpacing
+            objectName: "spacingField"
+            step: 0.5
+            suffix: qsTr(" mm")
 
-            onMoved: root.notebook.lineSpacing = spacingSlider.value
+            onNumberEdited: value => root.notebook.lineSpacing = value
         }
     }
 }

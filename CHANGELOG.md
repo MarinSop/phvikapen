@@ -57,6 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A new notebook is made through a dialog that asks for its name and the paper its pages start on.
+- The application starts with no notebook open when none was left open, shows what to do instead of
+  an empty sheet, and every notebook can be closed or deleted.
+- Widths and sizes are typed as numbers with arrows instead of dragged on a slider.
+- The keys for the commands can be changed in the settings, and a key that is already taken is
+  refused with the name of the command that has it.
+
 - The window follows the shape of a desktop drawing application: text menus across the top, a
   palette of tools down the left with an icon and a tooltip for each, the pages of the notebook and
   the page setup in panels either side of the sheet, and the page and the zoom in a bar at the
