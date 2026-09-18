@@ -16,6 +16,7 @@ namespace {
 constexpr auto kToolSetting = "tools/tool";
 constexpr auto kPenSetting = "tools/pen";
 constexpr auto kEraserSetting = "tools/eraser";
+constexpr auto kShapeSetting = "tools/shape";
 constexpr auto kColorPrefix = "tools/color/";
 constexpr auto kWidthPrefix = "tools/width/";
 constexpr auto kHighlighterKey = "highlighter";
@@ -158,6 +159,15 @@ qreal ToolViewModel::widthOfPen(int index) const {
     return m_pens.at(static_cast<std::size_t>(index)).width;
 }
 
+void ToolViewModel::setShape(Shape shape) {
+    if (shape == m_shape) {
+        return;
+    }
+    m_shape = shape;
+    emit shapeChanged();
+    remember();
+}
+
 void ToolViewModel::remember() const {
     if (!m_completed) {
         return;
@@ -166,6 +176,7 @@ void ToolViewModel::remember() const {
     settings.setValue(kToolSetting, static_cast<int>(m_currentTool));
     settings.setValue(kPenSetting, m_pen);
     settings.setValue(kEraserSetting, m_eraserRadius);
+    settings.setValue(kShapeSetting, static_cast<int>(m_shape));
     for (int index = 0; index < penCount(); ++index) {
         const Nib& nib = m_pens.at(static_cast<std::size_t>(index));
         settings.setValue(kColorPrefix + penKey(index), nib.color.name(QColor::HexArgb));
@@ -193,14 +204,19 @@ void ToolViewModel::restore() {
     readNib(m_highlighter, kHighlighterKey);
 
     const int tool = settings.value(kToolSetting, static_cast<int>(m_currentTool)).toInt();
-    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Eraser)) {
+    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Selection)) {
         m_currentTool = static_cast<Tool>(tool);
+    }
+    const int shape = settings.value(kShapeSetting, static_cast<int>(m_shape)).toInt();
+    if (shape >= static_cast<int>(Shape::Freehand) && shape <= static_cast<int>(Shape::Ellipse)) {
+        m_shape = static_cast<Shape>(shape);
     }
     m_pen = std::clamp(settings.value(kPenSetting, m_pen).toInt(), 0, penCount() - 1);
     m_eraserRadius = std::clamp(settings.value(kEraserSetting, m_eraserRadius).toDouble(),
                                 kMinimumEraser, kMaximumEraser);
 
     emit currentToolChanged();
+    emit shapeChanged();
     emit penChanged();
     emit toolChanged();
     emit eraserChanged();

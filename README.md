@@ -10,8 +10,9 @@ builds and runs with a Qt-based ink canvas that accepts pen and mouse input.
 What works today: notebooks in tabs, each with sections and pages, written on with a pen, a mouse
 or a finger on a touch screen. Pages are paper of a chosen size or an endless canvas, blank, lined,
 squared or dotted, or a page of an imported PDF or a picture to write on top of. Three pens, a
-highlighter, an eraser and a tool that picks strokes to move or delete share a colour palette and
-their widths, every change can be undone, and
+highlighter, an eraser and a tool that picks strokes to move, copy, recolour or delete share a
+colour palette and their widths, the pen can draw straight lines, boxes and ovals, every change can
+be undone, and
 everything is written to the notebook file as it happens. A notebook can be written out as a PDF or
 copied somewhere safe, and the application updates itself from its published releases.
 

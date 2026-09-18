@@ -347,6 +347,21 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aStrokeCanBeDrawnAsAStraightLine() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        canvas.shape = 1;
+
+        mousePress(canvas, 120, 120);
+        mouseMove(canvas, 140, 150, -1, Qt.LeftButton);
+        mouseMove(canvas, 160, 130, -1, Qt.LeftButton);
+        mouseRelease(canvas, 180, 160);
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+        canvas.shape = 0;
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

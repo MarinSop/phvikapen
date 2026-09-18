@@ -66,6 +66,14 @@ into a real problem earlier.
   stroke in the notebook file and throws its shape away, so a large selection costs as much as
   drawing it again.
 
+## Shapes
+
+- **A shape is only made when the stroke is let go.** Nothing shows what the shape will look like
+  while it is being drawn, and once it is drawn it is an ordinary stroke: it cannot be turned back
+  into what was drawn, or resized by its corners.
+- **A box is always upright.** Boxes and ovals take the upright rectangle around what was drawn, so
+  a box cannot be drawn at an angle, and there is no snapping to a square or a circle.
+
 ## Experience
 
 - **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the

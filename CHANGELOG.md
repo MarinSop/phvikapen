@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A tool that picks strokes: draw a loop around them, then drag them somewhere else or delete them,
   both undoable. It answers to S, and Delete removes what is picked. What is picked can also be copied and
   pasted, onto the same page or another one, and given another colour from the palette.
+- Straight lines, boxes and ovals: the pen draws the shape that was chosen instead of the line that
+  was actually drawn, and which one is chosen is remembered between sessions.
 
 ### Changed
 

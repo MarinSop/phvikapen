@@ -46,6 +46,57 @@ ToolBar {
 
         ToolButton {
             checkable: true
+            checked: root.tools.shape !== ToolViewModel.Freehand
+            objectName: "shapeButton"
+            text: qsTr("Shape")
+            ToolTip.text: qsTr("Draw straight lines, boxes or ovals")
+            ToolTip.visible: hovered
+
+            onClicked: shapeMenu.popup()
+
+            Menu {
+                id: shapeMenu
+
+                MenuItem {
+                    checkable: true
+                    checked: root.tools.shape === ToolViewModel.Freehand
+                    objectName: "freehandItem"
+                    text: qsTr("Freehand")
+
+                    onTriggered: root.tools.shape = ToolViewModel.Freehand
+                }
+
+                MenuItem {
+                    checkable: true
+                    checked: root.tools.shape === ToolViewModel.Line
+                    objectName: "lineItem"
+                    text: qsTr("Straight line")
+
+                    onTriggered: root.tools.shape = ToolViewModel.Line
+                }
+
+                MenuItem {
+                    checkable: true
+                    checked: root.tools.shape === ToolViewModel.Rectangle
+                    objectName: "rectangleItem"
+                    text: qsTr("Box")
+
+                    onTriggered: root.tools.shape = ToolViewModel.Rectangle
+                }
+
+                MenuItem {
+                    checkable: true
+                    checked: root.tools.shape === ToolViewModel.Ellipse
+                    objectName: "ellipseItem"
+                    text: qsTr("Oval")
+
+                    onTriggered: root.tools.shape = ToolViewModel.Ellipse
+                }
+            }
+        }
+
+        ToolButton {
+            checkable: true
             checked: root.tools.currentTool === ToolViewModel.Highlighter
             objectName: "highlighterButton"
             text: qsTr("Highlighter")

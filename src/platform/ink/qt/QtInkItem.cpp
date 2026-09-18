@@ -233,6 +233,16 @@ void QtInkItem::forgetStrokes(std::span<const core::Uuid> strokeIds) {
     });
 }
 
+void QtInkItem::setShape(int shape) {
+    const auto wanted =
+        static_cast<core::Shape>(std::clamp(shape, 0, static_cast<int>(core::Shape::Ellipse)));
+    if (wanted == m_shape) {
+        return;
+    }
+    m_shape = wanted;
+    emit shapeChanged();
+}
+
 void QtInkItem::setSelecting(bool selecting) {
     if (selecting == m_selecting) {
         return;
@@ -777,8 +787,9 @@ void QtInkItem::endStroke(const InkSample& sample) {
         return;
     }
     m_activeStroke->append(m_filter.filter(sample));
-    const core::Stroke finished = std::move(*m_activeStroke);
+    const core::Stroke drawn = std::move(*m_activeStroke);
     m_activeStroke.reset();
+    const core::Stroke finished = core::shaped(drawn, m_shape);
 
     std::vector<InkVertex>& into = activeVertices();
     into.resize(m_activeStrokeFirstVertex);

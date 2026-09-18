@@ -28,6 +28,7 @@ RowLayout {
         eraserRadius: root.tools.eraserRadius
         erasing: root.tools.currentTool === ToolViewModel.Eraser
         selecting: root.tools.currentTool === ToolViewModel.Selection
+        shape: root.tools.shape
         pressureSensitive: root.tools.pressureSensitive
         strokeColor: root.tools.strokeColor
         strokeWidth: root.tools.strokeWidth

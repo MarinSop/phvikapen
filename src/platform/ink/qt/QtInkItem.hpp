@@ -7,6 +7,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeMesh.hpp"
+#include "core/ink/StrokeShapes.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "platform/ink/IInkBackend.hpp"
@@ -45,6 +46,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool pressureSensitive READ pressureSensitive WRITE setPressureSensitive NOTIFY
                    pressureSensitiveChanged FINAL)
     Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
+    Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
@@ -77,6 +79,10 @@ public:
     void showSelection(std::vector<core::Uuid> strokeIds);
 
     void forgetStrokes(std::span<const core::Uuid> strokeIds);
+
+    [[nodiscard]] int shape() const noexcept { return static_cast<int>(m_shape); }
+
+    void setShape(int shape);
 
     [[nodiscard]] bool selecting() const noexcept { return m_selecting; }
 
@@ -141,6 +147,7 @@ signals:
     void strokeStyleChanged();
     void erasingChanged();
     void selectingChanged();
+    void shapeChanged();
     void selectionChanged();
     void eraserRadiusChanged();
     void pressureSensitiveChanged();
@@ -222,6 +229,7 @@ private:
     std::vector<core::Point> m_lasso;
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
+    core::Shape m_shape{core::Shape::Freehand};
     bool m_selecting{false};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};

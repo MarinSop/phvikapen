@@ -87,6 +87,17 @@ TestCase {
         compare(after.widthOfPen(2), 6);
     }
 
+    function test_z_theShapeIsRememberedForTheNextTime() {
+        const tools = testCase.newTools();
+        compare(tools.shape, ToolViewModel.Freehand);
+
+        tools.shape = ToolViewModel.Rectangle;
+
+        const later = testCase.newTools();
+        compare(later.shape, ToolViewModel.Rectangle);
+        later.shape = ToolViewModel.Freehand;
+    }
+
     name: "ToolViewModel"
 
     Component {

@@ -19,6 +19,7 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         Tool currentTool READ currentTool WRITE setCurrentTool NOTIFY currentToolChanged FINAL)
     Q_PROPERTY(int pen READ pen WRITE setPen NOTIFY penChanged FINAL)
+    Q_PROPERTY(Shape shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(int penCount READ penCount CONSTANT FINAL)
     Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY toolChanged FINAL)
     Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY toolChanged FINAL)
@@ -28,6 +29,14 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QVariantList palette READ palette CONSTANT FINAL)
 
 public:
+    enum class Shape : quint8 {
+        Freehand,
+        Line,
+        Rectangle,
+        Ellipse,
+    };
+    Q_ENUM(Shape)
+
     enum class Tool : quint8 {
         Pen,
         Highlighter,
@@ -47,6 +56,10 @@ public:
     void classBegin() override {}
 
     void componentComplete() override;
+
+    [[nodiscard]] Shape shape() const { return m_shape; }
+
+    void setShape(Shape shape);
 
     [[nodiscard]] Tool currentTool() const { return m_currentTool; }
 
@@ -75,6 +88,7 @@ public:
 
 signals:
     void currentToolChanged();
+    void shapeChanged();
     void penChanged();
     void toolChanged();
     void eraserChanged();
@@ -95,6 +109,7 @@ private:
     std::array<Nib, kPenCount> m_pens;
     Nib m_highlighter;
     Tool m_currentTool{Tool::Pen};
+    Shape m_shape{Shape::Freehand};
     qreal m_eraserRadius{kDefaultEraser};
     int m_pen{0};
     bool m_completed{false};
