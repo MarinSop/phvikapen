@@ -14,6 +14,8 @@ layout(std140, binding = 0) uniform Background {
     vec4 paperColor;
     vec4 lineColor;
     vec4 marginColor;
+    vec4 sheets[16];
+    vec4 rulings[16];
 };
 
 void main()

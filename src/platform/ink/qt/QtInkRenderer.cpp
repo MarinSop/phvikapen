@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <iterator>
 #include <optional>
 #include <span>
 #include <vector>
@@ -28,7 +29,9 @@ using core::InkVertex;
 constexpr quint32 kInitialVertexBufferBytes = 64U * 1024U;
 constexpr quint32 kMatrixBytes = 64;
 constexpr quint32 kVectorBytes = 16;
-constexpr std::size_t kBackgroundUniformCount = 48;
+constexpr std::size_t kMostSheets = 16;
+constexpr std::size_t kFloatsPerVector = 4;
+constexpr std::size_t kBackgroundUniformCount = 48 + (2 * kFloatsPerVector * kMostSheets);
 constexpr std::array<float, 12> kBackgroundCorners{
     0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F, 1.0F,
 };
@@ -273,7 +276,6 @@ void QtInkRenderer::createMediaPipeline() {
     if (!m_mediaTexture) {
         m_mediaTexture.reset(device->newTexture(QRhiTexture::RGBA8, QSize{1, 1}));
         m_mediaTexture->create();
-        m_mediaUploaded = false;
     }
     if (!m_mediaBindings) {
         m_mediaBindings.reset(device->newShaderResourceBindings());
@@ -310,38 +312,64 @@ void QtInkRenderer::createMediaPipeline() {
     m_mediaPipeline->create();
 }
 
+void QtInkRenderer::bindMedia(MediaEntry& entry) {
+    entry.bindings->setBindings({
+        QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage,
+                                                 entry.uniforms.get()),
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
+                                                  entry.texture.get(), m_mediaSampler.get()),
+    });
+    entry.bindings->create();
+}
+
 void QtInkRenderer::updateMedia(QRhiResourceUpdateBatch& updates) {
-    std::array<float, (kMatrixBytes + kVectorBytes) / sizeof(float)> uniforms{};
-    QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
+    QRhi* const device = rhi();
+    QMatrix4x4 projection = device->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
     projection.scale(m_viewport.scale());
     projection.translate(-m_viewport.origin().x, -m_viewport.origin().y);
-    std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), uniforms.begin());
-    uniforms.at(kMatrixBytes / sizeof(float)) = static_cast<float>(m_mediaArea.x());
-    uniforms.at((kMatrixBytes / sizeof(float)) + 1) = static_cast<float>(m_mediaArea.y());
-    uniforms.at((kMatrixBytes / sizeof(float)) + 2) = static_cast<float>(m_mediaArea.width());
-    uniforms.at((kMatrixBytes / sizeof(float)) + 3) = static_cast<float>(m_mediaArea.height());
-    updates.updateDynamicBuffer(m_mediaUniforms.get(), 0,
-                                static_cast<quint32>(std::span{uniforms}.size_bytes()),
-                                uniforms.data());
 
-    if (m_mediaUploaded || m_media.isNull()) {
-        return;
+    for (MediaEntry& entry : m_media) {
+        if (entry.picture.isNull() || entry.area.isEmpty()) {
+            continue;
+        }
+        if (!entry.uniforms) {
+            entry.uniforms.reset(device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer,
+                                                   kMatrixBytes + kVectorBytes));
+            entry.uniforms->create();
+        }
+        if (!entry.texture) {
+            entry.texture.reset(device->newTexture(QRhiTexture::RGBA8, QSize{1, 1}));
+            entry.texture->create();
+            entry.uploaded = false;
+        }
+        if (!entry.bindings) {
+            entry.bindings.reset(device->newShaderResourceBindings());
+            bindMedia(entry);
+        }
+
+        std::array<float, (kMatrixBytes + kVectorBytes) / sizeof(float)> uniforms{};
+        std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), uniforms.begin());
+        uniforms.at(kMatrixBytes / sizeof(float)) = static_cast<float>(entry.area.x());
+        uniforms.at((kMatrixBytes / sizeof(float)) + 1) = static_cast<float>(entry.area.y());
+        uniforms.at((kMatrixBytes / sizeof(float)) + 2) = static_cast<float>(entry.area.width());
+        uniforms.at((kMatrixBytes / sizeof(float)) + 3) = static_cast<float>(entry.area.height());
+        updates.updateDynamicBuffer(entry.uniforms.get(), 0,
+                                    static_cast<quint32>(std::span{uniforms}.size_bytes()),
+                                    uniforms.data());
+
+        if (entry.uploaded) {
+            continue;
+        }
+        const QImage image = entry.picture.convertToFormat(QImage::Format_RGBA8888);
+        if (entry.texture->pixelSize() != image.size()) {
+            entry.texture->setPixelSize(image.size());
+            entry.texture->create();
+            bindMedia(entry);
+        }
+        updates.uploadTexture(entry.texture.get(), image);
+        entry.uploaded = true;
     }
-    const QImage image = m_media.convertToFormat(QImage::Format_RGBA8888);
-    if (m_mediaTexture->pixelSize() != image.size()) {
-        m_mediaTexture->setPixelSize(image.size());
-        m_mediaTexture->create();
-        m_mediaBindings->setBindings({
-            QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage,
-                                                     m_mediaUniforms.get()),
-            QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage,
-                                                      m_mediaTexture.get(), m_mediaSampler.get()),
-        });
-        m_mediaBindings->create();
-    }
-    updates.uploadTexture(m_mediaTexture.get(), image);
-    m_mediaUploaded = true;
 }
 
 void QtInkRenderer::synchronize(QQuickRhiItem* item) {
@@ -375,11 +403,31 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     m_logicalHeight = static_cast<float>(inkItem->height());
     m_viewport = inkItem->viewport();
     m_pageStyle = inkItem->pageStyle();
+    m_sheets = inkItem->visibleSheets();
     if (inkItem->mediaGeneration() != m_mediaGeneration) {
         m_mediaGeneration = inkItem->mediaGeneration();
-        m_media = inkItem->media();
-        m_mediaArea = inkItem->mediaArea();
-        m_mediaUploaded = false;
+        std::vector<MediaEntry> kept;
+        kept.reserve(inkItem->mediaDraws().size());
+        for (const QtInkItem::MediaDraw& draw : inkItem->mediaDraws()) {
+            const auto found = std::ranges::find_if(m_media, [&draw](const MediaEntry& entry) {
+                return entry.picture.cacheKey() == draw.picture.cacheKey();
+            });
+            if (found != m_media.end()) {
+                found->area = draw.area;
+                kept.push_back(std::move(*found));
+                continue;
+            }
+            MediaEntry entry;
+            entry.picture = draw.picture;
+            entry.area = draw.area;
+            kept.push_back(std::move(entry));
+        }
+        m_media = std::move(kept);
+    } else {
+        const std::vector<QtInkItem::MediaDraw>& draws = inkItem->mediaDraws();
+        for (std::size_t i = 0; i < m_media.size() && i < draws.size(); ++i) {
+            m_media[i].area = draws[i].area;
+        }
     }
 }
 
@@ -434,7 +482,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
     };
     out = std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), out);
     put(std::array{m_viewport.origin().x, m_viewport.origin().y, m_viewport.scale(), pixelRatio});
-    put(std::array{m_logicalWidth, m_logicalHeight, 0.0F, 0.0F});
+    put(std::array{m_logicalWidth, m_logicalHeight, static_cast<float>(m_sheets.size()), 0.0F});
     put(std::array{
         paper ? paper->width : 0.0F,
         paper ? paper->height : 0.0F,
@@ -451,6 +499,21 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
     put(render::kPaperColor);
     put(render::patternColor(m_pageStyle.background));
     put(render::kMarginColor);
+
+    // The sheets in view come first, then how each of them is ruled; the rest of the room is
+    // left empty.
+    std::array<float, kFloatsPerVector * kMostSheets> rulings{};
+    std::size_t at = 0;
+    for (const QtInkItem::VisibleSheet& sheet : m_sheets) {
+        put(std::array{sheet.area.left, sheet.area.top, sheet.area.width(), sheet.area.height()});
+        rulings.at(at++) = static_cast<float>(sheet.style.background);
+        rulings.at(at++) = sheet.style.spacing;
+        rulings.at(at++) =
+            sheet.style.background == core::Background::Dotted ? dotRadius : lineWidth;
+        rulings.at(at++) = sheet.style.background == core::Background::Lined ? 1.0F : 0.0F;
+    }
+    std::advance(out, kFloatsPerVector * (kMostSheets - m_sheets.size()));
+    put(rulings);
 
     updates.updateDynamicBuffer(m_backgroundUniforms.get(), 0,
                                 static_cast<quint32>(std::span{uniforms}.size_bytes()),
@@ -513,9 +576,12 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     commandBuffer->setVertexInput(0, 1, &backgroundInput);
     commandBuffer->draw(static_cast<quint32>(kBackgroundCorners.size() / 2));
 
-    if (!m_media.isNull() && !m_mediaArea.isEmpty()) {
+    for (const MediaEntry& entry : m_media) {
+        if (entry.picture.isNull() || entry.area.isEmpty() || !entry.bindings) {
+            continue;
+        }
         commandBuffer->setGraphicsPipeline(m_mediaPipeline.get());
-        commandBuffer->setShaderResources();
+        commandBuffer->setShaderResources(entry.bindings.get());
         const QRhiCommandBuffer::VertexInput mediaInput{m_backgroundVertices.get(), 0};
         commandBuffer->setVertexInput(0, 1, &mediaInput);
         commandBuffer->draw(static_cast<quint32>(kBackgroundCorners.size() / 2));

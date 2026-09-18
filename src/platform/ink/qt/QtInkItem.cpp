@@ -34,6 +34,10 @@ constexpr auto kLiveRedraw = std::chrono::milliseconds{12};
 constexpr std::size_t kSmallestLiveStroke = 4;
 constexpr float kDegreesPerWheelNotch = 120.0F;
 constexpr float kWheelPixelsPerDegree = 0.5F;
+constexpr float kSheetGap = 24.0F;
+constexpr std::size_t kMostSheetsDrawn = 16;
+// How far down the window the page that is being read is taken from.
+constexpr float kReadingLine = 0.3F;
 
 [[nodiscard]] InkSample makeSample(const QPointF& position, qreal pressure, qreal tiltX,
                                    qreal tiltY, quint64 timestampMs) {
@@ -104,38 +108,100 @@ void QtInkItem::setStrokeWidth(qreal width) {
 
 void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
                          std::span<const core::Uuid> hidden, std::span<const core::Stroke> extra) {
-    cancelStroke();
+    const std::array pages{PageView{.page = &page, .style = style}};
+    showColumn(pages, 0, hidden, extra);
+}
 
-    const bool otherPage = page.id() != m_shownPage;
-    const bool otherPaper =
-        style.paper != m_pageStyle.paper || style.orientation != m_pageStyle.orientation;
-    m_shownPage = page.id();
-    m_pageStyle = style;
-    if (otherPage) {
-        m_meshes.clear();
-    }
-    if (otherPage || otherPaper || !m_viewFitted) {
-        fitPage();
+// A page without a sheet of its own still takes the room of one, so that what is written on it
+// does not land on the page below.
+std::vector<QtInkItem::Sheet> QtInkItem::sheetsFor(std::span<const PageView> pages) {
+    core::PaperSize fallback{};
+    for (const PageView& view : pages) {
+        if (const std::optional<core::PaperSize> paper = core::paperSize(view.style)) {
+            fallback = *paper;
+            break;
+        }
     }
 
-    // A stroke keeps the mesh it was given, so erasing or undoing only rebuilds what changed.
+    std::vector<Sheet> sheets;
+    sheets.reserve(pages.size());
+    float top = 0.0F;
+    for (const PageView& view : pages) {
+        const std::optional<core::PaperSize> paper = core::paperSize(view.style);
+        const Sheet sheet{
+            .id = view.page == nullptr ? core::Uuid{} : view.page->id(),
+            .style = view.style,
+            .top = top,
+            .width = paper ? paper->width : 0.0F,
+            .height = paper ? paper->height : 0.0F,
+        };
+        top += (paper ? paper->height : fallback.height) + kSheetGap;
+        sheets.push_back(sheet);
+    }
+    return sheets;
+}
+
+// A stroke keeps the mesh it was given, so erasing or undoing only rebuilds what changed.
+void QtInkItem::rebuildMeshes(std::span<const PageView> pages) {
     std::vector<StrokeMesh> kept;
-    kept.reserve(page.strokes().size());
-    for (const core::PlacedStroke& placed : page.strokes()) {
-        const auto found = std::ranges::find(m_meshes, placed.stroke.id(), &StrokeMesh::id);
-        if (found != m_meshes.end()) {
-            kept.push_back(std::move(*found));
+    for (std::size_t index = 0; index < pages.size() && index < m_sheets.size(); ++index) {
+        const core::Page* const page = pages[index].page;
+        if (page == nullptr) {
             continue;
         }
-        StrokeMesh mesh{
-            .id = placed.stroke.id(),
-            .vertices = {},
-            .translucent = placed.stroke.style().color.alpha < core::Color::kOpaque,
-        };
-        core::appendStroke(mesh.vertices, placed.stroke);
-        kept.push_back(std::move(mesh));
+        const float offset = m_sheets[index].top;
+        kept.reserve(kept.size() + page->strokes().size());
+        for (const core::PlacedStroke& placed : page->strokes()) {
+            const auto found = std::ranges::find(m_meshes, placed.stroke.id(), &StrokeMesh::id);
+            if (found != m_meshes.end() && found->top == offset) {
+                kept.push_back(std::move(*found));
+                continue;
+            }
+            StrokeMesh mesh{
+                .id = placed.stroke.id(),
+                .vertices = {},
+                .top = offset,
+                .translucent = placed.stroke.style().color.alpha < core::Color::kOpaque,
+            };
+            core::appendStroke(mesh.vertices, placed.stroke);
+            for (core::InkVertex& vertex : mesh.vertices) {
+                vertex.y += offset;
+            }
+            kept.push_back(std::move(mesh));
+        }
     }
     m_meshes = std::move(kept);
+}
+
+void QtInkItem::showColumn(std::span<const PageView> pages, int current,
+                           std::span<const core::Uuid> hidden,
+                           std::span<const core::Stroke> extra) {
+    cancelStroke();
+
+    std::vector<Sheet> sheets = sheetsFor(pages);
+    const bool otherColumn = sheets != m_sheets;
+    m_sheets = std::move(sheets);
+    m_current =
+        m_sheets.empty() ? 0 : std::clamp(current, 0, static_cast<int>(m_sheets.size()) - 1);
+    const core::PageStyle style =
+        m_sheets.empty() ? core::PageStyle{} : m_sheets[static_cast<std::size_t>(m_current)].style;
+    const core::Uuid shown =
+        m_sheets.empty() ? core::Uuid{} : m_sheets[static_cast<std::size_t>(m_current)].id;
+    const bool otherPage = shown != m_shownPage;
+    const bool otherPaper =
+        style.paper != m_pageStyle.paper || style.orientation != m_pageStyle.orientation;
+    m_shownPage = shown;
+    m_pageStyle = style;
+    if (otherPage && m_sheets.size() <= 1) {
+        m_meshes.clear();
+    }
+    if ((otherPage || otherPaper || !m_viewFitted) && (otherColumn || m_sheets.size() <= 1)) {
+        fitPage();
+    } else if (otherPage && !m_followingScroll) {
+        goToSheet(m_current);
+    }
+
+    rebuildMeshes(pages);
 
     m_hidden.assign(hidden.begin(), hidden.end());
     m_extra.assign(extra.begin(), extra.end());
@@ -151,7 +217,107 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
                                         [&id](const StrokeMesh& mesh) { return mesh.id == id; });
         });
     }
+    rebuildMedia();
     rebuildBuffers();
+}
+
+float QtInkItem::currentTop() const noexcept {
+    return m_sheets.empty() ? 0.0F : m_sheets[static_cast<std::size_t>(m_current)].top;
+}
+
+int QtInkItem::sheetAt(float y) const noexcept {
+    for (std::size_t index = 0; index < m_sheets.size(); ++index) {
+        const Sheet& sheet = m_sheets[index];
+        const float bottom = sheet.top + sheet.height + (kSheetGap / 2.0F);
+        if (y < bottom) {
+            return static_cast<int>(index);
+        }
+    }
+    return m_sheets.empty() ? -1 : static_cast<int>(m_sheets.size()) - 1;
+}
+
+std::optional<core::PaperSize> QtInkItem::columnSize() const noexcept {
+    if (m_sheets.size() <= 1) {
+        return core::paperSize(m_pageStyle);
+    }
+    float width = 0.0F;
+    float height = 0.0F;
+    for (const Sheet& sheet : m_sheets) {
+        width = std::max(width, sheet.width);
+        height = std::max(height, sheet.top + sheet.height);
+    }
+    if (width <= 0.0F || height <= 0.0F) {
+        return std::nullopt;
+    }
+    return core::PaperSize{.width = width, .height = height};
+}
+
+InkSample QtInkItem::onSheet(InkSample sample) const noexcept {
+    sample.y -= currentTop();
+    return sample;
+}
+
+core::Point QtInkItem::onSheet(core::Point point) const noexcept {
+    point.y -= currentTop();
+    return point;
+}
+
+core::Stroke QtInkItem::onSheet(const core::Stroke& stroke) const {
+    const float top = currentTop();
+    if (top == 0.0F) {
+        return stroke;
+    }
+    core::Stroke moved{stroke.id(), stroke.style()};
+    for (InkSample sample : stroke.samples()) {
+        sample.y -= top;
+        moved.append(sample);
+    }
+    return moved;
+}
+
+core::Rect QtInkItem::visibleOnPage() const noexcept {
+    const core::Rect seen = visiblePage();
+    const float top = currentTop();
+    return core::Rect{
+        .left = seen.left,
+        .top = seen.top - top,
+        .right = seen.right,
+        .bottom = seen.bottom - top,
+    };
+}
+
+std::vector<QtInkItem::VisibleSheet> QtInkItem::visibleSheets() const {
+    std::vector<VisibleSheet> shown;
+    if (m_sheets.empty()) {
+        return shown;
+    }
+    const core::Rect view = visiblePage().inflated(kSheetGap);
+    for (const Sheet& sheet : m_sheets) {
+        if (sheet.width <= 0.0F || sheet.height <= 0.0F || shown.size() >= kMostSheetsDrawn) {
+            continue;
+        }
+        const core::Rect area{
+            .left = 0.0F,
+            .top = sheet.top,
+            .right = sheet.width,
+            .bottom = sheet.top + sheet.height,
+        };
+        if (area.intersects(view)) {
+            shown.push_back(VisibleSheet{.area = area, .style = sheet.style});
+        }
+    }
+    return shown;
+}
+
+void QtInkItem::goToSheet(int index) {
+    if (m_sheets.empty()) {
+        return;
+    }
+    const auto at =
+        static_cast<std::size_t>(std::clamp(index, 0, static_cast<int>(m_sheets.size()) - 1));
+    core::Viewport viewport = m_viewport;
+    viewport.showTop(m_sheets[at].top - (core::Viewport::kPaperMargin / viewport.scale()));
+    changeView(viewport);
 }
 
 namespace {
@@ -214,10 +380,15 @@ void QtInkItem::rebuildBuffers() {
         into.insert(into.end(), mesh.vertices.begin(), mesh.vertices.end());
     }
 
+    const float top = currentTop();
     for (const core::Stroke& stroke : m_extra) {
         std::vector<InkVertex>& into =
             stroke.style().color.alpha < core::Color::kOpaque ? m_highlights : m_vertices;
+        const std::size_t first = into.size();
         core::appendStroke(into, stroke);
+        for (std::size_t i = first; i < into.size(); ++i) {
+            into[i].y += top;
+        }
     }
 
     const float outline = kOutlinePixels / std::max(m_viewport.scale(), 0.01F);
@@ -391,7 +562,13 @@ void QtInkItem::finishMarquee() {
             core::Point{.x = box.right, .y = box.bottom},
             core::Point{.x = box.left, .y = box.bottom},
         };
-        m_sink->selectionDrawn(corners);
+        const std::array local{
+            onSheet(corners[0]),
+            onSheet(corners[1]),
+            onSheet(corners[2]),
+            onSheet(corners[3]),
+        };
+        m_sink->selectionDrawn(local);
     }
     rebuildBuffers();
 }
@@ -428,23 +605,49 @@ void QtInkItem::showView(const core::Viewport& viewport) {
     changeView(viewport);
 }
 
-void QtInkItem::showMedia(const QImage& image, const QRectF& area) {
-    m_media = image;
-    m_mediaArea = area;
+void QtInkItem::showMedia(std::span<const MediaPiece> pieces) {
+    m_media.assign(pieces.begin(), pieces.end());
+    rebuildMedia();
     ++m_mediaGeneration;
     emit mediaChanged();
     update();
 }
 
 void QtInkItem::clearMedia() {
-    if (m_media.isNull()) {
+    if (m_media.empty()) {
         return;
     }
-    m_media = QImage{};
-    m_mediaArea = {};
+    m_media.clear();
+    rebuildMedia();
     ++m_mediaGeneration;
     emit mediaChanged();
     update();
+}
+
+// Every picture is drawn where its own page stands in the column.
+void QtInkItem::rebuildMedia() {
+    m_mediaDraws.clear();
+    m_mediaDraws.reserve(m_media.size());
+    for (const MediaPiece& piece : m_media) {
+        const auto sheet = std::ranges::find(m_sheets, piece.page, &Sheet::id);
+        if (sheet == m_sheets.end() || piece.picture.isNull() || piece.area.isEmpty()) {
+            continue;
+        }
+        m_mediaDraws.push_back(MediaDraw{
+            .picture = piece.picture,
+            .area = piece.area.translated(0.0, static_cast<double>(sheet->top)),
+        });
+    }
+}
+
+QImage QtInkItem::media() const {
+    const auto found = std::ranges::find(m_media, m_shownPage, &MediaPiece::page);
+    return found == m_media.end() ? QImage{} : found->picture;
+}
+
+QRectF QtInkItem::mediaArea() const {
+    const auto found = std::ranges::find(m_media, m_shownPage, &MediaPiece::page);
+    return found == m_media.end() ? QRectF{} : found->area;
 }
 
 void QtInkItem::clear() {
@@ -513,13 +716,29 @@ core::ViewSize QtInkItem::viewSize() const noexcept {
 
 void QtInkItem::changeView(const core::Viewport& viewport) {
     core::Viewport kept = viewport;
-    kept.keepPaperInView(viewSize(), core::paperSize(m_pageStyle));
+    kept.keepPaperInView(viewSize(), columnSize());
     if (kept == m_viewport) {
         return;
     }
     m_viewport = kept;
     emit viewChanged();
     update();
+    followScrolling();
+}
+
+// In a column, the page that is being read is the one a third of the way down the window.
+void QtInkItem::followScrolling() {
+    if (m_sheets.size() <= 1 || m_followingScroll) {
+        return;
+    }
+    const core::Rect view = visiblePage();
+    const int under = sheetAt(view.top + (view.height() * kReadingLine));
+    if (under < 0 || under == m_current) {
+        return;
+    }
+    m_followingScroll = true;
+    emit pageWanted(under);
+    m_followingScroll = false;
 }
 
 void QtInkItem::zoomIn() {
@@ -541,6 +760,8 @@ void QtInkItem::fitPage() {
     }
     core::Viewport viewport;
     viewport.fit(viewSize(), core::paperSize(m_pageStyle));
+    viewport.showTop(currentTop() - (core::Viewport::kPaperMargin / viewport.scale()));
+    viewport.keepPaperInView(viewSize(), columnSize());
     m_viewFitted = true;
     m_viewport = viewport;
     emit viewChanged();
@@ -750,9 +971,16 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    // A press on another sheet of the column reads that page first, and works on it from there.
+    if (const int under = sheetAt(sample.y); under >= 0 && under != m_current) {
+        emit pageWanted(under);
+        if (under != m_current) {
+            return;
+        }
+    }
     if (m_picking && !eraserTip) {
         if (m_sink != nullptr) {
-            m_sink->colourWanted(sample);
+            m_sink->colourWanted(onSheet(sample));
         }
         return;
     }
@@ -826,7 +1054,8 @@ void QtInkItem::beginErase(const InkSample& sample) {
     finishErase();
     m_eraserPosition = sample;
     if (m_sink != nullptr) {
-        m_sink->eraserMoved(sample, sample, static_cast<float>(m_eraserRadius));
+        const InkSample local = onSheet(sample);
+        m_sink->eraserMoved(local, local, static_cast<float>(m_eraserRadius));
     }
 }
 
@@ -836,7 +1065,7 @@ void QtInkItem::moveEraser(const InkSample& sample) {
     }
     const InkSample from = std::exchange(*m_eraserPosition, sample);
     if (m_sink != nullptr) {
-        m_sink->eraserMoved(from, sample, static_cast<float>(m_eraserRadius));
+        m_sink->eraserMoved(onSheet(from), onSheet(sample), static_cast<float>(m_eraserRadius));
     }
 }
 
@@ -865,7 +1094,7 @@ void QtInkItem::beginStroke(const InkSample& sample) {
     m_liveSamples = 1;
     m_liveDrawnAt = std::chrono::steady_clock::now();
     if (m_sink != nullptr) {
-        m_sink->strokeStarted(sample);
+        m_sink->strokeStarted(onSheet(sample));
     }
 }
 
@@ -888,7 +1117,7 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
         redrawActiveStroke();
     }
     if (m_sink != nullptr) {
-        m_sink->sampleAdded(sample);
+        m_sink->sampleAdded(onSheet(sample));
     }
     update();
 }
@@ -942,6 +1171,7 @@ void QtInkItem::endStroke(const InkSample& sample) {
     StrokeMesh mesh{
         .id = finished.id(),
         .vertices = {},
+        .top = currentTop(),
         .translucent = m_activeIsTranslucent,
     };
     core::appendStroke(mesh.vertices, finished);
@@ -949,8 +1179,8 @@ void QtInkItem::endStroke(const InkSample& sample) {
     m_meshes.push_back(std::move(mesh));
     ++m_generation;
     if (m_sink != nullptr) {
-        m_sink->strokeFinished(sample);
-        m_sink->strokeCompleted(finished);
+        m_sink->strokeFinished(onSheet(sample));
+        m_sink->strokeCompleted(onSheet(finished));
     }
     update();
 }

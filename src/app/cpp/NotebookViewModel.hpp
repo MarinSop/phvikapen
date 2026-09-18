@@ -38,6 +38,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <span>
 #include <thread>
 #include <vector>
@@ -84,6 +85,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         qreal customHeight READ customHeight WRITE setCustomHeight NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
+    Q_PROPERTY(bool continuous READ continuous WRITE setContinuous NOTIFY continuousChanged FINAL)
     Q_PROPERTY(phvikapen::app::TrashListModel* trash READ trash CONSTANT FINAL)
 
 public:
@@ -175,6 +177,10 @@ public:
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
 
+    [[nodiscard]] bool continuous() const { return m_continuous; }
+
+    void setContinuous(bool continuous);
+
     [[nodiscard]] bool exporting() const { return m_exporting; }
 
     Q_INVOKABLE void exportToPdf(const QUrl& fileUrl, int scope = 0);
@@ -215,6 +221,7 @@ signals:
     void currentPageChanged();
     void pageStyleChanged();
     void exportingChanged();
+    void continuousChanged();
     void clipboardChanged();
     void colourPicked(const QColor& colour);
     void pageAdded(int index);
@@ -303,6 +310,14 @@ private:
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                           const core::Rect& area, const platform::pdf::PageImage& image);
     [[nodiscard]] core::Rect wantedRegion(const core::PaperSize& paper) const;
+    void showPageMedia(const core::Uuid& page, const QImage& picture, const QRectF& area);
+    void publishMedia();
+    void wantNeighbours();
+    void wantMediaFor(const core::PageInfo& page);
+    void drawColumnMedia(const core::Uuid& page, const core::PageStyle& style, int index,
+                         core::Asset asset);
+    void showColumn();
+    void goToShownPage(int index);
     void reportError(const QString& message);
     void finishExport(const QString& path, const core::Result<int>& written);
     void showTrash(std::uint64_t opening, core::Result<std::vector<core::TrashedItem>> items);
@@ -320,6 +335,10 @@ private:
     std::map<core::Uuid, std::vector<core::Stroke>> m_erasePieces;
     std::optional<platform::pdf::PdfRenderer> m_pdf;
     core::ContentId m_openAsset;
+    std::map<core::Uuid, platform::ink::QtInkItem::MediaPiece> m_shownMedia;
+    std::set<core::Uuid> m_wantedMedia;
+    std::set<core::Uuid> m_wantedPages;
+    bool m_continuous{false};
     QTimer m_mediaTimer;
     qreal m_mediaScale{0.0};
     core::Rect m_mediaRegion;

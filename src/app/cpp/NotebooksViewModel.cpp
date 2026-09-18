@@ -66,6 +66,17 @@ QString NotebooksViewModel::pathFor(const QString& name) const {
     return m_directory + "/" + name + kNotebookSuffix;
 }
 
+void NotebooksViewModel::setContinuousPages(bool continuous) {
+    if (continuous == m_continuousPages) {
+        return;
+    }
+    m_continuousPages = continuous;
+    for (const std::unique_ptr<NotebookViewModel>& notebook : m_open) {
+        notebook->setContinuous(continuous);
+    }
+    emit continuousPagesChanged();
+}
+
 void NotebooksViewModel::refreshLibrary() {
     QDir directory{m_directory};
     if (!directory.exists() && !QDir().mkpath(m_directory)) {
@@ -215,6 +226,7 @@ void NotebooksViewModel::openNotebook(const QString& name) {
     }
 
     auto notebook = std::make_unique<NotebookViewModel>(pathFor(name), rememberedPage(name), this);
+    notebook->setContinuous(m_continuousPages);
     connect(notebook.get(), &NotebookViewModel::notebookPathChanged, this,
             &NotebooksViewModel::openNotebooksChanged);
     m_open.push_back(std::move(notebook));

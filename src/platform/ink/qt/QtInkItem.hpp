@@ -54,6 +54,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
+    Q_PROPERTY(int visibleSheetCount READ visibleSheetCount NOTIFY viewChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
@@ -76,9 +77,45 @@ public:
 
     Q_INVOKABLE void clear();
 
+    // One page of a column, with the paper it is written on.
+    struct PageView {
+        const core::Page* page{nullptr};
+        core::PageStyle style;
+    };
+
+    // A sheet as the renderer draws it, in the coordinates of the column.
+    struct VisibleSheet {
+        core::Rect area;
+        core::PageStyle style;
+    };
+
+    // A picture that belongs to a page, in that page's own coordinates.
+    struct MediaPiece {
+        core::Uuid page;
+        QImage picture;
+        QRectF area;
+    };
+
+    struct MediaDraw {
+        QImage picture;
+        QRectF area;
+    };
+
     void showPage(const core::Page& page, const core::PageStyle& style,
                   std::span<const core::Uuid> hidden = {},
                   std::span<const core::Stroke> extra = {});
+
+    void showColumn(std::span<const PageView> pages, int current,
+                    std::span<const core::Uuid> hidden = {},
+                    std::span<const core::Stroke> extra = {});
+
+    [[nodiscard]] std::vector<VisibleSheet> visibleSheets() const;
+
+    [[nodiscard]] int visibleSheetCount() const { return static_cast<int>(visibleSheets().size()); }
+
+    [[nodiscard]] const std::vector<MediaDraw>& mediaDraws() const noexcept { return m_mediaDraws; }
+
+    Q_INVOKABLE void goToSheet(int index);
 
     void showView(const core::Viewport& viewport);
 
@@ -116,12 +153,12 @@ public:
 
     Q_INVOKABLE void clearSelection();
 
-    void showMedia(const QImage& image, const QRectF& area);
+    void showMedia(std::span<const MediaPiece> pieces);
     void clearMedia();
 
-    [[nodiscard]] const QImage& media() const noexcept { return m_media; }
+    [[nodiscard]] QImage media() const;
 
-    [[nodiscard]] QRectF mediaArea() const noexcept { return m_mediaArea; }
+    [[nodiscard]] QRectF mediaArea() const;
 
     [[nodiscard]] std::uint64_t mediaGeneration() const noexcept { return m_mediaGeneration; }
 
@@ -132,6 +169,9 @@ public:
     [[nodiscard]] const core::Viewport& viewport() const noexcept { return m_viewport; }
 
     [[nodiscard]] core::Rect visiblePage() const noexcept;
+
+    // The part of the current page that is in the window, in that page's own coordinates.
+    [[nodiscard]] core::Rect visibleOnPage() const noexcept;
 
     [[nodiscard]] const core::PageStyle& pageStyle() const noexcept { return m_pageStyle; }
 
@@ -177,6 +217,7 @@ signals:
     void smoothingChanged();
     void selectionChanged();
     void mediaChanged();
+    void pageWanted(int index);
     void eraserRadiusChanged();
     void pressureSensitiveChanged();
     void viewChanged();
@@ -234,7 +275,18 @@ private:
     struct StrokeMesh {
         core::Uuid id;
         std::vector<core::InkVertex> vertices;
+        float top{};
         bool translucent{};
+    };
+
+    struct Sheet {
+        core::Uuid id;
+        core::PageStyle style;
+        float top{};
+        float width{};
+        float height{};
+
+        friend bool operator==(const Sheet&, const Sheet&) = default;
     };
 
     [[nodiscard]] std::vector<core::InkVertex>& activeVertices() noexcept;
@@ -251,7 +303,22 @@ private:
     void finishDrag();
     [[nodiscard]] bool overSelection(const core::InkSample& sample) const noexcept;
     [[nodiscard]] std::optional<core::Rect> selectionBounds() const noexcept;
+    [[nodiscard]] float currentTop() const noexcept;
+    [[nodiscard]] int sheetAt(float y) const noexcept;
+    [[nodiscard]] std::optional<core::PaperSize> columnSize() const noexcept;
+    [[nodiscard]] core::InkSample onSheet(core::InkSample sample) const noexcept;
+    [[nodiscard]] core::Point onSheet(core::Point point) const noexcept;
+    [[nodiscard]] core::Stroke onSheet(const core::Stroke& stroke) const;
+    void rebuildMedia();
+    [[nodiscard]] static std::vector<Sheet> sheetsFor(std::span<const PageView> pages);
+    void rebuildMeshes(std::span<const PageView> pages);
+    void followScrolling();
 
+    std::vector<Sheet> m_sheets;
+    std::vector<MediaPiece> m_media;
+    std::vector<MediaDraw> m_mediaDraws;
+    int m_current{0};
+    bool m_followingScroll{false};
     std::vector<StrokeMesh> m_meshes;
     std::vector<core::InkVertex> m_vertices;
     std::vector<core::InkVertex> m_highlights;
@@ -279,8 +346,6 @@ private:
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;
-    QImage m_media;
-    QRectF m_mediaArea;
     std::uint64_t m_mediaGeneration{0};
     core::Uuid m_shownPage;
     bool m_viewFitted{false};

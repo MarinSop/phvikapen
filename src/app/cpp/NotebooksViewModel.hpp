@@ -26,6 +26,8 @@ class NotebooksViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(phvikapen::app::NotebookViewModel* current READ current NOTIFY currentChanged FINAL)
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
                    canvasChanged FINAL)
+    Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
+                   continuousPagesChanged FINAL)
 
 public:
     explicit NotebooksViewModel(QObject* parent = nullptr);
@@ -51,6 +53,10 @@ public:
 
     void setCanvas(platform::ink::QtInkItem* canvas);
 
+    [[nodiscard]] bool continuousPages() const { return m_continuousPages; }
+
+    void setContinuousPages(bool continuous);
+
     Q_INVOKABLE void refreshLibrary();
     Q_INVOKABLE [[nodiscard]] QString suggestedName() const;
     Q_INVOKABLE [[nodiscard]] bool isNameFree(const QString& name) const;
@@ -68,6 +74,7 @@ signals:
     void openNotebooksChanged();
     void currentChanged();
     void canvasChanged();
+    void continuousPagesChanged();
     void errorMessage(const QString& message);
 
 private:
@@ -84,6 +91,7 @@ private:
     QString m_directory;
     QPointer<platform::ink::QtInkItem> m_canvas;
     int m_currentIndex{-1};
+    bool m_continuousPages{false};
     bool m_completed{false};
     bool m_restoring{false};
 };

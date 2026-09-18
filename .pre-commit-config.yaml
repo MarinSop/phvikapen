@@ -20,6 +20,8 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c]
+        # The style file is for C++; the one Objective-C++ file is kept by hand.
+        exclude: \.mm$
 
   - repo: https://github.com/crate-ci/typos
     rev: 512fc24f32f44ab01972217aaaf3dc86ec234d53 # frozen: v1.50.2

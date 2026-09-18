@@ -95,6 +95,21 @@ into a real problem earlier.
 - **A duplicated page copies the whole page.** Its strokes are written again, so duplicating a full
   page costs as much room as the page itself even where nothing was changed.
 
+## Reading page after page
+
+- **Only the pages around the one being read are held.** Two pages either side are read from the
+  file and kept; the rest stand as empty sheets until they come near, and nothing throws far pages
+  away again, so a long section still grows the longer it is read.
+- **A document beside the one being read is drawn once, at twice the size of its sheet.** Only the
+  page being read is drawn again as the window is zoomed in, so a neighbour looks soft until it
+  becomes the page being read.
+- **Sixteen sheets at a time.** The window draws at most sixteen sheets, which is more than fits at
+  the smallest zoom for A4, but a much smaller paper would leave the ones past that without their
+  sheet.
+- **A page without a sheet stands on its own.** A notebook whose pages are endless keeps one page
+  at a time, and where a section mixes the two the endless page takes the room of the first sheet
+  in the section.
+
 ## The window
 
 - **The panels cannot be moved or resized.** The pages and the page setup sit at a fixed width on

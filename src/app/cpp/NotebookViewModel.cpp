@@ -57,6 +57,8 @@ constexpr float kMediaMargin = 64.0F;
 constexpr float kPickRadius = 6.0F;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
+constexpr int kPagesAround = 2;
+constexpr float kColumnMediaScale = 2.0F;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
     const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -356,6 +358,8 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
             m_mediaTimer.start();
         }
     });
+    connect(m_canvas, &platform::ink::QtInkItem::pageWanted, this,
+            &NotebookViewModel::goToShownPage);
     refreshCanvas();
     refreshMedia();
 }
@@ -1165,19 +1169,26 @@ void NotebookViewModel::refreshMedia() {
     if (info == nullptr || !info->media) {
         m_openAsset = core::ContentId{};
         m_mediaScale = 0.0;
-        m_canvas->clearMedia();
+        m_shownMedia.erase(m_currentPage);
+        if (m_shownMedia.empty()) {
+            m_canvas->clearMedia();
+        } else {
+            publishMedia();
+        }
         return;
     }
     if (info->media->asset == m_openAsset) {
         drawMedia();
         return;
     }
+    m_shownMedia.erase(m_currentPage);
+    const core::ContentId wanted = info->media->asset;
+    publishMedia();
     if (!m_storage) {
         return;
     }
-    m_canvas->clearMedia();
     const std::uint64_t opening = m_opening;
-    m_storage->loadAsset(info->media->asset, [this, opening](core::Result<core::Asset> asset) {
+    m_storage->loadAsset(wanted, [this, opening](core::Result<core::Asset> asset) {
         QMetaObject::invokeMethod(
             this,
             [this, opening, asset = std::move(asset)] mutable {
@@ -1257,7 +1268,7 @@ void NotebookViewModel::showPicture(std::uint64_t opening, const core::ContentId
                                        static_cast<qreal>(paper->height)}
                               : QRectF{0.0, 0.0, static_cast<qreal>(picture.width()),
                                        static_cast<qreal>(picture.height())};
-    m_canvas->showMedia(picture, area);
+    showPageMedia(m_currentPage, picture, area);
 }
 
 void NotebookViewModel::drawMedia() {
@@ -1314,7 +1325,7 @@ core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) const {
         return paperArea;
     }
 
-    const core::Rect seen = m_canvas->visiblePage().inflated(kMediaMargin);
+    const core::Rect seen = m_canvas->visibleOnPage().inflated(kMediaMargin);
     const core::Rect within{
         .left = std::max(paperArea.left, seen.left),
         .top = std::max(paperArea.top, seen.top),
@@ -1335,7 +1346,111 @@ void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::Cont
     }
     const QImage drawn{image.pixels.data(), image.width, image.height,
                        static_cast<qsizetype>(image.width) * 4, QImage::Format_RGBA8888};
-    m_canvas->showMedia(drawn.copy(), QRectF{area.left, area.top, area.width(), area.height()});
+    showPageMedia(m_currentPage, drawn.copy(),
+                  QRectF{area.left, area.top, area.width(), area.height()});
+}
+
+void NotebookViewModel::showPageMedia(const core::Uuid& page, const QImage& picture,
+                                      const QRectF& area) {
+    if (picture.isNull() || area.isEmpty()) {
+        return;
+    }
+    m_shownMedia.insert_or_assign(page, platform::ink::QtInkItem::MediaPiece{
+                                            .page = page,
+                                            .picture = picture,
+                                            .area = area,
+                                        });
+    publishMedia();
+}
+
+void NotebookViewModel::publishMedia() {
+    if (m_canvas.isNull()) {
+        return;
+    }
+    std::vector<platform::ink::QtInkItem::MediaPiece> pieces;
+    pieces.reserve(m_shownMedia.size());
+    for (const auto& [page, piece] : m_shownMedia) {
+        pieces.push_back(piece);
+    }
+    m_canvas->showMedia(pieces);
+}
+
+// A page near the one being read shows its document as a whole, drawn once.
+void NotebookViewModel::wantMediaFor(const core::PageInfo& page) {
+    if (!page.media || !m_storage || page.id == m_currentPage || m_shownMedia.contains(page.id)) {
+        return;
+    }
+    if (!m_wantedMedia.insert(page.id).second) {
+        return;
+    }
+    const std::uint64_t opening = m_opening;
+    const core::Uuid id = page.id;
+    const core::PageStyle style = page.style;
+    const int index = page.media->index;
+    m_storage->loadAsset(
+        page.media->asset, [this, opening, id, style, index](core::Result<core::Asset> asset) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, id, style, index, asset = std::move(asset)] mutable {
+                    m_wantedMedia.erase(id);
+                    if (opening != m_opening || !asset) {
+                        return;
+                    }
+                    drawColumnMedia(id, style, index, std::move(*asset));
+                },
+                Qt::QueuedConnection);
+        });
+}
+
+void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::PageStyle& style,
+                                        int index, core::Asset asset) {
+    const std::optional<core::PaperSize> paper = core::paperSize(style);
+    if (asset.kind == core::AssetKind::Image) {
+        QImage picture;
+        if (!picture.loadFromData(toByteArray(asset.data))) {
+            return;
+        }
+        const QRectF area = paper ? QRectF{0.0, 0.0, static_cast<qreal>(paper->width),
+                                           static_cast<qreal>(paper->height)}
+                                  : QRectF{0.0, 0.0, static_cast<qreal>(picture.width()),
+                                           static_cast<qreal>(picture.height())};
+        showPageMedia(page, picture, area);
+        return;
+    }
+    if (!paper) {
+        return;
+    }
+
+    if (!m_pdf) {
+        m_pdf.emplace();
+    }
+    const core::ContentId id = asset.id;
+    const auto width = static_cast<int>(std::clamp(paper->width * kColumnMediaScale, 1.0F,
+                                                   static_cast<float>(kMaximumMediaPixels)));
+    const auto height = static_cast<int>(std::clamp(paper->height * kColumnMediaScale, 1.0F,
+                                                    static_cast<float>(kMaximumMediaPixels)));
+    const QRectF area{0.0, 0.0, static_cast<qreal>(paper->width),
+                      static_cast<qreal>(paper->height)};
+    const std::uint64_t opening = m_opening;
+    m_pdf->open(std::move(asset), [](core::Result<std::vector<platform::pdf::PageSize>>) {});
+    m_pdf->render(id, index, width, height,
+                  [this, opening, page, area](core::Result<platform::pdf::PageImage> image) {
+                      if (!image) {
+                          return;
+                      }
+                      QMetaObject::invokeMethod(
+                          this,
+                          [this, opening, page, area, drawn = std::move(*image)] {
+                              if (opening != m_opening) {
+                                  return;
+                              }
+                              const QImage picture{drawn.pixels.data(), drawn.width, drawn.height,
+                                                   static_cast<qsizetype>(drawn.width) * 4,
+                                                   QImage::Format_RGBA8888};
+                              showPageMedia(page, picture.copy(), area);
+                          },
+                          Qt::QueuedConnection);
+                  });
 }
 
 void NotebookViewModel::importDocument(const QUrl& fileUrl) {
@@ -1434,6 +1549,13 @@ void NotebookViewModel::refreshCanvas() {
     if (m_canvas.isNull()) {
         return;
     }
+    // A column needs sheets: a page without one is endless, and stands on its own.
+    const core::PageInfo* const shown = currentPageInfo();
+    if (m_continuous && currentSectionIndex() && shown != nullptr
+        && core::paperSize(shown->style)) {
+        showColumn();
+        return;
+    }
     const core::PageInfo* const info = currentPageInfo();
     const core::PageStyle style = info == nullptr ? core::PageStyle{} : info->style;
     if (const core::Page* const page = currentPageData()) {
@@ -1448,6 +1570,98 @@ void NotebookViewModel::refreshCanvas() {
     }
     if (const auto remembered = m_views.find(m_currentPage); remembered != m_views.end()) {
         m_canvas->showView(remembered->second);
+    }
+}
+
+// The pages of the section stand in one column; the ones that are not read yet are empty sheets
+// until their strokes arrive.
+void NotebookViewModel::showColumn() {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section) {
+        return;
+    }
+    const std::vector<core::PageInfo>& infos = m_outline.sections()[*section].pages;
+    std::vector<core::Page> waiting;
+    waiting.reserve(infos.size());
+    std::vector<platform::ink::QtInkItem::PageView> views;
+    views.reserve(infos.size());
+    for (const core::PageInfo& info : infos) {
+        const auto found = m_pages.find(info.id);
+        const core::Page* page = found == m_pages.end() ? nullptr : found->second.get();
+        if (page == nullptr) {
+            waiting.emplace_back(info.id);
+            page = &waiting.back();
+        }
+        views.push_back(platform::ink::QtInkItem::PageView{.page = page, .style = info.style});
+    }
+
+    std::vector<core::Stroke> pieces;
+    for (const auto& [strokeId, left] : m_erasePieces) {
+        pieces.insert(pieces.end(), left.begin(), left.end());
+    }
+    m_canvas->showColumn(views, currentPage(), m_erasing, pieces);
+    wantNeighbours();
+}
+
+void NotebookViewModel::setContinuous(bool continuous) {
+    if (continuous == m_continuous) {
+        return;
+    }
+    m_continuous = continuous;
+    m_shownMedia.clear();
+    m_wantedMedia.clear();
+    m_openAsset = core::ContentId{};
+    m_mediaScale = 0.0;
+    if (!m_canvas.isNull()) {
+        m_canvas->clearMedia();
+    }
+    emit continuousChanged();
+    refreshCanvas();
+    refreshMedia();
+}
+
+void NotebookViewModel::goToShownPage(int index) {
+    if (index != currentPage()) {
+        setCurrentPage(index);
+    }
+}
+
+// Only the pages around the one being read are held in full; the rest stay empty until they come
+// near.
+void NotebookViewModel::wantNeighbours() {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section || !m_storage) {
+        return;
+    }
+    const std::vector<core::PageInfo>& infos = m_outline.sections()[*section].pages;
+    const int here = currentPage();
+    const int first = std::max(0, here - kPagesAround);
+    const int last = std::min(static_cast<int>(infos.size()) - 1, here + kPagesAround);
+    for (int index = first; index <= last; ++index) {
+        const core::PageInfo& info = infos[static_cast<std::size_t>(index)];
+        const core::Uuid page = info.id;
+        wantMediaFor(info);
+        if (m_pages.contains(page) || !m_wantedPages.insert(page).second) {
+            continue;
+        }
+        if (!m_storage) {
+            return;
+        }
+        const std::uint64_t opening = m_opening;
+        m_storage->loadPage(page, [this, opening,
+                                   page](core::Result<std::vector<core::PlacedStroke>> strokes) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, page, strokes = std::move(strokes)] mutable {
+                    m_wantedPages.erase(page);
+                    if (opening != m_opening || !strokes || m_pages.contains(page)) {
+                        return;
+                    }
+                    m_pages.emplace(page, std::make_unique<core::Page>(page, std::move(*strokes)));
+                    refreshCanvas();
+                },
+                Qt::QueuedConnection);
+        });
     }
 }
 

@@ -53,6 +53,10 @@ void Viewport::panBy(float viewDeltaX, float viewDeltaY) noexcept {
     m_origin.y -= viewDeltaY / m_scale;
 }
 
+void Viewport::showTop(float pageY) noexcept {
+    m_origin.y = pageY;
+}
+
 void Viewport::zoomAround(Point view, float factor) noexcept {
     const Point anchor = toPage(view);
     m_scale = clampedScale(m_scale * factor);

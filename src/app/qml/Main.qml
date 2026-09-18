@@ -58,6 +58,8 @@ ApplicationWindow {
     NotebooksViewModel {
         id: notebooks
 
+        continuousPages: settings.continuousPages
+
         onErrorMessage: message => messageBar.show(message)
     }
 

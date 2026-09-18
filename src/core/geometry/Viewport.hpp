@@ -30,6 +30,7 @@ public:
     [[nodiscard]] Rect visiblePage(ViewSize view) const noexcept;
 
     void panBy(float viewDeltaX, float viewDeltaY) noexcept;
+    void showTop(float pageY) noexcept;
     void zoomAround(Point view, float factor) noexcept;
     void setScale(float scale) noexcept;
 

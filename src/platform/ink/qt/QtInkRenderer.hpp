@@ -3,6 +3,7 @@
 #include "core/geometry/Viewport.hpp"
 #include "core/ink/StrokeMesh.hpp"
 #include "core/model/PageStyle.hpp"
+#include "platform/ink/qt/QtInkItem.hpp"
 
 #include <rhi/qrhi.h>
 
@@ -27,6 +28,16 @@ class QRhiRenderPassDescriptor;
 class QShader;
 
 namespace phvikapen::platform::ink {
+
+// One picture of an imported document, with the sheet it is laid over.
+struct MediaEntry {
+    QImage picture;
+    QRectF area;
+    std::unique_ptr<QRhiTexture> texture;
+    std::unique_ptr<QRhiBuffer> uniforms;
+    std::unique_ptr<QRhiShaderResourceBindings> bindings;
+    bool uploaded{false};
+};
 
 class QtInkRenderer final : public QQuickRhiItemRenderer {
 public:
@@ -57,6 +68,7 @@ private:
     void updateBackground(QRhiResourceUpdateBatch& updates);
     void createMediaPipeline();
     void updateMedia(QRhiResourceUpdateBatch& updates);
+    void bindMedia(MediaEntry& entry);
     [[nodiscard]] static QRhiScissor inkScissor(const QSize& outputSize);
 
     std::unique_ptr<QRhiBuffer> m_uniformBuffer;
@@ -79,10 +91,9 @@ private:
     std::unique_ptr<QRhiSampler> m_mediaSampler;
     std::unique_ptr<QRhiShaderResourceBindings> m_mediaBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_mediaPipeline;
-    QImage m_media;
-    QRectF m_mediaArea;
+    std::vector<MediaEntry> m_media;
+    std::vector<QtInkItem::VisibleSheet> m_sheets;
     std::uint64_t m_mediaGeneration{0};
-    bool m_mediaUploaded{false};
     bool m_backgroundVerticesUploaded{false};
     int m_sampleCount{0};
 

@@ -441,6 +441,66 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_theSectionStandsInOneColumnWhenAsked() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+        verify(canvas.visibleSheetCount >= 1);
+        const wanted = createTemporaryObject(signalSpyComponent, testCase, {
+            target: canvas,
+            signalName: "pageWanted"
+        });
+        for (let step = 0; step < 8; ++step) {
+            canvas.zoomOut();
+        }
+        canvas.goToSheet(1);
+
+        tryCompare(notebook, "currentPage", 1);
+        verify(wanted.count >= 1);
+        verify(canvas.visibleSheetCount >= 2);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_scrollingDownTurnsToTheNextPage() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+        compare(notebook.currentPage, 0);
+
+        for (let step = 0; step < 40; ++step) {
+            mouseWheel(canvas, canvas.width / 2, canvas.height / 2, 0, -120);
+        }
+
+        tryCompare(notebook, "currentPage", 1);
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.goToSheet(1);
+        tryCompare(notebook, "currentPage", 1);
+
+        draw(notebook, 60, 60);
+
+        compare(notebook.currentPage, 1);
+        compare(notebook.strokeCount, 1);
+        notebook.currentPage = 0;
+        compare(notebook.strokeCount, 0);
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_aPageCanBeGivenItsOwnSize() {
         const path = newNotebookPath();
         const first = openNotebook(path);
