@@ -32,6 +32,7 @@ public:
         Pen,
         Highlighter,
         Eraser,
+        Selection,
     };
     Q_ENUM(Tool)
 

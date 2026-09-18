@@ -17,6 +17,7 @@
 #include <QPointer>
 #include <QQuickRhiItem>
 #include <QQuickWindow>
+#include <QRectF>
 
 #include <cstddef>
 #include <cstdint>
@@ -43,6 +44,9 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
         qreal eraserRadius READ eraserRadius WRITE setEraserRadius NOTIFY eraserRadiusChanged FINAL)
     Q_PROPERTY(bool pressureSensitive READ pressureSensitive WRITE setPressureSensitive NOTIFY
                    pressureSensitiveChanged FINAL)
+    Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
+    Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
+    Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
@@ -69,6 +73,22 @@ public:
                   std::span<const core::Uuid> hidden = {});
 
     void showView(const core::Viewport& viewport);
+
+    void showSelection(std::vector<core::Uuid> strokeIds);
+
+    void forgetStrokes(std::span<const core::Uuid> strokeIds);
+
+    [[nodiscard]] bool selecting() const noexcept { return m_selecting; }
+
+    void setSelecting(bool selecting) override;
+
+    [[nodiscard]] int selectedCount() const noexcept { return static_cast<int>(m_selected.size()); }
+
+    [[nodiscard]] const std::vector<core::Uuid>& selection() const noexcept { return m_selected; }
+
+    [[nodiscard]] QRectF selectionRect() const;
+
+    Q_INVOKABLE void clearSelection();
 
     void showMedia(const QImage& image);
     void clearMedia();
@@ -105,6 +125,8 @@ public:
 
     void setPressureSensitive(bool sensitive);
 
+    [[nodiscard]] const std::vector<core::InkVertex>& overlay() const noexcept { return m_overlay; }
+
     [[nodiscard]] const std::vector<core::InkVertex>& highlights() const noexcept {
         return m_highlights;
     }
@@ -118,6 +140,8 @@ public:
 signals:
     void strokeStyleChanged();
     void erasingChanged();
+    void selectingChanged();
+    void selectionChanged();
     void eraserRadiusChanged();
     void pressureSensitiveChanged();
     void viewChanged();
@@ -179,9 +203,26 @@ private:
 
     [[nodiscard]] std::vector<core::InkVertex>& activeVertices() noexcept;
 
+    void rebuildBuffers();
+    void beginLasso(const core::InkSample& sample);
+    void appendToLasso(const core::InkSample& sample);
+    void finishLasso();
+    void beginDrag(const core::InkSample& sample);
+    void dragTo(const core::InkSample& sample);
+    void finishDrag();
+    [[nodiscard]] bool overSelection(const core::InkSample& sample) const noexcept;
+    [[nodiscard]] std::optional<core::Rect> selectionBounds() const noexcept;
+
     std::vector<StrokeMesh> m_meshes;
     std::vector<core::InkVertex> m_vertices;
     std::vector<core::InkVertex> m_highlights;
+    std::vector<core::InkVertex> m_overlay;
+    std::vector<core::Uuid> m_selected;
+    std::vector<core::Uuid> m_hidden;
+    std::vector<core::Point> m_lasso;
+    std::optional<core::Point> m_dragFrom;
+    core::Point m_dragOffset;
+    bool m_selecting{false};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

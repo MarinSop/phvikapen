@@ -86,6 +86,7 @@ private:
 
     Stream m_ink;
     Stream m_highlights;
+    Stream m_overlay;
     std::uint64_t m_generation{0};
     float m_logicalWidth{0.0F};
     float m_logicalHeight{0.0F};

@@ -234,6 +234,81 @@ TestCase {
         compare(copy.errorMessage, "");
     }
 
+    function lasso(canvas, left, top, right, bottom) {
+        mousePress(canvas, left, top);
+        mouseMove(canvas, right, top, -1, Qt.LeftButton);
+        mouseMove(canvas, right, bottom, -1, Qt.LeftButton);
+        mouseMove(canvas, left, bottom, -1, Qt.LeftButton);
+        mouseMove(canvas, left, top, -1, Qt.LeftButton);
+        mouseRelease(canvas, left, top);
+    }
+
+    function test_aLassoPicksTheStrokesInsideIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        draw(notebook, 240, 240);
+        compare(notebook.strokeCount, 2);
+
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+
+        compare(canvas.selectedCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_whatIsPickedCanBeMovedAndPutBack() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        const box = canvas.selectionRect;
+        const fromX = box.x + (box.width / 2);
+        const fromY = box.y + (box.height / 2);
+        mousePress(canvas, fromX, fromY);
+        mouseMove(canvas, fromX + 15, fromY + 15, -1, Qt.LeftButton);
+        mouseRelease(canvas, fromX + 20, fromY + 20);
+
+        compare(canvas.selectedCount, 1);
+        compare(notebook.strokeCount, 1);
+        notebook.undo();
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_whatIsPickedCanBeDeleted() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        notebook.deleteSelection();
+
+        compare(notebook.strokeCount, 0);
+        compare(canvas.selectedCount, 0);
+        notebook.undo();
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theLassoLetsGoWhenTheToolIsPutAway() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        canvas.selecting = false;
+
+        compare(canvas.selectedCount, 0);
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

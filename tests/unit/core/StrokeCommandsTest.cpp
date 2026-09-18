@@ -233,5 +233,35 @@ TEST(StrokeCommandsTest, DrawingAndClearingWalkBackAndForwardThroughTheHistory) 
     EXPECT_TRUE(notebook.errors.empty());
 }
 
+TEST(StrokeCommandsTest, MovingStrokesShiftsThemAndPutsThemBackWhereTheyWere) {
+    OpenNotebook notebook;
+    UndoStack history;
+    const Stroke first = makeStroke(notebook.ids, 10.0F);
+    const Stroke second = makeStroke(notebook.ids, 100.0F);
+    ASSERT_TRUE(notebook.page.insert({.ordinal = 0, .stroke = first}).has_value());
+    ASSERT_TRUE(notebook.page.insert({.ordinal = 1, .stroke = second}).has_value());
+    notebook.storage.insertStroke(notebook.page.id(), {.ordinal = 0, .stroke = first});
+    notebook.storage.insertStroke(notebook.page.id(), {.ordinal = 1, .stroke = second});
+    const float startX = first.samples().front().x;
+    const std::vector<Uuid> picked{first.id()};
+
+    ASSERT_TRUE(history
+                    .run(std::make_unique<MoveStrokesCommand>(&notebook.page, &notebook.storage,
+                                                              picked, 30.0F, -12.0F))
+                    .has_value());
+
+    EXPECT_EQ(idsOn(notebook.page).size(), 2U);
+    const PlacedStroke& shifted = notebook.page.strokes().front();
+    EXPECT_EQ(shifted.stroke.id(), first.id());
+    EXPECT_FLOAT_EQ(shifted.stroke.samples().front().x, startX + 30.0F);
+    EXPECT_FLOAT_EQ(shifted.stroke.samples().front().y, first.samples().front().y - 12.0F);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()).size(), 2U);
+
+    ASSERT_TRUE(history.undo().has_value());
+
+    EXPECT_FLOAT_EQ(notebook.page.strokes().front().stroke.samples().front().x, startX);
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
 }
 }

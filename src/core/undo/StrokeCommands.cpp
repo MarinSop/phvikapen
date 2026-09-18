@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/ink/StrokeSelection.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/StorageThread.hpp"
 
@@ -61,6 +62,50 @@ Result<void> ClearPageCommand::revert() {
 EraseStrokesCommand::EraseStrokesCommand(Page* page, StorageThread* storage,
                                          std::vector<Uuid> strokeIds) noexcept
     : m_page{page}, m_storage{storage}, m_strokeIds{std::move(strokeIds)} {}
+
+MoveStrokesCommand::MoveStrokesCommand(Page* page, StorageThread* storage,
+                                       std::vector<Uuid> strokeIds, float dx, float dy) noexcept
+    : m_page{page}, m_storage{storage}, m_strokeIds{std::move(strokeIds)}, m_dx{dx}, m_dy{dy} {}
+
+Result<void> MoveStrokesCommand::shift(float dx, float dy) {
+    std::vector<PlacedStroke> moved;
+    moved.reserve(m_strokeIds.size());
+    for (const Uuid& strokeId : m_strokeIds) {
+        Result<PlacedStroke> taken = m_page->remove(strokeId);
+        if (!taken) {
+            for (PlacedStroke& placed : moved) {
+                std::ignore = m_page->insert(std::move(placed));
+            }
+            return std::unexpected{taken.error()};
+        }
+        moved.push_back(PlacedStroke{
+            .ordinal = taken->ordinal,
+            .stroke = core::moved(taken->stroke, dx, dy),
+        });
+    }
+
+    for (PlacedStroke& placed : moved) {
+        const Uuid strokeId = placed.stroke.id();
+        if (const Result<void> put = m_page->insert(placed); !put) {
+            return put;
+        }
+        m_storage->removeStroke(m_page->id(), strokeId);
+        m_storage->insertStroke(m_page->id(), std::move(placed));
+    }
+    return {};
+}
+
+Result<void> MoveStrokesCommand::apply() {
+    return shift(m_dx, m_dy);
+}
+
+Result<void> MoveStrokesCommand::revert() {
+    return shift(-m_dx, -m_dy);
+}
+
+std::optional<Uuid> MoveStrokesCommand::pageToShow() const {
+    return m_page->id();
+}
 
 Result<void> EraseStrokesCommand::apply() {
     std::vector<PlacedStroke> erased;

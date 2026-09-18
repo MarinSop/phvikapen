@@ -40,6 +40,25 @@ private:
     std::vector<PlacedStroke> m_removed;
 };
 
+class MoveStrokesCommand final : public ICommand {
+public:
+    MoveStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds, float dx,
+                       float dy) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    [[nodiscard]] Result<void> shift(float dx, float dy);
+
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_strokeIds;
+    float m_dx;
+    float m_dy;
+};
+
 class EraseStrokesCommand final : public ICommand {
 public:
     EraseStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds) noexcept;

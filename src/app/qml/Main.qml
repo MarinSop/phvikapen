@@ -113,6 +113,22 @@ ApplicationWindow {
         onActivated: toolState.currentTool = ToolViewModel.Eraser
     }
 
+    Shortcut {
+        sequences: ["S"]
+
+        onActivated: toolState.currentTool = ToolViewModel.Selection
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Delete, StandardKey.Backspace]
+
+        onActivated: {
+            if (root.notebook !== null) {
+                root.notebook.deleteSelection();
+            }
+        }
+    }
+
     Repeater {
         model: toolState.penCount
 

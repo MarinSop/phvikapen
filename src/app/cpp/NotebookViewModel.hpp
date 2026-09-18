@@ -2,6 +2,7 @@
 
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
+#include "core/geometry/Distance.hpp"
 #include "core/geometry/Viewport.hpp"
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
@@ -33,6 +34,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <thread>
 #include <vector>
 
@@ -165,6 +167,8 @@ public:
 
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
+    Q_INVOKABLE void deleteSelection();
+
     Q_INVOKABLE void refreshTrash();
     Q_INVOKABLE void restoreTrashed(int index);
     Q_INVOKABLE void emptyTrash();
@@ -202,6 +206,8 @@ private:
         void eraserMoved(const core::InkSample& from, const core::InkSample& to,
                          float radius) override;
         void eraseFinished() override;
+        void lassoFinished(std::span<const core::Point> polygon) override;
+        void selectionMoved(float dx, float dy) override;
 
     private:
         NotebookViewModel* m_owner;
@@ -235,6 +241,8 @@ private:
     void changeStyle(const core::PageStyle& style);
 
     void storeStroke(const core::Stroke& stroke);
+    void selectInside(std::span<const core::Point> polygon);
+    void moveSelection(float dx, float dy);
     void erase(const core::InkSample& from, const core::InkSample& to, float radius);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);

@@ -32,9 +32,10 @@ core::PageStyle pageStyle() {
     const core::PageStyle usual;
     return core::normalized(core::PageStyle{
         .paper = readEnum(settings, kPaperKey, usual.paper, core::Paper::Legal),
-        .orientation = readEnum(settings, kOrientationKey, usual.orientation,
-                                core::Orientation::Landscape),
-        .background = readEnum(settings, kBackgroundKey, usual.background, core::Background::Dotted),
+        .orientation =
+            readEnum(settings, kOrientationKey, usual.orientation, core::Orientation::Landscape),
+        .background =
+            readEnum(settings, kBackgroundKey, usual.background, core::Background::Dotted),
         .spacing = static_cast<float>(settings.value(kSpacingKey, usual.spacing).toDouble()),
         .customWidth = 0.0F,
         .customHeight = 0.0F,

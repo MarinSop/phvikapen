@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Going back to a page returns to the zoom and the place it was left at.
 - A copy of a notebook can be saved somewhere safe from inside the application.
 - The paper, ruling and orientation new notebooks start on can be chosen in the settings.
+- A tool that picks strokes: draw a loop around them, then drag them somewhere else or delete them,
+  both undoable. It answers to S, and Delete removes what is picked.
 
 ### Changed
 

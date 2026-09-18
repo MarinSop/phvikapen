@@ -55,6 +55,26 @@ ToolBar {
 
         ToolButton {
             checkable: true
+            checked: root.tools.currentTool === ToolViewModel.Selection
+            objectName: "selectionButton"
+            text: qsTr("Select")
+
+            onClicked: root.tools.currentTool = ToolViewModel.Selection
+        }
+
+        ToolButton {
+            enabled: root.canvas !== null && root.canvas.selectedCount > 0
+            objectName: "deleteSelectionButton"
+            text: qsTr("Delete")
+            ToolTip.text: qsTr("Delete what is picked")
+            ToolTip.visible: hovered
+            visible: root.tools.currentTool === ToolViewModel.Selection
+
+            onClicked: root.notebook.deleteSelection()
+        }
+
+        ToolButton {
+            checkable: true
             checked: root.tools.currentTool === ToolViewModel.Eraser
             objectName: "eraserButton"
             text: qsTr("Eraser")

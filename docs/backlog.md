@@ -55,6 +55,15 @@ into a real problem earlier.
 - **The settings are thin.** The paper new notebooks start on is there now, but the pressure curve
   of the pens and the keyboard shortcuts are not, and the shortcuts cannot be changed.
 
+## Picking strokes
+
+- **Only whole strokes, only moving.** A stroke is picked when all of it is inside the loop, so a
+  long line through the middle of a paragraph cannot be picked by its middle, and what is picked
+  can be moved and deleted but not resized, turned, recoloured or copied to another page.
+- **The picture of a picked stroke is worked out again after every move.** Moving rewrites each
+  stroke in the notebook file and throws its shape away, so a large selection costs as much as
+  drawing it again.
+
 ## Experience
 
 - **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the

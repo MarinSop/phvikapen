@@ -20,6 +20,7 @@ target_sources(phvikapen_core
         ink/StrokeHitTest.cpp
         ink/StrokeMesh.cpp
         ink/StrokeOutline.cpp
+        ink/StrokeSelection.cpp
         ink/StrokeSpline.cpp
         model/Outline.cpp
         model/Page.cpp
@@ -53,6 +54,7 @@ target_sources(phvikapen_core
             ink/StrokeHitTest.hpp
             ink/StrokeMesh.hpp
             ink/StrokeOutline.hpp
+            ink/StrokeSelection.hpp
             ink/StrokeSpline.hpp
             model/Asset.hpp
             model/Outline.hpp

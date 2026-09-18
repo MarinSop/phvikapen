@@ -351,13 +351,16 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
 
     const std::vector<InkVertex>& ink = inkItem->vertices();
     const std::vector<InkVertex>& highlights = inkItem->highlights();
+    const std::vector<InkVertex>& overlay = inkItem->overlay();
     if (inkItem->generation() != m_generation || ink.size() < m_ink.data.size()
-        || highlights.size() < m_highlights.data.size()) {
+        || highlights.size() < m_highlights.data.size() || overlay.size() < m_overlay.data.size()) {
         m_generation = inkItem->generation();
         m_ink.data.clear();
         m_ink.uploaded = 0;
         m_highlights.data.clear();
         m_highlights.uploaded = 0;
+        m_overlay.data.clear();
+        m_overlay.uploaded = 0;
     }
     const auto grown = [](Stream& stream, const std::vector<InkVertex>& source) {
         const auto added = std::span{source}.subspan(stream.data.size());
@@ -365,6 +368,7 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     };
     grown(m_ink, ink);
     grown(m_highlights, highlights);
+    grown(m_overlay, overlay);
 
     m_logicalWidth = static_cast<float>(inkItem->width());
     m_logicalHeight = static_cast<float>(inkItem->height());
@@ -473,6 +477,7 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     QRhiResourceUpdateBatch* updates = rhi()->nextResourceUpdateBatch();
     uploadStream(m_ink, *updates);
     uploadStream(m_highlights, *updates);
+    uploadStream(m_overlay, *updates);
     updateLayerTarget();
     updateBackground(*updates);
     updateMedia(*updates);
@@ -541,6 +546,15 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
         const QRhiCommandBuffer::VertexInput vertexInput{m_ink.buffer.get(), 0};
         commandBuffer->setVertexInput(0, 1, &vertexInput);
         commandBuffer->draw(static_cast<quint32>(m_ink.data.size()));
+    }
+
+    if (!m_overlay.data.empty()) {
+        commandBuffer->setGraphicsPipeline(m_pipeline.get());
+        commandBuffer->setScissor(inkScissor(outputSize));
+        commandBuffer->setShaderResources();
+        const QRhiCommandBuffer::VertexInput overlayInput{m_overlay.buffer.get(), 0};
+        commandBuffer->setVertexInput(0, 1, &overlayInput);
+        commandBuffer->draw(static_cast<quint32>(m_overlay.data.size()));
     }
     commandBuffer->endPass();
 }

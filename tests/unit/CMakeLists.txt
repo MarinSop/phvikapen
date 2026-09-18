@@ -19,6 +19,7 @@ add_executable(phvikapen_tests
     core/StrokeHitTestTest.cpp
     core/StrokeMeshTest.cpp
     core/StrokeOutlineTest.cpp
+    core/StrokeSelectionTest.cpp
     core/StrokeSplineTest.cpp
     core/StrokeTest.cpp
     core/TrashTest.cpp

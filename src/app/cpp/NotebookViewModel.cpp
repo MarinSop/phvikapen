@@ -6,6 +6,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/ink/StrokeSelection.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
@@ -531,6 +532,14 @@ void NotebookViewModel::Sink::strokeCancelled() {}
 void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to,
                                           float radius) {
     m_owner->erase(from, to, radius);
+}
+
+void NotebookViewModel::Sink::lassoFinished(std::span<const core::Point> polygon) {
+    m_owner->selectInside(polygon);
+}
+
+void NotebookViewModel::Sink::selectionMoved(float dx, float dy) {
+    m_owner->moveSelection(dx, dy);
 }
 
 void NotebookViewModel::Sink::eraseFinished() {
@@ -1098,6 +1107,42 @@ void NotebookViewModel::finishExport(const QString& path, const core::Result<int
         return;
     }
     emit exported(path);
+}
+
+void NotebookViewModel::selectInside(std::span<const core::Point> polygon) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull()) {
+        return;
+    }
+    m_canvas->showSelection(core::strokesInside(*page, polygon));
+}
+
+void NotebookViewModel::moveSelection(float dx, float dy) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    std::vector<core::Uuid> picked = m_canvas->selection();
+    if (picked.empty()) {
+        return;
+    }
+    m_canvas->forgetStrokes(picked);
+    runCommand(
+        std::make_unique<core::MoveStrokesCommand>(page, &*m_storage, std::move(picked), dx, dy));
+}
+
+void NotebookViewModel::deleteSelection() {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    std::vector<core::Uuid> picked = m_canvas->selection();
+    if (picked.empty()) {
+        return;
+    }
+    m_canvas->showSelection({});
+    m_canvas->forgetStrokes(picked);
+    runCommand(std::make_unique<core::EraseStrokesCommand>(page, &*m_storage, std::move(picked)));
 }
 
 void NotebookViewModel::refreshTrash() {

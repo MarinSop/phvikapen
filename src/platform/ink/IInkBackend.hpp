@@ -1,8 +1,10 @@
 #pragma once
 
+#include "core/geometry/Distance.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 
+#include <span>
 #include <string_view>
 
 namespace phvikapen::platform::ink {
@@ -26,6 +28,10 @@ public:
                              float radius) = 0;
 
     virtual void eraseFinished() = 0;
+
+    virtual void lassoFinished(std::span<const core::Point> polygon) = 0;
+
+    virtual void selectionMoved(float dx, float dy) = 0;
 };
 
 class IInkBackend {
@@ -39,6 +45,8 @@ public:
     virtual void setStrokeStyle(const core::StrokeStyle& style) = 0;
 
     virtual void setErasing(bool erasing) = 0;
+
+    virtual void setSelecting(bool selecting) = 0;
 };
 
 }
