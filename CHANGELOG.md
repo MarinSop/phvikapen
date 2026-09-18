@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Messages that used to go only to the log are shown in the window.
 - PDFs and pictures can be imported: a PDF adds a page per page of it, a picture adds one page, and
   both are drawn behind the ink so they can be written on. The files are kept inside the notebook.
+- A notebook can be written out as a PDF: one page of the document per page of the notebook, each
+  keeping its own size, with the paper, its ruling, imported pages and the ink on them.
 
 ### Changed
 

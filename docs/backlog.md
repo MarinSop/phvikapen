@@ -38,6 +38,18 @@ into a real problem earlier.
 - **Nothing removes a file that no page shows any more.** Undoing an import leaves the file in the
   notebook, and emptying the trash should take it with it.
 
+## Written documents
+
+- **The whole notebook, or nothing.** Export writes every section and every page. There is no way
+  to pick a section, a page or a range, and no way to leave the ruling off the paper.
+- **Nothing says how far it got.** The writer reports after every page, but the window only shows
+  that it is busy; a long notebook gives no sign of progress and cannot be stopped halfway.
+- **An imported page is drawn again, not copied.** A page of an imported PDF is drawn into a
+  picture at twice the size of the sheet, so its text is a picture in the exported document and
+  cannot be searched or selected. Copying the original page across would keep it as text.
+- **The ink is a shape, not a line.** Every stroke is written as its outline. That is exact, but a
+  page of many strokes gives a larger file than the same drawing as paths with a width.
+
 ## Experience
 
 - **The highlighter darkens where it crosses itself.** Translucent ink is blended per segment, so a
