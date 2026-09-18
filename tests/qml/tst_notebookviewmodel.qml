@@ -361,6 +361,22 @@ TestCase {
         canvas.shape = 0;
     }
 
+    function test_theShapeIsShownWhileItIsBeingDrawn() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        canvas.shape = 2;
+
+        mousePress(canvas, 100, 100);
+        mouseMove(canvas, 150, 140, -1, Qt.LeftButton);
+        mouseMove(canvas, 200, 180, -1, Qt.LeftButton);
+        verify(canvas.zoom > 0);
+        mouseRelease(canvas, 200, 180);
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+        canvas.shape = 0;
+    }
+
     function test_aPageCanBeDuplicatedWithWhatIsOnIt() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 120, 120);

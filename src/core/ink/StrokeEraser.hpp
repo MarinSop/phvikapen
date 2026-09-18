@@ -14,6 +14,7 @@ namespace phvikapen::core {
 [[nodiscard]] std::vector<Stroke> erased(const Stroke& stroke, std::span<const EraserSweep> sweeps,
                                          Uuid7Generator& ids);
 
-[[nodiscard]] bool wholeStrokeSurvives(const Stroke& stroke, std::span<const Stroke> pieces) noexcept;
+[[nodiscard]] bool wholeStrokeSurvives(const Stroke& stroke,
+                                       std::span<const Stroke> pieces) noexcept;
 
 }

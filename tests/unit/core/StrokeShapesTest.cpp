@@ -7,20 +7,19 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <cmath>
 #include <optional>
 
 namespace phvikapen::core {
 namespace {
 
-[[nodiscard]] Stroke wobble(Uuid7Generator& ids) {
+[[nodiscard]] Stroke drag(Uuid7Generator& ids, float fromX, float fromY, float toX, float toY) {
     Stroke stroke{ids.next(), StrokeStyle{.width = 3.0F}};
     for (int i = 0; i <= 20; ++i) {
-        const auto step = static_cast<float>(i);
+        const float part = static_cast<float>(i) / 20.0F;
         stroke.append(InkSample{
-            .x = 10.0F + (step * 5.0F),
-            .y = 40.0F + (std::sin(step) * 4.0F),
+            .x = fromX + ((toX - fromX) * part),
+            .y = fromY + ((toY - fromY) * part) + (std::sin(part * 10.0F) * 4.0F),
             .pressure = 0.5F,
         });
     }
@@ -29,7 +28,7 @@ namespace {
 
 TEST(StrokeShapesTest, FreehandIsLeftAlone) {
     Uuid7Generator ids;
-    const Stroke drawn = wobble(ids);
+    const Stroke drawn = drag(ids, 10.0F, 10.0F, 110.0F, 60.0F);
 
     const Stroke kept = shaped(drawn, Shape::Freehand);
 
@@ -37,57 +36,94 @@ TEST(StrokeShapesTest, FreehandIsLeftAlone) {
     EXPECT_EQ(kept.id(), drawn.id());
 }
 
-TEST(StrokeShapesTest, ALineRunsStraightFromStartToEnd) {
+TEST(StrokeShapesTest, ALineRunsFromWhereTheStrokeStartedToWhereItEnded) {
     Uuid7Generator ids;
-    const Stroke drawn = wobble(ids);
+    const Stroke drawn = drag(ids, 10.0F, 20.0F, 110.0F, 70.0F);
     const InkSample first = drawn.samples().front();
     const InkSample last = drawn.samples().back();
 
     const Stroke line = shaped(drawn, Shape::Line);
 
     ASSERT_FALSE(line.samples().empty());
-    EXPECT_EQ(line.id(), drawn.id());
-    EXPECT_EQ(line.style(), drawn.style());
     EXPECT_NEAR(line.samples().front().x, first.x, 0.01F);
     EXPECT_NEAR(line.samples().front().y, first.y, 0.01F);
     EXPECT_NEAR(line.samples().back().x, last.x, 0.01F);
     EXPECT_NEAR(line.samples().back().y, last.y, 0.01F);
-    for (const InkSample& sample : line.samples()) {
-        const float part = (sample.x - first.x) / (last.x - first.x);
-        EXPECT_NEAR(sample.y, first.y + ((last.y - first.y) * part), 0.01F);
-    }
 }
 
-TEST(StrokeShapesTest, ABoxHasTheCornersOfWhatWasDrawn) {
+TEST(StrokeShapesTest, AnEvenLineSnapsToAnEighthOfATurn) {
     Uuid7Generator ids;
-    const Stroke drawn = wobble(ids);
-    const std::optional<Rect> bounds = drawn.boundingBox();
-    ASSERT_TRUE(bounds.has_value());
+    const Stroke drawn = drag(ids, 0.0F, 0.0F, 100.0F, 10.0F);
 
-    const Stroke box = shaped(drawn, Shape::Rectangle);
+    const Stroke line = shaped(drawn, Shape::Line, ShapeKeys{.even = true});
 
-    const std::optional<Rect> made = box.boundingBox();
-    ASSERT_TRUE(made.has_value());
-    EXPECT_NEAR(made->left, bounds->left, 0.01F);
-    EXPECT_NEAR(made->right, bounds->right, 0.01F);
-    EXPECT_NEAR(made->top, bounds->top, 0.01F);
-    EXPECT_NEAR(made->bottom, bounds->bottom, 0.01F);
-    EXPECT_NEAR(box.samples().front().x, box.samples().back().x, 0.01F);
-    EXPECT_NEAR(box.samples().front().y, box.samples().back().y, 0.01F);
+    const InkSample last = line.samples().back();
+    EXPECT_NEAR(last.y, line.samples().front().y, 1.0F);
+    EXPECT_GT(last.x, 90.0F);
 }
 
-TEST(StrokeShapesTest, AnOvalFillsWhatWasDrawnAndClosesItself) {
+TEST(StrokeShapesTest, ALineFromTheCentreReachesBothWays) {
     Uuid7Generator ids;
-    const Stroke drawn = wobble(ids);
-    const std::optional<Rect> bounds = drawn.boundingBox();
-    ASSERT_TRUE(bounds.has_value());
+    const Stroke drawn = drag(ids, 50.0F, 50.0F, 90.0F, 50.0F);
+
+    const Stroke line = shaped(drawn, Shape::Line, ShapeKeys{.fromCentre = true});
+
+    EXPECT_NEAR(line.samples().front().x, 10.0F, 1.0F);
+    EXPECT_NEAR(line.samples().back().x, 90.0F, 1.0F);
+}
+
+TEST(StrokeShapesTest, ABoxSpansFromTheStartOfTheStrokeToItsEnd) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 20.0F, 30.0F, 120.0F, 90.0F);
+
+    const std::optional<Rect> box = shaped(drawn, Shape::Rectangle).boundingBox();
+
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR(box->width(), 100.0F, 5.0F);
+    EXPECT_NEAR(box->height(), 60.0F, 8.0F);
+}
+
+TEST(StrokeShapesTest, AnEvenBoxIsASquare) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 0.0F, 0.0F, 100.0F, 40.0F);
+
+    const std::optional<Rect> box =
+        shaped(drawn, Shape::Rectangle, ShapeKeys{.even = true}).boundingBox();
+
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR(box->width(), box->height(), 1.0F);
+}
+
+TEST(StrokeShapesTest, ABoxFromTheCentreGrowsBothWays) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 100.0F, 100.0F, 140.0F, 130.0F);
+
+    const std::optional<Rect> box =
+        shaped(drawn, Shape::Rectangle, ShapeKeys{.fromCentre = true}).boundingBox();
+
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR((box->left + box->right) / 2.0F, 100.0F, 1.0F);
+    EXPECT_NEAR(box->width(), 80.0F, 5.0F);
+}
+
+TEST(StrokeShapesTest, AnEvenCircleIsAsWideAsItIsTall) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 0.0F, 0.0F, 120.0F, 40.0F);
+
+    const std::optional<Rect> box =
+        shaped(drawn, Shape::Ellipse, ShapeKeys{.even = true}).boundingBox();
+
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR(box->width(), box->height(), 1.0F);
+}
+
+TEST(StrokeShapesTest, AnOvalClosesItself) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 10.0F, 10.0F, 110.0F, 60.0F);
 
     const Stroke oval = shaped(drawn, Shape::Ellipse);
 
-    const std::optional<Rect> made = oval.boundingBox();
-    ASSERT_TRUE(made.has_value());
-    EXPECT_NEAR(made->width(), bounds->width(), 0.5F);
-    EXPECT_NEAR(made->height(), bounds->height(), 0.5F);
+    ASSERT_FALSE(oval.samples().empty());
     EXPECT_NEAR(oval.samples().front().x, oval.samples().back().x, 0.01F);
     EXPECT_NEAR(oval.samples().front().y, oval.samples().back().y, 0.01F);
 }

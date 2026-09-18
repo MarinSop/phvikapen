@@ -224,6 +224,8 @@ private:
     [[nodiscard]] std::vector<core::InkVertex>& activeVertices() noexcept;
 
     void rebuildBuffers();
+    void redrawActiveStroke();
+    void noteKeys(Qt::KeyboardModifiers modifiers);
     void beginMarquee(const core::InkSample& sample);
     void growMarquee(const core::InkSample& sample);
     void finishMarquee();
@@ -250,6 +252,7 @@ private:
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
     core::Shape m_shape{core::Shape::Freehand};
+    core::ShapeKeys m_shapeKeys;
     std::optional<core::Point> m_panFrom;
     bool m_selecting{false};
     bool m_panning{false};

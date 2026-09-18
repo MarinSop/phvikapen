@@ -140,7 +140,7 @@ ToolBar {
         ComboBox {
             Layout.preferredWidth: 140
             currentIndex: root.tools.shape
-            model: [qsTr("Freehand"), qsTr("Straight line"), qsTr("Box"), qsTr("Oval")]
+            model: [qsTr("Freehand"), qsTr("Straight line"), qsTr("Box"), qsTr("Circle")]
             objectName: "shapeBox"
             visible: root.draws
 
@@ -172,6 +172,13 @@ ToolBar {
         }
 
         Label {
+            color: palette.placeholderText
+            text: qsTr("Shift keeps it even, Alt grows it from the middle")
+            visible: root.draws && root.tools.shape !== ToolViewModel.Freehand
+        }
+
+        Label {
+            color: palette.placeholderText
             text: qsTr("Drag the page to move it")
             visible: root.tools.currentTool === ToolViewModel.Hand
         }

@@ -187,15 +187,6 @@ void appendOutline(std::vector<InkVertex>& into, const core::Rect& box, float wi
     appendLine(into, bottomLeft, topLeft, width, color);
 }
 
-[[nodiscard]] core::Rect boxBetween(core::Point from, core::Point to) noexcept {
-    return core::Rect{
-        .left = std::min(from.x, to.x),
-        .top = std::min(from.y, to.y),
-        .right = std::max(from.x, to.x),
-        .bottom = std::max(from.y, to.y),
-    };
-}
-
 }
 
 void QtInkItem::rebuildBuffers() {
@@ -245,7 +236,7 @@ void QtInkItem::rebuildBuffers() {
     }
 
     if (m_marquee) {
-        const core::Rect box = boxBetween(m_marquee->from, m_marquee->to);
+        const core::Rect box = core::shapedBox(m_marquee->from, m_marquee->to, m_shapeKeys);
         appendFill(m_overlay, box, kMarqueeFill);
         appendOutline(m_overlay, box, outline, kMarqueeColor);
     }
@@ -371,7 +362,7 @@ void QtInkItem::finishMarquee() {
     if (!m_marquee) {
         return;
     }
-    const core::Rect box = boxBetween(m_marquee->from, m_marquee->to);
+    const core::Rect box = core::shapedBox(m_marquee->from, m_marquee->to, m_shapeKeys);
     m_marquee.reset();
     if (m_sink != nullptr && box.width() > 0.0F && box.height() > 0.0F) {
         const std::array corners{
@@ -650,18 +641,36 @@ QQuickRhiItemRenderer* QtInkItem::createRenderer() {
 }
 
 void QtInkItem::mousePressEvent(QMouseEvent* event) {
+    noteKeys(event->modifiers());
     press(onPage(makeSample(*event)), false);
     event->accept();
 }
 
 void QtInkItem::mouseMoveEvent(QMouseEvent* event) {
+    noteKeys(event->modifiers());
     move(onPage(makeSample(*event)));
     event->accept();
 }
 
 void QtInkItem::mouseReleaseEvent(QMouseEvent* event) {
+    noteKeys(event->modifiers());
     release(onPage(makeSample(*event)));
     event->accept();
+}
+
+void QtInkItem::noteKeys(Qt::KeyboardModifiers modifiers) {
+    const core::ShapeKeys keys{
+        .even = modifiers.testFlag(Qt::ShiftModifier),
+        .fromCentre = modifiers.testFlag(Qt::AltModifier),
+    };
+    if (keys.even == m_shapeKeys.even && keys.fromCentre == m_shapeKeys.fromCentre) {
+        return;
+    }
+    m_shapeKeys = keys;
+    if (m_activeStroke && m_shape != core::Shape::Freehand) {
+        redrawActiveStroke();
+        update();
+    }
 }
 
 void QtInkItem::mouseUngrabEvent() {
@@ -691,6 +700,7 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
     const QPointF position = mapFromScene(event.scenePosition());
     const InkSample sample = onPage(
         makeSample(position, event.pressure(), event.xTilt(), event.yTilt(), event.timestamp()));
+    noteKeys(event.modifiers());
 
     switch (event.type()) {
     case QEvent::TabletPress:
@@ -849,11 +859,26 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
     const InkSample smoothed = m_filter.filter(sample);
     m_activeStroke->append(smoothed);
     const core::StrokeStyle style = m_activeStroke->style();
-    core::appendSegment(activeVertices(), previous, smoothed, style);
+    if (m_shape == core::Shape::Freehand) {
+        core::appendSegment(activeVertices(), previous, smoothed, style);
+    } else {
+        redrawActiveStroke();
+    }
     if (m_sink != nullptr) {
         m_sink->sampleAdded(sample);
     }
     update();
+}
+
+void QtInkItem::redrawActiveStroke() {
+    if (!m_activeStroke) {
+        return;
+    }
+    const core::Stroke preview = core::shaped(*m_activeStroke, m_shape, m_shapeKeys);
+    std::vector<InkVertex>& into = activeVertices();
+    into.resize(m_activeStrokeFirstVertex);
+    core::appendStroke(into, preview);
+    ++m_generation;
 }
 
 void QtInkItem::endStroke(const InkSample& sample) {
@@ -863,7 +888,7 @@ void QtInkItem::endStroke(const InkSample& sample) {
     m_activeStroke->append(m_filter.filter(sample));
     const core::Stroke drawn = std::move(*m_activeStroke);
     m_activeStroke.reset();
-    const core::Stroke finished = core::shaped(drawn, m_shape);
+    const core::Stroke finished = core::shaped(drawn, m_shape, m_shapeKeys);
 
     std::vector<InkVertex>& into = activeVertices();
     into.resize(m_activeStrokeFirstVertex);
