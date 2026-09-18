@@ -142,11 +142,11 @@ Pane {
                         display: AbstractButton.IconOnly
                         enabled: root.ready && root.notebook.sectionCount > 1
                         icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 20
+                        icon.height: 24
                         icon.source: Icons.close
-                        icon.width: 20
-                        implicitHeight: 30
-                        implicitWidth: 30
+                        icon.width: 24
+                        implicitHeight: 34
+                        implicitWidth: 34
                         objectName: "deleteSectionButton"
                         ToolTip.delay: 600
                         ToolTip.text: qsTr("Delete section")
@@ -302,11 +302,11 @@ Pane {
                         display: AbstractButton.IconOnly
                         enabled: root.ready && root.notebook.pageCount > 1
                         icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 20
+                        icon.height: 24
                         icon.source: Icons.close
-                        icon.width: 20
-                        implicitHeight: 30
-                        implicitWidth: 30
+                        icon.width: 24
+                        implicitHeight: 34
+                        implicitWidth: 34
                         objectName: "deletePageButton"
                         ToolTip.delay: 600
                         ToolTip.text: qsTr("Delete page")

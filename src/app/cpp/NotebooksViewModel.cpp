@@ -201,7 +201,7 @@ void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper,
         const auto settle = [wanted, document](NotebookViewModel* const ready) {
             ready->applyStyle(wanted);
             if (!document.isEmpty()) {
-                ready->importDocument(document);
+                ready->startFromDocument(document);
             }
         };
         if (made->loaded()) {
@@ -235,6 +235,8 @@ void NotebooksViewModel::openNotebook(const QString& name) {
     notebook->setContinuous(m_continuousPages);
     connect(notebook.get(), &NotebookViewModel::notebookPathChanged, this,
             &NotebooksViewModel::openNotebooksChanged);
+    connect(notebook.get(), &NotebookViewModel::nameWanted, this,
+            [this, kept = notebook.get()](const QString& wanted) { takeName(*kept, wanted); });
     m_open.push_back(std::move(notebook));
     emit openNotebooksChanged();
     m_currentIndex = -1;
@@ -257,6 +259,19 @@ void NotebooksViewModel::closeNotebook(int index) {
     const int wanted = std::min(m_currentIndex, static_cast<int>(m_open.size()) - 1);
     m_currentIndex = -1;
     show(wanted);
+}
+
+// A notebook saved under another name goes by that name from then on.
+void NotebooksViewModel::takeName(NotebookViewModel& notebook, const QString& wanted) {
+    const QString trimmed = wanted.trimmed();
+    if (trimmed == notebook.name() || !isNameFree(trimmed)) {
+        return;
+    }
+    if (notebook.renameTo(pathFor(trimmed))) {
+        emit openNotebooksChanged();
+        refreshLibrary();
+        rememberSession();
+    }
 }
 
 void NotebooksViewModel::renameNotebook(int index, const QString& name) {

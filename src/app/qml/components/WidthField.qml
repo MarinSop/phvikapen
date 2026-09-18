@@ -85,8 +85,8 @@ Control {
         id: sliderPopup
 
         objectName: "widthSlider"
-        padding: 10
-        width: 220
+        padding: 6
+        width: 170
         y: root.height + 4
 
         background: Rectangle {
@@ -98,7 +98,7 @@ Control {
 
         RowLayout {
             anchors.fill: parent
-            spacing: 8
+            spacing: 6
 
             Slider {
                 id: slider
@@ -106,7 +106,6 @@ Control {
                 Layout.fillWidth: true
                 from: root.minimum
                 objectName: "widthSliderBar"
-                stepSize: root.step
                 to: root.maximum
                 value: root.number
 
@@ -114,7 +113,7 @@ Control {
             }
 
             Label {
-                Layout.minimumWidth: 28
+                Layout.minimumWidth: 24
                 horizontalAlignment: Text.AlignRight
                 text: root.shown
             }

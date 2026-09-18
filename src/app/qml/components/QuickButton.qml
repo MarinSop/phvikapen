@@ -13,8 +13,8 @@ ToolButton {
     ToolTip.visible: root.hovered
     display: AbstractButton.IconOnly
     icon.color: root.enabled ? palette.buttonText : palette.placeholderText
-    icon.height: 22
-    icon.width: 22
-    implicitHeight: 34
-    implicitWidth: 34
+    icon.height: 26
+    icon.width: 26
+    implicitHeight: 38
+    implicitWidth: 38
 }

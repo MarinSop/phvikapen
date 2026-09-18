@@ -14,10 +14,10 @@ ToolButton {
     ToolTip.visible: root.hovered
     display: AbstractButton.IconOnly
     icon.color: root.active ? Theme.accentText : palette.buttonText
-    icon.height: 20
-    icon.width: 20
-    implicitHeight: 32
-    implicitWidth: 32
+    icon.height: 24
+    icon.width: 24
+    implicitHeight: 36
+    implicitWidth: 36
 
     background: Rectangle {
         color: root.active ? Theme.accent : root.hovered ? Theme.line : "transparent"

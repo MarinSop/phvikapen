@@ -24,6 +24,18 @@ Item {
         anchors.fill: parent
         spacing: 4
 
+        Image {
+            Layout.leftMargin: 8
+            Layout.preferredHeight: 22
+            Layout.preferredWidth: 22
+            fillMode: Image.PreserveAspectFit
+            mipmap: true
+            objectName: "brandMark"
+            source: Theme.logo
+            sourceSize.height: 64
+            sourceSize.width: 64
+        }
+
         TabBar {
             id: tabBar
 
@@ -41,8 +53,9 @@ Item {
                     required property int index
                     required property string modelData
 
+                    implicitHeight: 28
                     text: tab.modelData
-                    width: Math.min(200, Math.max(120, implicitWidth + 32))
+                    width: Math.min(160, implicitContentWidth + 24)
 
                     onPressAndHold: tabMenu.popup()
 
@@ -50,17 +63,6 @@ Item {
                         acceptedButtons: Qt.RightButton
 
                         onTapped: tabMenu.popup()
-                    }
-
-                    ToolButton {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("×")
-                        visible: tabBar.currentIndex === tab.index
-                        width: 24
-
-                        onClicked: root.notebooks.closeNotebook(tab.index)
                     }
 
                     Menu {
@@ -96,6 +98,7 @@ Item {
         }
 
         ToolButton {
+            implicitHeight: 28
             objectName: "notebooksButton"
             text: qsTr("+")
             ToolTip.text: qsTr("Open or create a notebook")

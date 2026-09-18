@@ -58,6 +58,8 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
                    canvasChanged FINAL)
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
     Q_PROPERTY(QString title READ title NOTIFY outlineChanged FINAL)
+    Q_PROPERTY(QString keptAt READ keptAt NOTIFY keptAtChanged FINAL)
+    Q_PROPERTY(bool edited READ edited NOTIFY editedChanged FINAL)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged FINAL)
     Q_PROPERTY(int strokeCount READ strokeCount NOTIFY pageChanged FINAL)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY historyChanged FINAL)
@@ -177,6 +179,9 @@ public:
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
 
+    // A notebook that starts from a document keeps that document's pages alone.
+    Q_INVOKABLE void startFromDocument(const QUrl& fileUrl);
+
     [[nodiscard]] bool continuous() const { return m_continuous; }
 
     void setContinuous(bool continuous);
@@ -185,9 +190,15 @@ public:
 
     Q_INVOKABLE void exportToPdf(const QUrl& fileUrl, int scope = 0);
 
-    Q_INVOKABLE void saveCopy(const QUrl& fileUrl);
+    // The notebook is written where the reader keeps it only when they ask for it. Until then
+    // the work sits in the notebook's own file, safe from a crash but not yet theirs.
+    Q_INVOKABLE bool save();
 
-    Q_INVOKABLE void save();
+    Q_INVOKABLE void saveAs(const QUrl& fileUrl);
+
+    [[nodiscard]] QString keptAt() const { return m_keptAt; }
+
+    [[nodiscard]] bool edited() const { return m_edited; }
 
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
@@ -228,7 +239,10 @@ signals:
     void sectionAdded(int index);
     void exported(const QString& path);
     void copied(const QString& path);
-    void saved();
+    void saved(const QString& path);
+    void keptAtChanged();
+    void editedChanged();
+    void nameWanted(const QString& name);
 
 private:
     class Sink final : public platform::ink::IInkSink {
@@ -303,6 +317,10 @@ private:
     void runCommand(std::unique_ptr<core::ICommand> command);
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
     void publishOutline();
+    void dropStartingPage();
+    void markEdited();
+    void readKeptAt();
+    [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
     void refreshMedia();
     void showAsset(std::uint64_t opening, core::Result<core::Asset> asset);
@@ -349,6 +367,9 @@ private:
     std::jthread m_pictures;
     bool m_exporting{false};
     core::Uuid m_currentPage;
+    core::Uuid m_startingPage;
+    QString m_keptAt;
+    bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;
     std::map<core::Uuid, int> m_thumbnails;
     int m_thumbnailRevision{0};

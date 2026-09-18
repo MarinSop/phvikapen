@@ -49,6 +49,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kDefaultNotebookName = "default.phvika";
+constexpr auto kKeptPrefix = "kept/";
 constexpr int kMaximumMediaPixels = 4096;
 constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
@@ -119,6 +120,16 @@ QString NotebookViewModel::name() const {
     return QFileInfo{m_notebookPath}.completeBaseName();
 }
 
+void NotebookViewModel::readKeptAt() {
+    const QSettings settings;
+    const QString kept = settings.value(QString{kKeptPrefix} + name()).toString();
+    if (kept == m_keptAt) {
+        return;
+    }
+    m_keptAt = kept;
+    emit keptAtChanged();
+}
+
 QString NotebookViewModel::currentPageId() const {
     return m_currentPage.isNil() ? QString{} : QString::fromStdString(m_currentPage.toString());
 }
@@ -152,7 +163,13 @@ bool NotebookViewModel::renameTo(const QString& path) {
         std::filesystem::rename(from.native() + suffix, to.native() + suffix, ignored);
     }
 
+    QSettings settings;
+    const QString wasKept = settings.value(QString{kKeptPrefix} + name()).toString();
+    settings.remove(QString{kKeptPrefix} + name());
     m_notebookPath = path;
+    if (!wasKept.isEmpty()) {
+        settings.setValue(QString{kKeptPrefix} + name(), wasKept);
+    }
     emit notebookPathChanged();
     openNotebook();
     return true;
@@ -204,6 +221,7 @@ void NotebookViewModel::openNotebook() {
         emit errorMessageChanged();
     }
     publishOutline();
+    readKeptAt();
     emit historyChanged();
     emit currentPageChanged();
     emit pageStyleChanged();
@@ -640,6 +658,7 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
         return;
     }
     emit pageChanged();
+    markEdited();
     emit historyChanged();
 }
 
@@ -980,6 +999,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
         reportError(QString::fromStdString(change.error().message));
     }
     forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
+    markEdited();
     emit historyChanged();
 
     if (pageToShow && *pageToShow != m_currentPage && m_outline.page(*pageToShow) != nullptr) {
@@ -1499,6 +1519,34 @@ void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::Page
                   });
 }
 
+void NotebookViewModel::startFromDocument(const QUrl& fileUrl) {
+    if (pageCount() == 1) {
+        m_startingPage = m_currentPage;
+    }
+    importDocument(fileUrl);
+}
+
+// The empty page a new notebook opens with makes way for the pages that were read in.
+void NotebookViewModel::dropStartingPage() {
+    if (m_startingPage.isNil()) {
+        return;
+    }
+    const core::Uuid going = std::exchange(m_startingPage, core::Uuid{});
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section || !m_storage) {
+        return;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    if (pages.size() < 2) {
+        return;
+    }
+    const auto found = std::ranges::find(pages, going, &core::PageInfo::id);
+    if (found == pages.end()) {
+        return;
+    }
+    deletePage(static_cast<int>(std::distance(pages.begin(), found)));
+}
+
 void NotebookViewModel::importDocument(const QUrl& fileUrl) {
     const std::optional<core::PagePlace> place = currentPlace();
     if (!place || !m_storage) {
@@ -1545,6 +1593,7 @@ void NotebookViewModel::importDocument(const QUrl& fileUrl) {
             &m_outline, &*m_storage,
             core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1},
             std::move(asset), std::move(pages)));
+        dropStartingPage();
         return;
     }
 
@@ -1586,6 +1635,7 @@ void NotebookViewModel::importDocument(const QUrl& fileUrl) {
                     &m_outline, &*m_storage,
                     core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1},
                     std::move(asset), std::move(pages)));
+                dropStartingPage();
             },
             Qt::QueuedConnection);
     });
@@ -1769,36 +1819,60 @@ void NotebookViewModel::exportToPdf(const QUrl& fileUrl, int scope) {
     }};
 }
 
-void NotebookViewModel::save() {
-    if (m_storage) {
-        m_storage->waitUntilIdle();
+bool NotebookViewModel::save() {
+    if (m_keptAt.isEmpty()) {
+        return false;
     }
-    emit saved();
+    return writeTo(m_keptAt);
 }
 
-void NotebookViewModel::saveCopy(const QUrl& fileUrl) {
-    if (!m_storage || m_notebookPath.isEmpty()) {
-        return;
-    }
+void NotebookViewModel::saveAs(const QUrl& fileUrl) {
     const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
-    if (path.isEmpty() || path == m_notebookPath) {
+    if (path.isEmpty() || !writeTo(path)) {
         return;
     }
+    if (path != m_keptAt) {
+        m_keptAt = path;
+        emit keptAtChanged();
+        QSettings settings;
+        settings.setValue(QString{kKeptPrefix} + name(), path);
+    }
+    emit nameWanted(QFileInfo{path}.completeBaseName());
+}
 
+bool NotebookViewModel::writeTo(const QString& path) {
+    if (!m_storage || m_notebookPath.isEmpty()) {
+        return false;
+    }
     m_storage->submit([](core::NotebookStore& store) { return store.checkpoint(); });
     m_storage->waitUntilIdle();
 
-    QFile source{m_notebookPath};
-    if (QFile::exists(path) && !QFile::remove(path)) {
-        reportError(tr("Could not write %1").arg(QFileInfo{path}.fileName()));
+    if (path != m_notebookPath) {
+        QFile source{m_notebookPath};
+        if (QFile::exists(path) && !QFile::remove(path)) {
+            reportError(tr("Could not write %1").arg(QFileInfo{path}.fileName()));
+            return false;
+        }
+        if (!source.copy(path)) {
+            reportError(
+                tr("Could not write %1: %2").arg(QFileInfo{path}.fileName(), source.errorString()));
+            return false;
+        }
+    }
+    if (m_edited) {
+        m_edited = false;
+        emit editedChanged();
+    }
+    emit saved(path);
+    return true;
+}
+
+void NotebookViewModel::markEdited() {
+    if (m_edited || !m_loaded) {
         return;
     }
-    if (!source.copy(path)) {
-        reportError(
-            tr("Could not write %1: %2").arg(QFileInfo{path}.fileName(), source.errorString()));
-        return;
-    }
-    emit copied(path);
+    m_edited = true;
+    emit editedChanged();
 }
 
 void NotebookViewModel::finishExport(const QString& path, const core::Result<int>& written) {
@@ -2013,6 +2087,7 @@ void NotebookViewModel::restoreTrashed(int index) {
     }
 
     m_history.clear();
+    markEdited();
     emit historyChanged();
     reloadOutline();
     refreshTrash();

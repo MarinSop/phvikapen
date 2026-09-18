@@ -227,14 +227,18 @@ Item {
         shortcut: root.keysFor("save", AppInfo.shortcutText(StandardKey.Save))
         text: qsTr("Save")
 
-        onTriggered: root.notebook.save()
+        onTriggered: {
+            if (!root.notebook.save()) {
+                root.saveWanted();
+            }
+        }
     }
     readonly property Action saveCopy: Action {
         enabled: root.hasNotebook
         shortcut: root.keysFor("saveCopy", AppInfo.shortcutText(StandardKey.SaveAs))
         text: qsTr("Save As…")
 
-        onTriggered: root.copyWanted()
+        onTriggered: root.saveWanted()
     }
     readonly property Action pageSetup: Action {
         enabled: root.hasNotebook
@@ -299,7 +303,7 @@ Item {
     }
 
     signal aboutWanted
-    signal copyWanted
+    signal saveWanted
     signal exportWanted(int scope)
     signal hintsWanted
     signal importWanted

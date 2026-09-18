@@ -200,7 +200,7 @@ TestCase {
         fuzzyCompare(canvas.zoom, zoomed, 0.001);
     }
 
-    function test_aCopyOfTheNotebookHoldsEverythingInIt() {
+    function test_aSavedNotebookHoldsEverythingInIt() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 120, 120);
         notebook.addPage();
@@ -208,12 +208,13 @@ TestCase {
         const target = temporaryDirectory + "/copy-" + notebookCount + ".phvika";
         const done = createTemporaryObject(signalSpyComponent, testCase, {
             target: notebook,
-            signalName: "copied"
+            signalName: "saved"
         });
 
-        notebook.saveCopy("file://" + target);
+        notebook.saveAs("file://" + target);
 
         tryCompare(done, "count", 1);
+        compare(notebook.keptAt, target);
         const copy = openNotebook(target);
         compare(copy.pageCount, 2);
         compare(copy.strokeCount, 1);
@@ -535,7 +536,7 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
-    function test_savingWaitsForTheWritingAndSaysSo() {
+    function test_savingWaitsToBeToldWhereTheNotebookGoes() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 40, 40);
         const saved = createTemporaryObject(signalSpyComponent, testCase, {
@@ -543,9 +544,17 @@ TestCase {
             signalName: "saved"
         });
 
-        notebook.save();
+        verify(!notebook.save());
+        compare(saved.count, 0);
+        verify(notebook.edited);
 
-        compare(saved.count, 1);
+        const target = temporaryDirectory + "/kept-" + notebookCount + ".phvika";
+        notebook.saveAs("file://" + target);
+
+        tryCompare(saved, "count", 1);
+        verify(!notebook.edited);
+        verify(notebook.save());
+        tryCompare(saved, "count", 2);
         compare(notebook.errorMessage, "");
     }
 

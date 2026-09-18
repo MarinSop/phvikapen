@@ -32,7 +32,7 @@ ApplicationWindow {
     palette.toolTipText: Theme.text
     palette.window: Theme.window
     palette.windowText: Theme.text
-    title: root.notebook === null ? qsTr("PhvikaPen %1").arg(AppInfo.version) : qsTr("%1 — PhvikaPen %2").arg(root.notebook.title).arg(AppInfo.version)
+    title: root.notebook === null ? qsTr("PhvikaPen %1").arg(AppInfo.version) : qsTr("%1%2 — PhvikaPen %3").arg(root.notebook.title).arg(root.notebook.edited ? " •" : "").arg(AppInfo.version)
     visible: true
     width: 1280
 
@@ -106,11 +106,12 @@ ApplicationWindow {
         tools: toolState
 
         onAboutWanted: aboutDialog.open()
-        onCopyWanted: {
-            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
-            copyDialog.currentFolder = folder;
-            copyDialog.selectedFile = folder + "/" + root.notebook.title + ".phvika";
-            copyDialog.open();
+        onSaveWanted: {
+            const kept = root.notebook.keptAt;
+            const folder = kept === "" ? StandardPaths.writableLocation(StandardPaths.DocumentsLocation) : "file://" + kept.substring(0, kept.lastIndexOf("/"));
+            saveDialog.currentFolder = folder;
+            saveDialog.selectedFile = kept === "" ? folder + "/" + root.notebook.title + ".phvika" : "file://" + kept;
+            saveDialog.open();
         }
         onExportWanted: scope => {
             root.exportScope = scope;
@@ -247,14 +248,15 @@ ApplicationWindow {
     }
 
     FileDialog {
-        id: copyDialog
+        id: saveDialog
 
         defaultSuffix: "phvika"
         fileMode: FileDialog.SaveFile
         nameFilters: [qsTr("Notebooks (*.phvika)")]
+        objectName: "saveDialog"
         title: qsTr("Save as")
 
-        onAccepted: root.notebook.saveCopy(copyDialog.selectedFile)
+        onAccepted: root.notebook.saveAs(saveDialog.selectedFile)
     }
 
     FileDialog {
@@ -290,10 +292,6 @@ ApplicationWindow {
             toolState.usePickedColour(colour);
         }
 
-        function onCopied(path) {
-            messageBar.show(qsTr("Copied to %1").arg(path));
-        }
-
         function onErrorMessageChanged() {
             if (root.notebook !== null && root.notebook.errorMessage !== "") {
                 messageBar.show(root.notebook.errorMessage);
@@ -304,8 +302,8 @@ ApplicationWindow {
             messageBar.show(qsTr("Saved as %1").arg(path));
         }
 
-        function onSaved() {
-            messageBar.show(qsTr("Saved"));
+        function onSaved(path) {
+            messageBar.show(qsTr("Saved to %1").arg(path));
         }
 
         target: root.notebook

@@ -39,7 +39,7 @@ TestCase {
     }
 
     function test_d2_everyDialogIsAskedForByItsCommand() {
-        const wanted = [["importWanted", actions.importDocument], ["exportWanted", actions.exportEverything], ["copyWanted", actions.saveCopy], ["trashWanted", actions.showTrash], ["aboutWanted", actions.showAbout], ["newNotebookWanted", actions.newNotebook]];
+        const wanted = [["importWanted", actions.importDocument], ["exportWanted", actions.exportEverything], ["saveWanted", actions.saveCopy], ["trashWanted", actions.showTrash], ["aboutWanted", actions.showAbout], ["newNotebookWanted", actions.newNotebook]];
         for (const pair of wanted) {
             const asked = createTemporaryObject(spyComponent, testCase, {
                 target: actions,

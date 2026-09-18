@@ -67,6 +67,7 @@ public:
     Q_INVOKABLE void openNotebook(const QString& name);
     Q_INVOKABLE void closeNotebook(int index);
     Q_INVOKABLE void renameNotebook(int index, const QString& name);
+    void takeName(NotebookViewModel& notebook, const QString& wanted);
     Q_INVOKABLE void deleteNotebook(const QString& name);
 
 signals:

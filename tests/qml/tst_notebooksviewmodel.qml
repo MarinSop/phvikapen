@@ -176,6 +176,18 @@ TestCase {
         settings.background = PageOptions.Lined;
     }
 
+    function test_z2_aNotebookStartedFromADocumentHoldsOnlyItsPages() {
+        const notebooks = openLibrary(newLibrary());
+
+        notebooks.createNotebookWithSetup("Reader", PageOptions.A4, PageOptions.Blank, false, "file://" + samplePdf);
+
+        tryCompare(notebooks.current, "loaded", true);
+        tryCompare(notebooks.current, "pageCount", 2);
+        wait(200);
+        compare(notebooks.current.pageCount, 2, "the empty page the notebook opened with is still there");
+        compare(notebooks.current.errorMessage, "");
+    }
+
     name: "NotebooksViewModel"
 
     Component {

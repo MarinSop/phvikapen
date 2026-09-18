@@ -89,6 +89,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
+        qml/components/SettingsPage.qml
         qml/components/ShapeButton.qml
         qml/components/ShortcutField.qml
         qml/components/ThemeCard.qml

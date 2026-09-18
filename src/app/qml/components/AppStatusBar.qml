@@ -26,12 +26,6 @@ ToolBar {
         anchors.fill: parent
         spacing: 6
 
-        Label {
-            Layout.leftMargin: 8
-            elide: Text.ElideRight
-            text: root.notebook === null ? "" : root.notebook.title
-        }
-
         Item {
             Layout.fillWidth: true
         }
