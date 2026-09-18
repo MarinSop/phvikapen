@@ -10,6 +10,7 @@ target_sources(phvikapen_platform
         ink/qt/QtInkRenderer.hpp
         pdf/PdfRenderer.cpp
         pdf/PdfiumDocument.cpp
+        render/PagePainter.cpp
         update/StartupHook.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -20,6 +21,8 @@ target_sources(phvikapen_platform
             pdf/IPdfDocument.hpp
             pdf/PdfRenderer.hpp
             pdf/PdfiumDocument.hpp
+            render/PagePainter.hpp
+            render/PaperLook.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
 )

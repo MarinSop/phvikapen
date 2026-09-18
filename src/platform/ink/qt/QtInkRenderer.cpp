@@ -4,6 +4,7 @@
 #include "core/ink/StrokeMesh.hpp"
 #include "core/model/PageStyle.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
+#include "platform/render/PaperLook.hpp"
 
 #include <rhi/qrhi.h>
 
@@ -15,7 +16,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <initializer_list>
 #include <optional>
 #include <span>
 #include <vector>
@@ -33,34 +33,9 @@ constexpr std::array<float, 12> kBackgroundCorners{
     0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F, 1.0F,
 };
 
-constexpr float kLineWidth = 1.0F;
-constexpr float kDotRadius = 1.25F;
-constexpr float kLinedTopMargin = core::millimeters(20.0F);
-constexpr float kLinedLeftMargin = core::millimeters(25.0F);
-
-constexpr std::initializer_list<float> kDeskColor{0.89F, 0.90F, 0.91F, 1.0F};
-constexpr std::initializer_list<float> kPaperColor{1.0F, 1.0F, 1.0F, 1.0F};
-constexpr std::initializer_list<float> kRuleColor{0.70F, 0.80F, 0.91F, 1.0F};
-constexpr std::initializer_list<float> kGridColor{0.82F, 0.86F, 0.91F, 1.0F};
-constexpr std::initializer_list<float> kDotColor{0.60F, 0.65F, 0.72F, 1.0F};
-constexpr std::initializer_list<float> kMarginColor{0.93F, 0.60F, 0.60F, 1.0F};
-
 [[nodiscard]] QShader loadShader(const QString& path) {
     QFile file{path};
     return file.open(QIODevice::ReadOnly) ? QShader::fromSerialized(file.readAll()) : QShader{};
-}
-
-[[nodiscard]] std::initializer_list<float> patternColor(core::Background background) {
-    switch (background) {
-    case core::Background::Grid:
-        return kGridColor;
-    case core::Background::Dotted:
-        return kDotColor;
-    case core::Background::Blank:
-    case core::Background::Lined:
-        return kRuleColor;
-    }
-    return kRuleColor;
 }
 
 }
@@ -321,36 +296,36 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
             : 1.0F;
     const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     const bool lined = m_pageStyle.background == core::Background::Lined;
-    const float lineWidth = kLineWidth * pixelRatio;
-    const float dotRadius = kDotRadius * pixelRatio;
+    const float lineWidth = render::kRuleWidth * pixelRatio;
+    const float dotRadius = render::kDotRadius * pixelRatio;
 
     QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
 
     std::array<float, kBackgroundUniformCount> uniforms{};
     auto* out = uniforms.begin();
-    const auto put = [&out](std::initializer_list<float> values) {
+    const auto put = [&out](std::span<const float> values) {
         out = std::ranges::copy(values, out).out;
     };
     out = std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), out);
-    put({m_viewport.origin().x, m_viewport.origin().y, m_viewport.scale(), pixelRatio});
-    put({m_logicalWidth, m_logicalHeight, 0.0F, 0.0F});
-    put({
+    put(std::array{m_viewport.origin().x, m_viewport.origin().y, m_viewport.scale(), pixelRatio});
+    put(std::array{m_logicalWidth, m_logicalHeight, 0.0F, 0.0F});
+    put(std::array{
         paper ? paper->width : 0.0F,
         paper ? paper->height : 0.0F,
         paper ? 1.0F : 0.0F,
-        paper && lined ? kLinedLeftMargin : -1.0F,
+        paper && lined ? render::kLinedLeftMargin : -1.0F,
     });
-    put({
+    put(std::array{
         static_cast<float>(m_pageStyle.background),
         m_pageStyle.spacing,
         m_pageStyle.background == core::Background::Dotted ? dotRadius : lineWidth,
-        paper && lined ? kLinedTopMargin : 0.0F,
+        paper && lined ? render::kLinedTopMargin : 0.0F,
     });
-    put(kDeskColor);
-    put(kPaperColor);
-    put(patternColor(m_pageStyle.background));
-    put(kMarginColor);
+    put(render::kDeskColor);
+    put(render::kPaperColor);
+    put(render::patternColor(m_pageStyle.background));
+    put(render::kMarginColor);
 
     updates.updateDynamicBuffer(m_backgroundUniforms.get(), 0,
                                 static_cast<quint32>(std::span{uniforms}.size_bytes()),
