@@ -20,7 +20,13 @@ namespace {
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
 constexpr auto kShortcutPrefix = "shortcuts/";
 constexpr auto kSmoothingSetting = "ink/smoothing";
-constexpr auto kExportEverythingSetting = "export/everything";
+constexpr auto kExportScopeSetting = "export/scope";
+constexpr auto kContinuousPagesSetting = "view/continuous";
+constexpr auto kPagesPanelSetting = "view/pagesPanel";
+constexpr auto kPagePanelSetting = "view/pagePanel";
+constexpr int kExportScopes = 3;
+constexpr float kOwnPaperWidth = core::millimeters(210.0F);
+constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 
 [[nodiscard]] QString keysOf(const QString& sequence) {
     return QKeySequence{sequence, QKeySequence::PortableText}.toString(QKeySequence::PortableText);
@@ -35,7 +41,11 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
     m_style = defaults::pageStyle();
     m_smoothing = std::clamp(settings.value(kSmoothingSetting, m_smoothing).toDouble(), 0.0, 1.0);
-    m_exportEverything = settings.value(kExportEverythingSetting, m_exportEverything).toBool();
+    m_exportScope = std::clamp(settings.value(kExportScopeSetting, m_exportScope).toInt(), 0,
+                               kExportScopes - 1);
+    m_continuousPages = settings.value(kContinuousPagesSetting, m_continuousPages).toBool();
+    m_showPagesPanel = settings.value(kPagesPanelSetting, m_showPagesPanel).toBool();
+    m_showPagePanel = settings.value(kPagePanelSetting, m_showPagePanel).toBool();
     for (const Command& command : commands()) {
         const QString kept = settings.value(kShortcutPrefix + command.id).toString();
         if (!kept.isEmpty()) {
@@ -77,6 +87,10 @@ page_options::Paper SettingsViewModel::paper() const {
 void SettingsViewModel::setPaper(page_options::Paper paper) {
     core::PageStyle style = m_style;
     style.paper = static_cast<core::Paper>(paper);
+    if (style.paper == core::Paper::Custom && !core::paperSize(style)) {
+        style.customWidth = kOwnPaperWidth;
+        style.customHeight = kOwnPaperHeight;
+    }
     changeStyle(style);
 }
 
@@ -124,14 +138,65 @@ void SettingsViewModel::setSmoothing(qreal smoothing) {
     emit smoothingChanged();
 }
 
-void SettingsViewModel::setExportEverything(bool everything) {
-    if (everything == m_exportEverything) {
+void SettingsViewModel::setExportScope(int scope) {
+    const int wanted = std::clamp(scope, 0, kExportScopes - 1);
+    if (wanted == m_exportScope) {
         return;
     }
-    m_exportEverything = everything;
+    m_exportScope = wanted;
     QSettings settings;
-    settings.setValue(kExportEverythingSetting, m_exportEverything);
-    emit exportEverythingChanged();
+    settings.setValue(kExportScopeSetting, m_exportScope);
+    emit exportScopeChanged();
+}
+
+void SettingsViewModel::setContinuousPages(bool continuous) {
+    if (continuous == m_continuousPages) {
+        return;
+    }
+    m_continuousPages = continuous;
+    QSettings settings;
+    settings.setValue(kContinuousPagesSetting, m_continuousPages);
+    emit continuousPagesChanged();
+}
+
+void SettingsViewModel::setShowPagesPanel(bool shown) {
+    if (shown == m_showPagesPanel) {
+        return;
+    }
+    m_showPagesPanel = shown;
+    QSettings settings;
+    settings.setValue(kPagesPanelSetting, m_showPagesPanel);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setShowPagePanel(bool shown) {
+    if (shown == m_showPagePanel) {
+        return;
+    }
+    m_showPagePanel = shown;
+    QSettings settings;
+    settings.setValue(kPagePanelSetting, m_showPagePanel);
+    emit panelsChanged();
+}
+
+qreal SettingsViewModel::customWidth() const {
+    return m_style.customWidth / core::millimeters(1.0F);
+}
+
+void SettingsViewModel::setCustomWidth(qreal millimeters) {
+    core::PageStyle style = m_style;
+    style.customWidth = core::millimeters(static_cast<float>(millimeters));
+    changeStyle(core::normalized(style));
+}
+
+qreal SettingsViewModel::customHeight() const {
+    return m_style.customHeight / core::millimeters(1.0F);
+}
+
+void SettingsViewModel::setCustomHeight(qreal millimeters) {
+    core::PageStyle style = m_style;
+    style.customHeight = core::millimeters(static_cast<float>(millimeters));
+    changeStyle(core::normalized(style));
 }
 
 QString SettingsViewModel::conflictWith(const QString& commandId, const QString& sequence) const {

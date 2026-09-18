@@ -89,13 +89,13 @@ TestCase {
 
     function test_z_theShapeIsRememberedForTheNextTime() {
         const tools = testCase.newTools();
-        compare(tools.shape, ToolViewModel.Freehand);
+        compare(tools.shape, ToolViewModel.Rectangle);
 
-        tools.shape = ToolViewModel.Rectangle;
+        tools.shape = ToolViewModel.Ellipse;
 
         const later = testCase.newTools();
-        compare(later.shape, ToolViewModel.Rectangle);
-        later.shape = ToolViewModel.Freehand;
+        compare(later.shape, ToolViewModel.Ellipse);
+        later.shape = ToolViewModel.Rectangle;
     }
 
     name: "ToolViewModel"

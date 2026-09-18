@@ -48,6 +48,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
                    pressureSensitiveChanged FINAL)
     Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
     Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
+    Q_PROPERTY(bool picking READ picking WRITE setPicking NOTIFY pickingChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
@@ -102,6 +103,10 @@ public:
     [[nodiscard]] bool selecting() const noexcept { return m_selecting; }
 
     void setSelecting(bool selecting) override;
+
+    [[nodiscard]] bool picking() const noexcept { return m_picking; }
+
+    void setPicking(bool picking) override;
 
     [[nodiscard]] int selectedCount() const noexcept { return static_cast<int>(m_selected.size()); }
 
@@ -167,6 +172,7 @@ signals:
     void erasingChanged();
     void selectingChanged();
     void panningChanged();
+    void pickingChanged();
     void shapeChanged();
     void smoothingChanged();
     void selectionChanged();
@@ -268,6 +274,7 @@ private:
     std::optional<core::Point> m_panFrom;
     bool m_selecting{false};
     bool m_panning{false};
+    bool m_picking{false};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

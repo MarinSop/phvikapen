@@ -12,6 +12,12 @@ Item {
 
     implicitHeight: tabRow.implicitHeight
 
+    Rectangle {
+        anchors.fill: parent
+        color: Theme.shaded(palette.window, Theme.strongStep)
+        z: -1
+    }
+
     RowLayout {
         id: tabRow
 

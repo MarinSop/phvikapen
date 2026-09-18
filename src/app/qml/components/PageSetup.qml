@@ -8,9 +8,9 @@ ColumnLayout {
 
     property NotebookViewModel notebook: null
     readonly property list<int> backgrounds: [PageOptions.Blank, PageOptions.Lined, PageOptions.Grid, PageOptions.Dotted]
-    readonly property list<string> backgroundNames: [qsTr("Blank"), qsTr("Lined"), qsTr("Grid"), qsTr("Dotted")]
+    readonly property list<string> backgroundNames: [qsTr("Blank"), qsTr("Lined"), qsTr("Squares"), qsTr("Dots")]
     readonly property list<int> papers: [PageOptions.Infinite, PageOptions.A3, PageOptions.A4, PageOptions.A5, PageOptions.Letter, PageOptions.Legal, PageOptions.Custom]
-    readonly property list<string> paperNames: [qsTr("Infinite"), qsTr("A3"), qsTr("A4"), qsTr("A5"), qsTr("Letter"), qsTr("Legal"), qsTr("As imported")]
+    readonly property list<string> paperNames: [qsTr("Infinite"), qsTr("A3"), qsTr("A4"), qsTr("A5"), qsTr("Letter"), qsTr("Legal"), qsTr("Own size")]
 
     spacing: 4
 
@@ -29,6 +29,44 @@ ColumnLayout {
         onActivated: root.notebook.paper = root.papers[paperBox.currentIndex]
     }
 
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+        visible: root.notebook !== null && root.notebook.paper === PageOptions.Custom
+
+        Label {
+            text: qsTr("Size")
+        }
+
+        NumberField {
+            Layout.fillWidth: true
+            maximum: 2000
+            minimum: 10
+            number: root.notebook === null ? 210 : root.notebook.customWidth
+            objectName: "widthField"
+            step: 1
+            suffix: qsTr(" mm")
+
+            onNumberEdited: value => root.notebook.customWidth = value
+        }
+
+        Label {
+            text: "×"
+        }
+
+        NumberField {
+            Layout.fillWidth: true
+            maximum: 2000
+            minimum: 10
+            number: root.notebook === null ? 297 : root.notebook.customHeight
+            objectName: "heightField"
+            step: 1
+            suffix: qsTr(" mm")
+
+            onNumberEdited: value => root.notebook.customHeight = value
+        }
+    }
+
     ComboBox {
         id: backgroundBox
 
@@ -44,7 +82,7 @@ ColumnLayout {
         id: landscapeSwitch
 
         checked: root.notebook !== null && root.notebook.orientation === PageOptions.Landscape
-        enabled: root.notebook !== null && root.notebook.paper !== PageOptions.Infinite
+        enabled: root.notebook !== null && root.notebook.paper !== PageOptions.Infinite && root.notebook.paper !== PageOptions.Custom
         objectName: "landscapeSwitch"
         text: qsTr("Landscape")
 

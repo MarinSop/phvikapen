@@ -204,11 +204,11 @@ void ToolViewModel::restore() {
     readNib(m_highlighter, kHighlighterKey);
 
     const int tool = settings.value(kToolSetting, static_cast<int>(m_currentTool)).toInt();
-    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Hand)) {
+    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Shape)) {
         m_currentTool = static_cast<Tool>(tool);
     }
     const int shape = settings.value(kShapeSetting, static_cast<int>(m_shape)).toInt();
-    if (shape >= static_cast<int>(Shape::Freehand) && shape <= static_cast<int>(Shape::Ellipse)) {
+    if (shape > static_cast<int>(Shape::Freehand) && shape <= static_cast<int>(Shape::Ellipse)) {
         m_shape = static_cast<Shape>(shape);
     }
     m_pen = std::clamp(settings.value(kPenSetting, m_pen).toInt(), 0, penCount() - 1);

@@ -1,10 +1,12 @@
 #include "platform/render/PdfExporter.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -193,9 +195,10 @@ TEST(PdfExporterTest, InkBesideTheSheetIsTakenInOrLeftOutAsAsked) {
 
     const std::filesystem::path wide = pathIn(directory, "Wide.pdf");
     const std::filesystem::path sheet = pathIn(directory, "Sheet.pdf");
-    ASSERT_TRUE(exportNotebookToPdf(notebook, wide, ExportOptions{.everything = true}).has_value());
-    ASSERT_TRUE(
-        exportNotebookToPdf(notebook, sheet, ExportOptions{.everything = false}).has_value());
+    ASSERT_TRUE(exportNotebookToPdf(notebook, wide, ExportOptions{.scope = ExportScope::Everything})
+                    .has_value());
+    ASSERT_TRUE(exportNotebookToPdf(notebook, sheet, ExportOptions{.scope = ExportScope::Sheet})
+                    .has_value());
 
     const core::Result<std::unique_ptr<pdf::PdfiumDocument>> wider =
         pdf::PdfiumDocument::openFile(wide);
@@ -209,6 +212,34 @@ TEST(PdfExporterTest, InkBesideTheSheetIsTakenInOrLeftOutAsAsked) {
     ASSERT_TRUE(kept.has_value());
     EXPECT_GT(grown->width, kept->width);
     EXPECT_NEAR(kept->width, 559.4F, 2.0F);
+}
+
+TEST(PdfExporterTest, OnlyTheImportedPagesAreWrittenWhenAskedFor) {
+    const QTemporaryDir directory;
+    const std::filesystem::path notebook = pathIn(directory, "Mixed.phvika");
+    const Notebook written = writeNotebook(notebook, {kA5, kA5Blank});
+    {
+        core::Result<core::NotebookStore> store = core::NotebookStore::open(notebook);
+        ASSERT_TRUE(store.has_value()) << store.error().message;
+        core::ContentId::Bytes bytes{};
+        bytes.front() = 7;
+        const core::Asset asset{
+            .id = core::ContentId{bytes},
+            .kind = core::AssetKind::Image,
+            .name = "picture.png",
+            .data = {std::byte{0x89}, std::byte{0x50}},
+        };
+        ASSERT_TRUE(store->insertAsset(asset).has_value());
+        const core::Result<void> attached = store->setPageMedia(
+            written.pages.back().id, core::PageMedia{.asset = asset.id, .index = 0});
+        ASSERT_TRUE(attached.has_value()) << attached.error().message;
+    }
+
+    const std::filesystem::path only = pathIn(directory, "Imported.pdf");
+    const core::Result<int> pages =
+        exportNotebookToPdf(notebook, only, ExportOptions{.scope = ExportScope::Document});
+    ASSERT_TRUE(pages.has_value()) << pages.error().message;
+    EXPECT_EQ(*pages, 1);
 }
 
 }

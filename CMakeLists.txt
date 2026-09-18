@@ -28,6 +28,7 @@ include(PhvikaPenRuntimeDlls)
 include(PhvikaPenIcons)
 
 if(APPLE)
+    enable_language(OBJCXX)
     list(APPEND CMAKE_BUILD_RPATH "${PHVIKAPEN_PDFIUM_DIR}/lib")
 endif()
 

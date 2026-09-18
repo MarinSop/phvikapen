@@ -43,6 +43,8 @@ public:
         Eraser,
         Selection,
         Hand,
+        ColourPicker,
+        Shape,
     };
     Q_ENUM(Tool)
 
@@ -110,7 +112,7 @@ private:
     std::array<Nib, kPenCount> m_pens;
     Nib m_highlighter;
     Tool m_currentTool{Tool::Pen};
-    Shape m_shape{Shape::Freehand};
+    Shape m_shape{Shape::Rectangle};
     qreal m_eraserRadius{kDefaultEraser};
     int m_pen{0};
     bool m_completed{false};

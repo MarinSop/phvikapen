@@ -12,16 +12,57 @@ Pane {
     required property AppActions actions
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
+    property int renamingPage: -1
+    property int renamingSection: -1
 
-    function rename(sectionScope, index, current) {
-        renameDialog.sectionScope = sectionScope;
-        renameDialog.index = index;
-        renameField.text = current;
-        renameDialog.open();
+    function askToDelete(sectionScope, index, title) {
+        deleteDialog.sectionScope = sectionScope;
+        deleteDialog.index = index;
+        deleteDialog.itemTitle = title;
+        deleteDialog.open();
+    }
+
+    function renamePage(index, title) {
+        if (root.renamingPage === index) {
+            root.renamingPage = -1;
+            root.notebook.renamePage(index, title.trim());
+        }
+    }
+
+    function renameSection(index, title) {
+        if (root.renamingSection === index) {
+            root.renamingSection = -1;
+            root.notebook.renameSection(index, title.trim());
+        }
     }
 
     objectName: "pagesPanel"
     padding: 8
+
+    background: Rectangle {
+        color: Theme.shaded(palette.window, Theme.weakStep)
+
+        Rectangle {
+            anchors.right: parent.right
+            color: Theme.line
+            height: parent.height
+            width: 1
+        }
+    }
+
+    Connections {
+        function onPageAdded(index) {
+            root.renamingSection = -1;
+            root.renamingPage = index;
+        }
+
+        function onSectionAdded(index) {
+            root.renamingPage = -1;
+            root.renamingSection = index;
+        }
+
+        target: root.notebook
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -58,11 +99,63 @@ Pane {
 
                 required property int count
                 required property int index
+                readonly property bool renaming: root.renamingSection === sectionDelegate.index
                 required property string title
 
                 highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
-                text: sectionDelegate.title + " (" + sectionDelegate.count + ")"
                 width: sectionList.width
+
+                contentItem: RowLayout {
+                    spacing: 4
+
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        text: sectionDelegate.title + " (" + sectionDelegate.count + ")"
+                        verticalAlignment: Text.AlignVCenter
+                        visible: !sectionDelegate.renaming
+                    }
+
+                    TextField {
+                        id: sectionName
+
+                        Layout.fillWidth: true
+                        objectName: "sectionNameField"
+                        text: sectionDelegate.title
+                        visible: sectionDelegate.renaming
+
+                        onAccepted: root.renameSection(sectionDelegate.index, sectionName.text)
+                        onActiveFocusChanged: {
+                            if (sectionName.visible && !sectionName.activeFocus) {
+                                root.renameSection(sectionDelegate.index, sectionName.text);
+                            }
+                        }
+                        onVisibleChanged: {
+                            if (sectionName.visible) {
+                                sectionName.selectAll();
+                                sectionName.forceActiveFocus();
+                            }
+                        }
+                    }
+
+                    ToolButton {
+                        display: AbstractButton.IconOnly
+                        enabled: root.ready && root.notebook.sectionCount > 1
+                        icon.color: enabled ? palette.buttonText : palette.placeholderText
+                        icon.height: 16
+                        icon.source: Icons.close
+                        icon.width: 16
+                        implicitHeight: 26
+                        implicitWidth: 26
+                        objectName: "deleteSectionButton"
+                        ToolTip.delay: 600
+                        ToolTip.text: qsTr("Delete section")
+                        ToolTip.visible: hovered
+                        visible: sectionDelegate.hovered || sectionDelegate.highlighted
+
+                        onClicked: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
+                    }
+                }
 
                 onClicked: root.notebook.currentSection = sectionDelegate.index
                 onPressAndHold: sectionMenu.popup()
@@ -77,9 +170,9 @@ Pane {
                     id: sectionMenu
 
                     MenuItem {
-                        text: qsTr("Rename…")
+                        text: qsTr("Rename")
 
-                        onTriggered: root.rename(true, sectionDelegate.index, sectionDelegate.title)
+                        onTriggered: root.renamingSection = sectionDelegate.index
                     }
 
                     MenuItem {
@@ -98,9 +191,9 @@ Pane {
 
                     MenuItem {
                         enabled: root.ready && root.notebook.sectionCount > 1
-                        text: qsTr("Delete")
+                        text: qsTr("Delete…")
 
-                        onTriggered: root.notebook.deleteSection(sectionDelegate.index)
+                        onTriggered: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
                     }
                 }
             }
@@ -137,6 +230,7 @@ Pane {
 
                 required property int index
                 readonly property bool panelReady: root.ready
+                readonly property bool renaming: root.renamingPage === pageDelegate.index
                 required property string thumbnail
                 required property string title
 
@@ -179,6 +273,47 @@ Pane {
                         elide: Text.ElideRight
                         text: pageDelegate.title
                         verticalAlignment: Text.AlignVCenter
+                        visible: !pageDelegate.renaming
+                    }
+
+                    TextField {
+                        id: pageName
+
+                        Layout.fillWidth: true
+                        objectName: "pageNameField"
+                        text: pageDelegate.title
+                        visible: pageDelegate.renaming
+
+                        onAccepted: root.renamePage(pageDelegate.index, pageName.text)
+                        onActiveFocusChanged: {
+                            if (pageName.visible && !pageName.activeFocus) {
+                                root.renamePage(pageDelegate.index, pageName.text);
+                            }
+                        }
+                        onVisibleChanged: {
+                            if (pageName.visible) {
+                                pageName.selectAll();
+                                pageName.forceActiveFocus();
+                            }
+                        }
+                    }
+
+                    ToolButton {
+                        display: AbstractButton.IconOnly
+                        enabled: root.ready && root.notebook.pageCount > 1
+                        icon.color: enabled ? palette.buttonText : palette.placeholderText
+                        icon.height: 16
+                        icon.source: Icons.close
+                        icon.width: 16
+                        implicitHeight: 26
+                        implicitWidth: 26
+                        objectName: "deletePageButton"
+                        ToolTip.delay: 600
+                        ToolTip.text: qsTr("Delete page")
+                        ToolTip.visible: hovered
+                        visible: pageDelegate.hovered || pageDelegate.highlighted
+
+                        onClicked: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
                     }
                 }
 
@@ -227,9 +362,9 @@ Pane {
                     id: pageMenu
 
                     MenuItem {
-                        text: qsTr("Rename…")
+                        text: qsTr("Rename")
 
-                        onTriggered: root.rename(false, pageDelegate.index, pageDelegate.title)
+                        onTriggered: root.renamingPage = pageDelegate.index
                     }
 
                     MenuItem {
@@ -255,9 +390,9 @@ Pane {
 
                     MenuItem {
                         enabled: root.ready && root.notebook.pageCount > 1
-                        text: qsTr("Delete")
+                        text: qsTr("Delete…")
 
-                        onTriggered: root.notebook.deletePage(pageDelegate.index)
+                        onTriggered: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
                     }
                 }
             }
@@ -265,30 +400,30 @@ Pane {
     }
 
     Dialog {
-        id: renameDialog
+        id: deleteDialog
 
         property int index: 0
+        property string itemTitle: ""
         property bool sectionScope: true
 
-        anchors.centerIn: parent
+        anchors.centerIn: Overlay.overlay
         modal: true
+        objectName: "deleteDialog"
+        parent: Overlay.overlay
         standardButtons: Dialog.Ok | Dialog.Cancel
-        title: renameDialog.sectionScope ? qsTr("Rename section") : qsTr("Rename page")
+        title: deleteDialog.sectionScope ? qsTr("Delete section") : qsTr("Delete page")
 
         onAccepted: {
-            if (renameDialog.sectionScope) {
-                root.notebook.renameSection(renameDialog.index, renameField.text);
+            if (deleteDialog.sectionScope) {
+                root.notebook.deleteSection(deleteDialog.index);
             } else {
-                root.notebook.renamePage(renameDialog.index, renameField.text);
+                root.notebook.deletePage(deleteDialog.index);
             }
         }
 
-        TextField {
-            id: renameField
-
-            width: 220
-
-            onAccepted: renameDialog.accept()
+        Label {
+            text: deleteDialog.sectionScope ? qsTr("Move “%1” and every page in it to the deleted pages?").arg(deleteDialog.itemTitle) : qsTr("Move “%1” to the deleted pages?").arg(deleteDialog.itemTitle)
+            wrapMode: Text.WordWrap
         }
     }
 }

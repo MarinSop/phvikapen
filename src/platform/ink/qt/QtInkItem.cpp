@@ -282,6 +282,14 @@ void QtInkItem::setShape(int shape) {
     emit shapeChanged();
 }
 
+void QtInkItem::setPicking(bool picking) {
+    if (picking == m_picking) {
+        return;
+    }
+    m_picking = picking;
+    emit pickingChanged();
+}
+
 void QtInkItem::setPanning(bool panning) {
     if (panning == m_panning) {
         return;
@@ -742,6 +750,12 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    if (m_picking && !eraserTip) {
+        if (m_sink != nullptr) {
+            m_sink->colourWanted(sample);
+        }
+        return;
+    }
     if (m_panning && !eraserTip) {
         m_panFrom = core::Point{.x = sample.x, .y = sample.y};
         return;
@@ -763,9 +777,11 @@ void QtInkItem::press(const InkSample& sample, bool eraserTip) {
 
 void QtInkItem::move(const InkSample& sample) {
     if (m_panFrom) {
+        // The point the drag started on has to stay under the pointer, so the view moves the
+        // other way.
         core::Viewport viewport = m_viewport;
-        viewport.panBy((m_panFrom->x - sample.x) * m_viewport.scale(),
-                       (m_panFrom->y - sample.y) * m_viewport.scale());
+        viewport.panBy((sample.x - m_panFrom->x) * m_viewport.scale(),
+                       (sample.y - m_panFrom->y) * m_viewport.scale());
         changeView(viewport);
         return;
     }

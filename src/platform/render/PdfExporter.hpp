@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 
@@ -14,9 +15,17 @@ struct ExportProgress {
 
 using ProgressHandler = std::function<void(ExportProgress)>;
 
+enum class ExportScope : std::uint8_t {
+    // The sheet grows to hold ink written beside it.
+    Everything,
+    // Only the sheet, in the size the page was set to.
+    Sheet,
+    // Only the pages that came from an imported document.
+    Document,
+};
+
 struct ExportOptions {
-    // Pages grow to hold ink written beside the sheet; otherwise only the sheet is written.
-    bool everything{true};
+    ExportScope scope{ExportScope::Everything};
 
     friend constexpr bool operator==(const ExportOptions&, const ExportOptions&) = default;
 };

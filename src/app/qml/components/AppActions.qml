@@ -34,49 +34,50 @@ Item {
     }
     readonly property Action penTool: Action {
         checkable: true
-        checked: root.tools.currentTool === ToolViewModel.Pen && root.tools.shape === ToolViewModel.Freehand
+        checked: root.tools.currentTool === ToolViewModel.Pen
         icon.source: Icons.pen
         shortcut: root.keysFor("penTool", "P")
         text: qsTr("Pen")
 
-        onTriggered: {
-            root.tools.shape = ToolViewModel.Freehand;
-            root.tools.currentTool = ToolViewModel.Pen;
-        }
+        onTriggered: root.tools.currentTool = ToolViewModel.Pen
     }
     readonly property Action highlighterTool: Action {
         checkable: true
         checked: root.tools.currentTool === ToolViewModel.Highlighter
         icon.source: Icons.highlighter
-        shortcut: "M"
+        shortcut: root.keysFor("highlighterTool", "M")
         text: qsTr("Highlighter")
 
         onTriggered: root.tools.currentTool = ToolViewModel.Highlighter
     }
     readonly property Action shapeTool: Action {
         checkable: true
-        checked: root.tools.currentTool === ToolViewModel.Pen && root.tools.shape !== ToolViewModel.Freehand
+        checked: root.tools.currentTool === ToolViewModel.Shape
         icon.source: Icons.shape
-        shortcut: "U"
+        shortcut: root.keysFor("shapeTool", "U")
         text: qsTr("Shape")
 
-        onTriggered: {
-            if (root.tools.shape === ToolViewModel.Freehand) {
-                root.tools.shape = ToolViewModel.Rectangle;
-            }
-            root.tools.currentTool = ToolViewModel.Pen;
-        }
+        onTriggered: root.tools.currentTool = ToolViewModel.Shape
     }
     readonly property Action eraserTool: Action {
         checkable: true
         checked: root.tools.currentTool === ToolViewModel.Eraser
         icon.source: Icons.eraser
-        shortcut: "E"
+        shortcut: root.keysFor("eraserTool", "E")
         text: qsTr("Eraser")
 
         onTriggered: root.tools.currentTool = ToolViewModel.Eraser
     }
-    readonly property list<Action> toolActions: [root.selectTool, root.handTool, root.penTool, root.highlighterTool, root.shapeTool, root.eraserTool]
+    readonly property Action colourTool: Action {
+        checkable: true
+        checked: root.tools.currentTool === ToolViewModel.ColourPicker
+        icon.source: Icons.colourPicker
+        shortcut: root.keysFor("colourTool", "K")
+        text: qsTr("Colour Picker")
+
+        onTriggered: root.tools.currentTool = ToolViewModel.ColourPicker
+    }
+    readonly property list<Action> toolActions: [root.selectTool, root.handTool, root.penTool, root.highlighterTool, root.shapeTool, root.eraserTool, root.colourTool]
     readonly property Action undo: Action {
         enabled: root.notebook !== null && root.notebook.canUndo
         icon.source: Icons.undo
@@ -119,6 +120,7 @@ Item {
     }
     readonly property Action clearPage: Action {
         enabled: root.hasNotebook
+        shortcut: root.keysFor("clearPage", "Ctrl+Shift+Del")
         text: qsTr("Clear Page")
 
         onTriggered: root.notebook.clearPage()
@@ -173,12 +175,14 @@ Item {
     }
     readonly property Action addSection: Action {
         enabled: root.hasNotebook
+        shortcut: root.keysFor("addSection", "Ctrl+Shift+N")
         text: qsTr("Section")
 
         onTriggered: root.notebook.addSection()
     }
     readonly property Action duplicatePage: Action {
         enabled: root.hasNotebook
+        shortcut: root.keysFor("duplicatePage", "Ctrl+D")
         text: qsTr("Duplicate Page")
 
         onTriggered: root.notebook.duplicatePage(root.notebook.currentPage)
@@ -204,23 +208,51 @@ Item {
 
         onTriggered: root.importWanted()
     }
-    readonly property Action exportPdf: Action {
+    readonly property Action exportEverything: Action {
         enabled: root.hasNotebook && !root.notebook.exporting
         icon.source: Icons.exportDocument
         shortcut: root.keysFor("exportPdf", "Ctrl+E")
-        text: qsTr("Export as PDF…")
+        text: qsTr("Sheets and Everything Around Them…")
 
-        onTriggered: root.exportWanted()
+        onTriggered: root.exportWanted(0)
+    }
+    readonly property Action exportSheets: Action {
+        enabled: root.hasNotebook && !root.notebook.exporting
+        text: qsTr("Only the Sheets…")
+
+        onTriggered: root.exportWanted(1)
+    }
+    readonly property Action exportImported: Action {
+        enabled: root.hasNotebook && !root.notebook.exporting
+        text: qsTr("Only the Imported Document…")
+
+        onTriggered: root.exportWanted(2)
+    }
+    readonly property Action save: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.save
+        shortcut: root.keysFor("save", AppInfo.shortcutText(StandardKey.Save))
+        text: qsTr("Save")
+
+        onTriggered: root.notebook.save()
     }
     readonly property Action saveCopy: Action {
         enabled: root.hasNotebook
         shortcut: root.keysFor("saveCopy", AppInfo.shortcutText(StandardKey.SaveAs))
-        text: qsTr("Save a Copy…")
+        text: qsTr("Save As…")
 
         onTriggered: root.copyWanted()
     }
+    readonly property Action pageSetup: Action {
+        enabled: root.hasNotebook
+        shortcut: root.keysFor("pageSetup", "Ctrl+Shift+U")
+        text: qsTr("Page Setup…")
+
+        onTriggered: root.pageSetupWanted()
+    }
     readonly property Action showTrash: Action {
         enabled: root.hasNotebook
+        shortcut: root.keysFor("trash", "Ctrl+Shift+T")
         text: qsTr("Deleted Pages…")
 
         onTriggered: root.trashWanted()
@@ -231,10 +263,40 @@ Item {
 
         onTriggered: root.settingsWanted()
     }
+    readonly property Action showHints: Action {
+        shortcut: root.keysFor("hints", "F1")
+        text: qsTr("Keys and Hints…")
+
+        onTriggered: root.hintsWanted()
+    }
     readonly property Action showAbout: Action {
         text: qsTr("About PhvikaPen")
 
         onTriggered: root.aboutWanted()
+    }
+    readonly property Action continuousPages: Action {
+        checkable: true
+        checked: root.settings.continuousPages
+        shortcut: root.keysFor("continuousPages", "Ctrl+Shift+C")
+        text: qsTr("Pages One Below the Other")
+
+        onTriggered: root.settings.continuousPages = !root.settings.continuousPages
+    }
+    readonly property Action pagesPanel: Action {
+        checkable: true
+        checked: root.settings.showPagesPanel
+        shortcut: root.keysFor("pagesPanel", "Ctrl+1")
+        text: qsTr("Pages Panel")
+
+        onTriggered: root.settings.showPagesPanel = !root.settings.showPagesPanel
+    }
+    readonly property Action pagePanel: Action {
+        checkable: true
+        checked: root.settings.showPagePanel
+        shortcut: root.keysFor("pagePanel", "Ctrl+2")
+        text: qsTr("Page Panel")
+
+        onTriggered: root.settings.showPagePanel = !root.settings.showPagePanel
     }
     readonly property Action quit: Action {
         shortcut: StandardKey.Quit
@@ -245,9 +307,11 @@ Item {
 
     signal aboutWanted
     signal copyWanted
-    signal exportWanted
+    signal exportWanted(int scope)
+    signal hintsWanted
     signal importWanted
     signal newNotebookWanted
+    signal pageSetupWanted
     signal settingsWanted
     signal trashWanted
 

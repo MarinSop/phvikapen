@@ -12,6 +12,16 @@ ToolBar {
 
     objectName: "statusBar"
 
+    background: Rectangle {
+        color: Theme.shaded(palette.window, Theme.strongStep)
+
+        Rectangle {
+            color: Theme.line
+            height: 1
+            width: parent.width
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 6

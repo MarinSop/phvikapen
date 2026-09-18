@@ -47,13 +47,22 @@ void OutlineListModel::setItems(std::vector<OutlineItem> items) {
     if (items == m_items) {
         return;
     }
-    const bool countChanges = items.size() != m_items.size();
+    // As long as the rows are the same ones, only what changed is reported: a reset would throw
+    // away every row, and a small picture arriving is no reason to build the list again.
+    if (items.size() == m_items.size()) {
+        const std::vector<OutlineItem> before = std::exchange(m_items, std::move(items));
+        for (std::size_t row = 0; row < m_items.size(); ++row) {
+            if (before[row] != m_items[row]) {
+                const QModelIndex at = index(static_cast<int>(row), 0);
+                emit dataChanged(at, at);
+            }
+        }
+        return;
+    }
     beginResetModel();
     m_items = std::move(items);
     endResetModel();
-    if (countChanges) {
-        emit countChanged();
-    }
+    emit countChanged();
 }
 
 }

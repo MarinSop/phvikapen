@@ -39,7 +39,7 @@ TestCase {
     }
 
     function test_d2_everyDialogIsAskedForByItsCommand() {
-        const wanted = [["importWanted", actions.importDocument], ["exportWanted", actions.exportPdf], ["copyWanted", actions.saveCopy], ["trashWanted", actions.showTrash], ["aboutWanted", actions.showAbout], ["newNotebookWanted", actions.newNotebook]];
+        const wanted = [["importWanted", actions.importDocument], ["exportWanted", actions.exportEverything], ["copyWanted", actions.saveCopy], ["trashWanted", actions.showTrash], ["aboutWanted", actions.showAbout], ["newNotebookWanted", actions.newNotebook]];
         for (const pair of wanted) {
             const asked = createTemporaryObject(spyComponent, testCase, {
                 target: actions,
@@ -52,16 +52,14 @@ TestCase {
     }
 
     function test_e_thePanelsCanBeTurnedOff() {
-        const toggled = createTemporaryObject(spyComponent, testCase, {
-            target: menuBar,
-            signalName: "pagesPanelToggled"
-        });
         const item = findChild(menuBar, "pagesPanelItem");
         verify(item !== null);
+        const before = settings.showPagesPanel;
 
-        item.triggered();
+        item.action.trigger();
 
-        compare(toggled.count, 1);
+        compare(settings.showPagesPanel, !before);
+        settings.showPagesPanel = before;
     }
 
     height: 60
@@ -105,7 +103,5 @@ TestCase {
         actions: actions
         anchors.fill: parent
         notebooks: notebooks
-        pagePanelShown: true
-        pagesPanelShown: true
     }
 }

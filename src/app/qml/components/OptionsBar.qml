@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
@@ -12,9 +13,18 @@ ToolBar {
     required property ToolViewModel tools
     readonly property InkCanvas canvas: root.actions.canvas
     readonly property NotebookViewModel notebook: root.actions.notebook
-    readonly property bool draws: root.tools.currentTool === ToolViewModel.Pen || root.tools.currentTool === ToolViewModel.Highlighter
+    readonly property bool draws: root.tools.currentTool === ToolViewModel.Pen || root.tools.currentTool === ToolViewModel.Highlighter || root.tools.currentTool === ToolViewModel.Shape
     readonly property bool erases: root.tools.currentTool === ToolViewModel.Eraser
     readonly property bool picks: root.tools.currentTool === ToolViewModel.Selection
+    readonly property list<int> shapes: [ToolViewModel.Line, ToolViewModel.Rectangle, ToolViewModel.Ellipse]
+
+    function applyColour(wanted) {
+        if (root.canvas !== null && root.canvas.selectedCount > 0) {
+            root.notebook.recolourSelection(wanted);
+        } else {
+            root.tools.strokeColor = wanted;
+        }
+    }
 
     function toolTitle() {
         switch (root.tools.currentTool) {
@@ -26,12 +36,27 @@ ToolBar {
             return qsTr("Highlighter");
         case ToolViewModel.Eraser:
             return qsTr("Eraser");
+        case ToolViewModel.Shape:
+            return qsTr("Shape");
+        case ToolViewModel.ColourPicker:
+            return qsTr("Colour Picker");
         default:
-            return root.tools.shape === ToolViewModel.Freehand ? qsTr("Pen") : qsTr("Shape");
+            return qsTr("Pen");
         }
     }
 
     objectName: "optionsBar"
+
+    background: Rectangle {
+        color: Theme.shaded(palette.window, Theme.weakStep)
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            color: Theme.line
+            height: 1
+            width: parent.width
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -39,6 +64,7 @@ ToolBar {
 
         Label {
             Layout.leftMargin: 4
+            Layout.minimumWidth: 90
             font.bold: true
             text: root.toolTitle()
         }
@@ -47,7 +73,7 @@ ToolBar {
         }
 
         Repeater {
-            model: root.draws && root.tools.currentTool === ToolViewModel.Pen ? root.tools.penCount : 0
+            model: root.draws && root.tools.currentTool !== ToolViewModel.Highlighter ? root.tools.penCount : 0
 
             PenSwatch {
                 required property int index
@@ -100,15 +126,24 @@ ToolBar {
 
                             TapHandler {
                                 onTapped: {
-                                    if (root.canvas !== null && root.canvas.selectedCount > 0) {
-                                        root.notebook.recolourSelection(swatch.modelData);
-                                    } else {
-                                        root.tools.strokeColor = swatch.modelData;
-                                    }
+                                    root.applyColour(swatch.modelData);
                                     colourMenu.close();
                                 }
                             }
                         }
+                    }
+                }
+
+                MenuSeparator {
+                }
+
+                MenuItem {
+                    objectName: "moreColoursItem"
+                    text: qsTr("More colours…")
+
+                    onTriggered: {
+                        colourDialog.selectedColor = root.tools.strokeColor;
+                        colourDialog.open();
                     }
                 }
             }
@@ -137,13 +172,15 @@ ToolBar {
         }
 
         ComboBox {
-            Layout.preferredWidth: 140
-            currentIndex: root.tools.shape
-            model: [qsTr("Freehand"), qsTr("Straight line"), qsTr("Box"), qsTr("Circle")]
-            objectName: "shapeBox"
-            visible: root.draws
+            id: shapeBox
 
-            onActivated: root.tools.shape = currentIndex
+            Layout.preferredWidth: 140
+            currentIndex: root.shapes.indexOf(root.tools.shape)
+            model: [qsTr("Straight line"), qsTr("Box"), qsTr("Circle")]
+            objectName: "shapeBox"
+            visible: root.tools.currentTool === ToolViewModel.Shape
+
+            onActivated: root.tools.shape = root.shapes[shapeBox.currentIndex]
         }
 
         QuickButton {
@@ -170,18 +207,6 @@ ToolBar {
             visible: root.picks
         }
 
-        Label {
-            color: palette.placeholderText
-            text: qsTr("Shift keeps it even, Alt grows it from the middle")
-            visible: root.draws && root.tools.shape !== ToolViewModel.Freehand
-        }
-
-        Label {
-            color: palette.placeholderText
-            text: qsTr("Drag the page to move it")
-            visible: root.tools.currentTool === ToolViewModel.Hand
-        }
-
         Item {
             Layout.fillWidth: true
         }
@@ -200,5 +225,14 @@ ToolBar {
             objectName: "redoButton"
             shortcutText: AppInfo.shortcutText(root.actions.redo.shortcut)
         }
+    }
+
+    ColorDialog {
+        id: colourDialog
+
+        objectName: "colourDialog"
+        options: ColorDialog.ShowAlphaChannel
+
+        onAccepted: root.applyColour(colourDialog.selectedColor)
     }
 }

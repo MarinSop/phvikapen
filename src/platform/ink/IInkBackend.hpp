@@ -32,6 +32,8 @@ public:
     virtual void selectionDrawn(std::span<const core::Point> shape) = 0;
 
     virtual void selectionMoved(float dx, float dy) = 0;
+
+    virtual void colourWanted(const core::InkSample& at) = 0;
 };
 
 class IInkBackend {
@@ -47,6 +49,8 @@ public:
     virtual void setErasing(bool erasing) = 0;
 
     virtual void setSelecting(bool selecting) = 0;
+
+    virtual void setPicking(bool picking) = 0;
 };
 
 }

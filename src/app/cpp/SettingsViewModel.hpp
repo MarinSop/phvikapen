@@ -24,8 +24,18 @@ class SettingsViewModel : public QObject {
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool landscape READ landscape WRITE setLandscape NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
-    Q_PROPERTY(bool exportEverything READ exportEverything WRITE setExportEverything NOTIFY
-                   exportEverythingChanged FINAL)
+    Q_PROPERTY(
+        int exportScope READ exportScope WRITE setExportScope NOTIFY exportScopeChanged FINAL)
+    Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
+                   continuousPagesChanged FINAL)
+    Q_PROPERTY(
+        bool showPagesPanel READ showPagesPanel WRITE setShowPagesPanel NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(
+        bool showPagePanel READ showPagePanel WRITE setShowPagePanel NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(
+        qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        qreal customHeight READ customHeight WRITE setCustomHeight NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY shortcutsChanged FINAL)
     Q_PROPERTY(phvikapen::app::ShortcutListModel* shortcutList READ shortcutList CONSTANT FINAL)
 
@@ -51,9 +61,26 @@ public:
 
     void setSmoothing(qreal smoothing);
 
-    [[nodiscard]] bool exportEverything() const { return m_exportEverything; }
+    [[nodiscard]] int exportScope() const { return m_exportScope; }
 
-    void setExportEverything(bool everything);
+    void setExportScope(int scope);
+
+    [[nodiscard]] bool continuousPages() const { return m_continuousPages; }
+
+    void setContinuousPages(bool continuous);
+
+    [[nodiscard]] bool showPagesPanel() const { return m_showPagesPanel; }
+
+    void setShowPagesPanel(bool shown);
+
+    [[nodiscard]] bool showPagePanel() const { return m_showPagePanel; }
+
+    void setShowPagePanel(bool shown);
+
+    [[nodiscard]] qreal customWidth() const;
+    void setCustomWidth(qreal millimeters);
+    [[nodiscard]] qreal customHeight() const;
+    void setCustomHeight(qreal millimeters);
 
     [[nodiscard]] QVariantMap shortcuts() const { return m_shortcuts; }
 
@@ -71,7 +98,9 @@ signals:
     void pageStyleChanged();
     void shortcutsChanged();
     void smoothingChanged();
-    void exportEverythingChanged();
+    void exportScopeChanged();
+    void continuousPagesChanged();
+    void panelsChanged();
 
 private:
     void changeStyle(const core::PageStyle& style);
@@ -79,7 +108,10 @@ private:
     core::PageStyle m_style;
     QVariantMap m_shortcuts;
     qreal m_smoothing{kDefaultSmoothing};
-    bool m_exportEverything{true};
+    int m_exportScope{0};
+    bool m_continuousPages{true};
+    bool m_showPagesPanel{true};
+    bool m_showPagePanel{false};
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};

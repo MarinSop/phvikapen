@@ -38,6 +38,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <system_error>
@@ -53,6 +54,9 @@ constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
 constexpr float kMediaMargin = 64.0F;
+constexpr float kPickRadius = 6.0F;
+constexpr float kOwnPaperWidth = core::millimeters(210.0F);
+constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
     const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -475,7 +479,8 @@ void NotebookViewModel::setPaper(page_options::Paper paper) {
     core::PageStyle style = info->style;
     style.paper = static_cast<core::Paper>(paper);
     if (style.paper == core::Paper::Custom && !core::paperSize(style)) {
-        return;
+        style.customWidth = kOwnPaperWidth;
+        style.customHeight = kOwnPaperHeight;
     }
     changeStyle(style);
 }
@@ -522,6 +527,56 @@ void NotebookViewModel::setLineSpacing(qreal millimeters) {
     }
 }
 
+qreal NotebookViewModel::customWidth() const {
+    const core::PageInfo* const info = currentPageInfo();
+    const float width = info == nullptr ? 0.0F : info->style.customWidth;
+    return width / core::millimeters(1.0F);
+}
+
+void NotebookViewModel::setCustomWidth(qreal millimeters) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.customWidth = core::millimeters(static_cast<float>(millimeters));
+        changeStyle(core::normalized(style));
+    }
+}
+
+qreal NotebookViewModel::customHeight() const {
+    const core::PageInfo* const info = currentPageInfo();
+    const float height = info == nullptr ? 0.0F : info->style.customHeight;
+    return height / core::millimeters(1.0F);
+}
+
+void NotebookViewModel::setCustomHeight(qreal millimeters) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.customHeight = core::millimeters(static_cast<float>(millimeters));
+        changeStyle(core::normalized(style));
+    }
+}
+
+void NotebookViewModel::applyStyleToSection() {
+    const core::PageInfo* const info = currentPageInfo();
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (info == nullptr || !section || !m_storage) {
+        return;
+    }
+    const core::PageStyle style = info->style;
+    std::vector<core::Uuid> wanted;
+    for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
+        if (page.style != style) {
+            wanted.push_back(page.id);
+        }
+    }
+    for (const core::Uuid& page : wanted) {
+        if (!m_storage) {
+            return;
+        }
+        runCommand(
+            std::make_unique<core::SetPageStyleCommand>(&m_outline, &*m_storage, page, style));
+    }
+}
+
 void NotebookViewModel::changeStyle(const core::PageStyle& style) {
     const core::PageInfo* const info = currentPageInfo();
     if (info == nullptr || info->style == style || !m_storage) {
@@ -536,6 +591,10 @@ void NotebookViewModel::Sink::strokeStarted(const core::InkSample& /*sample*/) {
 void NotebookViewModel::Sink::sampleAdded(const core::InkSample& /*sample*/) {}
 
 void NotebookViewModel::Sink::strokeFinished(const core::InkSample& /*sample*/) {}
+
+void NotebookViewModel::Sink::colourWanted(const core::InkSample& at) {
+    m_owner->pickColour(at);
+}
 
 void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
     m_owner->storeStroke(stroke);
@@ -576,6 +635,26 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     }
     emit pageChanged();
     emit historyChanged();
+}
+
+void NotebookViewModel::pickColour(const core::InkSample& at) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return;
+    }
+    const std::span<const core::PlacedStroke> strokes = page->strokes();
+    for (const core::PlacedStroke& placed : std::ranges::reverse_view(strokes)) {
+        const core::EraserSweep spot{
+            .from = {.x = at.x, .y = at.y},
+            .to = {.x = at.x, .y = at.y},
+            .radius = std::max(placed.stroke.style().width / 2.0F, kPickRadius),
+        };
+        if (core::touches(placed.stroke, spot)) {
+            const core::Color& colour = placed.stroke.style().color;
+            emit colourPicked(QColor::fromRgb(colour.red, colour.green, colour.blue, colour.alpha));
+            return;
+        }
+    }
 }
 
 void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to,
@@ -699,6 +778,7 @@ void NotebookViewModel::addPage() {
     runCommand(std::make_unique<core::AddPageCommand>(
         &m_outline, &*m_storage,
         core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1}, page));
+    emit pageAdded(currentPage());
 }
 
 void NotebookViewModel::duplicatePage(int index) {
@@ -830,6 +910,7 @@ void NotebookViewModel::addSection() {
     m_pages.emplace(page.id, std::make_unique<core::Page>(page.id));
     runCommand(std::make_unique<core::AddSectionCommand>(&m_outline, &*m_storage, index,
                                                          std::move(section)));
+    emit sectionAdded(currentSection());
 }
 
 void NotebookViewModel::deleteSection(int index) {
@@ -1370,7 +1451,7 @@ void NotebookViewModel::refreshCanvas() {
     }
 }
 
-void NotebookViewModel::exportToPdf(const QUrl& fileUrl, bool everything) {
+void NotebookViewModel::exportToPdf(const QUrl& fileUrl, int scope) {
     if (m_exporting || !m_storage || m_notebookPath.isEmpty()) {
         return;
     }
@@ -1387,13 +1468,13 @@ void NotebookViewModel::exportToPdf(const QUrl& fileUrl, bool everything) {
         .notebook = std::filesystem::path{m_notebookPath.toStdU16String()},
         .target = std::filesystem::path{path.toStdU16String()},
         .path = path,
-        .everything = everything,
+        .scope = static_cast<platform::render::ExportScope>(
+            std::clamp(scope, 0, static_cast<int>(platform::render::ExportScope::Document))),
     });
     m_export = std::jthread{[this, job] {
         try {
             core::Result<int> written = platform::render::exportNotebookToPdf(
-                job->notebook, job->target,
-                platform::render::ExportOptions{.everything = job->everything});
+                job->notebook, job->target, platform::render::ExportOptions{.scope = job->scope});
             QMetaObject::invokeMethod(
                 this,
                 [this, job, written = std::move(written)] { finishExport(job->path, written); },
@@ -1402,6 +1483,13 @@ void NotebookViewModel::exportToPdf(const QUrl& fileUrl, bool everything) {
             qWarning("Writing %s stopped unexpectedly", qUtf8Printable(job->path));
         }
     }};
+}
+
+void NotebookViewModel::save() {
+    if (m_storage) {
+        m_storage->waitUntilIdle();
+    }
+    emit saved();
 }
 
 void NotebookViewModel::saveCopy(const QUrl& fileUrl) {

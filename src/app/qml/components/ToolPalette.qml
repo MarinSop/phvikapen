@@ -13,6 +13,17 @@ Pane {
     objectName: "toolPalette"
     padding: 4
 
+    background: Rectangle {
+        color: Theme.shaded(palette.window, Theme.strongStep)
+
+        Rectangle {
+            anchors.right: parent.right
+            color: Theme.line
+            height: parent.height
+            width: 1
+        }
+    }
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top

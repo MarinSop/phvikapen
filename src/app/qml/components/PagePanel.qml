@@ -12,6 +12,16 @@ Pane {
     objectName: "pagePanel"
     padding: 8
 
+    background: Rectangle {
+        color: Theme.shaded(palette.window, Theme.weakStep)
+
+        Rectangle {
+            color: Theme.line
+            height: parent.height
+            width: 1
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8

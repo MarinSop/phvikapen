@@ -45,6 +45,40 @@ namespace {
         Command{.id = "selectTool", .name = QObject::tr("Pick tool"), .fallback = "V"},
         Command{.id = "handTool", .name = QObject::tr("Hand tool"), .fallback = "H"},
         Command{.id = "penTool", .name = QObject::tr("Pen tool"), .fallback = "P"},
+        Command{.id = "save", .name = QObject::tr("Save"), .fallback = "Ctrl+S"},
+        Command{.id = "pageSetup", .name = QObject::tr("Page setup"), .fallback = "Ctrl+Shift+U"},
+        Command{.id = "addSection", .name = QObject::tr("New section"), .fallback = "Ctrl+Shift+N"},
+        Command{
+            .id = "duplicatePage",
+            .name = QObject::tr("Duplicate page"),
+            .fallback = "Ctrl+D",
+        },
+        Command{.id = "clearPage", .name = QObject::tr("Clear page"), .fallback = "Ctrl+Shift+Del"},
+        Command{
+            .id = "trash",
+            .name = QObject::tr("Deleted pages"),
+            .fallback = "Ctrl+Shift+T",
+        },
+        Command{.id = "pagesPanel", .name = QObject::tr("Pages panel"), .fallback = "Ctrl+1"},
+        Command{.id = "pagePanel", .name = QObject::tr("Page panel"), .fallback = "Ctrl+2"},
+        Command{
+            .id = "continuousPages",
+            .name = QObject::tr("Pages one below the other"),
+            .fallback = "Ctrl+Shift+C",
+        },
+        Command{.id = "hints", .name = QObject::tr("Keys and hints"), .fallback = "F1"},
+        Command{
+            .id = "highlighterTool",
+            .name = QObject::tr("Highlighter tool"),
+            .fallback = "M",
+        },
+        Command{.id = "shapeTool", .name = QObject::tr("Shape tool"), .fallback = "U"},
+        Command{.id = "eraserTool", .name = QObject::tr("Eraser tool"), .fallback = "E"},
+        Command{
+            .id = "colourTool",
+            .name = QObject::tr("Colour picker tool"),
+            .fallback = "K",
+        },
     };
     return kCommands;
 }

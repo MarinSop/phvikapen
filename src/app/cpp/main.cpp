@@ -1,4 +1,5 @@
 #include "app/cpp/Logging.hpp"
+#include "app/cpp/SystemMenus.hpp"
 #include "app/cpp/Thumbnails.hpp"
 #include "core/version.hpp"
 #include "platform/update/StartupHook.hpp"
@@ -13,6 +14,7 @@
 int main(int argc, char* argv[]) {
     // Must run first: it may restart or end the process.
     phvikapen::platform::update::runStartupHook();
+    phvikapen::app::keepSystemItemsOutOfMenus();
 
     const QGuiApplication application(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PhvikaPen"));

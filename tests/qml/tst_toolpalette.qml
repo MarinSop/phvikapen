@@ -11,7 +11,7 @@ TestCase {
     }
 
     function test_b_everyToolHasAButtonWithATooltip() {
-        const names = ["selectTool", "handTool", "penTool", "highlighterTool", "shapeTool", "eraserTool"];
+        const names = ["selectTool", "handTool", "penTool", "highlighterTool", "shapeTool", "eraserTool", "colour pickerTool"];
         for (const name of names) {
             const button = findChild(palette, name);
             verify(button !== null, name + " is missing");
@@ -27,22 +27,20 @@ TestCase {
         verify(!findChild(palette, "penTool").checked);
 
         tools.currentTool = ToolViewModel.Pen;
-        tools.shape = ToolViewModel.Freehand;
 
         verify(findChild(palette, "penTool").checked);
         verify(!findChild(palette, "shapeTool").checked);
     }
 
-    function test_d_theShapeToolPicksTheShapeAndThePenPutsItBack() {
+    function test_d_theShapeToolAndThePenAreTwoTools() {
         findChild(palette, "shapeTool").action.trigger();
 
-        compare(tools.currentTool, ToolViewModel.Pen);
+        compare(tools.currentTool, ToolViewModel.Shape);
         verify(tools.shape !== ToolViewModel.Freehand);
 
         findChild(palette, "penTool").action.trigger();
 
         compare(tools.currentTool, ToolViewModel.Pen);
-        compare(tools.shape, ToolViewModel.Freehand);
     }
 
     function test_e2_theKeysPickTheTools() {
@@ -59,7 +57,12 @@ TestCase {
 
         keyClick(Qt.Key_P);
         compare(tools.currentTool, ToolViewModel.Pen);
-        compare(tools.shape, ToolViewModel.Freehand);
+
+        keyClick(Qt.Key_U);
+        compare(tools.currentTool, ToolViewModel.Shape);
+
+        keyClick(Qt.Key_K);
+        compare(tools.currentTool, ToolViewModel.ColourPicker);
     }
 
     function test_e_theHandToolPansInsteadOfDrawing() {

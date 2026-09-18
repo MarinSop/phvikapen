@@ -9,11 +9,6 @@ MenuBar {
 
     required property AppActions actions
     required property NotebooksViewModel notebooks
-    required property bool pagesPanelShown
-    required property bool pagePanelShown
-
-    signal pagesPanelToggled(bool shown)
-    signal pagePanelToggled(bool shown)
 
     Menu {
         objectName: "fileMenu"
@@ -45,13 +40,41 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.save
+            objectName: "saveItem"
+        }
+
+        MenuCommand {
             action: root.actions.saveCopy
             objectName: "saveCopyItem"
         }
 
+        Menu {
+            objectName: "exportMenu"
+            title: qsTr("Export as PDF")
+
+            MenuCommand {
+                action: root.actions.exportEverything
+                objectName: "exportPdfItem"
+            }
+
+            MenuCommand {
+                action: root.actions.exportSheets
+                objectName: "exportSheetsItem"
+            }
+
+            MenuCommand {
+                action: root.actions.exportImported
+                objectName: "exportImportedItem"
+            }
+        }
+
+        MenuSeparator {
+        }
+
         MenuCommand {
-            action: root.actions.exportPdf
-            objectName: "exportPdfItem"
+            action: root.actions.pageSetup
+            objectName: "pageSetupItem"
         }
 
         MenuSeparator {
@@ -138,22 +161,19 @@ MenuBar {
         MenuSeparator {
         }
 
-        MenuItem {
-            checkable: true
-            checked: root.pagesPanelShown
-            objectName: "pagesPanelItem"
-            text: qsTr("Pages Panel")
-
-            onTriggered: root.pagesPanelToggled(!root.pagesPanelShown)
+        MenuCommand {
+            action: root.actions.continuousPages
+            objectName: "continuousPagesItem"
         }
 
-        MenuItem {
-            checkable: true
-            checked: root.pagePanelShown
-            objectName: "pagePanelItem"
-            text: qsTr("Page Panel")
+        MenuCommand {
+            action: root.actions.pagesPanel
+            objectName: "pagesPanelItem"
+        }
 
-            onTriggered: root.pagePanelToggled(!root.pagePanelShown)
+        MenuCommand {
+            action: root.actions.pagePanel
+            objectName: "pagePanelItem"
         }
     }
 
@@ -228,6 +248,11 @@ MenuBar {
     Menu {
         objectName: "helpMenu"
         title: qsTr("&Help")
+
+        MenuCommand {
+            action: root.actions.showHints
+            objectName: "hintsItem"
+        }
 
         MenuCommand {
             action: root.actions.showAbout

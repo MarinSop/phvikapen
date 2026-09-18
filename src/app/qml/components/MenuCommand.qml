@@ -7,15 +7,28 @@ MenuItem {
 
     readonly property string shortcutText: root.action === null ? "" : AppInfo.shortcutText(root.action.shortcut)
 
-    implicitWidth: Math.max(240, implicitContentWidth + leftPadding + rightPadding)
+    implicitWidth: Math.max(260, implicitContentWidth + leftPadding + rightPadding)
+    indicator: null
 
     contentItem: Item {
         implicitHeight: label.implicitHeight
 
         Label {
+            id: tick
+
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            color: palette.windowText
+            text: "✓"
+            visible: root.checkable && root.checked
+            width: 18
+        }
+
+        Label {
             id: label
 
             anchors.left: parent.left
+            anchors.leftMargin: root.checkable ? 18 : 0
             anchors.verticalCenter: parent.verticalCenter
             color: root.enabled ? palette.windowText : palette.placeholderText
             text: root.text

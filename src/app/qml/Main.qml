@@ -10,8 +10,7 @@ import PhvikaPen.Ui
 ApplicationWindow {
     id: root
 
-    property bool pagePanelShown: true
-    property bool pagesPanelShown: true
+    property int exportScope: settings.exportScope
     readonly property NotebookViewModel notebook: notebooks.current
 
     height: 800
@@ -44,11 +43,6 @@ ApplicationWindow {
     menuBar: AppMenuBar {
         actions: appActions
         notebooks: notebooks
-        pagePanelShown: root.pagePanelShown
-        pagesPanelShown: root.pagesPanelShown
-
-        onPagePanelToggled: shown => root.pagePanelShown = shown
-        onPagesPanelToggled: shown => root.pagesPanelShown = shown
     }
 
     Component.onCompleted: notebooks.canvas = canvas
@@ -92,14 +86,17 @@ ApplicationWindow {
             copyDialog.selectedFile = folder + "/" + root.notebook.title + ".phvika";
             copyDialog.open();
         }
-        onExportWanted: {
+        onExportWanted: scope => {
+            root.exportScope = scope;
             const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
             exportDialog.currentFolder = folder;
             exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
             exportDialog.open();
         }
+        onHintsWanted: hintsDialog.open()
         onImportWanted: importDialog.open()
         onNewNotebookWanted: newNotebookDialog.open()
+        onPageSetupWanted: pageSetupDialog.open()
         onSettingsWanted: settingsDialog.open()
         onTrashWanted: trashDialog.open()
     }
@@ -117,7 +114,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.preferredWidth: 220
             actions: appActions
-            visible: root.pagesPanelShown && root.notebook !== null
+            visible: settings.showPagesPanel && root.notebook !== null
         }
 
         EmptyState {
@@ -134,23 +131,24 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.fillWidth: true
             enabled: root.notebook !== null && root.notebook.loaded
-            visible: root.notebook !== null
             eraserRadius: toolState.eraserRadius
             erasing: toolState.currentTool === ToolViewModel.Eraser
             panning: toolState.currentTool === ToolViewModel.Hand
+            picking: toolState.currentTool === ToolViewModel.ColourPicker
             pressureSensitive: toolState.pressureSensitive
             selecting: toolState.currentTool === ToolViewModel.Selection
-            shape: toolState.shape
+            shape: toolState.currentTool === ToolViewModel.Shape ? toolState.shape : ToolViewModel.Freehand
             smoothing: settings.smoothing
             strokeColor: toolState.strokeColor
             strokeWidth: toolState.strokeWidth
+            visible: root.notebook !== null
         }
 
         PagePanel {
             Layout.fillHeight: true
             Layout.preferredWidth: 220
             actions: appActions
-            visible: root.pagePanelShown && root.notebook !== null
+            visible: settings.showPagePanel && root.notebook !== null
         }
     }
 
@@ -176,6 +174,16 @@ ApplicationWindow {
         updates: updates
     }
 
+    PageSetupDialog {
+        id: pageSetupDialog
+
+        notebook: root.notebook
+    }
+
+    HintsDialog {
+        id: hintsDialog
+    }
+
     AboutDialog {
         id: aboutDialog
     }
@@ -192,7 +200,7 @@ ApplicationWindow {
         defaultSuffix: "phvika"
         fileMode: FileDialog.SaveFile
         nameFilters: [qsTr("Notebooks (*.phvika)")]
-        title: qsTr("Save a copy")
+        title: qsTr("Save as")
 
         onAccepted: root.notebook.saveCopy(copyDialog.selectedFile)
     }
@@ -205,7 +213,7 @@ ApplicationWindow {
         nameFilters: [qsTr("PDF documents (*.pdf)")]
         title: qsTr("Export as PDF")
 
-        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile, settings.exportEverything)
+        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile, root.exportScope)
     }
 
     FileDialog {
@@ -226,6 +234,10 @@ ApplicationWindow {
     }
 
     Connections {
+        function onColourPicked(colour) {
+            toolState.strokeColor = colour;
+        }
+
         function onCopied(path) {
             messageBar.show(qsTr("Copied to %1").arg(path));
         }
@@ -238,6 +250,10 @@ ApplicationWindow {
 
         function onExported(path) {
             messageBar.show(qsTr("Saved as %1").arg(path));
+        }
+
+        function onSaved() {
+            messageBar.show(qsTr("Saved"));
         }
 
         target: root.notebook

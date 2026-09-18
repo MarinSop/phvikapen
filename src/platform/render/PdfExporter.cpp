@@ -96,17 +96,22 @@ private:
     std::map<core::ContentId, std::unique_ptr<pdf::PdfiumDocument>> m_documents;
 };
 
-[[nodiscard]] std::vector<core::PageInfo> pagesOf(const core::NotebookOutline& outline) {
+[[nodiscard]] std::vector<core::PageInfo> pagesOf(const core::NotebookOutline& outline,
+                                                  ExportScope scope) {
     std::vector<core::PageInfo> pages;
     for (const core::SectionInfo& section : outline.sections) {
-        pages.insert(pages.end(), section.pages.begin(), section.pages.end());
+        for (const core::PageInfo& page : section.pages) {
+            if (scope != ExportScope::Document || page.media) {
+                pages.push_back(page);
+            }
+        }
     }
     return pages;
 }
 
-[[nodiscard]] core::Rect areaFor(const PageContents& contents, bool everything) {
+[[nodiscard]] core::Rect areaFor(const PageContents& contents, ExportScope scope) {
     core::Rect area = pageArea(contents);
-    if (!everything) {
+    if (scope != ExportScope::Everything) {
         return area;
     }
     for (const core::PlacedStroke& placed : contents.strokes) {
@@ -138,7 +143,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
         return std::unexpected{outline.error()};
     }
 
-    const std::vector<core::PageInfo> pages = pagesOf(*outline);
+    const std::vector<core::PageInfo> pages = pagesOf(*outline, options.scope);
     if (pages.empty()) {
         return core::makeError(core::ErrorCode::InvalidArgument,
                                "the notebook has no pages to write");
@@ -163,7 +168,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             .strokes = *strokes,
             .media = nullptr,
         };
-        const core::Rect area = areaFor(contents, options.everything);
+        const core::Rect area = areaFor(contents, options.scope);
         const QImage picture = info.media ? media.imageFor(*store, *info.media, area) : QImage{};
         const PageContents page{
             .style = info.style,

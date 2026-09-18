@@ -413,6 +413,82 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aNewPageGetsItsOwnPictureAndCanStillBePicked() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 120, 120);
+        notebook.wantThumbnail(0);
+        tryVerify(() => notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3) !== "");
+
+        const added = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "pageAdded"
+        });
+        notebook.addPage();
+
+        compare(added.count, 1);
+        compare(notebook.pages.count, 2);
+        compare(notebook.currentPage, 1);
+        notebook.wantThumbnail(1);
+        tryVerify(() => notebook.pages.data(notebook.pages.index(1, 0), Qt.UserRole + 3) !== "");
+        const first = notebook.pages.data(notebook.pages.index(0, 0), Qt.UserRole + 3);
+        const second = notebook.pages.data(notebook.pages.index(1, 0), Qt.UserRole + 3);
+        verify(first !== "");
+        verify(first !== second);
+
+        notebook.currentPage = 0;
+        compare(notebook.currentPage, 0);
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aPageCanBeGivenItsOwnSize() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+
+        first.paper = PageOptions.Custom;
+        first.customWidth = 120;
+        first.customHeight = 160;
+
+        compare(first.paper, PageOptions.Custom);
+        first.destroy();
+        wait(0);
+
+        const reopened = openNotebook(path);
+        compare(reopened.paper, PageOptions.Custom);
+        compare(Math.round(reopened.customWidth), 120);
+        compare(Math.round(reopened.customHeight), 160);
+        compare(reopened.errorMessage, "");
+    }
+
+    function test_theSetupOfAPageCanBeGivenToTheWholeSection() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.background = PageOptions.Dotted;
+        notebook.currentPage = 0;
+        compare(notebook.background, PageOptions.Lined);
+
+        notebook.currentPage = 1;
+        notebook.applyStyleToSection();
+
+        notebook.currentPage = 0;
+        compare(notebook.background, PageOptions.Dotted);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_savingWaitsForTheWritingAndSaysSo() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        const saved = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "saved"
+        });
+
+        notebook.save();
+
+        compare(saved.count, 1);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_thePictureOfAPageIsThrownAwayWhenThePageChanges() {
         const notebook = openNotebook(newNotebookPath());
         notebook.wantThumbnail(0);

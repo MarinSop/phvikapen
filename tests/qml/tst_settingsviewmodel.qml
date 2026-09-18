@@ -85,16 +85,16 @@ TestCase {
     function test_i_theSmoothingAndExportChoiceAreRemembered() {
         const settings = createTemporaryObject(settingsComponent, testCase);
         compare(settings.smoothing, 0.5);
-        compare(settings.exportEverything, true);
+        compare(settings.exportScope, 0);
 
         settings.smoothing = 0.2;
-        settings.exportEverything = false;
+        settings.exportScope = 2;
 
         const later = createTemporaryObject(settingsComponent, testCase);
         compare(later.smoothing, 0.2);
-        compare(later.exportEverything, false);
+        compare(later.exportScope, 2);
         later.smoothing = 0.5;
-        later.exportEverything = true;
+        later.exportScope = 0;
     }
 
     name: "SettingsViewModel"

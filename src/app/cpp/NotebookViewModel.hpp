@@ -20,6 +20,7 @@
 #include "platform/ink/IInkBackend.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
+#include "platform/render/PdfExporter.hpp"
 
 #include <QColor>
 #include <QImage>
@@ -78,6 +79,10 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
         qreal lineSpacing READ lineSpacing WRITE setLineSpacing NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        qreal customHeight READ customHeight WRITE setCustomHeight NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
     Q_PROPERTY(phvikapen::app::TrashListModel* trash READ trash CONSTANT FINAL)
 
@@ -148,6 +153,12 @@ public:
     void setBackground(page_options::Background background);
     [[nodiscard]] qreal lineSpacing() const;
     void setLineSpacing(qreal millimeters);
+    [[nodiscard]] qreal customWidth() const;
+    void setCustomWidth(qreal millimeters);
+    [[nodiscard]] qreal customHeight() const;
+    void setCustomHeight(qreal millimeters);
+
+    Q_INVOKABLE void applyStyleToSection();
 
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -166,9 +177,11 @@ public:
 
     [[nodiscard]] bool exporting() const { return m_exporting; }
 
-    Q_INVOKABLE void exportToPdf(const QUrl& fileUrl, bool everything = true);
+    Q_INVOKABLE void exportToPdf(const QUrl& fileUrl, int scope = 0);
 
     Q_INVOKABLE void saveCopy(const QUrl& fileUrl);
+
+    Q_INVOKABLE void save();
 
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
@@ -203,8 +216,12 @@ signals:
     void pageStyleChanged();
     void exportingChanged();
     void clipboardChanged();
+    void colourPicked(const QColor& colour);
+    void pageAdded(int index);
+    void sectionAdded(int index);
     void exported(const QString& path);
     void copied(const QString& path);
+    void saved();
 
 private:
     class Sink final : public platform::ink::IInkSink {
@@ -221,6 +238,7 @@ private:
         void eraseFinished() override;
         void selectionDrawn(std::span<const core::Point> shape) override;
         void selectionMoved(float dx, float dy) override;
+        void colourWanted(const core::InkSample& at) override;
 
     private:
         NotebookViewModel* m_owner;
@@ -236,7 +254,7 @@ private:
         std::filesystem::path notebook;
         std::filesystem::path target;
         QString path;
-        bool everything{true};
+        platform::render::ExportScope scope{platform::render::ExportScope::Everything};
     };
 
     void openNotebook();
@@ -271,6 +289,7 @@ private:
     void storeStroke(const core::Stroke& stroke);
     void selectInside(std::span<const core::Point> polygon);
     void moveSelection(float dx, float dy);
+    void pickColour(const core::InkSample& at);
     void erase(const core::InkSample& from, const core::InkSample& to, float radius);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);

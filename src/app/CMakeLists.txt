@@ -23,9 +23,13 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     zoom-out
     expand
     x
+    palette
+    save
+    help-circle
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_library(phvikapen_ui STATIC)
 add_library(PhvikaPen::ui ALIAS phvikapen_ui)
@@ -58,6 +62,7 @@ qt_add_qml_module(phvikapen_ui
         cpp/UpdateViewModel.hpp
     QML_FILES
         qml/Icons.qml
+        qml/Theme.qml
         qml/components/AboutDialog.qml
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
@@ -72,6 +77,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PagePanel.qml
         qml/components/PagesPanel.qml
         qml/components/PageSetup.qml
+        qml/components/PageSetupDialog.qml
+        qml/components/HintsDialog.qml
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
@@ -104,8 +111,16 @@ target_link_libraries(phvikapen_ui
 qt_add_executable(phvikapen
     cpp/Logging.cpp
     cpp/Logging.hpp
+    cpp/SystemMenus.hpp
     cpp/main.cpp
 )
+
+if(APPLE)
+    target_sources(phvikapen PRIVATE cpp/SystemMenus.mm)
+    target_link_libraries(phvikapen PRIVATE "-framework Foundation")
+else()
+    target_sources(phvikapen PRIVATE cpp/SystemMenus.cpp)
+endif()
 
 qt_add_qml_module(phvikapen
     URI PhvikaPen
