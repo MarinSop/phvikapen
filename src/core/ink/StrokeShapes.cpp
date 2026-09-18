@@ -90,8 +90,8 @@ Stroke shaped(const Stroke& stroke, Shape shape) {
     const float radiusX = bounds->width() / 2.0F;
     const float radiusY = bounds->height() / 2.0F;
     for (std::size_t i = 0; i <= kEllipseCorners; ++i) {
-        const float angle = 2.0F * std::numbers::pi_v<float> * static_cast<float>(i)
-                            / static_cast<float>(kEllipseCorners);
+        const float angle = 2.0F * std::numbers::pi_v<float>
+                            * static_cast<float>(i) / static_cast<float>(kEllipseCorners);
         drawn.append(InkSample{
             .x = centerX + (radiusX * std::cos(angle)),
             .y = centerY + (radiusY * std::sin(angle)),

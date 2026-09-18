@@ -74,6 +74,14 @@ into a real problem earlier.
 - **A box is always upright.** Boxes and ovals take the upright rectangle around what was drawn, so
   a box cannot be drawn at an angle, and there is no snapping to a square or a circle.
 
+## Pages
+
+- **Only pages can be dragged, and only inside their section.** Sections are still moved through
+  their menu, a page cannot be dragged into another section, and nothing is shown between the rows
+  to say where the page would land.
+- **A duplicated page copies the whole page.** Its strokes are written again, so duplicating a full
+  page costs as much room as the page itself even where nothing was changed.
+
 ## Experience
 
 - **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the

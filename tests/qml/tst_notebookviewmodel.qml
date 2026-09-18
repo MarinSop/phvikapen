@@ -362,6 +362,44 @@ TestCase {
         canvas.shape = 0;
     }
 
+    function test_aPageCanBeDuplicatedWithWhatIsOnIt() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 120, 120);
+        compare(notebook.pageCount, 1);
+        compare(notebook.strokeCount, 1);
+
+        notebook.duplicatePage(0);
+
+        tryCompare(notebook, "pageCount", 2);
+        compare(notebook.currentPage, 1);
+        tryCompare(notebook, "strokeCount", 1);
+        notebook.previousPage();
+        compare(notebook.strokeCount, 1);
+        notebook.undo();
+        compare(notebook.pageCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aDuplicatedPageKeepsItsOwnStrokesAfterReopening() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+        draw(first, 120, 120);
+        first.duplicatePage(0);
+        tryCompare(first, "pageCount", 2);
+        draw(first, 200, 180);
+        tryCompare(first, "strokeCount", 2);
+        first.destroy();
+        wait(0);
+
+        const reopened = openNotebook(path);
+
+        compare(reopened.pageCount, 2);
+        compare(reopened.strokeCount, 1);
+        reopened.nextPage();
+        tryCompare(reopened, "strokeCount", 2);
+        compare(reopened.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

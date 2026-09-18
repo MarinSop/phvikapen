@@ -10,6 +10,7 @@ import PhvikaPen.Ui
 Pane {
     id: root
 
+    property int draggedPage: -1
     property NotebookViewModel notebook: null
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
 
@@ -198,12 +199,46 @@ Pane {
                 required property int index
                 required property string title
 
+                Drag.active: pageDrag.active
+                Drag.hotSpot.x: width / 2
+                Drag.hotSpot.y: height / 2
+                Drag.source: pageDelegate
                 highlighted: pageDelegate.index === root.notebook.currentPage
                 text: pageDelegate.title
                 width: pageList.width
+                z: pageDrag.active ? 2 : 1
 
                 onClicked: root.notebook.currentPage = pageDelegate.index
                 onPressAndHold: pageMenu.popup()
+
+                DragHandler {
+                    id: pageDrag
+
+                    target: null
+                    yAxis.enabled: true
+
+                    onActiveChanged: {
+                        if (active) {
+                            root.draggedPage = pageDelegate.index;
+                            pageDelegate.grabToImage(function (result) {
+                                pageDelegate.Drag.imageSource = result.url;
+                            });
+                        } else {
+                            pageDelegate.Drag.drop();
+                            root.draggedPage = -1;
+                        }
+                    }
+                }
+
+                DropArea {
+                    anchors.fill: parent
+
+                    onDropped: {
+                        if (root.draggedPage >= 0 && root.draggedPage !== pageDelegate.index) {
+                            root.notebook.movePage(root.draggedPage, pageDelegate.index);
+                        }
+                    }
+                }
 
                 TapHandler {
                     acceptedButtons: Qt.RightButton
@@ -218,6 +253,13 @@ Pane {
                         text: qsTr("Rename…")
 
                         onTriggered: root.rename(false, pageDelegate.index, pageDelegate.title)
+                    }
+
+                    MenuItem {
+                        objectName: "duplicatePageItem"
+                        text: qsTr("Duplicate")
+
+                        onTriggered: root.notebook.duplicatePage(pageDelegate.index)
                     }
 
                     MenuItem {

@@ -156,6 +156,7 @@ public:
     Q_INVOKABLE void addPage();
     Q_INVOKABLE void deletePage(int index);
     Q_INVOKABLE void movePage(int from, int to);
+    Q_INVOKABLE void duplicatePage(int index);
     Q_INVOKABLE void renamePage(int index, const QString& title);
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
@@ -238,6 +239,7 @@ private:
     void showLoadedOutline(std::uint64_t opening, core::Result<core::NotebookOutline> outline);
     void showLoadedPage(std::uint64_t opening, const core::Uuid& pageId,
                         core::Result<std::vector<core::PlacedStroke>> strokes);
+    void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes);
     void goToPage(const core::Uuid& pageId);
     void goToPlace(std::size_t section, std::size_t page);
     void setLoaded(bool loaded);

@@ -50,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pasted, onto the same page or another one, and given another colour from the palette.
 - Straight lines, boxes and ovals: the pen draws the shape that was chosen instead of the line that
   was actually drawn, and which one is chosen is remembered between sessions.
+- A page can be duplicated with everything on it, and pages can be put in another order by dragging
+  them in the sidebar.
 
 ### Changed
 

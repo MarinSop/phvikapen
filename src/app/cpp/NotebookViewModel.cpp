@@ -639,6 +639,73 @@ void NotebookViewModel::addPage() {
         core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1}, page));
 }
 
+void NotebookViewModel::duplicatePage(int index) {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section || !m_storage) {
+        return;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    const std::optional<std::size_t> at = checkedIndex(index, pages.size());
+    if (!at) {
+        return;
+    }
+    const core::PageInfo original = pages[*at];
+
+    if (const auto cached = m_pages.find(original.id); cached != m_pages.end()) {
+        copyPage(original, cached->second->strokes());
+        return;
+    }
+
+    const std::uint64_t opening = m_opening;
+    const auto wanted = std::make_shared<const core::PageInfo>(original);
+    m_storage->loadPage(
+        wanted->id, [this, opening, wanted](core::Result<std::vector<core::PlacedStroke>> strokes) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, wanted, strokes = std::move(strokes)] {
+                    if (opening != m_opening || !strokes) {
+                        return;
+                    }
+                    copyPage(*wanted, *strokes);
+                },
+                Qt::QueuedConnection);
+        });
+}
+
+void NotebookViewModel::copyPage(const core::PageInfo& original,
+                                 std::span<const core::PlacedStroke> strokes) {
+    const std::optional<core::PagePlace> place = m_outline.placeOf(original.id);
+    if (!place || !m_storage) {
+        return;
+    }
+
+    core::PageInfo copy{
+        .id = m_ids.next(),
+        .title = original.title,
+        .style = original.style,
+        .media = original.media,
+    };
+
+    std::vector<core::PlacedStroke> copies;
+    copies.reserve(strokes.size());
+    auto page = std::make_unique<core::Page>(copy.id);
+    for (const core::PlacedStroke& placed : strokes) {
+        core::Stroke fresh{m_ids.next(), placed.stroke.style()};
+        for (const core::InkSample& sample : placed.stroke.samples()) {
+            fresh.append(sample);
+        }
+        core::PlacedStroke made{.ordinal = placed.ordinal, .stroke = std::move(fresh)};
+        std::ignore = page->insert(made);
+        copies.push_back(std::move(made));
+    }
+    m_pages.insert_or_assign(copy.id, std::move(page));
+
+    runCommand(std::make_unique<core::DuplicatePageCommand>(
+        &m_outline, &*m_storage,
+        core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1}, std::move(copy),
+        std::move(copies)));
+}
+
 void NotebookViewModel::deletePage(int index) {
     const std::optional<std::size_t> section = currentSectionIndex();
     if (!section || !m_storage) {

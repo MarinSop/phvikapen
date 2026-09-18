@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
+#include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/undo/UndoStack.hpp"
 
@@ -31,6 +32,23 @@ private:
     PagePlace m_place;
     PageInfo m_page;
     bool m_stored{false};
+};
+
+class DuplicatePageCommand final : public ICommand {
+public:
+    DuplicatePageCommand(Outline* outline, StorageThread* storage, PagePlace place, PageInfo page,
+                         std::vector<PlacedStroke> strokes) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Outline* m_outline;
+    StorageThread* m_storage;
+    PagePlace m_place;
+    PageInfo m_page;
+    std::vector<PlacedStroke> m_strokes;
 };
 
 class DeletePageCommand final : public ICommand {
