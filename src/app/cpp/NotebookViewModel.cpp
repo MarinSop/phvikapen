@@ -6,6 +6,7 @@
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
+#include "core/ink/StrokeEraser.hpp"
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/ink/StrokeSelection.hpp"
 #include "core/model/Asset.hpp"
@@ -547,8 +548,8 @@ void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const cor
     m_owner->erase(from, to, radius);
 }
 
-void NotebookViewModel::Sink::lassoFinished(std::span<const core::Point> polygon) {
-    m_owner->selectInside(polygon);
+void NotebookViewModel::Sink::selectionDrawn(std::span<const core::Point> shape) {
+    m_owner->selectInside(shape);
 }
 
 void NotebookViewModel::Sink::selectionMoved(float dx, float dy) {
@@ -588,14 +589,43 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
         .to = {.x = to.x, .y = to.y},
         .radius = radius,
     };
-    bool found = false;
+    m_sweeps.push_back(sweep);
+
+    bool changed = false;
     for (const core::Uuid& strokeId : page->strokesTouchedBy(sweep)) {
-        if (std::ranges::find(m_erasing, strokeId) == m_erasing.end()) {
+        if (!m_erasePieces.contains(strokeId)) {
+            const core::PlacedStroke* found = nullptr;
+            for (const core::PlacedStroke& placed : page->strokes()) {
+                if (placed.stroke.id() == strokeId) {
+                    found = &placed;
+                    break;
+                }
+            }
+            if (found == nullptr) {
+                continue;
+            }
+            m_erasePieces.emplace(strokeId, std::vector<core::Stroke>{found->stroke});
             m_erasing.push_back(strokeId);
-            found = true;
         }
     }
-    if (found) {
+
+    const std::span<const core::EraserSweep> latest{&m_sweeps.back(), 1};
+    for (auto& [strokeId, pieces] : m_erasePieces) {
+        std::vector<core::Stroke> left;
+        for (const core::Stroke& piece : pieces) {
+            std::vector<core::Stroke> cut = core::erased(piece, latest, m_ids);
+            if (core::wholeStrokeSurvives(piece, cut)) {
+                left.push_back(piece);
+                continue;
+            }
+            changed = true;
+            left.insert(left.end(), std::make_move_iterator(cut.begin()),
+                        std::make_move_iterator(cut.end()));
+        }
+        pieces = std::move(left);
+    }
+
+    if (changed) {
         refreshCanvas();
     }
 }
@@ -604,14 +634,31 @@ void NotebookViewModel::finishErasing() {
     core::Page* const page = currentPageData();
     if (m_erasing.empty() || page == nullptr || !m_storage) {
         m_erasing.clear();
+        m_erasePieces.clear();
+        m_sweeps.clear();
         return;
     }
-    runCommand(std::make_unique<core::EraseStrokesCommand>(page, &*m_storage,
-                                                           std::exchange(m_erasing, {})));
+
+    std::int64_t ordinal = page->nextOrdinal();
+    std::vector<core::PlacedStroke> pieces;
+    for (const auto& [strokeId, left] : m_erasePieces) {
+        for (const core::Stroke& piece : left) {
+            pieces.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = piece});
+            ++ordinal;
+        }
+    }
+
+    std::vector<core::Uuid> erasedIds = std::exchange(m_erasing, {});
+    m_erasePieces.clear();
+    m_sweeps.clear();
+    runCommand(std::make_unique<core::SplitStrokesCommand>(page, &*m_storage, std::move(erasedIds),
+                                                           std::move(pieces)));
 }
 
 void NotebookViewModel::undo() {
     m_erasing.clear();
+    m_erasePieces.clear();
+    m_sweeps.clear();
     if (const core::ICommand* const next = m_history.nextUndo()) {
         const std::optional<core::Uuid> pageToShow = next->pageToShow();
         finishChange(m_history.undo(), pageToShow);
@@ -620,6 +667,8 @@ void NotebookViewModel::undo() {
 
 void NotebookViewModel::redo() {
     m_erasing.clear();
+    m_erasePieces.clear();
+    m_sweeps.clear();
     if (const core::ICommand* const next = m_history.nextRedo()) {
         const std::optional<core::Uuid> pageToShow = next->pageToShow();
         finishChange(m_history.redo(), pageToShow);
@@ -1307,7 +1356,11 @@ void NotebookViewModel::refreshCanvas() {
     const core::PageInfo* const info = currentPageInfo();
     const core::PageStyle style = info == nullptr ? core::PageStyle{} : info->style;
     if (const core::Page* const page = currentPageData()) {
-        m_canvas->showPage(*page, style, m_erasing);
+        std::vector<core::Stroke> pieces;
+        for (const auto& [strokeId, left] : m_erasePieces) {
+            pieces.insert(pieces.end(), left.begin(), left.end());
+        }
+        m_canvas->showPage(*page, style, m_erasing, pieces);
     } else {
         const core::Page placeholder{m_currentPage};
         m_canvas->showPage(placeholder, style);

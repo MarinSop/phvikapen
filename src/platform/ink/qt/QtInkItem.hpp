@@ -74,7 +74,8 @@ public:
     Q_INVOKABLE void clear();
 
     void showPage(const core::Page& page, const core::PageStyle& style,
-                  std::span<const core::Uuid> hidden = {});
+                  std::span<const core::Uuid> hidden = {},
+                  std::span<const core::Stroke> extra = {});
 
     void showView(const core::Viewport& viewport);
 
@@ -223,9 +224,9 @@ private:
     [[nodiscard]] std::vector<core::InkVertex>& activeVertices() noexcept;
 
     void rebuildBuffers();
-    void beginLasso(const core::InkSample& sample);
-    void appendToLasso(const core::InkSample& sample);
-    void finishLasso();
+    void beginMarquee(const core::InkSample& sample);
+    void growMarquee(const core::InkSample& sample);
+    void finishMarquee();
     void beginDrag(const core::InkSample& sample);
     void dragTo(const core::InkSample& sample);
     void finishDrag();
@@ -238,7 +239,14 @@ private:
     std::vector<core::InkVertex> m_overlay;
     std::vector<core::Uuid> m_selected;
     std::vector<core::Uuid> m_hidden;
-    std::vector<core::Point> m_lasso;
+    std::vector<core::Stroke> m_extra;
+
+    struct Marquee {
+        core::Point from;
+        core::Point to;
+    };
+
+    std::optional<Marquee> m_marquee;
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
     core::Shape m_shape{core::Shape::Freehand};

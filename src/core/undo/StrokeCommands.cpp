@@ -186,6 +186,46 @@ std::optional<Uuid> RestyleStrokesCommand::pageToShow() const {
     return m_page->id();
 }
 
+SplitStrokesCommand::SplitStrokesCommand(Page* page, StorageThread* storage,
+                                         std::vector<Uuid> strokeIds,
+                                         std::vector<PlacedStroke> pieces) noexcept
+    : m_page{page}, m_storage{storage}, m_strokeIds{std::move(strokeIds)},
+      m_pieces{std::move(pieces)} {}
+
+Result<void> SplitStrokesCommand::apply() {
+    std::vector<PlacedStroke> erased;
+    erased.reserve(m_strokeIds.size());
+    for (const Uuid& strokeId : m_strokeIds) {
+        Result<PlacedStroke> taken = m_page->remove(strokeId);
+        if (!taken) {
+            for (PlacedStroke& placed : erased) {
+                std::ignore = m_page->insert(std::move(placed));
+            }
+            return std::unexpected{taken.error()};
+        }
+        erased.push_back(std::move(*taken));
+        m_storage->removeStroke(m_page->id(), strokeId);
+    }
+    m_erased = std::move(erased);
+
+    std::vector<PlacedStroke> copies = m_pieces;
+    return restoreStrokes(*m_page, *m_storage, std::move(copies));
+}
+
+Result<void> SplitStrokesCommand::revert() {
+    for (const PlacedStroke& placed : m_pieces) {
+        if (const Result<PlacedStroke> taken = m_page->remove(placed.stroke.id()); !taken) {
+            return std::unexpected{taken.error()};
+        }
+        m_storage->removeStroke(m_page->id(), placed.stroke.id());
+    }
+    return restoreStrokes(*m_page, *m_storage, std::exchange(m_erased, {}));
+}
+
+std::optional<Uuid> SplitStrokesCommand::pageToShow() const {
+    return m_page->id();
+}
+
 Result<void> EraseStrokesCommand::apply() {
     std::vector<PlacedStroke> erased;
     erased.reserve(m_strokeIds.size());

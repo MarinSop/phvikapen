@@ -92,6 +92,23 @@ private:
     std::vector<PlacedStroke> m_before;
 };
 
+class SplitStrokesCommand final : public ICommand {
+public:
+    SplitStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds,
+                        std::vector<PlacedStroke> pieces) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_strokeIds;
+    std::vector<PlacedStroke> m_pieces;
+    std::vector<PlacedStroke> m_erased;
+};
+
 class EraseStrokesCommand final : public ICommand {
 public:
     EraseStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds) noexcept;

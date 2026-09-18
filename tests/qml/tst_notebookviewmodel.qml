@@ -54,22 +54,23 @@ TestCase {
         draw(notebook, 40, 120);
         draw(notebook, 200, 200);
         const canvas = notebook.canvas;
+        canvas.eraserRadius = 30;
         canvas.erasing = true;
 
         mousePress(canvas, 40, 30);
         mouseMove(canvas, 40, 80, -1, Qt.LeftButton);
         mouseMove(canvas, 40, 150, -1, Qt.LeftButton);
-        compare(notebook.strokeCount, 3);
-
         mouseRelease(canvas, 40, 150);
-        compare(notebook.strokeCount, 1);
+        const afterErasing = notebook.strokeCount;
+        verify(afterErasing !== 3);
 
         notebook.undo();
         compare(notebook.strokeCount, 3);
 
         notebook.redo();
-        compare(notebook.strokeCount, 1);
+        compare(notebook.strokeCount, afterErasing);
         compare(notebook.errorMessage, "");
+        canvas.erasing = false;
     }
 
     function test_theEraserLeavesUntouchedStrokesAlone() {
@@ -234,16 +235,14 @@ TestCase {
         compare(copy.errorMessage, "");
     }
 
-    function lasso(canvas, left, top, right, bottom) {
+    function marquee(canvas, left, top, right, bottom) {
         mousePress(canvas, left, top);
-        mouseMove(canvas, right, top, -1, Qt.LeftButton);
+        mouseMove(canvas, (left + right) / 2, (top + bottom) / 2, -1, Qt.LeftButton);
         mouseMove(canvas, right, bottom, -1, Qt.LeftButton);
-        mouseMove(canvas, left, bottom, -1, Qt.LeftButton);
-        mouseMove(canvas, left, top, -1, Qt.LeftButton);
-        mouseRelease(canvas, left, top);
+        mouseRelease(canvas, right, bottom);
     }
 
-    function test_aLassoPicksTheStrokesInsideIt() {
+    function test_aMarqueePicksTheStrokesInsideIt() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
@@ -251,7 +250,7 @@ TestCase {
         compare(notebook.strokeCount, 2);
 
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
 
         compare(canvas.selectedCount, 1);
         compare(notebook.errorMessage, "");
@@ -262,7 +261,7 @@ TestCase {
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
         compare(canvas.selectedCount, 1);
 
         const box = canvas.selectionRect;
@@ -284,7 +283,7 @@ TestCase {
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
         compare(canvas.selectedCount, 1);
 
         notebook.deleteSelection();
@@ -296,12 +295,12 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
-    function test_theLassoLetsGoWhenTheToolIsPutAway() {
+    function test_theSelectionLetsGoWhenTheToolIsPutAway() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
         compare(canvas.selectedCount, 1);
 
         canvas.selecting = false;
@@ -314,7 +313,7 @@ TestCase {
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
         compare(canvas.selectedCount, 1);
 
         notebook.copySelection();
@@ -335,7 +334,7 @@ TestCase {
         const canvas = notebook.canvas;
         draw(notebook, 120, 120);
         canvas.selecting = true;
-        lasso(canvas, 100, 100, 200, 200);
+        marquee(canvas, 100, 100, 200, 200);
         compare(canvas.selectedCount, 1);
 
         notebook.recolourSelection("#d13438");
@@ -469,6 +468,29 @@ TestCase {
         notebook.wantThumbnail(1);
 
         tryVerify(() => notebook.pages.data(notebook.pages.index(1, 0), Qt.UserRole + 3) !== "");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theEraserTakesOutOnlyTheBitItTouches() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        mousePress(canvas, 60, 150);
+        for (let x = 60; x <= 300; x += 20) {
+            mouseMove(canvas, x, 150, -1, Qt.LeftButton);
+        }
+        mouseRelease(canvas, 300, 150);
+        compare(notebook.strokeCount, 1);
+
+        canvas.eraserRadius = 6;
+        canvas.erasing = true;
+        mousePress(canvas, 180, 150);
+        mouseMove(canvas, 185, 150, -1, Qt.LeftButton);
+        mouseRelease(canvas, 185, 150);
+        canvas.erasing = false;
+
+        compare(notebook.strokeCount, 2);
+        notebook.undo();
+        compare(notebook.strokeCount, 1);
         compare(notebook.errorMessage, "");
     }
 
@@ -624,10 +646,15 @@ TestCase {
         const shift = (canvas.viewOrigin.y - before) * canvas.zoom;
         verify(shift > 10);
 
+        canvas.eraserRadius = 20;
         canvas.erasing = true;
         mousePress(canvas, 150, 100 - shift);
-        mouseRelease(canvas, 150, 100 - shift);
+        mouseMove(canvas, 170, 110 - shift, -1, Qt.LeftButton);
+        mouseMove(canvas, 190, 120 - shift, -1, Qt.LeftButton);
+        mouseRelease(canvas, 190, 120 - shift);
+
         compare(notebook.strokeCount, 0);
+        canvas.erasing = false;
     }
 
     function test_oneUndoBringsAClearedPageBack() {

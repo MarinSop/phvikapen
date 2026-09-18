@@ -17,6 +17,7 @@ target_sources(phvikapen_core
         id/Uuid.cpp
         id/Uuid7Generator.cpp
         ink/Stroke.cpp
+        ink/StrokeEraser.cpp
         ink/StrokeHitTest.cpp
         ink/StrokeMesh.cpp
         ink/StrokeOutline.cpp
@@ -52,6 +53,7 @@ target_sources(phvikapen_core
             id/Uuid7Generator.hpp
             ink/InkSample.hpp
             ink/Stroke.hpp
+            ink/StrokeEraser.hpp
             ink/StrokeHitTest.hpp
             ink/StrokeMesh.hpp
             ink/StrokeOutline.hpp

@@ -29,7 +29,7 @@ public:
 
     virtual void eraseFinished() = 0;
 
-    virtual void lassoFinished(std::span<const core::Point> polygon) = 0;
+    virtual void selectionDrawn(std::span<const core::Point> shape) = 0;
 
     virtual void selectionMoved(float dx, float dy) = 0;
 };

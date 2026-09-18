@@ -10,6 +10,7 @@
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
@@ -218,7 +219,7 @@ private:
         void eraserMoved(const core::InkSample& from, const core::InkSample& to,
                          float radius) override;
         void eraseFinished() override;
-        void lassoFinished(std::span<const core::Point> polygon) override;
+        void selectionDrawn(std::span<const core::Point> shape) override;
         void selectionMoved(float dx, float dy) override;
 
     private:
@@ -295,6 +296,8 @@ private:
     std::optional<core::StorageThread> m_storage;
     core::UndoStack m_history;
     std::vector<core::Uuid> m_erasing;
+    std::vector<core::EraserSweep> m_sweeps;
+    std::map<core::Uuid, std::vector<core::Stroke>> m_erasePieces;
     std::optional<platform::pdf::PdfRenderer> m_pdf;
     core::ContentId m_openAsset;
     QTimer m_mediaTimer;

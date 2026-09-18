@@ -12,6 +12,7 @@
 #include <QWheelEvent>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -100,7 +101,7 @@ void QtInkItem::setStrokeWidth(qreal width) {
 }
 
 void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
-                         std::span<const core::Uuid> hidden) {
+                         std::span<const core::Uuid> hidden, std::span<const core::Stroke> extra) {
     cancelStroke();
 
     const bool otherPage = page.id() != m_shownPage;
@@ -135,9 +136,10 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
     m_meshes = std::move(kept);
 
     m_hidden.assign(hidden.begin(), hidden.end());
+    m_extra.assign(extra.begin(), extra.end());
     if (otherPage) {
         m_selected.clear();
-        m_lasso.clear();
+        m_marquee.reset();
         m_dragFrom.reset();
         m_dragOffset = {};
         emit selectionChanged();
@@ -152,9 +154,11 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
 
 namespace {
 
-constexpr core::Color kLassoColor{.red = 60, .green = 110, .blue = 220, .alpha = 160};
-constexpr core::Color kSelectionColor{.red = 60, .green = 110, .blue = 220, .alpha = 70};
-constexpr float kLassoWidth = 1.5F;
+constexpr core::Color kMarqueeColor{.red = 60, .green = 110, .blue = 220, .alpha = 220};
+constexpr core::Color kMarqueeFill{.red = 60, .green = 110, .blue = 220, .alpha = 30};
+constexpr core::Color kSelectionColor{.red = 60, .green = 110, .blue = 220, .alpha = 200};
+constexpr core::Color kSelectionFill{.red = 60, .green = 110, .blue = 220, .alpha = 22};
+constexpr float kOutlinePixels = 1.5F;
 constexpr float kSelectionMargin = 6.0F;
 
 void appendLine(std::vector<InkVertex>& into, core::Point from, core::Point to, float width,
@@ -164,11 +168,32 @@ void appendLine(std::vector<InkVertex>& into, core::Point from, core::Point to, 
                         style);
 }
 
-void appendBox(std::vector<InkVertex>& into, const core::Rect& box, const core::Color& color) {
+void appendFill(std::vector<InkVertex>& into, const core::Rect& box, const core::Color& color) {
     const core::StrokeStyle style{.color = color, .width = box.height()};
     const float middle = (box.top + box.bottom) / 2.0F;
     core::appendSegment(into, InkSample{.x = box.left, .y = middle},
                         InkSample{.x = box.right, .y = middle}, style);
+}
+
+void appendOutline(std::vector<InkVertex>& into, const core::Rect& box, float width,
+                   const core::Color& color) {
+    const core::Point topLeft{.x = box.left, .y = box.top};
+    const core::Point topRight{.x = box.right, .y = box.top};
+    const core::Point bottomRight{.x = box.right, .y = box.bottom};
+    const core::Point bottomLeft{.x = box.left, .y = box.bottom};
+    appendLine(into, topLeft, topRight, width, color);
+    appendLine(into, topRight, bottomRight, width, color);
+    appendLine(into, bottomRight, bottomLeft, width, color);
+    appendLine(into, bottomLeft, topLeft, width, color);
+}
+
+[[nodiscard]] core::Rect boxBetween(core::Point from, core::Point to) noexcept {
+    return core::Rect{
+        .left = std::min(from.x, to.x),
+        .top = std::min(from.y, to.y),
+        .right = std::max(from.x, to.x),
+        .bottom = std::max(from.y, to.y),
+    };
 }
 
 }
@@ -196,22 +221,33 @@ void QtInkItem::rebuildBuffers() {
         into.insert(into.end(), mesh.vertices.begin(), mesh.vertices.end());
     }
 
+    for (const core::Stroke& stroke : m_extra) {
+        std::vector<InkVertex>& into =
+            stroke.style().color.alpha < core::Color::kOpaque ? m_highlights : m_vertices;
+        core::appendStroke(into, stroke);
+    }
+
+    const float outline = kOutlinePixels / std::max(m_viewport.scale(), 0.01F);
+
     if (!m_selected.empty()) {
-        const std::optional<core::Rect> bounds = selectionBounds();
-        if (bounds) {
-            const core::Rect shown{
-                .left = std::min(bounds->left, bounds->left + m_dragOffset.x) - kSelectionMargin,
-                .top = std::min(bounds->top, bounds->top + m_dragOffset.y) - kSelectionMargin,
-                .right = std::max(bounds->right, bounds->right + m_dragOffset.x) + kSelectionMargin,
-                .bottom =
-                    std::max(bounds->bottom, bounds->bottom + m_dragOffset.y) + kSelectionMargin,
-            };
-            appendBox(m_overlay, shown, kSelectionColor);
+        if (const std::optional<core::Rect> bounds = selectionBounds()) {
+            const core::Rect shown =
+                core::Rect{
+                    .left = bounds->left + m_dragOffset.x,
+                    .top = bounds->top + m_dragOffset.y,
+                    .right = bounds->right + m_dragOffset.x,
+                    .bottom = bounds->bottom + m_dragOffset.y,
+                }
+                    .inflated(kSelectionMargin);
+            appendFill(m_overlay, shown, kSelectionFill);
+            appendOutline(m_overlay, shown, outline, kSelectionColor);
         }
     }
 
-    for (std::size_t i = 1; i < m_lasso.size(); ++i) {
-        appendLine(m_overlay, m_lasso[i - 1], m_lasso[i], kLassoWidth, kLassoColor);
+    if (m_marquee) {
+        const core::Rect box = boxBetween(m_marquee->from, m_marquee->to);
+        appendFill(m_overlay, box, kMarqueeFill);
+        appendOutline(m_overlay, box, outline, kMarqueeColor);
     }
 
     ++m_generation;
@@ -220,7 +256,7 @@ void QtInkItem::rebuildBuffers() {
 
 void QtInkItem::showSelection(std::vector<core::Uuid> strokeIds) {
     m_selected = std::move(strokeIds);
-    m_lasso.clear();
+    m_marquee.reset();
     m_dragFrom.reset();
     m_dragOffset = {};
     emit selectionChanged();
@@ -264,11 +300,11 @@ void QtInkItem::setSelecting(bool selecting) {
 }
 
 void QtInkItem::clearSelection() {
-    if (m_selected.empty() && m_lasso.empty()) {
+    if (m_selected.empty() && !m_marquee) {
         return;
     }
     m_selected.clear();
-    m_lasso.clear();
+    m_marquee.reset();
     m_dragFrom.reset();
     m_dragOffset = {};
     emit selectionChanged();
@@ -315,31 +351,36 @@ bool QtInkItem::overSelection(const InkSample& sample) const noexcept {
            && sample.y <= box.bottom;
 }
 
-void QtInkItem::beginLasso(const InkSample& sample) {
+void QtInkItem::beginMarquee(const InkSample& sample) {
     m_selected.clear();
-    m_lasso.clear();
-    m_lasso.push_back(core::Point{.x = sample.x, .y = sample.y});
+    const core::Point corner{.x = sample.x, .y = sample.y};
+    m_marquee = Marquee{.from = corner, .to = corner};
     emit selectionChanged();
     rebuildBuffers();
 }
 
-void QtInkItem::appendToLasso(const InkSample& sample) {
-    if (m_lasso.empty()) {
+void QtInkItem::growMarquee(const InkSample& sample) {
+    if (!m_marquee) {
         return;
     }
-    m_lasso.push_back(core::Point{.x = sample.x, .y = sample.y});
+    m_marquee->to = core::Point{.x = sample.x, .y = sample.y};
     rebuildBuffers();
 }
 
-void QtInkItem::finishLasso() {
-    if (m_lasso.size() < 3) {
-        m_lasso.clear();
-        rebuildBuffers();
+void QtInkItem::finishMarquee() {
+    if (!m_marquee) {
         return;
     }
-    const std::vector<core::Point> polygon = std::exchange(m_lasso, {});
-    if (m_sink != nullptr) {
-        m_sink->lassoFinished(polygon);
+    const core::Rect box = boxBetween(m_marquee->from, m_marquee->to);
+    m_marquee.reset();
+    if (m_sink != nullptr && box.width() > 0.0F && box.height() > 0.0F) {
+        const std::array corners{
+            core::Point{.x = box.left, .y = box.top},
+            core::Point{.x = box.right, .y = box.top},
+            core::Point{.x = box.right, .y = box.bottom},
+            core::Point{.x = box.left, .y = box.bottom},
+        };
+        m_sink->selectionDrawn(corners);
     }
     rebuildBuffers();
 }
@@ -402,7 +443,7 @@ void QtInkItem::clear() {
     m_highlights.clear();
     m_overlay.clear();
     m_selected.clear();
-    m_lasso.clear();
+    m_marquee.reset();
     ++m_generation;
     update();
 }
@@ -696,7 +737,7 @@ void QtInkItem::press(const InkSample& sample, bool eraserTip) {
         if (overSelection(sample)) {
             beginDrag(sample);
         } else {
-            beginLasso(sample);
+            beginMarquee(sample);
         }
         return;
     }
@@ -720,8 +761,8 @@ void QtInkItem::move(const InkSample& sample) {
     }
     if (m_dragFrom) {
         dragTo(sample);
-    } else if (!m_lasso.empty()) {
-        appendToLasso(sample);
+    } else if (m_marquee) {
+        growMarquee(sample);
     } else if (m_eraserPosition) {
         moveEraser(sample);
     } else {
@@ -738,9 +779,9 @@ void QtInkItem::release(const InkSample& sample) {
     if (m_dragFrom) {
         dragTo(sample);
         finishDrag();
-    } else if (!m_lasso.empty()) {
-        appendToLasso(sample);
-        finishLasso();
+    } else if (m_marquee) {
+        growMarquee(sample);
+        finishMarquee();
     } else if (m_eraserPosition) {
         moveEraser(sample);
         finishErase();
@@ -751,7 +792,7 @@ void QtInkItem::release(const InkSample& sample) {
 
 bool QtInkItem::isTracking() const noexcept {
     return m_activeStroke.has_value() || m_eraserPosition.has_value() || m_dragFrom.has_value()
-           || m_panFrom.has_value() || !m_lasso.empty();
+           || m_panFrom.has_value() || m_marquee.has_value();
 }
 
 void QtInkItem::beginErase(const InkSample& sample) {

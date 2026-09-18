@@ -490,8 +490,10 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     projection.translate(-m_viewport.origin().x, -m_viewport.origin().y);
     updates->updateDynamicBuffer(m_uniformBuffer.get(), 0, kMatrixBytes, projection.constData());
 
+    // The quad that lays the layer over the page is in clip space, so the picture has to be
+    // turned over wherever the first row of a texture is its top.
     const std::array<float, kVectorBytes / sizeof(float)> layerFlip{
-        rhi()->isYUpInFramebuffer() ? 1.0F : 0.0F,
+        rhi()->isYUpInFramebuffer() ? 0.0F : 1.0F,
         0.0F,
         0.0F,
         0.0F,
