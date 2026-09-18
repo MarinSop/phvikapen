@@ -12,6 +12,8 @@ ToolBar {
     required property ToolViewModel tools
     readonly property InkCanvas canvas: root.notebook === null ? null : root.notebook.canvas
 
+    signal settingsWanted
+
     RowLayout {
         anchors.fill: parent
         spacing: 6
@@ -219,6 +221,15 @@ ToolBar {
             text: qsTr("Clear")
 
             onClicked: root.notebook.clearPage()
+        }
+
+        ToolButton {
+            objectName: "settingsButton"
+            text: qsTr("⚙")
+            ToolTip.text: qsTr("Settings")
+            ToolTip.visible: hovered
+
+            onClicked: root.settingsWanted()
         }
     }
 }

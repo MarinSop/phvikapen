@@ -11,9 +11,15 @@ What works today: notebooks in tabs, each with sections and pages, written on wi
 or a finger on a touch screen. Pages are paper of a chosen size or an endless canvas, blank, lined,
 squared or dotted, or a page of an imported PDF or a picture to write on top of. Three pens, a
 highlighter and an eraser share a colour palette and their widths, every change can be undone, and
-everything is written to the notebook file as it happens. A notebook can be written out as a PDF.
+everything is written to the notebook file as it happens. A notebook can be written out as a PDF,
+and the application updates itself from its published releases.
 
-Still to come: settings and automatic updates.
+## Updates
+
+An installed application looks for a newer version when it starts and offers to install it and
+restart. The setting can be turned off in the settings dialog, which also says where the notebooks
+are kept. Where to look is the build setting `PHVIKAPEN_UPDATE_FEED`: a repository of releases by
+default, or a folder of releases to try the whole path out locally.
 
 ## Where notebooks are kept
 

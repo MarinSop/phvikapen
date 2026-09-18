@@ -50,6 +50,15 @@ into a real problem earlier.
 - **The ink is a shape, not a line.** Every stroke is written as its outline. That is exact, but a
   page of many strokes gives a larger file than the same drawing as paths with a width.
 
+## Updates and settings
+
+- **Nothing is ever asked before it phones home.** The first start looks for a newer version
+  without asking, and the only way not to is to turn the setting off afterwards.
+- **An update is offered once.** If the bar is ignored, nothing brings it back until the next
+  start, and there is no way to see what changed in the new version.
+- **The settings are thin.** The paper new notebooks start with, the pressure curve of the pens and
+  the keyboard shortcuts all belong there, and none of them are in it.
+
 ## Experience
 
 - **The highlighter darkens where it crosses itself.** Translucent ink is blended per segment, so a

@@ -41,7 +41,9 @@ public:
 
     [[nodiscard]] QString version() const { return m_version; }
 
-    [[nodiscard]] bool busy() const { return m_state == State::Looking || m_state == State::Installing; }
+    [[nodiscard]] bool busy() const {
+        return m_state == State::Looking || m_state == State::Installing;
+    }
 
     Q_INVOKABLE void check();
 

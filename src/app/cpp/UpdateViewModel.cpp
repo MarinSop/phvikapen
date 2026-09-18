@@ -96,8 +96,8 @@ void UpdateViewModel::install() {
         m_worker.join();
     }
 
-    const auto update = std::make_shared<const UpdateInfo>(
-        UpdateInfo{.version = m_version.toStdString()});
+    const auto update =
+        std::make_shared<const UpdateInfo>(UpdateInfo{.version = m_version.toStdString()});
     m_worker = std::jthread{[this, update] {
         try {
             core::Result<void> installed = m_updater->downloadAndRestart(*update);

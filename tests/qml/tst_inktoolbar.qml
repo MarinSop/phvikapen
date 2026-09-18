@@ -26,11 +26,29 @@ TestCase {
         verify(!findChild(toolBar, "clearButton").enabled);
     }
 
+    function test_d_theSettingsButtonAsksForSettings() {
+        const asked = createTemporaryObject(signalSpyComponent, testCase, {
+            target: toolBar,
+            signalName: "settingsWanted"
+        });
+
+        mouseClick(findChild(toolBar, "settingsButton"));
+
+        compare(asked.count, 1);
+    }
+
     height: 64
     name: "InkToolBar"
     visible: true
     when: windowShown
     width: 640
+
+    Component {
+        id: signalSpyComponent
+
+        SignalSpy {
+        }
+    }
 
     ToolViewModel {
         id: tools

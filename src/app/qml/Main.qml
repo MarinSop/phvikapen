@@ -17,17 +17,34 @@ ApplicationWindow {
     header: InkToolBar {
         notebook: root.notebook
         tools: toolState
+
+        onSettingsWanted: settingsDialog.open()
     }
 
     ToolViewModel {
         id: toolState
     }
 
+    SettingsViewModel {
+        id: settings
+    }
+
     UpdateViewModel {
         id: updates
 
-        Component.onCompleted: updates.check()
+        Component.onCompleted: {
+            if (settings.lookForUpdates) {
+                updates.check();
+            }
+        }
         onRestartWanted: Qt.quit()
+    }
+
+    SettingsDialog {
+        id: settingsDialog
+
+        settings: settings
+        updates: updates
     }
 
     NotebooksViewModel {
@@ -111,6 +128,14 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.margins: 16
+    }
+
+    Connections {
+        function onFailed(message) {
+            messageBar.show(message);
+        }
+
+        target: updates
     }
 
     Connections {

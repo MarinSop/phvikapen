@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   both are drawn behind the ink so they can be written on. The files are kept inside the notebook.
 - A notebook can be written out as a PDF: one page of the document per page of the notebook, each
   keeping its own size, with the paper, its ruling, imported pages and the ink on them.
+- The application looks for a newer version when it starts and offers to install it and restart.
+- A settings dialog: whether to look for updates at start, where the notebooks are kept, and which
+  version this is.
 
 ### Changed
 
