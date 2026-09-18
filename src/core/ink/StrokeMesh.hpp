@@ -21,6 +21,10 @@ struct InkVertex {
 void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, const InkSample& to,
                    const StrokeStyle& style);
 
+// The round tip of a pen, left where a line starts, ends or turns a corner.
+void appendDisc(std::vector<InkVertex>& vertices, float x, float y, float radius,
+                const Color& color);
+
 void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke);
 
 }

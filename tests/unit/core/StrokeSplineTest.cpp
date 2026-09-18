@@ -104,6 +104,24 @@ TEST(StrokeSplineTest, IgnoresSamplesThatDoNotMove) {
     EXPECT_EQ(fitted.front(), samples.front());
 }
 
+TEST(StrokeSplineTest, KeepsASharpCornerSharp) {
+    std::vector<InkSample> samples;
+    samples.push_back(InkSample{.x = 0.0F, .y = 0.0F});
+    samples.push_back(InkSample{.x = 20.0F, .y = 0.0F});
+    samples.push_back(InkSample{.x = 20.0F, .y = 20.0F});
+
+    const std::vector<InkSample> fitted = fitSpline(samples, 2.0F);
+
+    ASSERT_FALSE(fitted.empty());
+    for (const InkSample& sample : fitted) {
+        EXPECT_LE(sample.x, 20.0F + 0.01F);
+        EXPECT_GE(sample.y, -0.01F);
+    }
+    EXPECT_TRUE(std::ranges::any_of(fitted, [](const InkSample& sample) {
+        return std::abs(sample.x - 20.0F) < 0.01F && std::abs(sample.y) < 0.01F;
+    }));
+}
+
 TEST(StrokeSplineTest, KeepsASingleSampleAsItIs) {
     const std::vector<InkSample> dot{sampleAt(3.0F, 4.0F), sampleAt(3.0F, 4.0F)};
 

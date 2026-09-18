@@ -29,13 +29,17 @@ TEST(StrokeMeshTest, SegmentWidthFollowsPressureAtEachEnd) {
     EXPECT_FLOAT_EQ(vertices.back().y, 9.0F);
 }
 
-TEST(StrokeMeshTest, ZeroLengthSegmentProducesSquareDot) {
+TEST(StrokeMeshTest, ZeroLengthSegmentProducesARoundDot) {
     std::vector<InkVertex> vertices;
     const InkSample point{.x = 5.0F, .y = 5.0F};
 
     appendSegment(vertices, point, point, StrokeStyle{.width = 2.0F});
 
-    ASSERT_EQ(vertices.size(), 6U);
+    ASSERT_FALSE(vertices.empty());
+    ASSERT_EQ(vertices.size() % 3, 0U);
+    for (const InkVertex& vertex : vertices) {
+        EXPECT_LE(std::hypot(vertex.x - 5.0F, vertex.y - 5.0F), 1.0F + 0.01F);
+    }
     const auto [minX, maxX] = std::ranges::minmax(vertices, {}, &InkVertex::x);
     const auto [minY, maxY] = std::ranges::minmax(vertices, {}, &InkVertex::y);
     EXPECT_FLOAT_EQ(minX.x, 4.0F);
@@ -44,7 +48,7 @@ TEST(StrokeMeshTest, ZeroLengthSegmentProducesSquareDot) {
     EXPECT_FLOAT_EQ(maxY.y, 6.0F);
 }
 
-TEST(StrokeMeshTest, AStrokeIsOneStripWithoutGapsBetweenSegments) {
+TEST(StrokeMeshTest, AStraightStrokeStaysWithinItsOwnWidth) {
     std::vector<InkVertex> vertices;
     Stroke stroke{Uuid{}, StrokeStyle{.width = 4.0F}};
     for (const float x : {0.0F, 10.0F, 20.0F}) {
@@ -54,25 +58,59 @@ TEST(StrokeMeshTest, AStrokeIsOneStripWithoutGapsBetweenSegments) {
     appendStroke(vertices, stroke);
 
     ASSERT_FALSE(vertices.empty());
-    ASSERT_EQ(vertices.size() % 6, 0U);
-    for (std::size_t first = 0; first + 6 < vertices.size(); first += 6) {
-        EXPECT_EQ(vertices[first + 2], vertices[first + 6]);
-        EXPECT_EQ(vertices[first + 5], vertices[first + 7]);
-    }
+    ASSERT_EQ(vertices.size() % 3, 0U);
     for (const InkVertex& vertex : vertices) {
-        EXPECT_NEAR(std::abs(vertex.y - 10.0F), 2.0F, 0.01F);
+        EXPECT_LE(std::abs(vertex.y - 10.0F), 2.0F + 0.01F);
+        EXPECT_GE(vertex.x, -2.0F - 0.01F);
+        EXPECT_LE(vertex.x, 22.0F + 0.01F);
     }
 }
 
-TEST(StrokeMeshTest, AStrokeOfOneSampleIsADot) {
+TEST(StrokeMeshTest, BothEndsOfAStrokeAreRounded) {
+    std::vector<InkVertex> vertices;
+    Stroke stroke{Uuid{}, StrokeStyle{.width = 4.0F}};
+    stroke.append(InkSample{.x = 0.0F, .y = 0.0F});
+    stroke.append(InkSample{.x = 20.0F, .y = 0.0F});
+
+    appendStroke(vertices, stroke);
+
+    const auto reaches = [&vertices](float x) {
+        return std::ranges::any_of(vertices, [x](const InkVertex& vertex) {
+            return std::abs(vertex.x - x) < 0.01F && std::abs(vertex.y) < 0.01F;
+        });
+    };
+    EXPECT_TRUE(reaches(-2.0F));
+    EXPECT_TRUE(reaches(22.0F));
+}
+
+TEST(StrokeMeshTest, ACornerIsFilledInsteadOfLeftGaping) {
+    std::vector<InkVertex> straight;
+    Stroke line{Uuid{}, StrokeStyle{.width = 6.0F}};
+    line.append(InkSample{.x = 0.0F, .y = 0.0F});
+    line.append(InkSample{.x = 40.0F, .y = 0.0F});
+    appendStroke(straight, line);
+
+    std::vector<InkVertex> bent;
+    Stroke corner{Uuid{}, StrokeStyle{.width = 6.0F}};
+    corner.append(InkSample{.x = 0.0F, .y = 0.0F});
+    corner.append(InkSample{.x = 20.0F, .y = 0.0F});
+    corner.append(InkSample{.x = 20.0F, .y = 20.0F});
+    appendStroke(bent, corner);
+
+    EXPECT_GT(bent.size(), straight.size());
+}
+
+TEST(StrokeMeshTest, AStrokeOfOneSampleIsARoundDot) {
     std::vector<InkVertex> vertices;
     Stroke stroke{Uuid{}, StrokeStyle{.width = 2.0F}};
     stroke.append(InkSample{.x = 5.0F, .y = 5.0F});
 
     appendStroke(vertices, stroke);
 
-    EXPECT_EQ(vertices.size(), 6U);
+    ASSERT_FALSE(vertices.empty());
+    for (const InkVertex& vertex : vertices) {
+        EXPECT_LE(std::hypot(vertex.x - 5.0F, vertex.y - 5.0F), 1.0F + 0.01F);
+    }
 }
-
 }
 }

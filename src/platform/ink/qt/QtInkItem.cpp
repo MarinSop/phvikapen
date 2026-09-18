@@ -38,6 +38,7 @@ constexpr float kSheetGap = 24.0F;
 constexpr std::size_t kMostSheetsDrawn = 16;
 // How far down the window the page that is being read is taken from.
 constexpr float kReadingLine = 0.3F;
+constexpr float kHalfWidth = 0.5F;
 
 [[nodiscard]] InkSample makeSample(const QPointF& position, qreal pressure, qreal tiltX,
                                    qreal tiltY, quint64 timestampMs) {
@@ -1150,6 +1151,8 @@ void QtInkItem::refreshLiveStroke(bool full) {
 
     for (std::size_t i = std::max<std::size_t>(m_liveSamples, 1); i < samples.size(); ++i) {
         core::appendSegment(into, samples[i - 1], samples[i], style);
+        core::appendDisc(into, samples[i].x, samples[i].y,
+                         style.width * samples[i].pressure * kHalfWidth, style.color);
     }
     m_liveSamples = samples.size();
     ++m_generation;

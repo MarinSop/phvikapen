@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <numbers>
 #include <span>
 #include <utility>
 #include <vector>
@@ -19,6 +20,9 @@ constexpr float kHalf = 0.5F;
 constexpr float kMaxChannel = 255.0F;
 constexpr float kMinSegmentLength = 1e-4F;
 constexpr std::size_t kVerticesPerSegment = 6;
+constexpr std::size_t kDiscCorners = 16;
+// Straight enough to need no tip left behind: about twenty degrees of turn.
+constexpr float kStraightEnough = 0.94F;
 
 [[nodiscard]] float normalizedChannel(std::uint8_t channel) {
     return static_cast<float>(channel) / kMaxChannel;
@@ -42,6 +46,38 @@ struct Normal {
     return {.x = -dy / length, .y = dx / length};
 }
 
+[[nodiscard]] bool turnsSharply(Normal before, Normal after) {
+    return (before.x * after.x) + (before.y * after.y) < kStraightEnough;
+}
+
+}
+
+void appendDisc(std::vector<InkVertex>& vertices, float x, float y, float radius,
+                const Color& color) {
+    if (radius <= kMinSegmentLength) {
+        return;
+    }
+    const InkVertex tint{
+        .red = normalizedChannel(color.red),
+        .green = normalizedChannel(color.green),
+        .blue = normalizedChannel(color.blue),
+        .alpha = normalizedChannel(color.alpha),
+    };
+    const auto around = [&](std::size_t corner) {
+        const float angle = 2.0F * std::numbers::pi_v<float>
+                            * static_cast<float>(corner) / static_cast<float>(kDiscCorners);
+        InkVertex vertex = tint;
+        vertex.x = x + (radius * std::cos(angle));
+        vertex.y = y + (radius * std::sin(angle));
+        return vertex;
+    };
+    InkVertex middle = tint;
+    middle.x = x;
+    middle.y = y;
+    vertices.reserve(vertices.size() + (kDiscCorners * 3));
+    for (std::size_t corner = 0; corner < kDiscCorners; ++corner) {
+        vertices.insert(vertices.end(), {middle, around(corner), around(corner + 1)});
+    }
 }
 
 void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, const InkSample& to,
@@ -49,17 +85,19 @@ void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, cons
     const float dx = to.x - from.x;
     const float dy = to.y - from.y;
     const float length = std::hypot(dx, dy);
-    const bool isDot = length <= kMinSegmentLength;
 
     const float halfFrom = style.width * from.pressure * kHalf;
     const float halfTo = style.width * to.pressure * kHalf;
 
-    const float directionX = isDot ? 1.0F : dx / length;
-    const float directionY = isDot ? 0.0F : dy / length;
+    if (length <= kMinSegmentLength) {
+        appendDisc(vertices, from.x, from.y, std::max(halfFrom, halfTo), style.color);
+        return;
+    }
+
+    const float directionX = dx / length;
+    const float directionY = dy / length;
     const float normalX = -directionY;
     const float normalY = directionX;
-    const float extendFrom = isDot ? halfFrom : 0.0F;
-    const float extendTo = isDot ? halfTo : 0.0F;
 
     const float red = normalizedChannel(style.color.red);
     const float green = normalizedChannel(style.color.green);
@@ -69,15 +107,11 @@ void appendSegment(std::vector<InkVertex>& vertices, const InkSample& from, cons
         return InkVertex{.x = x, .y = y, .red = red, .green = green, .blue = blue, .alpha = alpha};
     };
 
-    const float fromX = from.x - (directionX * extendFrom);
-    const float fromY = from.y - (directionY * extendFrom);
-    const float toX = to.x + (directionX * extendTo);
-    const float toY = to.y + (directionY * extendTo);
-
-    const InkVertex fromLeft = vertex(fromX + (normalX * halfFrom), fromY + (normalY * halfFrom));
-    const InkVertex fromRight = vertex(fromX - (normalX * halfFrom), fromY - (normalY * halfFrom));
-    const InkVertex toLeft = vertex(toX + (normalX * halfTo), toY + (normalY * halfTo));
-    const InkVertex toRight = vertex(toX - (normalX * halfTo), toY - (normalY * halfTo));
+    const InkVertex fromLeft = vertex(from.x + (normalX * halfFrom), from.y + (normalY * halfFrom));
+    const InkVertex fromRight =
+        vertex(from.x - (normalX * halfFrom), from.y - (normalY * halfFrom));
+    const InkVertex toLeft = vertex(to.x + (normalX * halfTo), to.y + (normalY * halfTo));
+    const InkVertex toRight = vertex(to.x - (normalX * halfTo), to.y - (normalY * halfTo));
 
     vertices.insert(vertices.end(), {fromLeft, fromRight, toLeft, toLeft, fromRight, toRight});
 }
@@ -111,11 +145,25 @@ void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke) {
         return std::pair{left, right};
     };
 
+    const auto halfAt = [&](std::size_t index) {
+        return style.width * samples[index].pressure * kHalf;
+    };
+    const auto tipAt = [&](std::size_t index) {
+        appendDisc(vertices, samples[index].x, samples[index].y, halfAt(index), style.color);
+    };
+
     vertices.reserve(vertices.size() + ((samples.size() - 1) * kVerticesPerSegment));
+    tipAt(0);
+    tipAt(samples.size() - 1);
     Normal normal = normalAt(samples, 0, Normal{.x = 0.0F, .y = 1.0F});
     auto [fromLeft, fromRight] = edges(0, normal);
     for (std::size_t i = 1; i < samples.size(); ++i) {
+        const Normal before = normal;
         normal = normalAt(samples, i, normal);
+        // A corner would leave the two ends of the line gaping, so the pen tip fills it.
+        if (turnsSharply(before, normal)) {
+            tipAt(i);
+        }
         const auto [toLeft, toRight] = edges(i, normal);
         vertices.insert(vertices.end(), {fromLeft, fromRight, toLeft, toLeft, fromRight, toRight});
         fromLeft = toLeft;
