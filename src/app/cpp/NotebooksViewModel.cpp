@@ -1,6 +1,8 @@
 #include "app/cpp/NotebooksViewModel.hpp"
 
 #include "app/cpp/NotebookViewModel.hpp"
+#include "app/cpp/PageDefaults.hpp"
+#include "core/model/PageStyle.hpp"
 
 #include <QDir>
 #include <QFile>
@@ -171,6 +173,22 @@ void NotebooksViewModel::createNotebook(const QString& name) {
         return;
     }
     openNotebook(name);
+    if (NotebookViewModel* const made = current(); made != nullptr) {
+        const core::PageStyle wanted = defaults::pageStyle();
+        if (made->loaded()) {
+            made->applyStyle(wanted);
+        } else {
+            const auto connection = std::make_shared<QMetaObject::Connection>();
+            *connection =
+                connect(made, &NotebookViewModel::loadedChanged, made, [made, wanted, connection] {
+                    if (!made->loaded()) {
+                        return;
+                    }
+                    QObject::disconnect(*connection);
+                    made->applyStyle(wanted);
+                });
+        }
+    }
     refreshLibrary();
 }
 

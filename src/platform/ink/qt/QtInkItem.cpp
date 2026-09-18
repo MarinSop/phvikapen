@@ -124,18 +124,24 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
             kept.push_back(std::move(*found));
             continue;
         }
-        StrokeMesh mesh{.id = placed.stroke.id(), .vertices = {}};
+        StrokeMesh mesh{
+            .id = placed.stroke.id(),
+            .vertices = {},
+            .translucent = placed.stroke.style().color.alpha < core::Color::kOpaque,
+        };
         core::appendStroke(mesh.vertices, placed.stroke);
         kept.push_back(std::move(mesh));
     }
     m_meshes = std::move(kept);
 
     m_vertices.clear();
+    m_highlights.clear();
     for (const StrokeMesh& mesh : m_meshes) {
         if (std::ranges::find(hidden, mesh.id) != hidden.end()) {
             continue;
         }
-        m_vertices.insert(m_vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+        std::vector<InkVertex>& into = mesh.translucent ? m_highlights : m_vertices;
+        into.insert(into.end(), mesh.vertices.begin(), mesh.vertices.end());
     }
 
     ++m_generation;
@@ -166,6 +172,7 @@ void QtInkItem::clear() {
     cancelStroke();
     m_meshes.clear();
     m_vertices.clear();
+    m_highlights.clear();
     ++m_generation;
     update();
 }
@@ -507,13 +514,18 @@ void QtInkItem::finishErase() {
     }
 }
 
+std::vector<InkVertex>& QtInkItem::activeVertices() noexcept {
+    return m_activeIsTranslucent ? m_highlights : m_vertices;
+}
+
 void QtInkItem::beginStroke(const InkSample& sample) {
     finishErase();
     cancelStroke();
     m_filter.reset();
     m_activeStroke.emplace(m_ids.next(), m_style);
     m_activeStroke->append(m_filter.filter(sample));
-    m_activeStrokeFirstVertex = m_vertices.size();
+    m_activeIsTranslucent = m_style.color.alpha < core::Color::kOpaque;
+    m_activeStrokeFirstVertex = activeVertices().size();
     if (m_sink != nullptr) {
         m_sink->strokeStarted(sample);
     }
@@ -526,7 +538,8 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
     const InkSample previous = m_activeStroke->samples().back();
     const InkSample smoothed = m_filter.filter(sample);
     m_activeStroke->append(smoothed);
-    core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
+    const core::StrokeStyle style = m_activeStroke->style();
+    core::appendSegment(activeVertices(), previous, smoothed, style);
     if (m_sink != nullptr) {
         m_sink->sampleAdded(sample);
     }
@@ -537,17 +550,19 @@ void QtInkItem::endStroke(const InkSample& sample) {
     if (!m_activeStroke) {
         return;
     }
-    const InkSample previous = m_activeStroke->samples().back();
-    const InkSample smoothed = m_filter.filter(sample);
-    m_activeStroke->append(smoothed);
-    core::appendSegment(m_vertices, previous, smoothed, m_activeStroke->style());
-
+    m_activeStroke->append(m_filter.filter(sample));
     const core::Stroke finished = std::move(*m_activeStroke);
     m_activeStroke.reset();
-    m_vertices.resize(m_activeStrokeFirstVertex);
-    StrokeMesh mesh{.id = finished.id(), .vertices = {}};
+
+    std::vector<InkVertex>& into = activeVertices();
+    into.resize(m_activeStrokeFirstVertex);
+    StrokeMesh mesh{
+        .id = finished.id(),
+        .vertices = {},
+        .translucent = m_activeIsTranslucent,
+    };
     core::appendStroke(mesh.vertices, finished);
-    m_vertices.insert(m_vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+    into.insert(into.end(), mesh.vertices.begin(), mesh.vertices.end());
     m_meshes.push_back(std::move(mesh));
     ++m_generation;
     if (m_sink != nullptr) {
@@ -562,7 +577,7 @@ void QtInkItem::cancelStroke() {
         return;
     }
     m_activeStroke.reset();
-    m_vertices.resize(m_activeStrokeFirstVertex);
+    activeVertices().resize(m_activeStrokeFirstVertex);
     ++m_generation;
     if (m_sink != nullptr) {
         m_sink->strokeCancelled();

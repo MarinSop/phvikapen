@@ -155,6 +155,10 @@ NotebookViewModel::~NotebookViewModel() {
     }
 }
 
+void NotebookViewModel::applyStyle(const core::PageStyle& style) {
+    changeStyle(style);
+}
+
 void NotebookViewModel::componentComplete() {
     m_completed = true;
     openNotebook();

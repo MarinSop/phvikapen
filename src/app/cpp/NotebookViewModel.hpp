@@ -104,6 +104,8 @@ public:
 
     [[nodiscard]] bool renameTo(const QString& path);
 
+    void applyStyle(const core::PageStyle& style);
+
     [[nodiscard]] platform::ink::QtInkItem* canvas() const { return m_canvas; }
 
     void setCanvas(platform::ink::QtInkItem* canvas);

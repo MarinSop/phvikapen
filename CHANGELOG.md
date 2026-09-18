@@ -44,12 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keyboard shortcuts for the tools: P, H and E, the pens on 1 to 3, and [ and ] for the width.
 - Going back to a page returns to the zoom and the place it was left at.
 - A copy of a notebook can be saved somewhere safe from inside the application.
+- The paper, ruling and orientation new notebooks start on can be chosen in the settings.
 
 ### Changed
 
 - Erasing, undoing and leafing back to a page reuse the shapes of the strokes that did not change
   instead of working all of them out again.
 - Pictures are read on their own thread, so a large photograph no longer holds up the window.
+- The highlighter keeps one even colour where a stroke crosses itself: translucent ink is drawn
+  into a layer of its own and laid over the page once, underneath the pen.
 
 - The ink canvas draws and stores smoothed samples, while ink backends keep reporting the raw ones.
 - Notebook files are read and written on a storage thread, so drawing never waits for the disk.

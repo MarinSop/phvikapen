@@ -105,6 +105,10 @@ public:
 
     void setPressureSensitive(bool sensitive);
 
+    [[nodiscard]] const std::vector<core::InkVertex>& highlights() const noexcept {
+        return m_highlights;
+    }
+
     [[nodiscard]] const std::vector<core::InkVertex>& vertices() const noexcept {
         return m_vertices;
     }
@@ -170,10 +174,15 @@ private:
     struct StrokeMesh {
         core::Uuid id;
         std::vector<core::InkVertex> vertices;
+        bool translucent{};
     };
+
+    [[nodiscard]] std::vector<core::InkVertex>& activeVertices() noexcept;
 
     std::vector<StrokeMesh> m_meshes;
     std::vector<core::InkVertex> m_vertices;
+    std::vector<core::InkVertex> m_highlights;
+    bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;

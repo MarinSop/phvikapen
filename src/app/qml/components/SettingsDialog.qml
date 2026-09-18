@@ -17,6 +17,7 @@ Dialog {
     standardButtons: Dialog.Close
     title: qsTr("Settings")
     width: 460
+    height: 560
 
     ColumnLayout {
         anchors.fill: parent
@@ -66,6 +67,46 @@ Dialog {
 
                 onClicked: root.updates.check()
             }
+        }
+
+        MenuSeparator {
+            Layout.fillWidth: true
+        }
+
+        Label {
+            font.bold: true
+            text: qsTr("New notebooks")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            ComboBox {
+                Layout.fillWidth: true
+                currentIndex: root.settings.paper
+                model: [qsTr("Infinite"), qsTr("A3"), qsTr("A4"), qsTr("A5"), qsTr("Letter"), qsTr("Legal")]
+                objectName: "defaultPaperBox"
+
+                onActivated: root.settings.paper = currentIndex
+            }
+
+            ComboBox {
+                Layout.fillWidth: true
+                currentIndex: root.settings.background
+                model: [qsTr("Blank"), qsTr("Lined"), qsTr("Squares"), qsTr("Dots")]
+                objectName: "defaultBackgroundBox"
+
+                onActivated: root.settings.background = currentIndex
+            }
+        }
+
+        Switch {
+            checked: root.settings.landscape
+            objectName: "defaultLandscapeSwitch"
+            text: qsTr("Landscape")
+
+            onToggled: root.settings.landscape = checked
         }
 
         MenuSeparator {

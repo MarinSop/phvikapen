@@ -10,9 +10,9 @@ into a real problem earlier.
 - **The trash is not undoable and keeps no order.** A page that is put back goes to the end of its
   section, not where it was, and emptying the trash cannot be undone, which is the point but is
   only guarded by asking twice.
-- **Crash safety test.** The promise is that a crash costs at most the stroke being written. There
-  is no test that kills the application in the middle of a stroke and checks that the notebook
-  still opens with everything else in it.
+- **The crash test only kills the writing thread's process.** A second process is killed while it
+  writes and the notebook still opens with everything before the kill, but power loss, a full disk
+  and a killed graphics driver are untested.
 - **Backups are never suggested.** A copy of a notebook can be saved somewhere safe, but nothing
   ever reminds anyone to do it and there is no copy on a schedule.
 
@@ -52,14 +52,14 @@ into a real problem earlier.
   without asking, and the only way not to is to turn the setting off afterwards.
 - **An update is offered once.** If the bar is ignored, nothing brings it back until the next
   start, and there is no way to see what changed in the new version.
-- **The settings are thin.** The paper new notebooks start with, the pressure curve of the pens and
-  the keyboard shortcuts all belong there, and none of them are in it.
+- **The settings are thin.** The paper new notebooks start on is there now, but the pressure curve
+  of the pens and the keyboard shortcuts are not, and the shortcuts cannot be changed.
 
 ## Experience
 
-- **The highlighter darkens where it crosses itself.** Translucent ink is blended per segment, so a
-  stroke that loops over itself is darker there. Drawing all highlighter strokes into a separate
-  layer and compositing that layer once would give an even colour.
+- **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the
+  size of the whole canvas every frame it changes, and always goes under the pen, so a highlighter
+  stroke can never cover ink drawn before it.
 - **The view of a page is forgotten when the notebook closes.** Each page returns to the zoom and
   the place it was left at, but only until the application is closed.
 - **Pen pressure curve.** Width follows pressure directly. A curve per pen, and a way to tune it,

@@ -125,7 +125,28 @@ TestCase {
         compare(after.current.name, "Physics");
     }
 
+    function test_z_aNewNotebookStartsOnThePaperThatWasChosen() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+        settings.paper = PageOptions.A5;
+        settings.background = PageOptions.Grid;
+        const notebooks = openLibrary(newLibrary());
+
+        testCase.addNotebook(notebooks, "Chemistry");
+
+        tryCompare(notebooks.current, "paper", PageOptions.A5);
+        compare(notebooks.current.background, PageOptions.Grid);
+        settings.paper = PageOptions.A4;
+        settings.background = PageOptions.Lined;
+    }
+
     name: "NotebooksViewModel"
+
+    Component {
+        id: settingsComponent
+
+        SettingsViewModel {
+        }
+    }
 
     Component {
         id: notebooksComponent

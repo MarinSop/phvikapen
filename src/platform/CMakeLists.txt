@@ -43,6 +43,8 @@ qt_add_shaders(phvikapen_platform "phvikapen_ink_shaders"
         ink/qt/shaders/background.vert
         ink/qt/shaders/background.frag
         ink/qt/shaders/ink.vert
+        ink/qt/shaders/layer.vert
+        ink/qt/shaders/layer.frag
         ink/qt/shaders/media.vert
         ink/qt/shaders/media.frag
         ink/qt/shaders/ink.frag
