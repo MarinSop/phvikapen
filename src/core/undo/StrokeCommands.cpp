@@ -2,6 +2,8 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/ink/InkSample.hpp"
+#include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeSelection.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/StorageThread.hpp"
@@ -104,6 +106,83 @@ Result<void> MoveStrokesCommand::revert() {
 }
 
 std::optional<Uuid> MoveStrokesCommand::pageToShow() const {
+    return m_page->id();
+}
+
+AddStrokesCommand::AddStrokesCommand(Page* page, StorageThread* storage,
+                                     std::vector<PlacedStroke> placed) noexcept
+    : m_page{page}, m_storage{storage}, m_placed{std::move(placed)} {}
+
+Result<void> AddStrokesCommand::apply() {
+    std::vector<PlacedStroke> copies = m_placed;
+    return restoreStrokes(*m_page, *m_storage, std::move(copies));
+}
+
+Result<void> AddStrokesCommand::revert() {
+    for (const PlacedStroke& placed : m_placed) {
+        if (const Result<PlacedStroke> taken = m_page->remove(placed.stroke.id()); !taken) {
+            return std::unexpected{taken.error()};
+        }
+        m_storage->removeStroke(m_page->id(), placed.stroke.id());
+    }
+    return {};
+}
+
+std::optional<Uuid> AddStrokesCommand::pageToShow() const {
+    return m_page->id();
+}
+
+RestyleStrokesCommand::RestyleStrokesCommand(Page* page, StorageThread* storage,
+                                             std::vector<Uuid> strokeIds,
+                                             StrokeStyle style) noexcept
+    : m_page{page}, m_storage{storage}, m_strokeIds{std::move(strokeIds)}, m_style{style} {}
+
+Result<void> RestyleStrokesCommand::apply() {
+    std::vector<PlacedStroke> before;
+    std::vector<PlacedStroke> after;
+    before.reserve(m_strokeIds.size());
+    after.reserve(m_strokeIds.size());
+
+    for (const Uuid& strokeId : m_strokeIds) {
+        Result<PlacedStroke> taken = m_page->remove(strokeId);
+        if (!taken) {
+            for (PlacedStroke& placed : before) {
+                std::ignore = m_page->insert(std::move(placed));
+            }
+            return std::unexpected{taken.error()};
+        }
+        Stroke restyled{taken->stroke.id(), m_style};
+        for (const InkSample& sample : taken->stroke.samples()) {
+            restyled.append(sample);
+        }
+        after.push_back(PlacedStroke{.ordinal = taken->ordinal, .stroke = std::move(restyled)});
+        before.push_back(std::move(*taken));
+    }
+
+    for (PlacedStroke& placed : after) {
+        const Uuid strokeId = placed.stroke.id();
+        if (const Result<void> put = m_page->insert(placed); !put) {
+            return put;
+        }
+        m_storage->removeStroke(m_page->id(), strokeId);
+        m_storage->insertStroke(m_page->id(), std::move(placed));
+    }
+    m_before = std::move(before);
+    return {};
+}
+
+Result<void> RestyleStrokesCommand::revert() {
+    for (const PlacedStroke& placed : m_before) {
+        if (const Result<PlacedStroke> taken = m_page->remove(placed.stroke.id()); !taken) {
+            return std::unexpected{taken.error()};
+        }
+        m_storage->removeStroke(m_page->id(), placed.stroke.id());
+    }
+    std::vector<PlacedStroke> back = std::exchange(m_before, {});
+    return restoreStrokes(*m_page, *m_storage, std::move(back));
+}
+
+std::optional<Uuid> RestyleStrokesCommand::pageToShow() const {
     return m_page->id();
 }
 

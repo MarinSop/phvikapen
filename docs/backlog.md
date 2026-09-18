@@ -57,9 +57,11 @@ into a real problem earlier.
 
 ## Picking strokes
 
-- **Only whole strokes, only moving.** A stroke is picked when all of it is inside the loop, so a
-  long line through the middle of a paragraph cannot be picked by its middle, and what is picked
-  can be moved and deleted but not resized, turned, recoloured or copied to another page.
+- **Only whole strokes, and no resizing.** A stroke is picked when all of it is inside the loop, so
+  a long line through the middle of a paragraph cannot be picked by its middle, and what is picked
+  can be moved, copied, recoloured and deleted, but not resized or turned.
+- **What was copied is only kept in the notebook it came from.** Strokes cannot be pasted into
+  another notebook, and nothing is put on the system clipboard.
 - **The picture of a picked stroke is worked out again after every move.** Moving rewrites each
   stroke in the notebook file and throws its shape away, so a large selection costs as much as
   drawing it again.

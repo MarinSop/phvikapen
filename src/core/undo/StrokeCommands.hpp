@@ -2,6 +2,7 @@
 
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
+#include "core/ink/Stroke.hpp"
 #include "core/model/Page.hpp"
 #include "core/undo/UndoStack.hpp"
 
@@ -57,6 +58,38 @@ private:
     std::vector<Uuid> m_strokeIds;
     float m_dx;
     float m_dy;
+};
+
+class AddStrokesCommand final : public ICommand {
+public:
+    AddStrokesCommand(Page* page, StorageThread* storage,
+                      std::vector<PlacedStroke> placed) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<PlacedStroke> m_placed;
+};
+
+class RestyleStrokesCommand final : public ICommand {
+public:
+    RestyleStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds,
+                          StrokeStyle style) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_strokeIds;
+    StrokeStyle m_style;
+    std::vector<PlacedStroke> m_before;
 };
 
 class EraseStrokesCommand final : public ICommand {

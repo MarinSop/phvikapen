@@ -309,6 +309,44 @@ TestCase {
         compare(canvas.selectedCount, 0);
     }
 
+    function test_whatIsPickedCanBeCopiedOntoAnotherPage() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        notebook.copySelection();
+        verify(notebook.hasCopiedStrokes);
+        notebook.addPage();
+        compare(notebook.strokeCount, 0);
+        notebook.pasteStrokes();
+
+        compare(notebook.strokeCount, 1);
+        compare(canvas.selectedCount, 1);
+        notebook.undo();
+        compare(notebook.strokeCount, 0);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_whatIsPickedCanBeGivenAnotherColour() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        lasso(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        notebook.recolourSelection("#d13438");
+
+        compare(notebook.strokeCount, 1);
+        verify(notebook.canUndo);
+        notebook.undo();
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

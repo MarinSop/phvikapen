@@ -64,6 +64,24 @@ ToolBar {
 
         ToolButton {
             enabled: root.canvas !== null && root.canvas.selectedCount > 0
+            objectName: "copySelectionButton"
+            text: qsTr("Copy")
+            visible: root.tools.currentTool === ToolViewModel.Selection
+
+            onClicked: root.notebook.copySelection()
+        }
+
+        ToolButton {
+            enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
+            objectName: "pasteButton"
+            text: qsTr("Paste")
+            visible: root.tools.currentTool === ToolViewModel.Selection
+
+            onClicked: root.notebook.pasteStrokes()
+        }
+
+        ToolButton {
+            enabled: root.canvas !== null && root.canvas.selectedCount > 0
             objectName: "deleteSelectionButton"
             text: qsTr("Delete")
             ToolTip.text: qsTr("Delete what is picked")
@@ -124,7 +142,11 @@ ToolBar {
 
                             TapHandler {
                                 onTapped: {
-                                    root.tools.strokeColor = swatch.modelData;
+                                    if (root.canvas !== null && root.canvas.selectedCount > 0) {
+                                        root.notebook.recolourSelection(swatch.modelData);
+                                    } else {
+                                        root.tools.strokeColor = swatch.modelData;
+                                    }
                                     colorMenu.close();
                                 }
                             }

@@ -120,6 +120,26 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequences: [StandardKey.Copy]
+
+        onActivated: {
+            if (root.notebook !== null) {
+                root.notebook.copySelection();
+            }
+        }
+    }
+
+    Shortcut {
+        sequences: [StandardKey.Paste]
+
+        onActivated: {
+            if (root.notebook !== null) {
+                root.notebook.pasteStrokes();
+            }
+        }
+    }
+
+    Shortcut {
         sequences: [StandardKey.Delete, StandardKey.Backspace]
 
         onActivated: {

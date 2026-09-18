@@ -19,6 +19,7 @@
 #include "platform/ink/qt/QtInkItem.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
 
+#include <QColor>
 #include <QImage>
 #include <QObject>
 #include <QPointer>
@@ -168,6 +169,13 @@ public:
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
     Q_INVOKABLE void deleteSelection();
+    Q_INVOKABLE void copySelection();
+    Q_INVOKABLE void pasteStrokes();
+    Q_INVOKABLE void recolourSelection(const QColor& color);
+
+    Q_PROPERTY(bool hasCopiedStrokes READ hasCopiedStrokes NOTIFY clipboardChanged FINAL)
+
+    [[nodiscard]] bool hasCopiedStrokes() const { return !m_clipboard.empty(); }
 
     Q_INVOKABLE void refreshTrash();
     Q_INVOKABLE void restoreTrashed(int index);
@@ -190,6 +198,7 @@ signals:
     void currentPageChanged();
     void pageStyleChanged();
     void exportingChanged();
+    void clipboardChanged();
     void exported(const QString& path);
     void copied(const QString& path);
 
@@ -277,6 +286,7 @@ private:
     bool m_exporting{false};
     core::Uuid m_currentPage;
     std::map<core::Uuid, core::Viewport> m_views;
+    std::vector<core::Stroke> m_clipboard;
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
     OutlineListModel m_sectionsModel;

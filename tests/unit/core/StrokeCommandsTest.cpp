@@ -263,5 +263,52 @@ TEST(StrokeCommandsTest, MovingStrokesShiftsThemAndPutsThemBackWhereTheyWere) {
     EXPECT_TRUE(notebook.errors.empty());
 }
 
+TEST(StrokeCommandsTest, AddedStrokesGoInTogetherAndComeOutTogether) {
+    OpenNotebook notebook;
+    UndoStack history;
+    std::vector<PlacedStroke> pasted{
+        PlacedStroke{.ordinal = 0, .stroke = makeStroke(notebook.ids, 10.0F)},
+        PlacedStroke{.ordinal = 1, .stroke = makeStroke(notebook.ids, 50.0F)},
+    };
+
+    ASSERT_TRUE(
+        history.run(std::make_unique<AddStrokesCommand>(&notebook.page, &notebook.storage, pasted))
+            .has_value());
+
+    EXPECT_EQ(idsOn(notebook.page).size(), 2U);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()).size(), 2U);
+
+    ASSERT_TRUE(history.undo().has_value());
+
+    EXPECT_TRUE(idsOn(notebook.page).empty());
+    EXPECT_TRUE(idsInFile(notebook, notebook.page.id()).empty());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(StrokeCommandsTest, AStrokeKeepsItsSamplesWhenItIsGivenAnotherColour) {
+    OpenNotebook notebook;
+    UndoStack history;
+    const Stroke stroke = makeStroke(notebook.ids, 10.0F);
+    ASSERT_TRUE(notebook.page.insert({.ordinal = 0, .stroke = stroke}).has_value());
+    notebook.storage.insertStroke(notebook.page.id(), {.ordinal = 0, .stroke = stroke});
+    const StrokeStyle wanted{.color = Color{.red = 200, .green = 30, .blue = 30}, .width = 6.0F};
+    const std::vector<Uuid> picked{stroke.id()};
+
+    ASSERT_TRUE(history
+                    .run(std::make_unique<RestyleStrokesCommand>(&notebook.page, &notebook.storage,
+                                                                 picked, wanted))
+                    .has_value());
+
+    const PlacedStroke& restyled = notebook.page.strokes().front();
+    EXPECT_EQ(restyled.stroke.style(), wanted);
+    EXPECT_EQ(restyled.stroke.samples().size(), stroke.samples().size());
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()).size(), 1U);
+
+    ASSERT_TRUE(history.undo().has_value());
+
+    EXPECT_EQ(notebook.page.strokes().front().stroke.style(), stroke.style());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
 }
 }

@@ -47,6 +47,7 @@ constexpr auto kDefaultNotebookName = "default.phvika";
 constexpr int kMaximumMediaPixels = 4096;
 constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
+constexpr float kPasteOffset = 24.0F;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
     const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -1143,6 +1144,90 @@ void NotebookViewModel::deleteSelection() {
     m_canvas->showSelection({});
     m_canvas->forgetStrokes(picked);
     runCommand(std::make_unique<core::EraseStrokesCommand>(page, &*m_storage, std::move(picked)));
+}
+
+void NotebookViewModel::copySelection() {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull()) {
+        return;
+    }
+    const std::vector<core::Uuid>& picked = m_canvas->selection();
+    std::vector<core::Stroke> copies;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            copies.push_back(placed.stroke);
+        }
+    }
+    if (copies.empty()) {
+        return;
+    }
+    m_clipboard = std::move(copies);
+    emit clipboardChanged();
+}
+
+void NotebookViewModel::pasteStrokes() {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage || m_clipboard.empty()) {
+        return;
+    }
+
+    std::int64_t ordinal = page->nextOrdinal();
+    std::vector<core::PlacedStroke> pasted;
+    std::vector<core::Uuid> ids;
+    pasted.reserve(m_clipboard.size());
+    ids.reserve(m_clipboard.size());
+    for (const core::Stroke& stroke : m_clipboard) {
+        const core::Stroke shifted = core::moved(stroke, kPasteOffset, kPasteOffset);
+        core::Stroke fresh{m_ids.next(), shifted.style()};
+        for (const core::InkSample& sample : shifted.samples()) {
+            fresh.append(sample);
+        }
+        ids.push_back(fresh.id());
+        pasted.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = std::move(fresh)});
+        ++ordinal;
+    }
+
+    runCommand(std::make_unique<core::AddStrokesCommand>(page, &*m_storage, std::move(pasted)));
+    m_clipboard.clear();
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(ids, placed.stroke.id()) != ids.end()) {
+            m_clipboard.push_back(core::moved(placed.stroke, -kPasteOffset, -kPasteOffset));
+        }
+    }
+    m_canvas->showSelection(std::move(ids));
+}
+
+void NotebookViewModel::recolourSelection(const QColor& color) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    std::vector<core::Uuid> picked = m_canvas->selection();
+    if (picked.empty()) {
+        return;
+    }
+
+    const core::PlacedStroke* first = nullptr;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (placed.stroke.id() == picked.front()) {
+            first = &placed;
+            break;
+        }
+    }
+    if (first == nullptr) {
+        return;
+    }
+    core::StrokeStyle style = first->stroke.style();
+    style.color = core::Color{
+        .red = static_cast<std::uint8_t>(color.red()),
+        .green = static_cast<std::uint8_t>(color.green()),
+        .blue = static_cast<std::uint8_t>(color.blue()),
+        .alpha = static_cast<std::uint8_t>(color.alpha()),
+    };
+
+    m_canvas->forgetStrokes(picked);
+    runCommand(
+        std::make_unique<core::RestyleStrokesCommand>(page, &*m_storage, std::move(picked), style));
 }
 
 void NotebookViewModel::refreshTrash() {
