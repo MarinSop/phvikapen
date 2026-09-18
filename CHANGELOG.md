@@ -57,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The window follows the shape of a desktop drawing application: text menus across the top, a
+  palette of tools down the left with an icon and a tooltip for each, the pages of the notebook and
+  the page setup in panels either side of the sheet, and the page and the zoom in a bar at the
+  bottom. Commands that are not tools moved out of the tool bar into the menus they belong to.
+- A tool for dragging the page under the window.
+
 - An imported page is drawn only where it is on screen, so its text stays sharp however far the
   page is zoomed in, instead of the whole page being drawn to a picture of a fixed size.
 

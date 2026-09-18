@@ -1,5 +1,32 @@
 find_package(spdlog CONFIG REQUIRED)
 
+set(icons_dir "${CMAKE_CURRENT_BINARY_DIR}/icons")
+phvikapen_collect_icons("${icons_dir}" icon_files
+    pointer
+    move
+    pencil
+    highlight
+    shape-square
+    eraser
+    undo
+    redo
+    trash
+    copy
+    paste
+    plus
+    import
+    export
+    cog
+    chevron-left
+    chevron-right
+    zoom-in
+    zoom-out
+    expand
+    x
+)
+
+set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_library(phvikapen_ui STATIC)
 add_library(PhvikaPen::ui ALIAS phvikapen_ui)
 
@@ -28,16 +55,32 @@ qt_add_qml_module(phvikapen_ui
         cpp/UpdateViewModel.cpp
         cpp/UpdateViewModel.hpp
     QML_FILES
-        qml/components/InkToolBar.qml
+        qml/Icons.qml
+        qml/components/AboutDialog.qml
+        qml/components/AppActions.qml
+        qml/components/AppMenuBar.qml
+        qml/components/AppStatusBar.qml
+        qml/components/MenuCommand.qml
         qml/components/MessageBar.qml
         qml/components/NotebookTabs.qml
-        qml/components/PenSwatch.qml
-        qml/components/OutlineSidebar.qml
+        qml/components/OptionsBar.qml
+        qml/components/PagePanel.qml
+        qml/components/PagesPanel.qml
         qml/components/PageSetup.qml
+        qml/components/PenSwatch.qml
+        qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
+        qml/components/ToolPalette.qml
+        qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
-        qml/components/NotebookPage.qml
+)
+
+
+qt_add_resources(phvikapen_ui "phvikapen_icons"
+    PREFIX "/icons"
+    BASE "${icons_dir}"
+    FILES ${icon_files}
 )
 
 target_include_directories(phvikapen_ui PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/cpp")
@@ -46,6 +89,7 @@ target_link_libraries(phvikapen_ui
     PUBLIC
         PhvikaPen::platform
         Qt6::Quick
+        Qt6::Svg
     PRIVATE
         phvikapen_warnings
         phvikapen_sanitizers

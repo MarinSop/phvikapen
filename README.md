@@ -16,6 +16,15 @@ be undone, and
 everything is written to the notebook file as it happens. A notebook can be written out as a PDF or
 copied somewhere safe, and the application updates itself from its published releases.
 
+## The window
+
+The window is laid out the way drawing and document applications are: text menus across the top
+(File, Edit, View, Insert, Tools, Window, Help), a palette of tools down the left side, the pages of
+the notebook beside it, the sheet in the middle, the page setup on the right, and the page and zoom
+at the bottom. Menus carry the commands and their shortcuts; the palette carries only the tools that
+are used on the sheet, each with a tooltip that names it. On Windows the menus sit in the window; on
+macOS they sit in the menu bar at the top of the screen, as that platform expects.
+
 ## Updates
 
 An installed application looks for a newer version when it starts and offers to install it and

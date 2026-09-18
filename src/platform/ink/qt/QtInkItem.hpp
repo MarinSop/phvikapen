@@ -46,6 +46,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool pressureSensitive READ pressureSensitive WRITE setPressureSensitive NOTIFY
                    pressureSensitiveChanged FINAL)
     Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
+    Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
@@ -84,6 +85,10 @@ public:
     [[nodiscard]] int shape() const noexcept { return static_cast<int>(m_shape); }
 
     void setShape(int shape);
+
+    [[nodiscard]] bool panning() const noexcept { return m_panning; }
+
+    void setPanning(bool panning);
 
     [[nodiscard]] bool selecting() const noexcept { return m_selecting; }
 
@@ -152,6 +157,7 @@ signals:
     void strokeStyleChanged();
     void erasingChanged();
     void selectingChanged();
+    void panningChanged();
     void shapeChanged();
     void selectionChanged();
     void mediaChanged();
@@ -236,7 +242,9 @@ private:
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
     core::Shape m_shape{core::Shape::Freehand};
+    std::optional<core::Point> m_panFrom;
     bool m_selecting{false};
+    bool m_panning{false};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

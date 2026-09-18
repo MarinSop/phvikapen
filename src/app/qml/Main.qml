@@ -1,12 +1,17 @@
 pragma ComponentBehavior: Bound
 
+import QtCore
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
+import QtQuick.Layouts
 import PhvikaPen.Ui
 
 ApplicationWindow {
     id: root
 
+    property bool pagePanelShown: true
+    property bool pagesPanelShown: true
     readonly property NotebookViewModel notebook: notebooks.current
 
     height: 800
@@ -14,12 +19,39 @@ ApplicationWindow {
     visible: true
     width: 1280
 
-    header: InkToolBar {
-        notebook: root.notebook
-        tools: toolState
-
-        onSettingsWanted: settingsDialog.open()
+    footer: AppStatusBar {
+        actions: appActions
     }
+    header: ColumnLayout {
+        spacing: 0
+
+        NotebookTabs {
+            Layout.fillWidth: true
+            notebooks: notebooks
+        }
+
+        OptionsBar {
+            Layout.fillWidth: true
+            actions: appActions
+            tools: toolState
+        }
+
+        UpdateBar {
+            Layout.fillWidth: true
+            updates: updates
+        }
+    }
+    menuBar: AppMenuBar {
+        actions: appActions
+        notebooks: notebooks
+        pagePanelShown: root.pagePanelShown
+        pagesPanelShown: root.pagesPanelShown
+
+        onPagePanelToggled: shown => root.pagePanelShown = shown
+        onPagesPanelToggled: shown => root.pagesPanelShown = shown
+    }
+
+    Component.onCompleted: notebooks.canvas = canvas
 
     ToolViewModel {
         id: toolState
@@ -27,6 +59,12 @@ ApplicationWindow {
 
     SettingsViewModel {
         id: settings
+    }
+
+    NotebooksViewModel {
+        id: notebooks
+
+        onErrorMessage: message => messageBar.show(message)
     }
 
     UpdateViewModel {
@@ -40,171 +78,69 @@ ApplicationWindow {
         onRestartWanted: Qt.quit()
     }
 
-    SettingsDialog {
-        id: settingsDialog
+    AppActions {
+        id: appActions
 
-        settings: settings
-        updates: updates
-    }
-
-    NotebooksViewModel {
-        id: notebooks
-
-        onErrorMessage: message => messageBar.show(message)
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Undo]
-
-        onActivated: root.notebook.undo()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Redo]
-
-        onActivated: root.notebook.redo()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.MoveToPreviousPage]
-
-        onActivated: root.notebook.previousPage()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.MoveToNextPage]
-
-        onActivated: root.notebook.nextPage()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.ZoomIn]
-
-        onActivated: notebooks.canvas.zoomIn()
-    }
-
-    Shortcut {
-        sequences: [StandardKey.ZoomOut]
-
-        onActivated: notebooks.canvas.zoomOut()
-    }
-
-    Shortcut {
-        sequences: ["Ctrl+0"]
-
-        onActivated: notebooks.canvas.fitPage()
-    }
-
-    Shortcut {
-        sequences: ["P"]
-
-        onActivated: toolState.currentTool = ToolViewModel.Pen
-    }
-
-    Shortcut {
-        sequences: ["H"]
-
-        onActivated: toolState.currentTool = ToolViewModel.Highlighter
-    }
-
-    Shortcut {
-        sequences: ["E"]
-
-        onActivated: toolState.currentTool = ToolViewModel.Eraser
-    }
-
-    Shortcut {
-        sequences: ["S"]
-
-        onActivated: toolState.currentTool = ToolViewModel.Selection
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Copy]
-
-        onActivated: {
-            if (root.notebook !== null) {
-                root.notebook.copySelection();
-            }
-        }
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Paste]
-
-        onActivated: {
-            if (root.notebook !== null) {
-                root.notebook.pasteStrokes();
-            }
-        }
-    }
-
-    Shortcut {
-        sequences: [StandardKey.Delete, StandardKey.Backspace]
-
-        onActivated: {
-            if (root.notebook !== null) {
-                root.notebook.deleteSelection();
-            }
-        }
-    }
-
-    Repeater {
-        model: toolState.penCount
-
-        Item {
-            id: penShortcut
-
-            required property int index
-
-            Shortcut {
-                sequences: [String(penShortcut.index + 1)]
-
-                onActivated: {
-                    toolState.pen = penShortcut.index;
-                    toolState.currentTool = ToolViewModel.Pen;
-                }
-            }
-        }
-    }
-
-    Shortcut {
-        sequences: ["["]
-
-        onActivated: toolState.strokeWidth = toolState.strokeWidth - 1
-    }
-
-    Shortcut {
-        sequences: ["]"]
-
-        onActivated: toolState.strokeWidth = toolState.strokeWidth + 1
-    }
-
-    NotebookTabs {
-        id: tabs
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        notebooks: notebooks
-    }
-
-    UpdateBar {
-        id: updateBar
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: tabs.bottom
-        updates: updates
-    }
-
-    NotebookPage {
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: updateBar.visible ? updateBar.bottom : tabs.bottom
         notebooks: notebooks
         tools: toolState
+
+        onAboutWanted: aboutDialog.open()
+        onCopyWanted: {
+            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
+            copyDialog.currentFolder = folder;
+            copyDialog.selectedFile = folder + "/" + root.notebook.title + ".phvika";
+            copyDialog.open();
+        }
+        onExportWanted: {
+            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
+            exportDialog.currentFolder = folder;
+            exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
+            exportDialog.open();
+        }
+        onImportWanted: importDialog.open()
+        onNewNotebookWanted: notebooks.createNotebook(notebooks.suggestedName())
+        onSettingsWanted: settingsDialog.open()
+        onTrashWanted: trashDialog.open()
+    }
+
+    RowLayout {
+        anchors.fill: parent
+        spacing: 0
+
+        ToolPalette {
+            Layout.fillHeight: true
+            actions: appActions
+        }
+
+        PagesPanel {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 220
+            actions: appActions
+            visible: root.pagesPanelShown
+        }
+
+        InkCanvas {
+            id: canvas
+
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            enabled: root.notebook !== null && root.notebook.loaded
+            eraserRadius: toolState.eraserRadius
+            erasing: toolState.currentTool === ToolViewModel.Eraser
+            panning: toolState.currentTool === ToolViewModel.Hand
+            pressureSensitive: toolState.pressureSensitive
+            selecting: toolState.currentTool === ToolViewModel.Selection
+            shape: toolState.shape
+            strokeColor: toolState.strokeColor
+            strokeWidth: toolState.strokeWidth
+        }
+
+        PagePanel {
+            Layout.fillHeight: true
+            Layout.preferredWidth: 220
+            actions: appActions
+            visible: root.pagePanelShown
+        }
     }
 
     MessageBar {
@@ -213,6 +149,54 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.margins: 16
+    }
+
+    SettingsDialog {
+        id: settingsDialog
+
+        settings: settings
+        updates: updates
+    }
+
+    AboutDialog {
+        id: aboutDialog
+    }
+
+    TrashDialog {
+        id: trashDialog
+
+        notebook: root.notebook
+    }
+
+    FileDialog {
+        id: copyDialog
+
+        defaultSuffix: "phvika"
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Notebooks (*.phvika)")]
+        title: qsTr("Save a copy")
+
+        onAccepted: root.notebook.saveCopy(copyDialog.selectedFile)
+    }
+
+    FileDialog {
+        id: exportDialog
+
+        defaultSuffix: "pdf"
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("PDF documents (*.pdf)")]
+        title: qsTr("Export as PDF")
+
+        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile)
+    }
+
+    FileDialog {
+        id: importDialog
+
+        nameFilters: [qsTr("Documents and pictures (*.pdf *.png *.jpg *.jpeg *.webp)")]
+        title: qsTr("Import")
+
+        onAccepted: root.notebook.importDocument(importDialog.selectedFile)
     }
 
     Connections {
@@ -228,14 +212,14 @@ ApplicationWindow {
             messageBar.show(qsTr("Copied to %1").arg(path));
         }
 
-        function onExported(path) {
-            messageBar.show(qsTr("Saved as %1").arg(path));
-        }
-
         function onErrorMessageChanged() {
             if (root.notebook !== null && root.notebook.errorMessage !== "") {
                 messageBar.show(root.notebook.errorMessage);
             }
+        }
+
+        function onExported(path) {
+            messageBar.show(qsTr("Saved as %1").arg(path));
         }
 
         target: root.notebook

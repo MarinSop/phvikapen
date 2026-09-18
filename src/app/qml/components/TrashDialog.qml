@@ -8,8 +8,9 @@ import PhvikaPen.Ui
 Dialog {
     id: root
 
-    required property NotebookViewModel notebook
+    property NotebookViewModel notebook: null
     property bool confirming: false
+    readonly property int trashCount: root.notebook === null ? 0 : root.notebook.trash.count
 
     anchors.centerIn: parent
     height: 380
@@ -21,7 +22,9 @@ Dialog {
 
     onOpened: {
         confirming = false;
-        root.notebook.refreshTrash();
+        if (root.notebook !== null) {
+            root.notebook.refreshTrash();
+        }
     }
 
     ColumnLayout {
@@ -30,7 +33,7 @@ Dialog {
 
         Label {
             Layout.fillWidth: true
-            text: root.notebook.trash.count === 0 ? qsTr("Nothing has been deleted") : qsTr("%1 waiting to be put back or deleted for good").arg(root.notebook.trash.count)
+            text: root.trashCount === 0 ? qsTr("Nothing has been deleted") : qsTr("%1 waiting to be put back or deleted for good").arg(root.trashCount)
             wrapMode: Text.WordWrap
         }
 
@@ -40,7 +43,7 @@ Dialog {
             Layout.fillHeight: true
             Layout.fillWidth: true
             clip: true
-            model: root.notebook.trash
+            model: root.notebook === null ? null : root.notebook.trash
 
             delegate: RowLayout {
                 id: trashDelegate
@@ -78,7 +81,7 @@ Dialog {
             }
 
             Button {
-                enabled: root.notebook.trash.count > 0
+                enabled: root.trashCount > 0
                 objectName: "emptyTrashButton"
                 text: root.confirming ? qsTr("Delete for good") : qsTr("Empty the trash")
 

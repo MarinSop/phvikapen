@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QVariant>
 #include <QtQmlIntegration>
 
 namespace phvikapen::app {
@@ -16,6 +17,8 @@ public:
     explicit AppInfo(QObject* parent = nullptr);
 
     [[nodiscard]] QString version() const { return m_version; }
+
+    Q_INVOKABLE [[nodiscard]] static QString shortcutText(const QVariant& shortcut);
 
 private:
     QString m_version;

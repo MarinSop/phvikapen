@@ -2,7 +2,9 @@
 
 #include "core/version.hpp"
 
+#include <QKeySequence>
 #include <QString>
+#include <QVariant>
 
 #include <string_view>
 
@@ -17,5 +19,16 @@ namespace {
 }
 
 AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} {}
+
+QString AppInfo::shortcutText(const QVariant& shortcut) {
+    if (shortcut.typeId() == QMetaType::QString) {
+        return QKeySequence{shortcut.toString()}.toString(QKeySequence::NativeText);
+    }
+    if (shortcut.canConvert<int>()) {
+        return QKeySequence{static_cast<QKeySequence::StandardKey>(shortcut.toInt())}.toString(
+            QKeySequence::NativeText);
+    }
+    return {};
+}
 
 }

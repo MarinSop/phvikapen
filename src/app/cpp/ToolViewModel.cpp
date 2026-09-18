@@ -204,7 +204,7 @@ void ToolViewModel::restore() {
     readNib(m_highlighter, kHighlighterKey);
 
     const int tool = settings.value(kToolSetting, static_cast<int>(m_currentTool)).toInt();
-    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Selection)) {
+    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Hand)) {
         m_currentTool = static_cast<Tool>(tool);
     }
     const int shape = settings.value(kShapeSetting, static_cast<int>(m_shape)).toInt();

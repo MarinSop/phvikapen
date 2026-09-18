@@ -243,6 +243,15 @@ void QtInkItem::setShape(int shape) {
     emit shapeChanged();
 }
 
+void QtInkItem::setPanning(bool panning) {
+    if (panning == m_panning) {
+        return;
+    }
+    m_panning = panning;
+    m_panFrom.reset();
+    emit panningChanged();
+}
+
 void QtInkItem::setSelecting(bool selecting) {
     if (selecting == m_selecting) {
         return;
@@ -679,6 +688,10 @@ bool QtInkItem::onPaper(const InkSample& sample) const noexcept {
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    if (m_panning && !eraserTip) {
+        m_panFrom = core::Point{.x = sample.x, .y = sample.y};
+        return;
+    }
     if (m_selecting && !eraserTip) {
         if (overSelection(sample)) {
             beginDrag(sample);
@@ -698,6 +711,13 @@ void QtInkItem::press(const InkSample& sample, bool eraserTip) {
 }
 
 void QtInkItem::move(const InkSample& sample) {
+    if (m_panFrom) {
+        core::Viewport viewport = m_viewport;
+        viewport.panBy((m_panFrom->x - sample.x) * m_viewport.scale(),
+                       (m_panFrom->y - sample.y) * m_viewport.scale());
+        changeView(viewport);
+        return;
+    }
     if (m_dragFrom) {
         dragTo(sample);
     } else if (!m_lasso.empty()) {
@@ -710,6 +730,11 @@ void QtInkItem::move(const InkSample& sample) {
 }
 
 void QtInkItem::release(const InkSample& sample) {
+    if (m_panFrom) {
+        move(sample);
+        m_panFrom.reset();
+        return;
+    }
     if (m_dragFrom) {
         dragTo(sample);
         finishDrag();
@@ -726,7 +751,7 @@ void QtInkItem::release(const InkSample& sample) {
 
 bool QtInkItem::isTracking() const noexcept {
     return m_activeStroke.has_value() || m_eraserPosition.has_value() || m_dragFrom.has_value()
-           || !m_lasso.empty();
+           || m_panFrom.has_value() || !m_lasso.empty();
 }
 
 void QtInkItem::beginErase(const InkSample& sample) {

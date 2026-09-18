@@ -25,6 +25,7 @@ include(PhvikaPenSanitizers)
 include(PhvikaPenLayering)
 include(PhvikaPenPdfium)
 include(PhvikaPenRuntimeDlls)
+include(PhvikaPenIcons)
 
 if(APPLE)
     list(APPEND CMAKE_BUILD_RPATH "${PHVIKAPEN_PDFIUM_DIR}/lib")
@@ -33,7 +34,7 @@ endif()
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 
 find_package(Qt6 6.11 REQUIRED
-    COMPONENTS Core Gui GuiPrivate Quick QuickControls2 QuickTest ShaderTools
+    COMPONENTS Core Gui GuiPrivate Quick QuickControls2 QuickTest ShaderTools Svg
 )
 qt_standard_project_setup(REQUIRES 6.11)
 

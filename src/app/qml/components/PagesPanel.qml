@@ -1,9 +1,7 @@
 pragma ComponentBehavior: Bound
 
-import QtCore
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
@@ -11,7 +9,8 @@ Pane {
     id: root
 
     property int draggedPage: -1
-    property NotebookViewModel notebook: null
+    required property AppActions actions
+    readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
 
     function rename(sectionScope, index, current) {
@@ -21,6 +20,7 @@ Pane {
         renameDialog.open();
     }
 
+    objectName: "pagesPanel"
     padding: 8
 
     ColumnLayout {
@@ -32,66 +32,16 @@ Pane {
 
             Label {
                 Layout.fillWidth: true
-                elide: Text.ElideRight
-                text: root.notebook === null ? "" : root.notebook.title
+                font.bold: true
+                text: qsTr("Sections")
             }
 
-            ToolButton {
-                enabled: root.ready
-                objectName: "trashButton"
-                text: qsTr("\u2327")
-                ToolTip.text: qsTr("Deleted pages and sections")
-                ToolTip.visible: hovered
-
-                onClicked: trashDialog.open()
-            }
-
-            ToolButton {
-                enabled: root.ready && !root.notebook.exporting
-                objectName: "exportButton"
-                text: qsTr("⤒")
-                ToolTip.text: qsTr("Take the notebook out")
-                ToolTip.visible: hovered
-
-                onClicked: outMenu.popup()
-
-                Menu {
-                    id: outMenu
-
-                    MenuItem {
-                        objectName: "exportPdfItem"
-                        text: qsTr("Export as a PDF…")
-
-                        onTriggered: {
-                            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
-                            exportDialog.currentFolder = folder;
-                            exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
-                            exportDialog.open();
-                        }
-                    }
-
-                    MenuItem {
-                        objectName: "saveCopyItem"
-                        text: qsTr("Save a copy of the notebook…")
-
-                        onTriggered: {
-                            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
-                            copyDialog.currentFolder = folder;
-                            copyDialog.selectedFile = folder + "/" + root.notebook.title + ".phvika";
-                            copyDialog.open();
-                        }
-                    }
-                }
-            }
-
-            ToolButton {
-                enabled: root.ready
+            QuickButton {
+                action: root.actions.addSection
+                display: AbstractButton.IconOnly
+                icon.source: Icons.plus
+                label: qsTr("New section")
                 objectName: "addSectionButton"
-                text: qsTr("+")
-                ToolTip.text: qsTr("New section")
-                ToolTip.visible: hovered
-
-                onClicked: root.notebook.addSection()
             }
         }
 
@@ -110,7 +60,7 @@ Pane {
                 required property int index
                 required property string title
 
-                highlighted: sectionDelegate.index === root.notebook.currentSection
+                highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
                 text: sectionDelegate.title + " (" + sectionDelegate.count + ")"
                 width: sectionList.width
 
@@ -140,14 +90,14 @@ Pane {
                     }
 
                     MenuItem {
-                        enabled: sectionDelegate.index + 1 < root.notebook.sectionCount
+                        enabled: root.ready && sectionDelegate.index + 1 < root.notebook.sectionCount
                         text: qsTr("Move down")
 
                         onTriggered: root.notebook.moveSection(sectionDelegate.index, sectionDelegate.index + 1)
                     }
 
                     MenuItem {
-                        enabled: root.notebook.sectionCount > 1
+                        enabled: root.ready && root.notebook.sectionCount > 1
                         text: qsTr("Delete")
 
                         onTriggered: root.notebook.deleteSection(sectionDelegate.index)
@@ -161,27 +111,16 @@ Pane {
 
             Label {
                 Layout.fillWidth: true
+                font.bold: true
                 text: qsTr("Pages")
             }
 
-            ToolButton {
-                enabled: root.ready
-                objectName: "importButton"
-                text: qsTr("⤓")
-                ToolTip.text: qsTr("Import a PDF or a picture")
-                ToolTip.visible: hovered
-
-                onClicked: importDialog.open()
-            }
-
-            ToolButton {
-                enabled: root.ready
+            QuickButton {
+                action: root.actions.addPage
+                display: AbstractButton.IconOnly
+                icon.source: Icons.plus
+                label: qsTr("New page")
                 objectName: "addPageButton"
-                text: qsTr("+")
-                ToolTip.text: qsTr("New page")
-                ToolTip.visible: hovered
-
-                onClicked: root.notebook.addPage()
             }
         }
 
@@ -205,7 +144,7 @@ Pane {
                 Drag.hotSpot.y: height / 2
                 Drag.source: pageDelegate
                 height: 64
-                highlighted: pageDelegate.index === root.notebook.currentPage
+                highlighted: root.ready && pageDelegate.index === root.notebook.currentPage
                 width: pageList.width
                 z: pageDrag.active ? 2 : 1
 
@@ -229,9 +168,13 @@ Pane {
                     }
                 }
 
-                Component.onCompleted: root.notebook.wantThumbnail(pageDelegate.index)
+                Component.onCompleted: {
+                    if (root.ready) {
+                        root.notebook.wantThumbnail(pageDelegate.index);
+                    }
+                }
                 onThumbnailChanged: {
-                    if (pageDelegate.thumbnail === "") {
+                    if (root.ready && pageDelegate.thumbnail === "") {
                         root.notebook.wantThumbnail(pageDelegate.index);
                     }
                 }
@@ -297,14 +240,14 @@ Pane {
                     }
 
                     MenuItem {
-                        enabled: pageDelegate.index + 1 < root.notebook.pageCount
+                        enabled: root.ready && pageDelegate.index + 1 < root.notebook.pageCount
                         text: qsTr("Move down")
 
                         onTriggered: root.notebook.movePage(pageDelegate.index, pageDelegate.index + 1)
                     }
 
                     MenuItem {
-                        enabled: root.notebook.pageCount > 1
+                        enabled: root.ready && root.notebook.pageCount > 1
                         text: qsTr("Delete")
 
                         onTriggered: root.notebook.deletePage(pageDelegate.index)
@@ -312,49 +255,6 @@ Pane {
                 }
             }
         }
-
-        PageSetup {
-            Layout.fillWidth: true
-            notebook: root.notebook
-            visible: root.ready
-        }
-    }
-
-    TrashDialog {
-        id: trashDialog
-
-        notebook: root.notebook
-    }
-
-    FileDialog {
-        id: copyDialog
-
-        defaultSuffix: "phvika"
-        fileMode: FileDialog.SaveFile
-        nameFilters: [qsTr("Notebooks (*.phvika)")]
-        title: qsTr("Save a copy")
-
-        onAccepted: root.notebook.saveCopy(copyDialog.selectedFile)
-    }
-
-    FileDialog {
-        id: exportDialog
-
-        defaultSuffix: "pdf"
-        fileMode: FileDialog.SaveFile
-        nameFilters: [qsTr("PDF documents (*.pdf)")]
-        title: qsTr("Export as PDF")
-
-        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile)
-    }
-
-    FileDialog {
-        id: importDialog
-
-        nameFilters: [qsTr("Documents and pictures (*.pdf *.png *.jpg *.jpeg *.webp)")]
-        title: qsTr("Import")
-
-        onAccepted: root.notebook.importDocument(importDialog.selectedFile)
     }
 
     Dialog {

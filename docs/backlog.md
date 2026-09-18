@@ -89,6 +89,16 @@ into a real problem earlier.
 - **A duplicated page copies the whole page.** Its strokes are written again, so duplicating a full
   page costs as much room as the page itself even where nothing was changed.
 
+## The window
+
+- **The panels cannot be moved or resized.** The pages and the page setup sit at a fixed width on
+  their side of the sheet and can only be turned on and off from the View menu.
+- **There is no tool for text.** The palette holds only what the application can do: pick, drag the
+  page, draw, highlight, draw a shape and erase.
+- **The menus are only checked by their commands.** Tests trigger the commands behind the menus, not
+  the menus themselves, and on macOS the menu bar is the one at the top of the screen, which no test
+  opens.
+
 ## Experience
 
 - **The highlighter layer is as large as the window.** Translucent ink is drawn into a picture the
