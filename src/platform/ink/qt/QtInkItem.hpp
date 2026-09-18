@@ -49,6 +49,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
+    Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
@@ -153,6 +154,7 @@ signals:
     void selectingChanged();
     void shapeChanged();
     void selectionChanged();
+    void mediaChanged();
     void eraserRadiusChanged();
     void pressureSensitiveChanged();
     void viewChanged();

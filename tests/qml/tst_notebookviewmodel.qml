@@ -427,6 +427,22 @@ TestCase {
         verify(after !== before);
     }
 
+    function test_anImportedPageIsDrawnWhereThePaperIs() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+
+        tryVerify(() => canvas.mediaArea.width > 0);
+        const area = canvas.mediaArea;
+        verify(area.x >= 0);
+        verify(area.y >= 0);
+        verify(area.width <= 600);
+        verify(area.height <= 850);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);

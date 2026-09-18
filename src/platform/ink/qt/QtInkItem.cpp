@@ -371,6 +371,7 @@ void QtInkItem::showMedia(const QImage& image, const QRectF& area) {
     m_media = image;
     m_mediaArea = area;
     ++m_mediaGeneration;
+    emit mediaChanged();
     update();
 }
 
@@ -381,6 +382,7 @@ void QtInkItem::clearMedia() {
     m_media = QImage{};
     m_mediaArea = {};
     ++m_mediaGeneration;
+    emit mediaChanged();
     update();
 }
 
