@@ -58,6 +58,8 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(QColor deskColor READ deskColor WRITE setDeskColor NOTIFY deskColorChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
+    Q_PROPERTY(QPointF pointerAt READ pointerAt NOTIFY pointerChanged FINAL)
+    Q_PROPERTY(bool pointerInside READ pointerInside NOTIFY pointerChanged FINAL)
 
 public:
     static constexpr qreal kDefaultEraserRadius = 8.0;
@@ -173,6 +175,10 @@ public:
 
     [[nodiscard]] QPointF viewOrigin() const noexcept;
 
+    [[nodiscard]] QPointF pointerAt() const noexcept { return m_pointerAt; }
+
+    [[nodiscard]] bool pointerInside() const noexcept { return m_pointerInside; }
+
     [[nodiscard]] const core::Viewport& viewport() const noexcept { return m_viewport; }
 
     [[nodiscard]] core::Rect visiblePage() const noexcept;
@@ -227,12 +233,16 @@ signals:
     void mediaChanged();
     void pageWanted(int index);
     void eraserRadiusChanged();
+    void pointerChanged();
     void pressureSensitiveChanged();
     void viewChanged();
 
 protected:
     [[nodiscard]] QQuickRhiItemRenderer* createRenderer() override;
 
+    void hoverEnterEvent(QHoverEvent* event) override;
+    void hoverMoveEvent(QHoverEvent* event) override;
+    void hoverLeaveEvent(QHoverEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -247,6 +257,7 @@ protected:
 
 private:
     void observeWindow(QQuickWindow* window);
+    void showPointerAt(const QPointF& position, bool inside);
     [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
     [[nodiscard]] bool handleNativeGesture(const QNativeGestureEvent& event);
     [[nodiscard]] core::InkSample onPage(core::InkSample sample) const noexcept;
@@ -358,6 +369,8 @@ private:
     std::uint64_t m_mediaGeneration{0};
     core::Uuid m_shownPage;
     bool m_viewFitted{false};
+    QPointF m_pointerAt;
+    bool m_pointerInside{false};
     std::optional<QPointF> m_touchCentroid;
     qreal m_touchSpread{0.0};
     QPointer<QQuickWindow> m_observedWindow;

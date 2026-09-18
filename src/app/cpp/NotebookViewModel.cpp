@@ -59,6 +59,7 @@ constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 2;
 constexpr int kMediaAround = 4;
+constexpr qreal kSmallestMediaScale = 0.5;
 constexpr float kColumnMediaScale = 2.0F;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
@@ -349,7 +350,7 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
             return;
         }
         const qreal scale = m_canvas->zoom();
-        const core::Rect seen = m_canvas->visiblePage();
+        const core::Rect seen = m_canvas->visibleOnPage();
         const bool zoomed =
             scale > m_mediaScale * kMediaRedrawFactor || scale * kMediaRedrawFactor < m_mediaScale;
         const bool panned = seen.left < m_mediaRegion.left || seen.top < m_mediaRegion.top
@@ -1305,7 +1306,7 @@ void NotebookViewModel::drawMedia() {
     }
 
     const core::Rect wanted = wantedRegion(*paper);
-    const qreal scale = std::max(m_canvas->zoom(), 0.5);
+    const qreal scale = std::max(m_canvas->zoom(), kSmallestMediaScale);
     const auto width = static_cast<int>(
         std::clamp(static_cast<double>(wanted.width()) * scale, 1.0, double{kMaximumMediaPixels}));
     const auto height = static_cast<int>(
@@ -1344,6 +1345,12 @@ core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) const {
         .bottom = paper.height,
     };
     if (m_canvas.isNull()) {
+        return paperArea;
+    }
+    // While the whole sheet still fits in one picture it is drawn whole: scrolling then never
+    // runs past what has been drawn.
+    const qreal scale = std::max(m_canvas->zoom(), kSmallestMediaScale);
+    if (paper.width * scale <= kMaximumMediaPixels && paper.height * scale <= kMaximumMediaPixels) {
         return paperArea;
     }
 

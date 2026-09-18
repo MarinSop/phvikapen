@@ -170,10 +170,6 @@ ApplicationWindow {
             strokeWidth: toolState.strokeWidth
             visible: root.notebook !== null
 
-            HoverHandler {
-                id: canvasHover
-            }
-
             // How wide the line, or the eraser, will be right here on the page.
             Rectangle {
                 readonly property real sizeOnPage: toolState.currentTool === ToolViewModel.Eraser ? toolState.eraserRadius * 2 : toolState.strokeWidth
@@ -184,10 +180,10 @@ ApplicationWindow {
                 height: width
                 opacity: 0.7
                 radius: width / 2
-                visible: canvasHover.hovered && canvas.enabled && (toolState.currentTool === ToolViewModel.Pen || toolState.currentTool === ToolViewModel.Highlighter || toolState.currentTool === ToolViewModel.Shape || toolState.currentTool === ToolViewModel.Eraser)
-                width: Math.max(4, sizeOnPage * canvas.zoom)
-                x: canvasHover.point.position.x - (width / 2)
-                y: canvasHover.point.position.y - (height / 2)
+                visible: canvas.pointerInside && canvas.enabled && (toolState.currentTool === ToolViewModel.Pen || toolState.currentTool === ToolViewModel.Highlighter || toolState.currentTool === ToolViewModel.Shape || toolState.currentTool === ToolViewModel.Eraser)
+                width: Math.max(8, sizeOnPage * canvas.zoom)
+                x: canvas.pointerAt.x - (width / 2)
+                y: canvas.pointerAt.y - (height / 2)
 
                 Rectangle {
                     anchors.fill: parent

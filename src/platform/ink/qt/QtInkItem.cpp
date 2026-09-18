@@ -2,6 +2,7 @@
 
 #include "platform/ink/qt/QtInkRenderer.hpp"
 
+#include <QHoverEvent>
 #include <QImage>
 #include <QLineF>
 #include <QMouseEvent>
@@ -67,6 +68,7 @@ constexpr float kHalfWidth = 0.5F;
 QtInkItem::QtInkItem(QQuickItem* parent) : QQuickRhiItem(parent) {
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptTouchEvents(true);
+    setAcceptHoverEvents(true);
     connect(this, &QQuickItem::windowChanged, this, &QtInkItem::observeWindow);
 }
 
@@ -891,6 +893,31 @@ QQuickRhiItemRenderer* QtInkItem::createRenderer() {
     return new QtInkRenderer;
 }
 
+// Where the pen or the pointer is, so that the window can show how wide a line would be.
+void QtInkItem::showPointerAt(const QPointF& position, bool inside) {
+    if (m_pointerAt == position && m_pointerInside == inside) {
+        return;
+    }
+    m_pointerAt = position;
+    m_pointerInside = inside;
+    emit pointerChanged();
+}
+
+void QtInkItem::hoverEnterEvent(QHoverEvent* event) {
+    showPointerAt(event->position(), true);
+    event->ignore();
+}
+
+void QtInkItem::hoverMoveEvent(QHoverEvent* event) {
+    showPointerAt(event->position(), true);
+    event->ignore();
+}
+
+void QtInkItem::hoverLeaveEvent(QHoverEvent* event) {
+    showPointerAt(m_pointerAt, false);
+    event->ignore();
+}
+
 void QtInkItem::mousePressEvent(QMouseEvent* event) {
     noteKeys(event->modifiers());
     press(onPage(makeSample(*event)), false);
@@ -899,6 +926,7 @@ void QtInkItem::mousePressEvent(QMouseEvent* event) {
 
 void QtInkItem::mouseMoveEvent(QMouseEvent* event) {
     noteKeys(event->modifiers());
+    showPointerAt(event->position(), true);
     move(onPage(makeSample(*event)));
     event->accept();
 }
@@ -952,6 +980,7 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
     const InkSample sample = onPage(
         makeSample(position, event.pressure(), event.xTilt(), event.yTilt(), event.timestamp()));
     noteKeys(event.modifiers());
+    showPointerAt(position, contains(position));
 
     switch (event.type()) {
     case QEvent::TabletPress:
