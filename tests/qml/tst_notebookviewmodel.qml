@@ -427,6 +427,24 @@ TestCase {
         verify(after !== before);
     }
 
+    function test_zoomingInAsksForASmallerPartOfTheImportedPage() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        tryVerify(() => canvas.mediaArea.width > 0);
+        const wholeWidth = canvas.mediaArea.width;
+        const wholeHeight = canvas.mediaArea.height;
+
+        canvas.zoomIn();
+        canvas.zoomIn();
+        canvas.zoomIn();
+
+        tryVerify(() => canvas.mediaArea.width < wholeWidth);
+        verify(canvas.mediaArea.height < wholeHeight);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_anImportedPageIsDrawnWhereThePaperIs() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
