@@ -77,8 +77,9 @@ into a real problem earlier.
 
 ## Pages
 
-- **The small pictures leave out imported pages.** A page of a PDF or a picture is not in the
-  picture the sidebar shows, only the paper and the ink on it.
+- **A small picture of an imported page is drawn from the whole file.** The PDF is opened and a
+  page drawn at thumbnail size for every row that comes into view, and a picture is decoded whole
+  before it is shrunk.
 - **Every picture is drawn on the thread that draws the window.** A page with a lot of ink is
   painted small where the window runs, and nothing limits how many are kept.
 

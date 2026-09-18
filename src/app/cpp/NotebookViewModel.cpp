@@ -857,35 +857,107 @@ void NotebookViewModel::wantThumbnail(int index) {
     if (!at || m_thumbnails.contains(pages[*at].id)) {
         return;
     }
-    const core::PageInfo page = pages[*at];
 
-    if (const auto cached = m_pages.find(page.id); cached != m_pages.end()) {
-        paintThumbnail(page, cached->second->strokes());
+    const auto work = std::make_shared<ThumbnailWork>(ThumbnailWork{
+        .page = pages[*at],
+        .strokes = {},
+        .media = {},
+    });
+    if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
+        const std::span<const core::PlacedStroke> strokes = cached->second->strokes();
+        work->strokes.assign(strokes.begin(), strokes.end());
+        gatherThumbnail(work);
         return;
     }
 
     const std::uint64_t opening = m_opening;
-    const auto wanted = std::make_shared<const core::PageInfo>(page);
-    m_storage->loadPage(
-        wanted->id, [this, opening, wanted](core::Result<std::vector<core::PlacedStroke>> strokes) {
-            QMetaObject::invokeMethod(
-                this,
-                [this, opening, wanted, strokes = std::move(strokes)] {
-                    if (opening != m_opening || !strokes) {
-                        return;
-                    }
-                    paintThumbnail(*wanted, *strokes);
-                },
-                Qt::QueuedConnection);
-        });
+    m_storage->loadPage(work->page.id, [this, opening, work](
+                                           core::Result<std::vector<core::PlacedStroke>> strokes) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, work, strokes = std::move(strokes)] mutable {
+                if (opening != m_opening || !strokes) {
+                    return;
+                }
+                work->strokes = std::move(*strokes);
+                gatherThumbnail(work);
+            },
+            Qt::QueuedConnection);
+    });
 }
 
-void NotebookViewModel::paintThumbnail(const core::PageInfo& page,
-                                       std::span<const core::PlacedStroke> strokes) {
+void NotebookViewModel::gatherThumbnail(const std::shared_ptr<ThumbnailWork>& work) {
+    if (!work->page.media || !m_storage) {
+        paintThumbnail(*work);
+        return;
+    }
+
+    const std::uint64_t opening = m_opening;
+    m_storage->loadAsset(work->page.media->asset,
+                         [this, opening, work](core::Result<core::Asset> asset) {
+                             QMetaObject::invokeMethod(
+                                 this,
+                                 [this, opening, work, asset = std::move(asset)] mutable {
+                                     if (opening != m_opening) {
+                                         return;
+                                     }
+                                     if (!asset) {
+                                         paintThumbnail(*work);
+                                         return;
+                                     }
+                                     thumbnailAsset(work, std::move(*asset));
+                                 },
+                                 Qt::QueuedConnection);
+                         });
+}
+
+void NotebookViewModel::thumbnailAsset(const std::shared_ptr<ThumbnailWork>& work,
+                                       core::Asset asset) {
+    if (asset.kind == core::AssetKind::Image) {
+        QImage picture;
+        if (picture.loadFromData(toByteArray(asset.data))) {
+            work->media = std::move(picture);
+        }
+        paintThumbnail(*work);
+        return;
+    }
+
+    if (!m_pdf) {
+        m_pdf.emplace();
+    }
+    const core::ContentId id = asset.id;
+    const int index = work->page.media ? work->page.media->index : 0;
+    const std::uint64_t opening = m_opening;
+    m_pdf->open(std::move(asset), [](core::Result<std::vector<platform::pdf::PageSize>>) {});
+    m_pdf->render(id, index, thumbnails::kWidth, thumbnails::kWidth * 2,
+                  [this, opening, work](core::Result<platform::pdf::PageImage> image) {
+                      if (!image) {
+                          return;
+                      }
+                      QMetaObject::invokeMethod(
+                          this,
+                          [this, opening, work, drawn = std::move(*image)] {
+                              if (opening == m_opening) {
+                                  thumbnailPage(work, drawn);
+                              }
+                          },
+                          Qt::QueuedConnection);
+                  });
+}
+
+void NotebookViewModel::thumbnailPage(const std::shared_ptr<ThumbnailWork>& work,
+                                      const platform::pdf::PageImage& image) {
+    const QImage drawn{image.pixels.data(), image.width, image.height,
+                       static_cast<qsizetype>(image.width) * 4, QImage::Format_RGBA8888};
+    work->media = drawn.copy();
+    paintThumbnail(*work);
+}
+
+void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
     const platform::render::PageContents contents{
-        .style = page.style,
-        .strokes = strokes,
-        .media = nullptr,
+        .style = work.page.style,
+        .strokes = work.strokes,
+        .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);
     if (area.width() <= 0.0F || area.height() <= 0.0F) {
@@ -904,9 +976,9 @@ void NotebookViewModel::paintThumbnail(const core::PageInfo& page,
     }
 
     const int revision = ++m_thumbnailRevision;
-    m_thumbnails[page.id] = revision;
+    m_thumbnails[work.page.id] = revision;
     thumbnails::put(
-        QStringLiteral("%1-%2").arg(QString::fromStdString(page.id.toString())).arg(revision),
+        QStringLiteral("%1-%2").arg(QString::fromStdString(work.page.id.toString())).arg(revision),
         picture);
     publishOutline();
 }

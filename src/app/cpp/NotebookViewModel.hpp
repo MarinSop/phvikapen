@@ -242,7 +242,18 @@ private:
     void showLoadedPage(std::uint64_t opening, const core::Uuid& pageId,
                         core::Result<std::vector<core::PlacedStroke>> strokes);
     void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes);
-    void paintThumbnail(const core::PageInfo& page, std::span<const core::PlacedStroke> strokes);
+
+    struct ThumbnailWork {
+        core::PageInfo page;
+        std::vector<core::PlacedStroke> strokes;
+        QImage media;
+    };
+
+    void gatherThumbnail(const std::shared_ptr<ThumbnailWork>& work);
+    void thumbnailAsset(const std::shared_ptr<ThumbnailWork>& work, core::Asset asset);
+    void thumbnailPage(const std::shared_ptr<ThumbnailWork>& work,
+                       const platform::pdf::PageImage& image);
+    void paintThumbnail(const ThumbnailWork& work);
     void forgetThumbnail(const core::Uuid& pageId);
     void goToPage(const core::Uuid& pageId);
     void goToPlace(std::size_t section, std::size_t page);

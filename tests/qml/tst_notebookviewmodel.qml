@@ -443,6 +443,17 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_thePictureOfAnImportedPageHasTheDocumentInIt() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+
+        notebook.wantThumbnail(1);
+
+        tryVerify(() => notebook.pages.data(notebook.pages.index(1, 0), Qt.UserRole + 3) !== "");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
