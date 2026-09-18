@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "platform/render/PaperLook.hpp"
 
@@ -15,6 +16,7 @@
 
 #include <array>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace phvikapen::platform::render {
@@ -45,14 +47,15 @@ namespace {
 }
 
 constexpr core::Color kBlack{};
-constexpr std::span<const core::Stroke> kNoStrokes{};
+constexpr std::span<const core::PlacedStroke> kNoStrokes{};
 
-[[nodiscard]] core::Stroke line(core::Color color, float width, float fromX, float toX, float y) {
+[[nodiscard]] core::PlacedStroke line(core::Color color, float width, float fromX, float toX,
+                                      float y) {
     core::Stroke stroke{core::Uuid{}, core::StrokeStyle{.color = color, .width = width}};
     for (int step = 0; static_cast<float>(step) * 4.0F <= toX - fromX; ++step) {
         stroke.append(core::InkSample{.x = fromX + (static_cast<float>(step) * 4.0F), .y = y});
     }
-    return stroke;
+    return core::PlacedStroke{.ordinal = 1, .stroke = std::move(stroke)};
 }
 
 TEST(PagePainterTest, AFixedPageIsAsLargeAsItsPaper) {
@@ -70,7 +73,7 @@ TEST(PagePainterTest, AFixedPageIsAsLargeAsItsPaper) {
 }
 
 TEST(PagePainterTest, AnInfinitePageIsAsLargeAsWhatWasWrittenOnIt) {
-    const std::vector<core::Stroke> strokes{
+    const std::vector<core::PlacedStroke> strokes{
         line(kBlack, 2.0F, 100.0F, 200.0F, 300.0F),
     };
     const PageContents page{
@@ -99,7 +102,7 @@ TEST(PagePainterTest, AnEmptyInfinitePageFallsBackToASheetOfPaper) {
 }
 
 TEST(PagePainterTest, TheSheetIsWhiteAndTheInkIsWhereItWasWritten) {
-    const std::vector<core::Stroke> strokes{
+    const std::vector<core::PlacedStroke> strokes{
         line(core::Color{.red = 200, .green = 30, .blue = 30}, 6.0F, 20.0F, 180.0F, 100.0F),
     };
     const PageContents page{
@@ -142,7 +145,7 @@ TEST(PagePainterTest, BlankPaperStaysBlank) {
 TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
     QImage media{10, 10, QImage::Format_ARGB32_Premultiplied};
     media.fill(QColor{0, 0, 255});
-    const std::vector<core::Stroke> strokes{
+    const std::vector<core::PlacedStroke> strokes{
         line(core::Color{.green = 255}, 8.0F, 10.0F, 190.0F, 60.0F),
     };
     const PageContents page{

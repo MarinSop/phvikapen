@@ -4,6 +4,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeOutline.hpp"
+#include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "platform/render/PaperLook.hpp"
 
@@ -114,9 +115,10 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
     }
 }
 
-void paintStrokes(QPainter& painter, std::span<const core::Stroke> strokes) {
+void paintStrokes(QPainter& painter, std::span<const core::PlacedStroke> strokes) {
     painter.setPen(Qt::NoPen);
-    for (const core::Stroke& stroke : strokes) {
+    for (const core::PlacedStroke& placed : strokes) {
+        const core::Stroke& stroke = placed.stroke;
         const std::vector<core::Point> outline = core::strokeOutline(stroke);
         if (outline.empty()) {
             continue;
@@ -140,8 +142,8 @@ core::Rect pageArea(const PageContents& page) {
     }
 
     std::optional<core::Rect> ink;
-    for (const core::Stroke& stroke : page.strokes) {
-        if (const std::optional<core::Rect> bounds = stroke.boundingBox()) {
+    for (const core::PlacedStroke& placed : page.strokes) {
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
             ink = ink ? ink->united(*bounds) : *bounds;
         }
     }

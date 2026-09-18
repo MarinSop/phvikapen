@@ -11,6 +11,7 @@ target_sources(phvikapen_platform
         pdf/PdfRenderer.cpp
         pdf/PdfiumDocument.cpp
         render/PagePainter.cpp
+        render/PdfExporter.cpp
         update/StartupHook.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -22,6 +23,7 @@ target_sources(phvikapen_platform
             pdf/PdfRenderer.hpp
             pdf/PdfiumDocument.hpp
             render/PagePainter.hpp
+            render/PdfExporter.hpp
             render/PaperLook.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/geometry/Rect.hpp"
-#include "core/ink/Stroke.hpp"
+#include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 
 #include <span>
@@ -13,7 +13,7 @@ namespace phvikapen::platform::render {
 
 struct PageContents {
     core::PageStyle style{};
-    std::span<const core::Stroke> strokes;
+    std::span<const core::PlacedStroke> strokes;
     const QImage* media{nullptr};
 };
 
