@@ -1,0 +1,9 @@
+#pragma once
+
+#include <string_view>
+
+namespace phvikapen::platform::update {
+
+inline constexpr std::string_view kUpdateFeed = "@PHVIKAPEN_UPDATE_FEED@";
+
+}

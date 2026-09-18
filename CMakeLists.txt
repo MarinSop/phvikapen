@@ -15,6 +15,8 @@ option(PHVIKAPEN_BUILD_BENCHMARKS "Build the benchmarks" OFF)
 option(PHVIKAPEN_BUILD_TOOLS "Build the developer tools" ON)
 option(PHVIKAPEN_ENABLE_SANITIZERS "Instrument targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(PHVIKAPEN_USE_SCCACHE "Use sccache as the compiler launcher when it is available" ON)
+set(PHVIKAPEN_UPDATE_FEED "https://github.com/MarinSop/phvikapen"
+    CACHE STRING "Where the application looks for updates")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(PhvikaPenSccache)

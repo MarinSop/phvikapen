@@ -23,6 +23,13 @@ ApplicationWindow {
         id: toolState
     }
 
+    UpdateViewModel {
+        id: updates
+
+        Component.onCompleted: updates.check()
+        onRestartWanted: Qt.quit()
+    }
+
     NotebooksViewModel {
         id: notebooks
 
@@ -80,11 +87,20 @@ ApplicationWindow {
         notebooks: notebooks
     }
 
+    UpdateBar {
+        id: updateBar
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: tabs.bottom
+        updates: updates
+    }
+
     NotebookPage {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.top: tabs.bottom
+        anchors.top: updateBar.visible ? updateBar.bottom : tabs.bottom
         notebooks: notebooks
         tools: toolState
     }

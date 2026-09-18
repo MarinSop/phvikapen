@@ -11,7 +11,6 @@ struct UpdateInfo {
     std::string version;
 };
 
-// TODO(M5): Implement with Velopack.
 class IUpdater {
 public:
     virtual ~IUpdater() = default;

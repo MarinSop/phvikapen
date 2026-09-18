@@ -3,6 +3,9 @@ include(PhvikaPenVelopack)
 add_library(phvikapen_platform STATIC)
 add_library(PhvikaPen::platform ALIAS phvikapen_platform)
 
+set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+configure_file(update/Feed.hpp.in "${generated_dir}/platform/update/Feed.hpp" @ONLY)
+
 target_sources(phvikapen_platform
     PRIVATE
         ink/qt/QtInkItem.cpp
@@ -13,9 +16,12 @@ target_sources(phvikapen_platform
         render/PagePainter.cpp
         render/PdfExporter.cpp
         update/StartupHook.cpp
+        update/VelopackUpdater.cpp
     PUBLIC
         FILE_SET HEADERS
-        BASE_DIRS "${PROJECT_SOURCE_DIR}/src"
+        BASE_DIRS
+            "${PROJECT_SOURCE_DIR}/src"
+            "${generated_dir}"
         FILES
             ink/IInkBackend.hpp
             ink/qt/QtInkItem.hpp
@@ -27,6 +33,8 @@ target_sources(phvikapen_platform
             render/PaperLook.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
+            update/VelopackUpdater.hpp
+            "${generated_dir}/platform/update/Feed.hpp"
 )
 
 qt_add_shaders(phvikapen_platform "phvikapen_ink_shaders"

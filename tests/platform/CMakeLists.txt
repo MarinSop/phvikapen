@@ -6,6 +6,7 @@ qt_add_executable(phvikapen_platform_tests
     PdfExporterTest.cpp
     PdfRendererTest.cpp
     PdfiumDocumentTest.cpp
+    VelopackUpdaterTest.cpp
 )
 
 target_link_libraries(phvikapen_platform_tests
