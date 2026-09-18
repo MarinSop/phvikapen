@@ -136,8 +136,15 @@ Pane {
                 id: pageDelegate
 
                 required property int index
+                readonly property bool panelReady: root.ready
                 required property string thumbnail
                 required property string title
+
+                function askForThumbnail() {
+                    if (root.ready && pageDelegate.thumbnail === "") {
+                        root.notebook.wantThumbnail(pageDelegate.index);
+                    }
+                }
 
                 Drag.active: pageDrag.active
                 Drag.hotSpot.x: width / 2
@@ -151,13 +158,20 @@ Pane {
                 contentItem: RowLayout {
                     spacing: 8
 
-                    Image {
+                    Rectangle {
                         Layout.preferredHeight: 56
                         Layout.preferredWidth: 44
-                        asynchronous: true
-                        cache: false
-                        fillMode: Image.PreserveAspectFit
-                        source: pageDelegate.thumbnail
+                        border.color: palette.mid
+                        border.width: 1
+                        color: palette.base
+
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            cache: false
+                            fillMode: Image.PreserveAspectFit
+                            source: pageDelegate.thumbnail
+                        }
                     }
 
                     Label {
@@ -168,16 +182,9 @@ Pane {
                     }
                 }
 
-                Component.onCompleted: {
-                    if (root.ready) {
-                        root.notebook.wantThumbnail(pageDelegate.index);
-                    }
-                }
-                onThumbnailChanged: {
-                    if (root.ready && pageDelegate.thumbnail === "") {
-                        root.notebook.wantThumbnail(pageDelegate.index);
-                    }
-                }
+                Component.onCompleted: pageDelegate.askForThumbnail()
+                onPanelReadyChanged: pageDelegate.askForThumbnail()
+                onThumbnailChanged: pageDelegate.askForThumbnail()
                 onClicked: root.notebook.currentPage = pageDelegate.index
                 onPressAndHold: pageMenu.popup()
 
