@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -19,6 +20,16 @@ struct sqlite3;
 namespace phvikapen::core {
 
 inline constexpr int kNotebookSchemaVersion = 4;
+
+struct TrashedItem {
+    Uuid id;
+    Uuid sectionId;
+    std::string title;
+    bool wholeSection{};
+    bool sectionTrashed{};
+
+    friend bool operator==(const TrashedItem&, const TrashedItem&) = default;
+};
 
 class NotebookStore {
 public:
@@ -66,6 +77,9 @@ public:
     [[nodiscard]] Result<void> restorePages(const Uuid& sectionId, std::span<const Uuid> pageIds,
                                             std::span<const Uuid> pageOrder);
     [[nodiscard]] Result<void> orderPages(const Uuid& sectionId, std::span<const Uuid> pageOrder);
+
+    [[nodiscard]] Result<std::vector<TrashedItem>> trashedItems() const;
+    [[nodiscard]] Result<void> emptyTrash();
 
     [[nodiscard]] Result<void> insertAsset(const Asset& asset);
     [[nodiscard]] Result<Asset> asset(const ContentId& assetId) const;

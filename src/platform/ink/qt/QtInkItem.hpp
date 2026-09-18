@@ -68,6 +68,8 @@ public:
     void showPage(const core::Page& page, const core::PageStyle& style,
                   std::span<const core::Uuid> hidden = {});
 
+    void showView(const core::Viewport& viewport);
+
     void showMedia(const QImage& image);
     void clearMedia();
 

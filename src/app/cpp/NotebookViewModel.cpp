@@ -239,6 +239,9 @@ void NotebookViewModel::showLoadedOutline(std::uint64_t opening,
 }
 
 void NotebookViewModel::goToPage(const core::Uuid& pageId) {
+    if (!m_canvas.isNull() && !m_currentPage.isNil() && m_currentPage != pageId) {
+        m_views.insert_or_assign(m_currentPage, m_canvas->viewport());
+    }
     m_erasing.clear();
     m_currentPage = pageId;
     publishOutline();
@@ -989,10 +992,13 @@ void NotebookViewModel::refreshCanvas() {
     const core::PageStyle style = info == nullptr ? core::PageStyle{} : info->style;
     if (const core::Page* const page = currentPageData()) {
         m_canvas->showPage(*page, style, m_erasing);
-        return;
+    } else {
+        const core::Page placeholder{m_currentPage};
+        m_canvas->showPage(placeholder, style);
     }
-    const core::Page placeholder{m_currentPage};
-    m_canvas->showPage(placeholder, style);
+    if (const auto remembered = m_views.find(m_currentPage); remembered != m_views.end()) {
+        m_canvas->showView(remembered->second);
+    }
 }
 
 void NotebookViewModel::exportToPdf(const QUrl& fileUrl) {
@@ -1036,6 +1042,135 @@ void NotebookViewModel::finishExport(const QString& path, const core::Result<int
         return;
     }
     emit exported(path);
+}
+
+void NotebookViewModel::refreshTrash() {
+    if (!m_storage) {
+        return;
+    }
+    const std::uint64_t opening = m_opening;
+    m_storage->loadTrash([this, opening](core::Result<std::vector<core::TrashedItem>> items) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, items = std::move(items)] mutable {
+                showTrash(opening, std::move(items));
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::showTrash(std::uint64_t opening,
+                                  core::Result<std::vector<core::TrashedItem>> items) {
+    if (opening != m_opening) {
+        return;
+    }
+    if (!items) {
+        reportError(QString::fromStdString(items.error().message));
+        return;
+    }
+    m_trashed = std::move(*items);
+
+    std::vector<TrashItem> shown;
+    shown.reserve(m_trashed.size());
+    for (const core::TrashedItem& item : m_trashed) {
+        QString title = QString::fromStdString(item.title);
+        if (title.isEmpty()) {
+            title = item.wholeSection ? tr("Section without a name") : tr("Page without a name");
+        }
+        shown.push_back(TrashItem{
+            .title = title,
+            .wholeSection = item.wholeSection,
+            .restorable = item.wholeSection || !item.sectionTrashed,
+        });
+    }
+    m_trashModel.setItems(std::move(shown));
+}
+
+void NotebookViewModel::restoreTrashed(int index) {
+    const std::optional<std::size_t> at = checkedIndex(index, m_trashed.size());
+    if (!at || !m_storage) {
+        return;
+    }
+    const core::TrashedItem item = m_trashed[*at];
+    if (!item.wholeSection && item.sectionTrashed) {
+        reportError(tr("Put the section back first"));
+        return;
+    }
+
+    if (item.wholeSection) {
+        std::vector<core::Uuid> order;
+        order.reserve(m_outline.sections().size() + 1);
+        for (const core::SectionInfo& section : m_outline.sections()) {
+            order.push_back(section.id);
+        }
+        order.push_back(item.id);
+        m_storage->submit([id = item.id, order](core::NotebookStore& store) {
+            return store.restoreSection(id, order);
+        });
+    } else {
+        const std::optional<std::size_t> section = m_outline.sectionIndex(item.sectionId);
+        if (!section) {
+            reportError(tr("The section this page was in is gone"));
+            return;
+        }
+        std::vector<core::Uuid> order;
+        for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
+            order.push_back(page.id);
+        }
+        order.push_back(item.id);
+        m_storage->submit(
+            [sectionId = item.sectionId, id = item.id, order](core::NotebookStore& store) {
+                return store.restorePage(sectionId, id, order);
+            });
+    }
+
+    m_history.clear();
+    emit historyChanged();
+    reloadOutline();
+    refreshTrash();
+}
+
+void NotebookViewModel::emptyTrash() {
+    if (!m_storage) {
+        return;
+    }
+    m_storage->submit([](core::NotebookStore& store) { return store.emptyTrash(); });
+    refreshTrash();
+}
+
+void NotebookViewModel::reloadOutline() {
+    if (!m_storage) {
+        return;
+    }
+    const std::uint64_t opening = m_opening;
+    m_storage->loadOutline([this, opening](core::Result<core::NotebookOutline> outline) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, outline = std::move(outline)] mutable {
+                applyOutline(opening, std::move(outline));
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::applyOutline(std::uint64_t opening,
+                                     core::Result<core::NotebookOutline> outline) {
+    if (opening != m_opening) {
+        return;
+    }
+    if (!outline) {
+        reportError(QString::fromStdString(outline.error().message));
+        return;
+    }
+    m_outline = core::Outline{std::move(*outline)};
+    publishOutline();
+    if (m_outline.placeOf(m_currentPage)) {
+        emit currentPageChanged();
+        return;
+    }
+    if (!m_outline.sections().empty() && !m_outline.sections().front().pages.empty()) {
+        goToPage(m_outline.sections().front().pages.front().id);
+    }
 }
 
 void NotebookViewModel::reportError(const QString& message) {

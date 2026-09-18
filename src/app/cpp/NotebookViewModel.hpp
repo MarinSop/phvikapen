@@ -2,6 +2,7 @@
 
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
+#include "core/geometry/Viewport.hpp"
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
@@ -73,6 +74,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         qreal lineSpacing READ lineSpacing WRITE setLineSpacing NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
+    Q_PROPERTY(phvikapen::app::TrashListModel* trash READ trash CONSTANT FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -157,6 +159,12 @@ public:
 
     Q_INVOKABLE void exportToPdf(const QUrl& fileUrl);
 
+    [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
+
+    Q_INVOKABLE void refreshTrash();
+    Q_INVOKABLE void restoreTrashed(int index);
+    Q_INVOKABLE void emptyTrash();
+
     Q_INVOKABLE void addSection();
     Q_INVOKABLE void deleteSection(int index);
     Q_INVOKABLE void moveSection(int from, int to);
@@ -229,6 +237,9 @@ private:
                           const platform::pdf::PageImage& image);
     void reportError(const QString& message);
     void finishExport(const QString& path, const core::Result<int>& written);
+    void showTrash(std::uint64_t opening, core::Result<std::vector<core::TrashedItem>> items);
+    void reloadOutline();
+    void applyOutline(std::uint64_t opening, core::Result<core::NotebookOutline> outline);
 
     Sink m_sink{this};
     core::Uuid7Generator m_ids;
@@ -244,6 +255,9 @@ private:
     std::jthread m_export;
     bool m_exporting{false};
     core::Uuid m_currentPage;
+    std::map<core::Uuid, core::Viewport> m_views;
+    std::vector<core::TrashedItem> m_trashed;
+    TrashListModel m_trashModel;
     OutlineListModel m_sectionsModel;
     OutlineListModel m_pagesModel;
     QPointer<platform::ink::QtInkItem> m_canvas;

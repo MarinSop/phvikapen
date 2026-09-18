@@ -39,6 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The application looks for a newer version when it starts and offers to install it and restart.
 - A settings dialog: whether to look for updates at start, where the notebooks are kept, and which
   version this is.
+- Deleted pages and sections wait in a trash that can be looked at, put back from, or emptied for
+  good, which also removes imported files no page shows any more and shrinks the notebook file.
+- Keyboard shortcuts for the tools: P, H and E, the pens on 1 to 3, and [ and ] for the width.
+- Going back to a page returns to the zoom and the place it was left at.
 
 ### Changed
 

@@ -26,6 +26,7 @@ public:
     using PageHandler = std::function<void(Result<std::vector<PlacedStroke>>)>;
     using OutlineHandler = std::function<void(Result<NotebookOutline>)>;
     using AssetHandler = std::function<void(Result<Asset>)>;
+    using TrashHandler = std::function<void(Result<std::vector<TrashedItem>>)>;
     using Change = std::function<Result<void>(NotebookStore&)>;
 
     StorageThread(std::filesystem::path path, ErrorHandler onError);
@@ -39,6 +40,7 @@ public:
     void loadOutline(OutlineHandler onLoaded);
     void loadAsset(const ContentId& assetId, AssetHandler onLoaded);
     void loadPage(const Uuid& pageId, PageHandler onLoaded);
+    void loadTrash(TrashHandler onLoaded);
     void submit(Change change);
     void insertStroke(const Uuid& pageId, PlacedStroke placed);
     void removeStroke(const Uuid& pageId, const Uuid& strokeId);

@@ -703,6 +703,61 @@ Result<void> NotebookStore::setPageMedia(const Uuid& pageId,
         .and_then([&] { return expectChange(m_database, "no such page"); });
 }
 
+Result<std::vector<TrashedItem>> NotebookStore::trashedItems() const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database,
+        "SELECT id, id, title, 1, 0 FROM sections WHERE trashed = 1 "
+        "UNION ALL "
+        "SELECT pages.id, pages.section_id, pages.title, 0, sections.trashed FROM pages "
+        "JOIN sections ON sections.id = pages.section_id WHERE pages.trashed = 1 "
+        "ORDER BY 4 DESC, 3;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+
+    std::vector<TrashedItem> items;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            break;
+        }
+        items.push_back(TrashedItem{
+            .id = statement->id(0),
+            .sectionId = statement->id(1),
+            .title = statement->text(2),
+            .wholeSection = statement->integer(3) != 0,
+            .sectionTrashed = statement->integer(4) != 0,
+        });
+    }
+    return items;
+}
+
+Result<void> NotebookStore::emptyTrash() {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+
+    constexpr std::string_view kGone =
+        "DELETE FROM strokes WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
+        "DELETE FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1);"
+        "DELETE FROM sections WHERE trashed = 1;"
+        "DELETE FROM assets WHERE id NOT IN "
+        "  (SELECT media_asset FROM pages WHERE media_asset IS NOT NULL);";
+    if (const Result<void> removed = sqlite::execute(m_database, kGone); !removed) {
+        return removed;
+    }
+    if (const Result<void> committed = transaction->commit(); !committed) {
+        return committed;
+    }
+    return sqlite::execute(m_database, "VACUUM;");
+}
+
 Result<void> NotebookStore::insertAsset(const Asset& asset) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "INSERT OR IGNORE INTO assets (id, kind, name, data) VALUES (?, ?, ?, ?);");

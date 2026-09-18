@@ -36,6 +36,16 @@ Pane {
             }
 
             ToolButton {
+                enabled: root.ready
+                objectName: "trashButton"
+                text: qsTr("\u2327")
+                ToolTip.text: qsTr("Deleted pages and sections")
+                ToolTip.visible: hovered
+
+                onClicked: trashDialog.open()
+            }
+
+            ToolButton {
                 enabled: root.ready && !root.notebook.exporting
                 objectName: "exportButton"
                 text: qsTr("⤒")
@@ -216,6 +226,12 @@ Pane {
             notebook: root.notebook
             visible: root.ready
         }
+    }
+
+    TrashDialog {
+        id: trashDialog
+
+        notebook: root.notebook
     }
 
     FileDialog {

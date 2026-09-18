@@ -95,6 +95,55 @@ ApplicationWindow {
         onActivated: notebooks.canvas.fitPage()
     }
 
+    Shortcut {
+        sequences: ["P"]
+
+        onActivated: toolState.currentTool = ToolViewModel.Pen
+    }
+
+    Shortcut {
+        sequences: ["H"]
+
+        onActivated: toolState.currentTool = ToolViewModel.Highlighter
+    }
+
+    Shortcut {
+        sequences: ["E"]
+
+        onActivated: toolState.currentTool = ToolViewModel.Eraser
+    }
+
+    Repeater {
+        model: toolState.penCount
+
+        Item {
+            id: penShortcut
+
+            required property int index
+
+            Shortcut {
+                sequences: [String(penShortcut.index + 1)]
+
+                onActivated: {
+                    toolState.pen = penShortcut.index;
+                    toolState.currentTool = ToolViewModel.Pen;
+                }
+            }
+        }
+    }
+
+    Shortcut {
+        sequences: ["["]
+
+        onActivated: toolState.strokeWidth = toolState.strokeWidth - 1
+    }
+
+    Shortcut {
+        sequences: ["]"]
+
+        onActivated: toolState.strokeWidth = toolState.strokeWidth + 1
+    }
+
     NotebookTabs {
         id: tabs
 

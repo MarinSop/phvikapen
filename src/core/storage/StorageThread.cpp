@@ -49,6 +49,16 @@ void StorageThread::loadAsset(const ContentId& assetId, AssetHandler onLoaded) {
     });
 }
 
+void StorageThread::loadTrash(TrashHandler onLoaded) {
+    post([this, onLoaded = std::move(onLoaded)] {
+        if (!m_store) {
+            onLoaded(makeError(ErrorCode::IoFailure, "the notebook is not open"));
+            return;
+        }
+        onLoaded(m_store->trashedItems());
+    });
+}
+
 void StorageThread::submit(Change change) {
     post([this, change = std::move(change)] { write(change); });
 }

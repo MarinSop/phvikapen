@@ -124,6 +124,11 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
     update();
 }
 
+void QtInkItem::showView(const core::Viewport& viewport) {
+    m_viewFitted = true;
+    changeView(viewport);
+}
+
 void QtInkItem::showMedia(const QImage& image) {
     m_media = image;
     ++m_mediaGeneration;

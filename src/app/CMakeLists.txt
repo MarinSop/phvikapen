@@ -31,6 +31,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/OutlineSidebar.qml
         qml/components/PageSetup.qml
         qml/components/SettingsDialog.qml
+        qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
         qml/components/NotebookPage.qml
 )

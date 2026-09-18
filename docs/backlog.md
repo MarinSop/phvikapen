@@ -7,9 +7,9 @@ into a real problem earlier.
 
 ## Correctness and data safety
 
-- **Emptying the trash.** Deleted pages and sections are only marked as trashed, and their strokes
-  stay in the notebook file forever. A notebook needs a view of what was deleted, a way to put it
-  back, and a way to delete it for good, followed by `VACUUM` so the file actually shrinks.
+- **The trash is not undoable and keeps no order.** A page that is put back goes to the end of its
+  section, not where it was, and emptying the trash cannot be undone, which is the point but is
+  only guarded by asking twice.
 - **Crash safety test.** The promise is that a crash costs at most the stroke being written. There
   is no test that kills the application in the middle of a stroke and checks that the notebook
   still opens with everything else in it.
@@ -64,12 +64,12 @@ into a real problem earlier.
 - **The highlighter darkens where it crosses itself.** Translucent ink is blended per segment, so a
   stroke that loops over itself is darker there. Drawing all highlighter strokes into a separate
   layer and compositing that layer once would give an even colour.
-- **Each page remembers its view.** Going back to a page fits it again instead of returning to the
-  zoom and the position it was left at.
+- **The view of a page is forgotten when the notebook closes.** Each page returns to the zoom and
+  the place it was left at, but only until the application is closed.
 - **Pen pressure curve.** Width follows pressure directly. A curve per pen, and a way to tune it,
   belongs with the measurements on the target device.
-- **Keyboard and accessibility.** Tools have no shortcuts, the focus order through the sidebar has
-  not been checked, and nothing has been tested with a screen reader.
+- **Accessibility.** The tools have shortcuts now, but the focus order through the sidebar has not
+  been checked, nothing has been tested with a screen reader, and the shortcuts cannot be changed.
 
 ## Verification that needs the target device or a real run
 

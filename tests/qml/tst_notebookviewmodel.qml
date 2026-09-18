@@ -167,6 +167,53 @@ TestCase {
         compare(notebook.exporting, false);
     }
 
+    function test_aDeletedPageWaitsInTheTrashUntilItIsPutBack() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        compare(notebook.pageCount, 2);
+        notebook.deletePage(1);
+        compare(notebook.pageCount, 1);
+
+        notebook.refreshTrash();
+        tryCompare(notebook.trash, "count", 1);
+        notebook.restoreTrashed(0);
+
+        tryCompare(notebook, "pageCount", 2);
+        tryCompare(notebook.trash, "count", 0);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_emptyingTheTrashTakesEverythingInIt() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        draw(notebook, 120, 120);
+        notebook.deletePage(1);
+        notebook.refreshTrash();
+        tryCompare(notebook.trash, "count", 1);
+
+        notebook.emptyTrash();
+
+        tryCompare(notebook.trash, "count", 0);
+        compare(notebook.pageCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_eachPageComesBackToTheViewItWasLeftAt() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.addPage();
+        compare(notebook.currentPage, 1);
+        canvas.zoomIn();
+        const zoomed = canvas.zoom;
+        verify(zoomed > 0);
+
+        notebook.previousPage();
+        notebook.nextPage();
+
+        compare(notebook.currentPage, 1);
+        fuzzyCompare(canvas.zoom, zoomed, 0.001);
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
