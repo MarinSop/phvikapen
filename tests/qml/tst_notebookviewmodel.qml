@@ -138,6 +138,35 @@ TestCase {
         compare(reopened.errorMessage, "");
     }
 
+    function test_theNotebookCanBeWrittenOutAsAPdf() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 120, 120);
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        const target = temporaryDirectory + "/exported-" + notebookCount + ".pdf";
+        const done = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "exported"
+        });
+
+        notebook.exportToPdf("file://" + target);
+
+        tryCompare(done, "count", 1);
+        compare(done.signalArguments[0][0], target);
+        compare(notebook.exporting, false);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_anExportThatCannotBeWrittenIsReported() {
+        const notebook = openNotebook(newNotebookPath());
+        const target = temporaryDirectory + "/missing/exported.pdf";
+
+        notebook.exportToPdf("file://" + target);
+
+        tryVerify(() => notebook.errorMessage !== "");
+        compare(notebook.exporting, false);
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
@@ -330,6 +359,13 @@ TestCase {
     visible: true
     when: windowShown
     width: 400
+
+    Component {
+        id: signalSpyComponent
+
+        SignalSpy {
+        }
+    }
 
     Component {
         id: canvasComponent

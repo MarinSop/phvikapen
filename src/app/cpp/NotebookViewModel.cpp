@@ -13,6 +13,7 @@
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
+#include "platform/render/PdfExporter.hpp"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -143,6 +144,9 @@ bool NotebookViewModel::renameTo(const QString& path) {
 }
 
 NotebookViewModel::~NotebookViewModel() {
+    if (m_export.joinable()) {
+        m_export.join();
+    }
     if (!m_canvas.isNull()) {
         m_canvas->setSink(nullptr);
     }
@@ -989,6 +993,49 @@ void NotebookViewModel::refreshCanvas() {
     }
     const core::Page placeholder{m_currentPage};
     m_canvas->showPage(placeholder, style);
+}
+
+void NotebookViewModel::exportToPdf(const QUrl& fileUrl) {
+    if (m_exporting || !m_storage || m_notebookPath.isEmpty()) {
+        return;
+    }
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    if (path.isEmpty()) {
+        return;
+    }
+
+    m_storage->waitUntilIdle();
+    m_exporting = true;
+    emit exportingChanged();
+
+    const auto job = std::make_shared<ExportJob>(ExportJob{
+        .notebook = std::filesystem::path{m_notebookPath.toStdU16String()},
+        .target = std::filesystem::path{path.toStdU16String()},
+        .path = path,
+    });
+    m_export = std::jthread{[this, job] {
+        try {
+            core::Result<int> written =
+                platform::render::exportNotebookToPdf(job->notebook, job->target);
+            QMetaObject::invokeMethod(
+                this,
+                [this, job, written = std::move(written)] { finishExport(job->path, written); },
+                Qt::QueuedConnection);
+        } catch (...) {
+            qWarning("Writing %s stopped unexpectedly", qUtf8Printable(job->path));
+        }
+    }};
+}
+
+void NotebookViewModel::finishExport(const QString& path, const core::Result<int>& written) {
+    m_exporting = false;
+    emit exportingChanged();
+    if (!written) {
+        reportError(tr("The notebook could not be written: %1")
+                        .arg(QString::fromStdString(written.error().message)));
+        return;
+    }
+    emit exported(path);
 }
 
 void NotebookViewModel::reportError(const QString& message) {

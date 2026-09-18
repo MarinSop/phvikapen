@@ -98,6 +98,10 @@ ApplicationWindow {
     }
 
     Connections {
+        function onExported(path) {
+            messageBar.show(qsTr("Saved as %1").arg(path));
+        }
+
         function onErrorMessageChanged() {
             if (root.notebook !== null && root.notebook.errorMessage !== "") {
                 messageBar.show(root.notebook.errorMessage);

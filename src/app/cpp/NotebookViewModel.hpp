@@ -28,9 +28,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <vector>
 
 namespace phvikapen::app {
@@ -70,6 +72,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
         qreal lineSpacing READ lineSpacing WRITE setLineSpacing NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -150,6 +153,10 @@ public:
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
 
+    [[nodiscard]] bool exporting() const { return m_exporting; }
+
+    Q_INVOKABLE void exportToPdf(const QUrl& fileUrl);
+
     Q_INVOKABLE void addSection();
     Q_INVOKABLE void deleteSection(int index);
     Q_INVOKABLE void moveSection(int from, int to);
@@ -166,6 +173,8 @@ signals:
     void outlineChanged();
     void currentPageChanged();
     void pageStyleChanged();
+    void exportingChanged();
+    void exported(const QString& path);
 
 private:
     class Sink final : public platform::ink::IInkSink {
@@ -183,6 +192,12 @@ private:
 
     private:
         NotebookViewModel* m_owner;
+    };
+
+    struct ExportJob {
+        std::filesystem::path notebook;
+        std::filesystem::path target;
+        QString path;
     };
 
     void openNotebook();
@@ -213,6 +228,7 @@ private:
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                           const platform::pdf::PageImage& image);
     void reportError(const QString& message);
+    void finishExport(const QString& path, const core::Result<int>& written);
 
     Sink m_sink{this};
     core::Uuid7Generator m_ids;
@@ -225,6 +241,8 @@ private:
     core::ContentId m_openAsset;
     QTimer m_mediaTimer;
     qreal m_mediaScale{0.0};
+    std::jthread m_export;
+    bool m_exporting{false};
     core::Uuid m_currentPage;
     OutlineListModel m_sectionsModel;
     OutlineListModel m_pagesModel;

@@ -1,5 +1,6 @@
 pragma ComponentBehavior: Bound
 
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
@@ -32,6 +33,21 @@ Pane {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
                 text: root.notebook === null ? "" : root.notebook.title
+            }
+
+            ToolButton {
+                enabled: root.ready && !root.notebook.exporting
+                objectName: "exportButton"
+                text: qsTr("⤒")
+                ToolTip.text: qsTr("Export the notebook as a PDF")
+                ToolTip.visible: hovered
+
+                onClicked: {
+                    const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
+                    exportDialog.currentFolder = folder;
+                    exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
+                    exportDialog.open();
+                }
             }
 
             ToolButton {
@@ -200,6 +216,17 @@ Pane {
             notebook: root.notebook
             visible: root.ready
         }
+    }
+
+    FileDialog {
+        id: exportDialog
+
+        defaultSuffix: "pdf"
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("PDF documents (*.pdf)")]
+        title: qsTr("Export as PDF")
+
+        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile)
     }
 
     FileDialog {
