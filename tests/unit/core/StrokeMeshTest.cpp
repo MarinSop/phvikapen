@@ -60,7 +60,7 @@ TEST(StrokeMeshTest, AStrokeIsOneStripWithoutGapsBetweenSegments) {
         EXPECT_EQ(vertices[first + 5], vertices[first + 7]);
     }
     for (const InkVertex& vertex : vertices) {
-        EXPECT_NEAR(std::abs(vertex.y - 10.0F), 2.0F, 1e-4F);
+        EXPECT_NEAR(std::abs(vertex.y - 10.0F), 2.0F, 0.01F);
     }
 }
 

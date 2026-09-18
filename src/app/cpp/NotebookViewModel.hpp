@@ -166,7 +166,7 @@ public:
 
     [[nodiscard]] bool exporting() const { return m_exporting; }
 
-    Q_INVOKABLE void exportToPdf(const QUrl& fileUrl);
+    Q_INVOKABLE void exportToPdf(const QUrl& fileUrl, bool everything = true);
 
     Q_INVOKABLE void saveCopy(const QUrl& fileUrl);
 
@@ -236,6 +236,7 @@ private:
         std::filesystem::path notebook;
         std::filesystem::path target;
         QString path;
+        bool everything{true};
     };
 
     void openNotebook();

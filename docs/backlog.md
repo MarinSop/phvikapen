@@ -105,6 +105,16 @@ into a real problem earlier.
   the menus themselves, and on macOS the menu bar is the one at the top of the screen, which no test
   opens.
 
+## Writing
+
+- **The tip of a stroke is a straight piece.** The body of a stroke being written is redrawn along
+  its curve about eighty times a second; the newest samples are strung on straight until the next
+  redraw, which is visible only on a very fast hand.
+- **Smoothing is one number.** It moves the filter's cutoff; the part that follows how fast the pen
+  moves is fixed, and nothing yet measures what either should be on the target device.
+- **Ink beside the sheet is not in the small pictures.** The sidebar draws the sheet, so anything
+  written around it is left out there even when an exported document takes it in.
+
 ## Experience
 
 - **The eraser cuts at the samples it was given.** A piece is cut where the samples are, so a long

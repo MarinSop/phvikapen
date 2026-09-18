@@ -26,6 +26,9 @@ are used on the sheet, each with a tooltip that names it. On Windows the menus s
 macOS they sit in the menu bar at the top of the screen, as that platform expects. The keys the
 commands answer to can be changed in the settings.
 
+Ink is not confined to the sheet: writing beside it stays where it was put, and whether a page of
+an exported document holds that as well is a setting.
+
 The application opens the notebooks that were left open, and nothing at all the first time: a
 notebook is made from the File menu, which asks for its name and the paper its pages start on.
 

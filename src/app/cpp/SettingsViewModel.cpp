@@ -12,11 +12,15 @@
 #include <QUrl>
 #include <QVariant>
 
+#include <algorithm>
+
 namespace phvikapen::app {
 namespace {
 
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
 constexpr auto kShortcutPrefix = "shortcuts/";
+constexpr auto kSmoothingSetting = "ink/smoothing";
+constexpr auto kExportEverythingSetting = "export/everything";
 
 [[nodiscard]] QString keysOf(const QString& sequence) {
     return QKeySequence{sequence, QKeySequence::PortableText}.toString(QKeySequence::PortableText);
@@ -30,6 +34,8 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     const QSettings settings;
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
     m_style = defaults::pageStyle();
+    m_smoothing = std::clamp(settings.value(kSmoothingSetting, m_smoothing).toDouble(), 0.0, 1.0);
+    m_exportEverything = settings.value(kExportEverythingSetting, m_exportEverything).toBool();
     for (const Command& command : commands()) {
         const QString kept = settings.value(kShortcutPrefix + command.id).toString();
         if (!kept.isEmpty()) {
@@ -106,6 +112,27 @@ void SettingsViewModel::changeStyle(const core::PageStyle& style) {
 }
 
 namespace phvikapen::app {
+
+void SettingsViewModel::setSmoothing(qreal smoothing) {
+    const qreal wanted = std::clamp(smoothing, 0.0, 1.0);
+    if (qFuzzyCompare(wanted + 1.0, m_smoothing + 1.0)) {
+        return;
+    }
+    m_smoothing = wanted;
+    QSettings settings;
+    settings.setValue(kSmoothingSetting, m_smoothing);
+    emit smoothingChanged();
+}
+
+void SettingsViewModel::setExportEverything(bool everything) {
+    if (everything == m_exportEverything) {
+        return;
+    }
+    m_exportEverything = everything;
+    QSettings settings;
+    settings.setValue(kExportEverythingSetting, m_exportEverything);
+    emit exportEverythingChanged();
+}
 
 QString SettingsViewModel::conflictWith(const QString& commandId, const QString& sequence) const {
     const QString wanted = keysOf(sequence);

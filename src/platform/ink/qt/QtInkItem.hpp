@@ -20,6 +20,7 @@
 #include <QQuickWindow>
 #include <QRectF>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -48,6 +49,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
     Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
+    Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
@@ -82,6 +84,12 @@ public:
     void showSelection(std::vector<core::Uuid> strokeIds);
 
     void forgetStrokes(std::span<const core::Uuid> strokeIds);
+
+    static constexpr qreal kDefaultSmoothing = 0.5;
+
+    [[nodiscard]] qreal smoothing() const noexcept { return m_smoothing; }
+
+    void setSmoothing(qreal smoothing);
 
     [[nodiscard]] int shape() const noexcept { return static_cast<int>(m_shape); }
 
@@ -160,6 +168,7 @@ signals:
     void selectingChanged();
     void panningChanged();
     void shapeChanged();
+    void smoothingChanged();
     void selectionChanged();
     void mediaChanged();
     void eraserRadiusChanged();
@@ -186,7 +195,6 @@ private:
     [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
     [[nodiscard]] bool handleNativeGesture(const QNativeGestureEvent& event);
     [[nodiscard]] core::InkSample onPage(core::InkSample sample) const noexcept;
-    [[nodiscard]] bool onPaper(const core::InkSample& sample) const noexcept;
     [[nodiscard]] core::ViewSize viewSize() const noexcept;
     void changeView(const core::Viewport& viewport);
 
@@ -214,6 +222,8 @@ private:
     bool m_pressureSensitive{true};
     qreal m_eraserRadius{kDefaultEraserRadius};
     std::size_t m_activeStrokeFirstVertex{0};
+    std::size_t m_liveSamples{0};
+    std::chrono::steady_clock::time_point m_liveDrawnAt;
 
     struct StrokeMesh {
         core::Uuid id;
@@ -225,6 +235,7 @@ private:
 
     void rebuildBuffers();
     void redrawActiveStroke();
+    void refreshLiveStroke(bool full);
     void noteKeys(Qt::KeyboardModifiers modifiers);
     void beginMarquee(const core::InkSample& sample);
     void growMarquee(const core::InkSample& sample);
@@ -252,6 +263,7 @@ private:
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
     core::Shape m_shape{core::Shape::Freehand};
+    qreal m_smoothing{kDefaultSmoothing};
     core::ShapeKeys m_shapeKeys;
     std::optional<core::Point> m_panFrom;
     bool m_selecting{false};

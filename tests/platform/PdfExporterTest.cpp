@@ -164,7 +164,7 @@ TEST(PdfExporterTest, TellsHowFarItGot) {
     writeNotebook(notebook, {kUsual, kUsual});
     std::vector<int> seen;
 
-    ASSERT_TRUE(exportNotebookToPdf(notebook, pathIn(directory, "Progress.pdf"),
+    ASSERT_TRUE(exportNotebookToPdf(notebook, pathIn(directory, "Progress.pdf"), ExportOptions{},
                                     [&seen](ExportProgress progress) {
                                         EXPECT_EQ(progress.pageCount, 3);
                                         seen.push_back(progress.page);
@@ -172,6 +172,43 @@ TEST(PdfExporterTest, TellsHowFarItGot) {
                     .has_value());
 
     EXPECT_EQ(seen, (std::vector<int>{1, 2, 3}));
+}
+
+TEST(PdfExporterTest, InkBesideTheSheetIsTakenInOrLeftOutAsAsked) {
+    const QTemporaryDir directory;
+    const std::filesystem::path notebook = pathIn(directory, "Beside.phvika");
+    const Notebook written = writeNotebook(notebook, {kA5});
+    {
+        core::Uuid7Generator ids;
+        core::Result<core::NotebookStore> store = core::NotebookStore::open(notebook);
+        ASSERT_TRUE(store.has_value()) << store.error().message;
+        ASSERT_TRUE(store
+                        ->insertStroke(written.pages.front().id,
+                                       core::PlacedStroke{
+                                           .ordinal = 2,
+                                           .stroke = diagonal(ids, 700.0F, 900.0F),
+                                       })
+                        .has_value());
+    }
+
+    const std::filesystem::path wide = pathIn(directory, "Wide.pdf");
+    const std::filesystem::path sheet = pathIn(directory, "Sheet.pdf");
+    ASSERT_TRUE(exportNotebookToPdf(notebook, wide, ExportOptions{.everything = true}).has_value());
+    ASSERT_TRUE(
+        exportNotebookToPdf(notebook, sheet, ExportOptions{.everything = false}).has_value());
+
+    const core::Result<std::unique_ptr<pdf::PdfiumDocument>> wider =
+        pdf::PdfiumDocument::openFile(wide);
+    const core::Result<std::unique_ptr<pdf::PdfiumDocument>> plain =
+        pdf::PdfiumDocument::openFile(sheet);
+    ASSERT_TRUE(wider.has_value()) << wider.error().message;
+    ASSERT_TRUE(plain.has_value()) << plain.error().message;
+    const core::Result<pdf::PageSize> grown = (*wider)->pageSize(1);
+    const core::Result<pdf::PageSize> kept = (*plain)->pageSize(1);
+    ASSERT_TRUE(grown.has_value());
+    ASSERT_TRUE(kept.has_value());
+    EXPECT_GT(grown->width, kept->width);
+    EXPECT_NEAR(kept->width, 559.4F, 2.0F);
 }
 
 }

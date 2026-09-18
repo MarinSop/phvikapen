@@ -82,6 +82,21 @@ TestCase {
         compare(settings.conflictWith("undo", "Ctrl+Alt+Q"), "");
     }
 
+    function test_i_theSmoothingAndExportChoiceAreRemembered() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+        compare(settings.smoothing, 0.5);
+        compare(settings.exportEverything, true);
+
+        settings.smoothing = 0.2;
+        settings.exportEverything = false;
+
+        const later = createTemporaryObject(settingsComponent, testCase);
+        compare(later.smoothing, 0.2);
+        compare(later.exportEverything, false);
+        later.smoothing = 0.5;
+        later.exportEverything = true;
+    }
+
     name: "SettingsViewModel"
 
     Component {

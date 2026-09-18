@@ -104,10 +104,10 @@ std::vector<InkSample> fitSpline(std::span<const InkSample> samples, float spaci
         const Vector start = position(from);
         const Vector end = position(to);
         const std::array<Vector, 4> points{
-            i == 0 ? blend(start, 2.0F, end, -1.0F) : position(distinct[i - 1]),
+            i == 0 ? start : position(distinct[i - 1]),
             start,
             end,
-            i + 1 == last ? blend(end, 2.0F, start, -1.0F) : position(distinct[i + 2]),
+            i + 1 == last ? end : position(distinct[i + 2]),
         };
 
         const float length = std::hypot(end.x - start.x, end.y - start.y);

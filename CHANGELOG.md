@@ -57,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A stroke is drawn along its curve while it is being written, not as a chain of separate pieces,
+  so it no longer breaks up where it turns and no longer jumps when the pen is lifted.
+- Ink can be written beside the sheet as well as on it. What a page of an exported document holds
+  is a setting: the sheet alone, or the sheet with everything written around it.
+- How much the pen is smoothed can be set.
+
 - A new notebook is made through a dialog that asks for its name and the paper its pages start on.
 - The application starts with no notebook open when none was left open, shows what to do instead of
   an empty sheet, and every notebook can be closed or deleted.

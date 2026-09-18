@@ -19,9 +19,14 @@ struct InkFilterParameters {
                                      const InkFilterParameters&) = default;
 };
 
+// 0 leaves the samples as the device sent them, 1 smooths them as far as is useful.
+[[nodiscard]] InkFilterParameters smoothingOf(float amount) noexcept;
+
 class InkFilter {
 public:
     explicit InkFilter(InkFilterParameters parameters = {}) noexcept;
+
+    void setParameters(InkFilterParameters parameters) noexcept;
 
     [[nodiscard]] InkSample filter(const InkSample& sample) noexcept;
 

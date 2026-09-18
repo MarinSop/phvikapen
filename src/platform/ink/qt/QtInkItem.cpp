@@ -30,6 +30,8 @@ using core::InkVertex;
 
 constexpr std::chrono::microseconds::rep kMicrosecondsPerMillisecond = 1000;
 constexpr float kZoomStep = 1.25F;
+constexpr auto kLiveRedraw = std::chrono::milliseconds{12};
+constexpr std::size_t kSmallestLiveStroke = 4;
 constexpr float kDegreesPerWheelNotch = 120.0F;
 constexpr float kWheelPixelsPerDegree = 0.5F;
 
@@ -258,6 +260,16 @@ void QtInkItem::forgetStrokes(std::span<const core::Uuid> strokeIds) {
     std::erase_if(m_meshes, [&strokeIds](const StrokeMesh& mesh) {
         return std::ranges::find(strokeIds, mesh.id) != strokeIds.end();
     });
+}
+
+void QtInkItem::setSmoothing(qreal smoothing) {
+    const qreal wanted = std::clamp(smoothing, 0.0, 1.0);
+    if (qFuzzyCompare(wanted + 1.0, m_smoothing + 1.0)) {
+        return;
+    }
+    m_smoothing = wanted;
+    m_filter.setParameters(core::smoothingOf(static_cast<float>(m_smoothing)));
+    emit smoothingChanged();
 }
 
 void QtInkItem::setShape(int shape) {
@@ -729,15 +741,6 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
     return true;
 }
 
-bool QtInkItem::onPaper(const InkSample& sample) const noexcept {
-    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
-    if (!paper) {
-        return true;
-    }
-    return sample.x >= 0.0F && sample.y >= 0.0F && sample.x <= paper->width
-           && sample.y <= paper->height;
-}
-
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
     if (m_panning && !eraserTip) {
         m_panFrom = core::Point{.x = sample.x, .y = sample.y};
@@ -749,9 +752,6 @@ void QtInkItem::press(const InkSample& sample, bool eraserTip) {
         } else {
             beginMarquee(sample);
         }
-        return;
-    }
-    if (!m_erasing && !eraserTip && !onPaper(sample)) {
         return;
     }
     if (m_erasing || eraserTip) {
@@ -846,6 +846,8 @@ void QtInkItem::beginStroke(const InkSample& sample) {
     m_activeStroke->append(m_filter.filter(sample));
     m_activeIsTranslucent = m_style.color.alpha < core::Color::kOpaque;
     m_activeStrokeFirstVertex = activeVertices().size();
+    m_liveSamples = 1;
+    m_liveDrawnAt = std::chrono::steady_clock::now();
     if (m_sink != nullptr) {
         m_sink->strokeStarted(sample);
     }
@@ -855,12 +857,17 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
     if (!m_activeStroke) {
         return;
     }
-    const InkSample previous = m_activeStroke->samples().back();
-    const InkSample smoothed = m_filter.filter(sample);
-    m_activeStroke->append(smoothed);
-    const core::StrokeStyle style = m_activeStroke->style();
+    m_activeStroke->append(m_filter.filter(sample));
     if (m_shape == core::Shape::Freehand) {
-        core::appendSegment(activeVertices(), previous, smoothed, style);
+        // The body of the stroke is redrawn along its curve every so often, while the newest
+        // samples are strung on as they arrive so the tip keeps up with the pen.
+        const auto now = std::chrono::steady_clock::now();
+        const bool due = now - m_liveDrawnAt >= kLiveRedraw
+                         || m_activeStroke->samples().size() <= kSmallestLiveStroke;
+        refreshLiveStroke(due);
+        if (due) {
+            m_liveDrawnAt = now;
+        }
     } else {
         redrawActiveStroke();
     }
@@ -868,6 +875,30 @@ void QtInkItem::appendToStroke(const InkSample& sample) {
         m_sink->sampleAdded(sample);
     }
     update();
+}
+
+void QtInkItem::refreshLiveStroke(bool full) {
+    if (!m_activeStroke) {
+        return;
+    }
+    const core::Stroke& stroke = *m_activeStroke;
+    const core::StrokeStyle style = stroke.style();
+    const std::span<const InkSample> samples = stroke.samples();
+    std::vector<InkVertex>& into = activeVertices();
+
+    if (full) {
+        into.resize(m_activeStrokeFirstVertex);
+        core::appendStroke(into, stroke);
+        m_liveSamples = samples.size();
+        ++m_generation;
+        return;
+    }
+
+    for (std::size_t i = std::max<std::size_t>(m_liveSamples, 1); i < samples.size(); ++i) {
+        core::appendSegment(into, samples[i - 1], samples[i], style);
+    }
+    m_liveSamples = samples.size();
+    ++m_generation;
 }
 
 void QtInkItem::redrawActiveStroke() {

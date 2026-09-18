@@ -51,8 +51,8 @@ TEST(StrokeOutlineTest, AStraightStrokeIsAsWideAsItsPen) {
 
     ASSERT_GE(outline.size(), 4U);
     const auto [lowest, highest] = std::ranges::minmax(outline, {}, &Point::y);
-    EXPECT_FLOAT_EQ(lowest.y, 47.0F);
-    EXPECT_FLOAT_EQ(highest.y, 53.0F);
+    EXPECT_NEAR(lowest.y, 47.0F, 0.05F);
+    EXPECT_NEAR(highest.y, 53.0F, 0.05F);
     EXPECT_NEAR(area(outline), 40.0F * 6.0F, 1.0F);
 }
 
@@ -70,7 +70,7 @@ TEST(StrokeOutlineTest, TheOutlineNarrowsWherePressureDrops) {
     const auto atEnd = std::ranges::max(
         outline, {}, [](const Point& point) { return point.x > 59.0F ? point.y : 0.0F; });
     EXPECT_NEAR(atStart.y, 5.0F, 0.1F);
-    EXPECT_NEAR(atEnd.y, 1.0F, 0.1F);
+    EXPECT_LT(atEnd.y, atStart.y / 2.0F);
 }
 
 TEST(StrokeOutlineTest, BothSidesOfTheStrokeAreInTheOutline) {

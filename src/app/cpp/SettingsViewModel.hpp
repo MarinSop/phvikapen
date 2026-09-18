@@ -23,6 +23,9 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(phvikapen::app::page_options::Background background READ background WRITE
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool landscape READ landscape WRITE setLandscape NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
+    Q_PROPERTY(bool exportEverything READ exportEverything WRITE setExportEverything NOTIFY
+                   exportEverythingChanged FINAL)
     Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY shortcutsChanged FINAL)
     Q_PROPERTY(phvikapen::app::ShortcutListModel* shortcutList READ shortcutList CONSTANT FINAL)
 
@@ -42,6 +45,16 @@ public:
     [[nodiscard]] bool landscape() const;
     void setLandscape(bool landscape);
 
+    static constexpr qreal kDefaultSmoothing = 0.5;
+
+    [[nodiscard]] qreal smoothing() const { return m_smoothing; }
+
+    void setSmoothing(qreal smoothing);
+
+    [[nodiscard]] bool exportEverything() const { return m_exportEverything; }
+
+    void setExportEverything(bool everything);
+
     [[nodiscard]] QVariantMap shortcuts() const { return m_shortcuts; }
 
     [[nodiscard]] ShortcutListModel* shortcutList() { return &m_shortcutList; }
@@ -57,12 +70,16 @@ signals:
     void lookForUpdatesChanged();
     void pageStyleChanged();
     void shortcutsChanged();
+    void smoothingChanged();
+    void exportEverythingChanged();
 
 private:
     void changeStyle(const core::PageStyle& style);
 
     core::PageStyle m_style;
     QVariantMap m_shortcuts;
+    qreal m_smoothing{kDefaultSmoothing};
+    bool m_exportEverything{true};
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};

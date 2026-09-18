@@ -104,6 +104,19 @@ private:
     return pages;
 }
 
+[[nodiscard]] core::Rect areaFor(const PageContents& contents, bool everything) {
+    core::Rect area = pageArea(contents);
+    if (!everything) {
+        return area;
+    }
+    for (const core::PlacedStroke& placed : contents.strokes) {
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
+            area = area.united(*bounds);
+        }
+    }
+    return area;
+}
+
 void setPageSize(QPdfWriter& writer, const core::Rect& area) {
     const QSizeF points{area.width() * kPointsPerPageUnit, area.height() * kPointsPerPageUnit};
     writer.setPageSize(QPageSize{points, QPageSize::Point});
@@ -113,7 +126,7 @@ void setPageSize(QPdfWriter& writer, const core::Rect& area) {
 }
 
 core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
-                                      const std::filesystem::path& target,
+                                      const std::filesystem::path& target, ExportOptions options,
                                       const ProgressHandler& onProgress) {
     core::Result<core::NotebookStore> store = core::NotebookStore::open(notebook);
     if (!store) {
@@ -150,7 +163,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             .strokes = *strokes,
             .media = nullptr,
         };
-        const core::Rect area = pageArea(contents);
+        const core::Rect area = areaFor(contents, options.everything);
         const QImage picture = info.media ? media.imageFor(*store, *info.media, area) : QImage{};
         const PageContents page{
             .style = info.style,

@@ -1370,7 +1370,7 @@ void NotebookViewModel::refreshCanvas() {
     }
 }
 
-void NotebookViewModel::exportToPdf(const QUrl& fileUrl) {
+void NotebookViewModel::exportToPdf(const QUrl& fileUrl, bool everything) {
     if (m_exporting || !m_storage || m_notebookPath.isEmpty()) {
         return;
     }
@@ -1387,11 +1387,13 @@ void NotebookViewModel::exportToPdf(const QUrl& fileUrl) {
         .notebook = std::filesystem::path{m_notebookPath.toStdU16String()},
         .target = std::filesystem::path{path.toStdU16String()},
         .path = path,
+        .everything = everything,
     });
     m_export = std::jthread{[this, job] {
         try {
-            core::Result<int> written =
-                platform::render::exportNotebookToPdf(job->notebook, job->target);
+            core::Result<int> written = platform::render::exportNotebookToPdf(
+                job->notebook, job->target,
+                platform::render::ExportOptions{.everything = job->everything});
             QMetaObject::invokeMethod(
                 this,
                 [this, job, written = std::move(written)] { finishExport(job->path, written); },

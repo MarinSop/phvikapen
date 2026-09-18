@@ -88,21 +88,6 @@ TestCase {
         compare(notebook.strokeCount, 0);
     }
 
-    function test_inkStaysOnTheSheet() {
-        const notebook = openNotebook(newNotebookPath());
-
-        draw(notebook, 2, 120);
-        compare(notebook.strokeCount, 0);
-
-        draw(notebook, 200, 120);
-        compare(notebook.strokeCount, 1);
-
-        notebook.paper = PageOptions.Infinite;
-        draw(notebook, 2, 120);
-        compare(notebook.strokeCount, 2);
-        compare(notebook.errorMessage, "");
-    }
-
     function test_importingAPdfAddsAPagePerPageOfIt() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
@@ -507,6 +492,35 @@ TestCase {
         compare(notebook.strokeCount, 2);
         notebook.undo();
         compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_inkCanBeWrittenBesideTheSheet() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+
+        mousePress(canvas, 20, 20);
+        mouseMove(canvas, 30, 26, -1, Qt.LeftButton);
+        mouseRelease(canvas, 40, 32);
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theSmoothingOfThePenCanBeTurnedDown() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+
+        canvas.smoothing = 0;
+        compare(canvas.smoothing, 0);
+        draw(notebook, 120, 120);
+        compare(notebook.strokeCount, 1);
+
+        canvas.smoothing = 1;
+        compare(canvas.smoothing, 1);
+        draw(notebook, 160, 160);
+        compare(notebook.strokeCount, 2);
         compare(notebook.errorMessage, "");
     }
 

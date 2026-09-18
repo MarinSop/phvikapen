@@ -457,22 +457,9 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
                                 uniforms.data());
 }
 
-QRhiScissor QtInkRenderer::inkScissor(const QSize& outputSize) const {
-    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
-    if (!paper) {
-        return QRhiScissor{0, 0, outputSize.width(), outputSize.height()};
-    }
-    const float pixelRatio =
-        m_logicalWidth > 0.0F ? static_cast<float>(outputSize.width()) / m_logicalWidth : 1.0F;
-    const core::Point topLeft = m_viewport.toView({.x = 0.0F, .y = 0.0F});
-    const core::Point bottomRight = m_viewport.toView({.x = paper->width, .y = paper->height});
-    const int left = std::clamp(static_cast<int>(topLeft.x * pixelRatio), 0, outputSize.width());
-    const int right =
-        std::clamp(static_cast<int>(bottomRight.x * pixelRatio), 0, outputSize.width());
-    const int top = std::clamp(static_cast<int>(topLeft.y * pixelRatio), 0, outputSize.height());
-    const int bottom =
-        std::clamp(static_cast<int>(bottomRight.y * pixelRatio), 0, outputSize.height());
-    return QRhiScissor{left, outputSize.height() - bottom, right - left, bottom - top};
+// Ink is drawn wherever it was written, on the sheet or beside it, so only the window cuts it off.
+QRhiScissor QtInkRenderer::inkScissor(const QSize& outputSize) {
+    return QRhiScissor{0, 0, outputSize.width(), outputSize.height()};
 }
 
 void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {

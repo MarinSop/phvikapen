@@ -57,7 +57,7 @@ private:
     void updateBackground(QRhiResourceUpdateBatch& updates);
     void createMediaPipeline();
     void updateMedia(QRhiResourceUpdateBatch& updates);
-    [[nodiscard]] QRhiScissor inkScissor(const QSize& outputSize) const;
+    [[nodiscard]] static QRhiScissor inkScissor(const QSize& outputSize);
 
     std::unique_ptr<QRhiBuffer> m_uniformBuffer;
     std::unique_ptr<QRhiShaderResourceBindings> m_bindings;

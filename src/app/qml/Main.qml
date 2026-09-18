@@ -141,6 +141,7 @@ ApplicationWindow {
             pressureSensitive: toolState.pressureSensitive
             selecting: toolState.currentTool === ToolViewModel.Selection
             shape: toolState.shape
+            smoothing: settings.smoothing
             strokeColor: toolState.strokeColor
             strokeWidth: toolState.strokeWidth
         }
@@ -204,7 +205,7 @@ ApplicationWindow {
         nameFilters: [qsTr("PDF documents (*.pdf)")]
         title: qsTr("Export as PDF")
 
-        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile)
+        onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile, settings.exportEverything)
     }
 
     FileDialog {
