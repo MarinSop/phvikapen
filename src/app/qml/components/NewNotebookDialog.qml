@@ -2,12 +2,14 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
 AppDialog {
     id: root
 
+    property url document
     required property NotebooksViewModel notebooks
     required property SettingsViewModel settings
     readonly property list<int> backgrounds: [PageOptions.Blank, PageOptions.Lined, PageOptions.Grid, PageOptions.Dotted]
@@ -26,9 +28,10 @@ AppDialog {
         root.settings.landscape = landscapeSwitch.checked;
         root.settings.customWidth = widthField.number;
         root.settings.customHeight = heightField.number;
-        root.notebooks.createNotebookWithSetup(nameField.text.trim(), root.papers[paperBox.currentIndex], root.backgrounds[backgroundBox.currentIndex], landscapeSwitch.checked);
+        root.notebooks.createNotebookWithSetup(nameField.text.trim(), root.papers[paperBox.currentIndex], root.backgrounds[backgroundBox.currentIndex], landscapeSwitch.checked, root.document);
     }
     onOpened: {
+        root.document = "";
         nameField.text = root.notebooks.suggestedName();
         paperBox.currentIndex = root.papers.indexOf(root.settings.paper);
         backgroundBox.currentIndex = root.backgrounds.indexOf(root.settings.background);
@@ -52,6 +55,38 @@ AppDialog {
             objectName: "newNotebookName"
 
             onAccepted: root.accept()
+        }
+
+        Label {
+            text: qsTr("Start from")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Button {
+                highlighted: root.document.toString() === ""
+                objectName: "blankStartButton"
+                text: qsTr("A blank notebook")
+
+                onClicked: root.document = ""
+            }
+
+            Button {
+                highlighted: root.document.toString() !== ""
+                objectName: "documentStartButton"
+                text: qsTr("A PDF or picture…")
+
+                onClicked: documentDialog.open()
+            }
+
+            Label {
+                Layout.fillWidth: true
+                color: palette.placeholderText
+                elide: Text.ElideLeft
+                text: root.document.toString() === "" ? "" : decodeURIComponent(root.document.toString().split("/").pop())
+            }
         }
 
         Label {
@@ -124,5 +159,15 @@ AppDialog {
             objectName: "newNotebookLandscape"
             text: qsTr("Landscape")
         }
+    }
+
+    FileDialog {
+        id: documentDialog
+
+        nameFilters: [qsTr("Documents and pictures (*.pdf *.png *.jpg *.jpeg *.webp)")]
+        objectName: "newNotebookDocument"
+        title: qsTr("Start from")
+
+        onAccepted: root.document = documentDialog.selectedFile
     }
 }

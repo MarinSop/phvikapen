@@ -86,6 +86,10 @@ public:
 
     [[nodiscard]] static QVariantList palette();
 
+    // The colour taken off the page belongs to every pen from then on, and the tool that was in
+    // hand before the picker comes back.
+    Q_INVOKABLE void usePickedColour(const QColor& colour);
+
     Q_INVOKABLE [[nodiscard]] QColor colorOfPen(int index) const;
     Q_INVOKABLE [[nodiscard]] qreal widthOfPen(int index) const;
 
@@ -112,6 +116,7 @@ private:
     std::array<Nib, kPenCount> m_pens;
     Nib m_highlighter;
     Tool m_currentTool{Tool::Pen};
+    Tool m_beforePicking{Tool::Pen};
     Shape m_shape{Shape::Rectangle};
     qreal m_eraserRadius{kDefaultEraser};
     int m_pen{0};

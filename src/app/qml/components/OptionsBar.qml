@@ -12,9 +12,9 @@ ToolBar {
     required property AppActions actions
     required property ToolViewModel tools
     readonly property InkCanvas canvas: root.actions.canvas
-    readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool draws: root.tools.currentTool === ToolViewModel.Pen || root.tools.currentTool === ToolViewModel.Highlighter || root.tools.currentTool === ToolViewModel.Shape
     readonly property bool erases: root.tools.currentTool === ToolViewModel.Eraser
+    readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool picks: root.tools.currentTool === ToolViewModel.Selection
     readonly property list<int> shapes: [ToolViewModel.Line, ToolViewModel.Rectangle, ToolViewModel.Ellipse]
 
@@ -23,25 +23,6 @@ ToolBar {
             root.notebook.recolourSelection(wanted);
         } else {
             root.tools.strokeColor = wanted;
-        }
-    }
-
-    function toolTitle() {
-        switch (root.tools.currentTool) {
-        case ToolViewModel.Selection:
-            return qsTr("Select");
-        case ToolViewModel.Hand:
-            return qsTr("Hand");
-        case ToolViewModel.Highlighter:
-            return qsTr("Highlighter");
-        case ToolViewModel.Eraser:
-            return qsTr("Eraser");
-        case ToolViewModel.Shape:
-            return qsTr("Shape");
-        case ToolViewModel.ColourPicker:
-            return qsTr("Colour Picker");
-        default:
-            return qsTr("Pen");
         }
     }
 
@@ -62,22 +43,13 @@ ToolBar {
         anchors.fill: parent
         spacing: 6
 
-        Label {
-            Layout.leftMargin: 4
-            Layout.minimumWidth: 90
-            font.bold: true
-            text: root.toolTitle()
-        }
-
-        ToolSeparator {
-        }
-
         Repeater {
             model: root.draws && root.tools.currentTool !== ToolViewModel.Highlighter ? root.tools.penCount : 0
 
             PenSwatch {
                 required property int index
 
+                Layout.leftMargin: index === 0 ? 4 : 0
                 checked: root.tools.pen === index
                 color: root.tools.colorOfPen(index)
                 penWidth: root.tools.widthOfPen(index)
@@ -150,11 +122,13 @@ ToolBar {
         }
 
         Label {
+            Layout.leftMargin: 2
+            color: palette.placeholderText
             text: root.erases ? qsTr("Size") : qsTr("Width")
             visible: root.draws || root.erases
         }
 
-        NumberField {
+        WidthField {
             maximum: root.erases ? 40 : 24
             minimum: root.erases ? 4 : 0.5
             number: root.erases ? root.tools.eraserRadius : root.tools.strokeWidth
@@ -171,16 +145,23 @@ ToolBar {
             }
         }
 
-        ComboBox {
-            id: shapeBox
-
-            Layout.preferredWidth: 140
-            currentIndex: root.shapes.indexOf(root.tools.shape)
-            model: [qsTr("Straight line"), qsTr("Box"), qsTr("Circle")]
-            objectName: "shapeBox"
+        ToolSeparator {
             visible: root.tools.currentTool === ToolViewModel.Shape
+        }
 
-            onActivated: root.tools.shape = root.shapes[shapeBox.currentIndex]
+        Repeater {
+            model: root.tools.currentTool === ToolViewModel.Shape ? 3 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: root.tools.shape === root.shapes[index]
+                icon.source: [Icons.straightLine, Icons.square, Icons.circle][index]
+                label: [qsTr("Straight line"), qsTr("Box"), qsTr("Circle")][index]
+                objectName: ["lineShapeButton", "boxShapeButton", "circleShapeButton"][index]
+
+                onClicked: root.tools.shape = root.shapes[index]
+            }
         }
 
         QuickButton {

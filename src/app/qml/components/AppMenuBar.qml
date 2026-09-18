@@ -77,6 +77,11 @@ MenuBar {
             objectName: "pageSetupItem"
         }
 
+        MenuCommand {
+            action: root.actions.showSettings
+            objectName: "settingsItem"
+        }
+
         MenuSeparator {
         }
 
@@ -199,49 +204,6 @@ MenuBar {
         MenuCommand {
             action: root.actions.importDocument
             objectName: "importItem"
-        }
-    }
-
-    Menu {
-        objectName: "toolsMenu"
-        title: qsTr("&Tools")
-
-        Repeater {
-            model: root.actions.toolActions
-
-            MenuCommand {
-                required property Action modelData
-
-                action: modelData
-            }
-        }
-
-        MenuSeparator {
-        }
-
-        MenuCommand {
-            action: root.actions.showSettings
-            objectName: "settingsItem"
-        }
-    }
-
-    Menu {
-        objectName: "windowMenu"
-        title: qsTr("&Window")
-
-        Repeater {
-            model: root.notebooks.openNotebooks
-
-            MenuItem {
-                required property int index
-                required property string modelData
-
-                checkable: true
-                checked: index === root.notebooks.currentIndex
-                text: modelData
-
-                onTriggered: root.notebooks.currentIndex = index
-            }
         }
     }
 

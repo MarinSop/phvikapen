@@ -15,7 +15,6 @@ Item {
     readonly property bool hasNotebook: root.notebook !== null && root.notebook.loaded
     readonly property bool hasSelection: root.canvas !== null && root.canvas.selectedCount > 0
     readonly property Action selectTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Selection
         icon.source: Icons.select
         shortcut: root.keysFor("selectTool", "V")
@@ -24,7 +23,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Selection
     }
     readonly property Action handTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Hand
         icon.source: Icons.hand
         shortcut: root.keysFor("handTool", "H")
@@ -33,7 +31,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Hand
     }
     readonly property Action penTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Pen
         icon.source: Icons.pen
         shortcut: root.keysFor("penTool", "P")
@@ -42,7 +39,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Pen
     }
     readonly property Action highlighterTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Highlighter
         icon.source: Icons.highlighter
         shortcut: root.keysFor("highlighterTool", "M")
@@ -51,7 +47,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Highlighter
     }
     readonly property Action shapeTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Shape
         icon.source: Icons.shape
         shortcut: root.keysFor("shapeTool", "U")
@@ -60,7 +55,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Shape
     }
     readonly property Action eraserTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.Eraser
         icon.source: Icons.eraser
         shortcut: root.keysFor("eraserTool", "E")
@@ -69,7 +63,6 @@ Item {
         onTriggered: root.tools.currentTool = ToolViewModel.Eraser
     }
     readonly property Action colourTool: Action {
-        checkable: true
         checked: root.tools.currentTool === ToolViewModel.ColourPicker
         icon.source: Icons.colourPicker
         shortcut: root.keysFor("colourTool", "K")

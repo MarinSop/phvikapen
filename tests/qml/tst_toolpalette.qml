@@ -23,13 +23,23 @@ TestCase {
     function test_c_theToolThatIsPickedIsMarked() {
         tools.currentTool = ToolViewModel.Eraser;
 
-        verify(findChild(palette, "eraserTool").checked);
-        verify(!findChild(palette, "penTool").checked);
+        verify(findChild(palette, "eraserTool").active);
+        verify(!findChild(palette, "penTool").active);
 
         tools.currentTool = ToolViewModel.Pen;
 
-        verify(findChild(palette, "penTool").checked);
-        verify(!findChild(palette, "shapeTool").checked);
+        verify(findChild(palette, "penTool").active);
+        verify(!findChild(palette, "shapeTool").active);
+    }
+
+    function test_c2_clickingThePickedToolLeavesItPicked() {
+        const pen = findChild(palette, "penTool");
+        tools.currentTool = ToolViewModel.Pen;
+
+        mouseClick(pen);
+
+        compare(tools.currentTool, ToolViewModel.Pen);
+        verify(pen.active);
     }
 
     function test_d_theShapeToolAndThePenAreTwoTools() {

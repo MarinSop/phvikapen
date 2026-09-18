@@ -183,7 +183,7 @@ void NotebooksViewModel::createNotebook(const QString& name) {
 }
 
 void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper, int background,
-                                                 bool landscape) {
+                                                 bool landscape, const QUrl& document) {
     if (!isNameFree(name)) {
         emit errorMessage(tr("A notebook called %1 is already there").arg(name));
         return;
@@ -198,17 +198,23 @@ void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper,
             wanted.background = static_cast<core::Background>(background);
         }
         wanted.orientation = landscape ? core::Orientation::Landscape : core::Orientation::Portrait;
+        const auto settle = [wanted, document](NotebookViewModel* const ready) {
+            ready->applyStyle(wanted);
+            if (!document.isEmpty()) {
+                ready->importDocument(document);
+            }
+        };
         if (made->loaded()) {
-            made->applyStyle(wanted);
+            settle(made);
         } else {
             const auto connection = std::make_shared<QMetaObject::Connection>();
             *connection =
-                connect(made, &NotebookViewModel::loadedChanged, made, [made, wanted, connection] {
+                connect(made, &NotebookViewModel::loadedChanged, made, [made, settle, connection] {
                     if (!made->loaded()) {
                         return;
                     }
                     QObject::disconnect(*connection);
-                    made->applyStyle(wanted);
+                    settle(made);
                 });
         }
     }

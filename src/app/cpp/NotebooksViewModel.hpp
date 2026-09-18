@@ -8,6 +8,7 @@
 #include <QQmlParserStatus>
 #include <QString>
 #include <QStringList>
+#include <QUrl>
 #include <QtQmlIntegration>
 
 #include <memory>
@@ -62,7 +63,7 @@ public:
     Q_INVOKABLE [[nodiscard]] bool isNameFree(const QString& name) const;
     Q_INVOKABLE void createNotebook(const QString& name);
     Q_INVOKABLE void createNotebookWithSetup(const QString& name, int paper, int background,
-                                             bool landscape);
+                                             bool landscape, const QUrl& document = {});
     Q_INVOKABLE void openNotebook(const QString& name);
     Q_INVOKABLE void closeNotebook(int index);
     Q_INVOKABLE void renameNotebook(int index, const QString& name);

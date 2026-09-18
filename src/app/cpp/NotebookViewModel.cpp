@@ -58,6 +58,7 @@ constexpr float kPickRadius = 6.0F;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 2;
+constexpr int kMediaAround = 4;
 constexpr float kColumnMediaScale = 2.0F;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
@@ -658,6 +659,27 @@ void NotebookViewModel::pickColour(const core::InkSample& at) {
             emit colourPicked(QColor::fromRgb(colour.red, colour.green, colour.blue, colour.alpha));
             return;
         }
+    }
+    pickFromMedia(at);
+}
+
+// Where no line was drawn, the colour comes from the document underneath.
+void NotebookViewModel::pickFromMedia(const core::InkSample& at) {
+    const auto piece = m_shownMedia.find(m_currentPage);
+    if (piece == m_shownMedia.end() || piece->second.picture.isNull()) {
+        return;
+    }
+    const QRectF& area = piece->second.area;
+    const QImage& picture = piece->second.picture;
+    if (area.isEmpty() || !area.contains(at.x, at.y)) {
+        return;
+    }
+    const auto column = static_cast<int>((at.x - area.left()) / area.width() * picture.width());
+    const auto row = static_cast<int>((at.y - area.top()) / area.height() * picture.height());
+    const QColor colour = picture.pixelColor(std::clamp(column, 0, picture.width() - 1),
+                                             std::clamp(row, 0, picture.height() - 1));
+    if (colour.alpha() > 0) {
+        emit colourPicked(QColor::fromRgb(colour.red(), colour.green(), colour.blue()));
     }
 }
 
@@ -1375,9 +1397,26 @@ void NotebookViewModel::publishMedia() {
     m_canvas->showMedia(pieces);
 }
 
+// While a page is being read only the part of its document that shows is drawn, in full detail.
+// Once it is left behind, that part is all it has, so the column draws it whole again.
+bool NotebookViewModel::hasWholeMedia(const core::PageInfo& page) const {
+    const auto shown = m_shownMedia.find(page.id);
+    if (shown == m_shownMedia.end()) {
+        return false;
+    }
+    const std::optional<core::PaperSize> paper = core::paperSize(page.style);
+    if (!paper) {
+        return true;
+    }
+    const QRectF& area = shown->second.area;
+    return area.left() <= 0.0 && area.top() <= 0.0
+           && area.right() >= static_cast<qreal>(paper->width)
+           && area.bottom() >= static_cast<qreal>(paper->height);
+}
+
 // A page near the one being read shows its document as a whole, drawn once.
 void NotebookViewModel::wantMediaFor(const core::PageInfo& page) {
-    if (!page.media || !m_storage || page.id == m_currentPage || m_shownMedia.contains(page.id)) {
+    if (!page.media || !m_storage || page.id == m_currentPage || hasWholeMedia(page)) {
         return;
     }
     if (!m_wantedMedia.insert(page.id).second) {
@@ -1662,6 +1701,30 @@ void NotebookViewModel::wantNeighbours() {
                 },
                 Qt::QueuedConnection);
         });
+    }
+    forgetFarMedia(infos, here);
+}
+
+// The documents of pages far from the one being read are let go of, and drawn again on the way
+// back.
+void NotebookViewModel::forgetFarMedia(std::span<const core::PageInfo> pages, int here) {
+    std::set<core::Uuid> kept;
+    const int first = std::max(0, here - kMediaAround);
+    const int last = std::min(static_cast<int>(pages.size()) - 1, here + kMediaAround);
+    for (int index = first; index <= last; ++index) {
+        kept.insert(pages[static_cast<std::size_t>(index)].id);
+    }
+    bool dropped = false;
+    for (auto piece = m_shownMedia.begin(); piece != m_shownMedia.end();) {
+        if (kept.contains(piece->first)) {
+            ++piece;
+            continue;
+        }
+        piece = m_shownMedia.erase(piece);
+        dropped = true;
+    }
+    if (dropped) {
+        publishMedia();
     }
 }
 

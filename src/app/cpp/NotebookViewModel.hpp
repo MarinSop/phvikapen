@@ -297,6 +297,7 @@ private:
     void selectInside(std::span<const core::Point> polygon);
     void moveSelection(float dx, float dy);
     void pickColour(const core::InkSample& at);
+    void pickFromMedia(const core::InkSample& at);
     void erase(const core::InkSample& from, const core::InkSample& to, float radius);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
@@ -314,6 +315,8 @@ private:
     void publishMedia();
     void wantNeighbours();
     void wantMediaFor(const core::PageInfo& page);
+    [[nodiscard]] bool hasWholeMedia(const core::PageInfo& page) const;
+    void forgetFarMedia(std::span<const core::PageInfo> pages, int here);
     void drawColumnMedia(const core::Uuid& page, const core::PageStyle& style, int index,
                          core::Asset asset);
     void showColumn();

@@ -142,11 +142,11 @@ Pane {
                         display: AbstractButton.IconOnly
                         enabled: root.ready && root.notebook.sectionCount > 1
                         icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 16
+                        icon.height: 20
                         icon.source: Icons.close
-                        icon.width: 16
-                        implicitHeight: 26
-                        implicitWidth: 26
+                        icon.width: 20
+                        implicitHeight: 30
+                        implicitWidth: 30
                         objectName: "deleteSectionButton"
                         ToolTip.delay: 600
                         ToolTip.text: qsTr("Delete section")
@@ -302,11 +302,11 @@ Pane {
                         display: AbstractButton.IconOnly
                         enabled: root.ready && root.notebook.pageCount > 1
                         icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 16
+                        icon.height: 20
                         icon.source: Icons.close
-                        icon.width: 16
-                        implicitHeight: 26
-                        implicitWidth: 26
+                        icon.width: 20
+                        implicitHeight: 30
+                        implicitWidth: 30
                         objectName: "deletePageButton"
                         ToolTip.delay: 600
                         ToolTip.text: qsTr("Delete page")
@@ -409,6 +409,7 @@ Pane {
         objectName: "deleteDialog"
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: deleteDialog.sectionScope ? qsTr("Delete section") : qsTr("Delete page")
+        width: 380
 
         onAccepted: {
             if (deleteDialog.sectionScope) {
@@ -419,6 +420,7 @@ Pane {
         }
 
         Label {
+            anchors.fill: parent
             text: deleteDialog.sectionScope ? qsTr("Move “%1” and every page in it to the deleted pages?").arg(deleteDialog.itemTitle) : qsTr("Move “%1” to the deleted pages?").arg(deleteDialog.itemTitle)
             wrapMode: Text.WordWrap
         }

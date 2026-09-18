@@ -5,6 +5,7 @@ import PhvikaPen.Ui
 ToolButton {
     id: root
 
+    property bool active: false
     property string shortcutText: ""
     required property string toolName
     readonly property string tooltipText: root.shortcutText === "" ? root.toolName : root.toolName + "   " + root.shortcutText
@@ -12,19 +13,23 @@ ToolButton {
     ToolTip.delay: 600
     ToolTip.text: root.tooltipText
     ToolTip.visible: root.hovered
-    checkable: true
     display: AbstractButton.IconOnly
-    icon.color: root.enabled ? palette.buttonText : palette.placeholderText
-    icon.height: 20
-    icon.width: 20
-    implicitHeight: 40
-    implicitWidth: 40
+    icon.color: !root.enabled ? palette.placeholderText : root.active ? Theme.text : palette.buttonText
+    icon.height: 22
+    icon.width: 22
+    implicitHeight: 42
+    implicitWidth: 42
+
+    background: Rectangle {
+        color: root.active ? Theme.base : root.hovered ? Theme.line : "transparent"
+        radius: 6
+    }
 
     // The picked tool is marked by a bar as well as by colour.
     Rectangle {
         height: parent.height - 12
         radius: 1.5
-        visible: root.checked
+        visible: root.active
         width: 3
         x: 0
         y: 6

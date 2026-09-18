@@ -26,6 +26,11 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     palette
     save
     help-circle
+    chevron-up
+    chevron-down
+    minus
+    square
+    circle
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -68,6 +73,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
+        qml/components/ArrowButton.qml
         qml/components/EmptyState.qml
         qml/components/MenuCommand.qml
         qml/components/MessageBar.qml
@@ -83,12 +89,14 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
+        qml/components/ShapeButton.qml
         qml/components/ShortcutField.qml
         qml/components/ThemeCard.qml
         qml/components/ToolPalette.qml
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
+        qml/components/WidthField.qml
 )
 
 

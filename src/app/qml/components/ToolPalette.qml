@@ -36,6 +36,7 @@ Pane {
                 required property Action modelData
 
                 action: modelData
+                active: modelData.checked
                 enabled: modelData.enabled
                 objectName: modelData.text.toLowerCase() + "Tool"
                 shortcutText: AppInfo.shortcutText(modelData.shortcut)

@@ -87,6 +87,34 @@ TestCase {
         compare(after.widthOfPen(2), 6);
     }
 
+    function test_f_aPickedColourIsUsedByThePenAndTheHighlighter() {
+        const tools = testCase.newTools();
+        tools.currentTool = ToolViewModel.Pen;
+        tools.currentTool = ToolViewModel.ColourPicker;
+
+        tools.usePickedColour("#20a040");
+
+        compare(tools.currentTool, ToolViewModel.Pen);
+        compare(tools.colorOfPen(tools.pen).toString(), "#20a040");
+
+        tools.currentTool = ToolViewModel.Highlighter;
+        compare(tools.strokeColor.r, tools.colorOfPen(tools.pen).r);
+        compare(tools.strokeColor.g, tools.colorOfPen(tools.pen).g);
+        verify(tools.strokeColor.a < 1);
+        tools.currentTool = ToolViewModel.Pen;
+    }
+
+    function test_g_thePickerHandsTheToolBackToTheOneBeforeIt() {
+        const tools = testCase.newTools();
+        tools.currentTool = ToolViewModel.Highlighter;
+        tools.currentTool = ToolViewModel.ColourPicker;
+
+        tools.usePickedColour("#334455");
+
+        compare(tools.currentTool, ToolViewModel.Highlighter);
+        tools.currentTool = ToolViewModel.Pen;
+    }
+
     function test_z_theShapeIsRememberedForTheNextTime() {
         const tools = testCase.newTools();
         compare(tools.shape, ToolViewModel.Rectangle);

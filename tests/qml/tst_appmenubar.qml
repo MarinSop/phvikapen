@@ -11,7 +11,7 @@ TestCase {
             titles.push(menuBar.menuAt(i).title.replace("&", ""));
         }
 
-        compare(titles, ["File", "Edit", "View", "Insert", "Tools", "Window", "Help"]);
+        compare(titles, ["File", "Edit", "View", "Insert", "Help"]);
     }
 
     function test_b_commandsCarryTheirShortcut() {

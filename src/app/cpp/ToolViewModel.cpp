@@ -22,6 +22,7 @@ constexpr auto kWidthPrefix = "tools/width/";
 constexpr auto kHighlighterKey = "highlighter";
 
 constexpr int kHighlighterAlpha = 90;
+constexpr int kOpaqueAlpha = 255;
 constexpr qreal kHighlighterWidth = 14.0;
 constexpr qreal kFirstPenWidth = 2.0;
 constexpr qreal kSecondPenWidth = 3.0;
@@ -70,6 +71,9 @@ const ToolViewModel::Nib& ToolViewModel::activeNib() const {
 void ToolViewModel::setCurrentTool(Tool tool) {
     if (tool == m_currentTool) {
         return;
+    }
+    if (tool == Tool::ColourPicker) {
+        m_beforePicking = m_currentTool;
     }
     m_currentTool = tool;
     emit currentToolChanged();
@@ -143,6 +147,21 @@ QVariantList ToolViewModel::palette() {
         colors.append(QColor{name});
     }
     return colors;
+}
+
+void ToolViewModel::usePickedColour(const QColor& colour) {
+    if (!colour.isValid()) {
+        return;
+    }
+    QColor opaque = colour;
+    opaque.setAlpha(kOpaqueAlpha);
+    m_pens.at(static_cast<std::size_t>(m_pen)).color = opaque;
+    QColor marker = opaque;
+    marker.setAlpha(kHighlighterAlpha);
+    m_highlighter.color = marker;
+    setCurrentTool(m_beforePicking == Tool::ColourPicker ? Tool::Pen : m_beforePicking);
+    emit toolChanged();
+    remember();
 }
 
 QColor ToolViewModel::colorOfPen(int index) const {

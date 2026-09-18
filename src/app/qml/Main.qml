@@ -169,6 +169,35 @@ ApplicationWindow {
             strokeColor: toolState.strokeColor
             strokeWidth: toolState.strokeWidth
             visible: root.notebook !== null
+
+            HoverHandler {
+                id: canvasHover
+            }
+
+            // How wide the line, or the eraser, will be right here on the page.
+            Rectangle {
+                readonly property real sizeOnPage: toolState.currentTool === ToolViewModel.Eraser ? toolState.eraserRadius * 2 : toolState.strokeWidth
+
+                border.color: Theme.text
+                border.width: 1
+                color: "transparent"
+                height: width
+                opacity: 0.7
+                radius: width / 2
+                visible: canvasHover.hovered && canvas.enabled && (toolState.currentTool === ToolViewModel.Pen || toolState.currentTool === ToolViewModel.Highlighter || toolState.currentTool === ToolViewModel.Shape || toolState.currentTool === ToolViewModel.Eraser)
+                width: Math.max(4, sizeOnPage * canvas.zoom)
+                x: canvasHover.point.position.x - (width / 2)
+                y: canvasHover.point.position.y - (height / 2)
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    border.color: Theme.window
+                    border.width: 1
+                    color: "transparent"
+                    radius: width / 2
+                }
+            }
         }
 
         PagePanel {
@@ -262,7 +291,7 @@ ApplicationWindow {
 
     Connections {
         function onColourPicked(colour) {
-            toolState.strokeColor = colour;
+            toolState.usePickedColour(colour);
         }
 
         function onCopied(path) {
