@@ -45,6 +45,23 @@ TestCase {
         compare(tools.shape, ToolViewModel.Freehand);
     }
 
+    function test_e2_theKeysPickTheTools() {
+        findChild(palette, "penTool").action.trigger();
+
+        keyClick(Qt.Key_V);
+        compare(tools.currentTool, ToolViewModel.Selection);
+
+        keyClick(Qt.Key_E);
+        compare(tools.currentTool, ToolViewModel.Eraser);
+
+        keyClick(Qt.Key_M);
+        compare(tools.currentTool, ToolViewModel.Highlighter);
+
+        keyClick(Qt.Key_P);
+        compare(tools.currentTool, ToolViewModel.Pen);
+        compare(tools.shape, ToolViewModel.Freehand);
+    }
+
     function test_e_theHandToolPansInsteadOfDrawing() {
         findChild(palette, "handTool").action.trigger();
 
