@@ -29,8 +29,9 @@ into a real problem earlier.
 
 ## Imported documents
 
-- **A page of a document is one texture.** The whole page is drawn again whenever the zoom changes
-  enough, instead of only the part in view, which will matter on large pages at high zoom.
+- **The part in view is drawn again from scratch.** Only what is on screen is drawn, but panning
+  past its edge throws the whole picture away and draws the new part from nothing, so there is a
+  short wait instead of the old part staying while the new part arrives.
 - **Nothing removes a file that no page shows any more.** Undoing an import leaves the file in the
   notebook, and emptying the trash should take it with it.
 

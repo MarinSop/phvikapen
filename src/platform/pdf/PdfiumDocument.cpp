@@ -7,6 +7,7 @@
 #include <fpdfview.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -135,13 +136,37 @@ core::Result<PageSize> PdfiumDocument::pageSize(int pageIndex) const {
 
 core::Result<PageImage> PdfiumDocument::renderPage(int pageIndex, int widthInPixels,
                                                    int heightInPixels) const {
+    const core::Result<PageSize> size = pageSize(pageIndex);
+    if (!size) {
+        return std::unexpected{size.error()};
+    }
+    return renderRegion(pageIndex, widthInPixels, heightInPixels,
+                        PageRegion{
+                            .left = 0.0F,
+                            .top = 0.0F,
+                            .width = size->width,
+                            .height = size->height,
+                        });
+}
+
+core::Result<PageImage> PdfiumDocument::renderRegion(int pageIndex, int widthInPixels,
+                                                     int heightInPixels,
+                                                     const PageRegion& region) const {
     if (widthInPixels <= 0 || heightInPixels <= 0 || widthInPixels > kMaximumPixels
         || heightInPixels > kMaximumPixels) {
         return core::makeError(core::ErrorCode::InvalidArgument,
                                "the wanted size is not one a page can be drawn at");
     }
+    if (region.width <= 0.0F || region.height <= 0.0F) {
+        return core::makeError(core::ErrorCode::InvalidArgument,
+                               "the wanted part of the page is empty");
+    }
     if (pageIndex < 0 || pageIndex >= pageCount()) {
         return core::makeError(core::ErrorCode::NotFound, "the PDF has no such page");
+    }
+    const core::Result<PageSize> size = pageSize(pageIndex);
+    if (!size) {
+        return std::unexpected{size.error()};
     }
 
     FPDF_PAGE page = FPDF_LoadPage(static_cast<FPDF_DOCUMENT>(m_document), pageIndex);
@@ -164,8 +189,13 @@ core::Result<PageImage> PdfiumDocument::renderPage(int pageIndex, int widthInPix
         return core::makeError(core::ErrorCode::IoFailure, "the page could not be drawn");
     }
 
+    const float across = static_cast<float>(widthInPixels) / region.width;
+    const float down = static_cast<float>(heightInPixels) / region.height;
     FPDFBitmap_FillRect(bitmap, 0, 0, widthInPixels, heightInPixels, kWhite);
-    FPDF_RenderPageBitmap(bitmap, page, 0, 0, widthInPixels, heightInPixels, 0, FPDF_ANNOT);
+    FPDF_RenderPageBitmap(bitmap, page, static_cast<int>(std::lround(-region.left * across)),
+                          static_cast<int>(std::lround(-region.top * down)),
+                          static_cast<int>(std::lround(size->width * across)),
+                          static_cast<int>(std::lround(size->height * down)), 0, FPDF_ANNOT);
     FPDFBitmap_Destroy(bitmap);
     FPDF_ClosePage(page);
 

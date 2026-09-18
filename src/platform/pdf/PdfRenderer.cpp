@@ -62,6 +62,20 @@ void PdfRenderer::render(const core::ContentId& asset, int pageIndex, int widthI
     });
 }
 
+void PdfRenderer::renderRegion(const core::ContentId& asset, int pageIndex, int widthInPixels,
+                               int heightInPixels, const PageRegion& region,
+                               ImageHandler onRendered) {
+    post([this, asset, pageIndex, widthInPixels, heightInPixels, region,
+          onRendered = std::move(onRendered)] {
+        const auto found = m_documents.find(asset);
+        if (found == m_documents.end()) {
+            onRendered(core::makeError(core::ErrorCode::NotFound, "the document is not open"));
+            return;
+        }
+        onRendered(found->second->renderRegion(pageIndex, widthInPixels, heightInPixels, region));
+    });
+}
+
 void PdfRenderer::forget(const core::ContentId& asset) {
     post([this, asset] { m_documents.erase(asset); });
 }

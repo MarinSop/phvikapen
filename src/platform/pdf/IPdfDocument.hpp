@@ -14,6 +14,15 @@ struct PageSize {
     friend constexpr bool operator==(const PageSize&, const PageSize&) = default;
 };
 
+struct PageRegion {
+    float left{};
+    float top{};
+    float width{};
+    float height{};
+
+    friend constexpr bool operator==(const PageRegion&, const PageRegion&) = default;
+};
+
 struct PageImage {
     int width{};
     int height{};
@@ -36,6 +45,10 @@ public:
 
     [[nodiscard]] virtual core::Result<PageImage> renderPage(int pageIndex, int widthInPixels,
                                                              int heightInPixels) const = 0;
+
+    [[nodiscard]] virtual core::Result<PageImage> renderRegion(int pageIndex, int widthInPixels,
+                                                               int heightInPixels,
+                                                               const PageRegion& region) const = 0;
 };
 
 }

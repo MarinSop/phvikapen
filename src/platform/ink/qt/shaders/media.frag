@@ -6,7 +6,7 @@ layout(location = 0) out vec4 fragColor;
 
 layout(std140, binding = 0) uniform Media {
     mat4 projection;
-    vec4 paper;
+    vec4 area;
 };
 
 layout(binding = 1) uniform sampler2D page;

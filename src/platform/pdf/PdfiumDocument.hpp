@@ -39,6 +39,10 @@ public:
     [[nodiscard]] core::Result<PageImage> renderPage(int pageIndex, int widthInPixels,
                                                      int heightInPixels) const override;
 
+    [[nodiscard]] core::Result<PageImage> renderRegion(int pageIndex, int widthInPixels,
+                                                       int heightInPixels,
+                                                       const PageRegion& region) const override;
+
 private:
     std::shared_ptr<PdfiumLibrary> m_library;
     std::vector<std::byte> m_bytes;

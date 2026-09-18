@@ -311,15 +311,16 @@ void QtInkRenderer::createMediaPipeline() {
 }
 
 void QtInkRenderer::updateMedia(QRhiResourceUpdateBatch& updates) {
-    const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     std::array<float, (kMatrixBytes + kVectorBytes) / sizeof(float)> uniforms{};
     QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
     projection.scale(m_viewport.scale());
     projection.translate(-m_viewport.origin().x, -m_viewport.origin().y);
     std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), uniforms.begin());
-    uniforms.at(kMatrixBytes / sizeof(float)) = paper ? paper->width : 0.0F;
-    uniforms.at((kMatrixBytes / sizeof(float)) + 1) = paper ? paper->height : 0.0F;
+    uniforms.at(kMatrixBytes / sizeof(float)) = static_cast<float>(m_mediaArea.x());
+    uniforms.at((kMatrixBytes / sizeof(float)) + 1) = static_cast<float>(m_mediaArea.y());
+    uniforms.at((kMatrixBytes / sizeof(float)) + 2) = static_cast<float>(m_mediaArea.width());
+    uniforms.at((kMatrixBytes / sizeof(float)) + 3) = static_cast<float>(m_mediaArea.height());
     updates.updateDynamicBuffer(m_mediaUniforms.get(), 0,
                                 static_cast<quint32>(std::span{uniforms}.size_bytes()),
                                 uniforms.data());
@@ -377,6 +378,7 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     if (inkItem->mediaGeneration() != m_mediaGeneration) {
         m_mediaGeneration = inkItem->mediaGeneration();
         m_media = inkItem->media();
+        m_mediaArea = inkItem->mediaArea();
         m_mediaUploaded = false;
     }
 }
@@ -522,7 +524,7 @@ void QtInkRenderer::render(QRhiCommandBuffer* commandBuffer) {
     commandBuffer->setVertexInput(0, 1, &backgroundInput);
     commandBuffer->draw(static_cast<quint32>(kBackgroundCorners.size() / 2));
 
-    if (!m_media.isNull() && core::paperSize(m_pageStyle)) {
+    if (!m_media.isNull() && !m_mediaArea.isEmpty()) {
         commandBuffer->setGraphicsPipeline(m_mediaPipeline.get());
         commandBuffer->setShaderResources();
         const QRhiCommandBuffer::VertexInput mediaInput{m_backgroundVertices.get(), 0};

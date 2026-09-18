@@ -367,8 +367,9 @@ void QtInkItem::showView(const core::Viewport& viewport) {
     changeView(viewport);
 }
 
-void QtInkItem::showMedia(const QImage& image) {
+void QtInkItem::showMedia(const QImage& image, const QRectF& area) {
     m_media = image;
+    m_mediaArea = area;
     ++m_mediaGeneration;
     update();
 }
@@ -378,6 +379,7 @@ void QtInkItem::clearMedia() {
         return;
     }
     m_media = QImage{};
+    m_mediaArea = {};
     ++m_mediaGeneration;
     update();
 }
@@ -436,6 +438,10 @@ void QtInkItem::setPressureSensitive(bool sensitive) {
 
 QPointF QtInkItem::viewOrigin() const noexcept {
     return {m_viewport.origin().x, m_viewport.origin().y};
+}
+
+core::Rect QtInkItem::visiblePage() const noexcept {
+    return m_viewport.visiblePage(viewSize());
 }
 
 core::ViewSize QtInkItem::viewSize() const noexcept {

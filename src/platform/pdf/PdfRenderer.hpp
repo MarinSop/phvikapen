@@ -33,6 +33,8 @@ public:
     void open(core::Asset asset, DocumentHandler onOpened);
     void render(const core::ContentId& asset, int pageIndex, int widthInPixels, int heightInPixels,
                 ImageHandler onRendered);
+    void renderRegion(const core::ContentId& asset, int pageIndex, int widthInPixels,
+                      int heightInPixels, const PageRegion& region, ImageHandler onRendered);
     void forget(const core::ContentId& asset);
 
     void waitUntilIdle();

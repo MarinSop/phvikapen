@@ -96,10 +96,12 @@ public:
 
     Q_INVOKABLE void clearSelection();
 
-    void showMedia(const QImage& image);
+    void showMedia(const QImage& image, const QRectF& area);
     void clearMedia();
 
     [[nodiscard]] const QImage& media() const noexcept { return m_media; }
+
+    [[nodiscard]] QRectF mediaArea() const noexcept { return m_mediaArea; }
 
     [[nodiscard]] std::uint64_t mediaGeneration() const noexcept { return m_mediaGeneration; }
 
@@ -108,6 +110,8 @@ public:
     [[nodiscard]] QPointF viewOrigin() const noexcept;
 
     [[nodiscard]] const core::Viewport& viewport() const noexcept { return m_viewport; }
+
+    [[nodiscard]] core::Rect visiblePage() const noexcept;
 
     [[nodiscard]] const core::PageStyle& pageStyle() const noexcept { return m_pageStyle; }
 
@@ -236,6 +240,7 @@ private:
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;
     QImage m_media;
+    QRectF m_mediaArea;
     std::uint64_t m_mediaGeneration{0};
     core::Uuid m_shownPage;
     bool m_viewFitted{false};

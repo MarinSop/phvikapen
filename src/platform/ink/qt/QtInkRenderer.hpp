@@ -8,6 +8,7 @@
 
 #include <QImage>
 #include <QQuickRhiItem>
+#include <QRectF>
 
 #include <cstddef>
 #include <cstdint>
@@ -79,6 +80,7 @@ private:
     std::unique_ptr<QRhiShaderResourceBindings> m_mediaBindings;
     std::unique_ptr<QRhiGraphicsPipeline> m_mediaPipeline;
     QImage m_media;
+    QRectF m_mediaArea;
     std::uint64_t m_mediaGeneration{0};
     bool m_mediaUploaded{false};
     bool m_backgroundVerticesUploaded{false};

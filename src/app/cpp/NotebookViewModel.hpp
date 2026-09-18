@@ -3,6 +3,7 @@
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
 #include "core/geometry/Distance.hpp"
+#include "core/geometry/Rect.hpp"
 #include "core/geometry/Viewport.hpp"
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
@@ -268,7 +269,8 @@ private:
     void showPicture(std::uint64_t opening, const core::ContentId& asset, const QImage& picture);
     void drawMedia();
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
-                          const platform::pdf::PageImage& image);
+                          const core::Rect& area, const platform::pdf::PageImage& image);
+    [[nodiscard]] core::Rect wantedRegion(const core::PaperSize& paper) const;
     void reportError(const QString& message);
     void finishExport(const QString& path, const core::Result<int>& written);
     void showTrash(std::uint64_t opening, core::Result<std::vector<core::TrashedItem>> items);
@@ -286,6 +288,7 @@ private:
     core::ContentId m_openAsset;
     QTimer m_mediaTimer;
     qreal m_mediaScale{0.0};
+    core::Rect m_mediaRegion;
     std::jthread m_export;
     std::jthread m_pictures;
     bool m_exporting{false};

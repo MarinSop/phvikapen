@@ -125,5 +125,51 @@ TEST(PdfiumDocumentTest, ReportsPagesAndSizesItCannotDraw) {
               core::ErrorCode::InvalidArgument);
 }
 
+TEST(PdfiumDocumentTest, DrawsOnlyThePartOfThePageThatWasAskedFor) {
+    const QTemporaryDir directory;
+    const QString path = writePdf(directory);
+    const core::Result<std::unique_ptr<PdfiumDocument>> document =
+        PdfiumDocument::openFile(path.toStdU16String());
+    ASSERT_TRUE(document.has_value()) << document.error().message;
+    const core::Result<PageSize> size = (*document)->pageSize(0);
+    ASSERT_TRUE(size.has_value());
+
+    const core::Result<PageImage> corner =
+        (*document)->renderRegion(0, 100, 100,
+                                  PageRegion{
+                                      .left = 0.0F,
+                                      .top = 0.0F,
+                                      .width = size->width / 4.0F,
+                                      .height = size->height / 4.0F,
+                                  });
+    const core::Result<PageImage> away =
+        (*document)->renderRegion(0, 100, 100,
+                                  PageRegion{
+                                      .left = size->width * 0.7F,
+                                      .top = size->height * 0.7F,
+                                      .width = size->width / 4.0F,
+                                      .height = size->height / 4.0F,
+                                  });
+
+    ASSERT_TRUE(corner.has_value()) << corner.error().message;
+    ASSERT_TRUE(away.has_value()) << away.error().message;
+    const std::size_t middle = (((std::size_t{50} * 100U) + 50U) * 4U);
+    EXPECT_LT(corner->pixels[middle], 64);
+    EXPECT_GT(away->pixels[middle], 192);
+}
+
+TEST(PdfiumDocumentTest, RefusesAnEmptyPartOfAPage) {
+    const QTemporaryDir directory;
+    const QString path = writePdf(directory);
+    const core::Result<std::unique_ptr<PdfiumDocument>> document =
+        PdfiumDocument::openFile(path.toStdU16String());
+    ASSERT_TRUE(document.has_value()) << document.error().message;
+
+    const core::Result<PageImage> nothing = (*document)->renderRegion(0, 10, 10, PageRegion{});
+
+    ASSERT_FALSE(nothing.has_value());
+    EXPECT_EQ(nothing.error().code, core::ErrorCode::InvalidArgument);
+}
+
 }
 }

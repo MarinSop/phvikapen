@@ -51,6 +51,7 @@ constexpr int kMaximumMediaPixels = 4096;
 constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
+constexpr float kMediaMargin = 64.0F;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
     const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -336,9 +337,17 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
     }
     m_canvas->setSink(&m_sink);
     connect(m_canvas, &platform::ink::QtInkItem::viewChanged, this, [this] {
-        const qreal scale = m_canvas.isNull() ? 0.0 : m_canvas->zoom();
-        if (scale > m_mediaScale * kMediaRedrawFactor
-            || scale * kMediaRedrawFactor < m_mediaScale) {
+        if (m_canvas.isNull()) {
+            return;
+        }
+        const qreal scale = m_canvas->zoom();
+        const core::Rect seen = m_canvas->visiblePage();
+        const bool zoomed =
+            scale > m_mediaScale * kMediaRedrawFactor || scale * kMediaRedrawFactor < m_mediaScale;
+        const bool panned = seen.left < m_mediaRegion.left || seen.top < m_mediaRegion.top
+                            || seen.right > m_mediaRegion.right
+                            || seen.bottom > m_mediaRegion.bottom;
+        if (zoomed || panned) {
             m_mediaTimer.start();
         }
     });
@@ -1039,7 +1048,14 @@ void NotebookViewModel::showPicture(std::uint64_t opening, const core::ContentId
         reportError(tr("The picture could not be read"));
         return;
     }
-    m_canvas->showMedia(picture);
+    const core::PageInfo* const info = currentPageInfo();
+    const std::optional<core::PaperSize> paper =
+        info == nullptr ? std::nullopt : core::paperSize(info->style);
+    const QRectF area = paper ? QRectF{0.0, 0.0, static_cast<qreal>(paper->width),
+                                       static_cast<qreal>(paper->height)}
+                              : QRectF{0.0, 0.0, static_cast<qreal>(picture.width()),
+                                       static_cast<qreal>(picture.height())};
+    m_canvas->showMedia(picture, area);
 }
 
 void NotebookViewModel::drawMedia() {
@@ -1052,37 +1068,72 @@ void NotebookViewModel::drawMedia() {
     if (!paper) {
         return;
     }
+
+    const core::Rect wanted = wantedRegion(*paper);
     const qreal scale = std::max(m_canvas->zoom(), 0.5);
     const auto width = static_cast<int>(
-        std::clamp(static_cast<double>(paper->width) * scale, 1.0, double{kMaximumMediaPixels}));
+        std::clamp(static_cast<double>(wanted.width()) * scale, 1.0, double{kMaximumMediaPixels}));
     const auto height = static_cast<int>(
-        std::clamp(static_cast<double>(paper->height) * scale, 1.0, double{kMaximumMediaPixels}));
+        std::clamp(static_cast<double>(wanted.height()) * scale, 1.0, double{kMaximumMediaPixels}));
 
     m_mediaScale = scale;
+    m_mediaRegion = wanted;
     const std::uint64_t opening = m_opening;
     const core::ContentId asset = info->media->asset;
-    m_pdf->render(asset, info->media->index, width, height,
-                  [this, opening, asset](core::Result<platform::pdf::PageImage> image) {
-                      if (!image) {
-                          return;
-                      }
-                      QMetaObject::invokeMethod(
-                          this,
-                          [this, opening, asset, drawn = std::move(*image)] {
-                              showRenderedPage(opening, asset, drawn);
-                          },
-                          Qt::QueuedConnection);
-                  });
+    const platform::pdf::PageRegion region{
+        .left = wanted.left,
+        .top = wanted.top,
+        .width = wanted.width(),
+        .height = wanted.height(),
+    };
+    m_pdf->renderRegion(
+        asset, info->media->index, width, height, region,
+        [this, opening, asset, wanted](core::Result<platform::pdf::PageImage> image) {
+            if (!image) {
+                return;
+            }
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, asset, wanted, drawn = std::move(*image)] {
+                    showRenderedPage(opening, asset, wanted, drawn);
+                },
+                Qt::QueuedConnection);
+        });
+}
+
+core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) const {
+    const core::Rect paperArea{
+        .left = 0.0F,
+        .top = 0.0F,
+        .right = paper.width,
+        .bottom = paper.height,
+    };
+    if (m_canvas.isNull()) {
+        return paperArea;
+    }
+
+    const core::Rect seen = m_canvas->visiblePage().inflated(kMediaMargin);
+    const core::Rect within{
+        .left = std::max(paperArea.left, seen.left),
+        .top = std::max(paperArea.top, seen.top),
+        .right = std::min(paperArea.right, seen.right),
+        .bottom = std::min(paperArea.bottom, seen.bottom),
+    };
+    if (within.width() <= 0.0F || within.height() <= 0.0F) {
+        return paperArea;
+    }
+    return within;
 }
 
 void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
+                                         const core::Rect& area,
                                          const platform::pdf::PageImage& image) {
     if (opening != m_opening || m_canvas.isNull() || asset != m_openAsset) {
         return;
     }
     const QImage drawn{image.pixels.data(), image.width, image.height,
                        static_cast<qsizetype>(image.width) * 4, QImage::Format_RGBA8888};
-    m_canvas->showMedia(drawn.copy());
+    m_canvas->showMedia(drawn.copy(), QRectF{area.left, area.top, area.width(), area.height()});
 }
 
 void NotebookViewModel::importDocument(const QUrl& fileUrl) {

@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- An imported page is drawn only where it is on screen, so its text stays sharp however far the
+  page is zoomed in, instead of the whole page being drawn to a picture of a fixed size.
+
 - Erasing, undoing and leafing back to a page reuse the shapes of the strokes that did not change
   instead of working all of them out again.
 - Pictures are read on their own thread, so a large photograph no longer holds up the window.
