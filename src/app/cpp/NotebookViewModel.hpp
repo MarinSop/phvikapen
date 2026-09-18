@@ -159,6 +159,8 @@ public:
 
     Q_INVOKABLE void exportToPdf(const QUrl& fileUrl);
 
+    Q_INVOKABLE void saveCopy(const QUrl& fileUrl);
+
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
     Q_INVOKABLE void refreshTrash();
@@ -183,6 +185,7 @@ signals:
     void pageStyleChanged();
     void exportingChanged();
     void exported(const QString& path);
+    void copied(const QString& path);
 
 private:
     class Sink final : public platform::ink::IInkSink {
@@ -200,6 +203,12 @@ private:
 
     private:
         NotebookViewModel* m_owner;
+    };
+
+    struct CopyJob {
+        std::filesystem::path source;
+        std::filesystem::path target;
+        QString path;
     };
 
     struct ExportJob {
@@ -232,6 +241,7 @@ private:
     void refreshCanvas();
     void refreshMedia();
     void showAsset(std::uint64_t opening, core::Result<core::Asset> asset);
+    void showPicture(std::uint64_t opening, const core::ContentId& asset, const QImage& picture);
     void drawMedia();
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                           const platform::pdf::PageImage& image);
@@ -253,6 +263,7 @@ private:
     QTimer m_mediaTimer;
     qreal m_mediaScale{0.0};
     std::jthread m_export;
+    std::jthread m_pictures;
     bool m_exporting{false};
     core::Uuid m_currentPage;
     std::map<core::Uuid, core::Viewport> m_views;

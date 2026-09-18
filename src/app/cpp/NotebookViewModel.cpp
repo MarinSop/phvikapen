@@ -147,6 +147,9 @@ NotebookViewModel::~NotebookViewModel() {
     if (m_export.joinable()) {
         m_export.join();
     }
+    if (m_pictures.joinable()) {
+        m_pictures.join();
+    }
     if (!m_canvas.isNull()) {
         m_canvas->setSink(nullptr);
     }
@@ -821,13 +824,25 @@ void NotebookViewModel::showAsset(std::uint64_t opening, core::Result<core::Asse
     }
 
     if (asset->kind == core::AssetKind::Image) {
-        QImage image;
-        if (!image.loadFromData(toByteArray(asset->data))) {
-            reportError(tr("The picture could not be read"));
-            return;
-        }
         m_openAsset = asset->id;
-        m_canvas->showMedia(image);
+        const auto bytes = std::make_shared<const QByteArray>(toByteArray(asset->data));
+        const core::ContentId id = asset->id;
+        if (m_pictures.joinable()) {
+            m_pictures.join();
+        }
+        m_pictures = std::jthread{[this, opening, id, bytes] {
+            try {
+                QImage picture;
+                if (!picture.loadFromData(*bytes)) {
+                    picture = QImage{};
+                }
+                QMetaObject::invokeMethod(
+                    this, [this, opening, id, picture] { showPicture(opening, id, picture); },
+                    Qt::QueuedConnection);
+            } catch (...) {
+                qWarning("Reading a picture stopped unexpectedly");
+            }
+        }};
         return;
     }
 
@@ -847,6 +862,18 @@ void NotebookViewModel::showAsset(std::uint64_t opening, core::Result<core::Asse
                         },
                         Qt::QueuedConnection);
                 });
+}
+
+void NotebookViewModel::showPicture(std::uint64_t opening, const core::ContentId& asset,
+                                    const QImage& picture) {
+    if (opening != m_opening || m_canvas.isNull() || asset != m_openAsset) {
+        return;
+    }
+    if (picture.isNull()) {
+        reportError(tr("The picture could not be read"));
+        return;
+    }
+    m_canvas->showMedia(picture);
 }
 
 void NotebookViewModel::drawMedia() {
@@ -1031,6 +1058,31 @@ void NotebookViewModel::exportToPdf(const QUrl& fileUrl) {
             qWarning("Writing %s stopped unexpectedly", qUtf8Printable(job->path));
         }
     }};
+}
+
+void NotebookViewModel::saveCopy(const QUrl& fileUrl) {
+    if (!m_storage || m_notebookPath.isEmpty()) {
+        return;
+    }
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    if (path.isEmpty() || path == m_notebookPath) {
+        return;
+    }
+
+    m_storage->submit([](core::NotebookStore& store) { return store.checkpoint(); });
+    m_storage->waitUntilIdle();
+
+    QFile source{m_notebookPath};
+    if (QFile::exists(path) && !QFile::remove(path)) {
+        reportError(tr("Could not write %1").arg(QFileInfo{path}.fileName()));
+        return;
+    }
+    if (!source.copy(path)) {
+        reportError(
+            tr("Could not write %1: %2").arg(QFileInfo{path}.fileName(), source.errorString()));
+        return;
+    }
+    emit copied(path);
 }
 
 void NotebookViewModel::finishExport(const QString& path, const core::Result<int>& written) {

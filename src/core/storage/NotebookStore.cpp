@@ -850,6 +850,10 @@ Result<void> NotebookStore::orderPages(const Uuid& sectionId, std::span<const Uu
     return writePageOrder(sectionId, pageOrder).and_then([&] { return transaction->commit(); });
 }
 
+Result<void> NotebookStore::checkpoint() {
+    return sqlite::execute(m_database, "PRAGMA wal_checkpoint(TRUNCATE);");
+}
+
 Result<int> NotebookStore::schemaVersion() const {
     const Result<std::int64_t> version = queryInteger(m_database, "PRAGMA user_version;");
     if (!version) {

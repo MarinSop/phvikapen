@@ -188,6 +188,10 @@ ApplicationWindow {
     }
 
     Connections {
+        function onCopied(path) {
+            messageBar.show(qsTr("Copied to %1").arg(path));
+        }
+
         function onExported(path) {
             messageBar.show(qsTr("Saved as %1").arg(path));
         }

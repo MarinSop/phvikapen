@@ -13,15 +13,14 @@ into a real problem earlier.
 - **Crash safety test.** The promise is that a crash costs at most the stroke being written. There
   is no test that kills the application in the middle of a stroke and checks that the notebook
   still opens with everything else in it.
-- **Backing notebooks up.** Notebooks live where uninstalling cannot reach them, but there is no
-  way to copy one somewhere safe from inside the application, and no reminder to do so.
+- **Backups are never suggested.** A copy of a notebook can be saved somewhere safe, but nothing
+  ever reminds anyone to do it and there is no copy on a schedule.
 
 ## Performance
 
-- **Redrawing only what changed.** Undoing, erasing or leafing to a page tessellates every stroke
-  of the page again, at about 45 nanoseconds per sample. A page with two hundred thousand samples
-  therefore costs about nine milliseconds. Keeping the mesh per stroke and only rebuilding what a
-  change touched would remove that.
+- **The shapes of a page are kept twice.** Every stroke keeps its shape so that a change only
+  works out what it touched, but those shapes are then copied into one buffer for the graphics
+  card, so a full page is held twice. Uploading per stroke would remove the copy.
 - **Tiles for dry ink.** The design asks for finished strokes to be baked into GPU tiles with a
   memory budget, so that the cost of a new stroke does not grow with how full the page is. The
   canvas currently keeps one vertex buffer for the whole page.
@@ -30,9 +29,6 @@ into a real problem earlier.
 
 ## Imported documents
 
-- **Pictures are decoded on the thread that draws.** PDF pages are read and drawn on their own
-  thread, but a picture is decoded where the view model runs, which a very large photograph would
-  be felt on.
 - **A page of a document is one texture.** The whole page is drawn again whenever the zoom changes
   enough, instead of only the part in view, which will matter on large pages at high zoom.
 - **Nothing removes a file that no page shows any more.** Undoing an import leaves the file in the

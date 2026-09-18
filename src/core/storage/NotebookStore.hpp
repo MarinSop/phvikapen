@@ -84,6 +84,8 @@ public:
     [[nodiscard]] Result<void> insertAsset(const Asset& asset);
     [[nodiscard]] Result<Asset> asset(const ContentId& assetId) const;
 
+    [[nodiscard]] Result<void> checkpoint();
+
     [[nodiscard]] Result<int> schemaVersion() const;
 
 private:

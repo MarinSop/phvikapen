@@ -102,22 +102,40 @@ void QtInkItem::setStrokeWidth(qreal width) {
 void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
                          std::span<const core::Uuid> hidden) {
     cancelStroke();
-    m_vertices.clear();
 
     const bool otherPage = page.id() != m_shownPage;
     const bool otherPaper =
         style.paper != m_pageStyle.paper || style.orientation != m_pageStyle.orientation;
     m_shownPage = page.id();
     m_pageStyle = style;
+    if (otherPage) {
+        m_meshes.clear();
+    }
     if (otherPage || otherPaper || !m_viewFitted) {
         fitPage();
     }
 
+    // A stroke keeps the mesh it was given, so erasing or undoing only rebuilds what changed.
+    std::vector<StrokeMesh> kept;
+    kept.reserve(page.strokes().size());
     for (const core::PlacedStroke& placed : page.strokes()) {
-        if (std::ranges::find(hidden, placed.stroke.id()) != hidden.end()) {
+        const auto found = std::ranges::find(m_meshes, placed.stroke.id(), &StrokeMesh::id);
+        if (found != m_meshes.end()) {
+            kept.push_back(std::move(*found));
             continue;
         }
-        core::appendStroke(m_vertices, placed.stroke);
+        StrokeMesh mesh{.id = placed.stroke.id(), .vertices = {}};
+        core::appendStroke(mesh.vertices, placed.stroke);
+        kept.push_back(std::move(mesh));
+    }
+    m_meshes = std::move(kept);
+
+    m_vertices.clear();
+    for (const StrokeMesh& mesh : m_meshes) {
+        if (std::ranges::find(hidden, mesh.id) != hidden.end()) {
+            continue;
+        }
+        m_vertices.insert(m_vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
     }
 
     ++m_generation;
@@ -146,6 +164,7 @@ void QtInkItem::clearMedia() {
 
 void QtInkItem::clear() {
     cancelStroke();
+    m_meshes.clear();
     m_vertices.clear();
     ++m_generation;
     update();
@@ -526,7 +545,10 @@ void QtInkItem::endStroke(const InkSample& sample) {
     const core::Stroke finished = std::move(*m_activeStroke);
     m_activeStroke.reset();
     m_vertices.resize(m_activeStrokeFirstVertex);
-    core::appendStroke(m_vertices, finished);
+    StrokeMesh mesh{.id = finished.id(), .vertices = {}};
+    core::appendStroke(mesh.vertices, finished);
+    m_vertices.insert(m_vertices.end(), mesh.vertices.begin(), mesh.vertices.end());
+    m_meshes.push_back(std::move(mesh));
     ++m_generation;
     if (m_sink != nullptr) {
         m_sink->strokeFinished(sample);

@@ -89,8 +89,10 @@ TEST(TrashTest, EmptyingTheTrashTakesThePagesAndTheirStrokes) {
     const PageInfo gone = blankPage(ids.next(), "Scratch");
     const std::array order{kept, gone.id};
     ASSERT_TRUE(store->insertPage(section, gone, order).has_value());
-    ASSERT_TRUE(store->insertStroke(kept, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)}).has_value());
-    ASSERT_TRUE(store->insertStroke(gone.id, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)}).has_value());
+    ASSERT_TRUE(
+        store->insertStroke(kept, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)}).has_value());
+    ASSERT_TRUE(
+        store->insertStroke(gone.id, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)}).has_value());
     ASSERT_TRUE(store->trashPage(gone.id).has_value());
 
     ASSERT_TRUE(store->emptyTrash().has_value());

@@ -49,14 +49,37 @@ Pane {
                 enabled: root.ready && !root.notebook.exporting
                 objectName: "exportButton"
                 text: qsTr("⤒")
-                ToolTip.text: qsTr("Export the notebook as a PDF")
+                ToolTip.text: qsTr("Take the notebook out")
                 ToolTip.visible: hovered
 
-                onClicked: {
-                    const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
-                    exportDialog.currentFolder = folder;
-                    exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
-                    exportDialog.open();
+                onClicked: outMenu.popup()
+
+                Menu {
+                    id: outMenu
+
+                    MenuItem {
+                        objectName: "exportPdfItem"
+                        text: qsTr("Export as a PDF…")
+
+                        onTriggered: {
+                            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
+                            exportDialog.currentFolder = folder;
+                            exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
+                            exportDialog.open();
+                        }
+                    }
+
+                    MenuItem {
+                        objectName: "saveCopyItem"
+                        text: qsTr("Save a copy of the notebook…")
+
+                        onTriggered: {
+                            const folder = StandardPaths.writableLocation(StandardPaths.DocumentsLocation);
+                            copyDialog.currentFolder = folder;
+                            copyDialog.selectedFile = folder + "/" + root.notebook.title + ".phvika";
+                            copyDialog.open();
+                        }
+                    }
                 }
             }
 
@@ -232,6 +255,17 @@ Pane {
         id: trashDialog
 
         notebook: root.notebook
+    }
+
+    FileDialog {
+        id: copyDialog
+
+        defaultSuffix: "phvika"
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Notebooks (*.phvika)")]
+        title: qsTr("Save a copy")
+
+        onAccepted: root.notebook.saveCopy(copyDialog.selectedFile)
     }
 
     FileDialog {

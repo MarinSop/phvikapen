@@ -166,6 +166,13 @@ private:
     bool m_pressureSensitive{true};
     qreal m_eraserRadius{kDefaultEraserRadius};
     std::size_t m_activeStrokeFirstVertex{0};
+
+    struct StrokeMesh {
+        core::Uuid id;
+        std::vector<core::InkVertex> vertices;
+    };
+
+    std::vector<StrokeMesh> m_meshes;
     std::vector<core::InkVertex> m_vertices;
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

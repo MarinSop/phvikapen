@@ -214,6 +214,26 @@ TestCase {
         fuzzyCompare(canvas.zoom, zoomed, 0.001);
     }
 
+    function test_aCopyOfTheNotebookHoldsEverythingInIt() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 120, 120);
+        notebook.addPage();
+        draw(notebook, 140, 140);
+        const target = temporaryDirectory + "/copy-" + notebookCount + ".phvika";
+        const done = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "copied"
+        });
+
+        notebook.saveCopy("file://" + target);
+
+        tryCompare(done, "count", 1);
+        const copy = openNotebook(target);
+        compare(copy.pageCount, 2);
+        compare(copy.strokeCount, 1);
+        compare(copy.errorMessage, "");
+    }
+
     function test_everyPageKeepsItsOwnStrokes() {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
