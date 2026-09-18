@@ -453,6 +453,15 @@ void QtInkItem::setShape(int shape) {
     emit shapeChanged();
 }
 
+void QtInkItem::setDeskColor(const QColor& colour) {
+    if (colour == m_deskColor) {
+        return;
+    }
+    m_deskColor = colour;
+    emit deskColorChanged();
+    update();
+}
+
 void QtInkItem::setPicking(bool picking) {
     if (picking == m_picking) {
         return;

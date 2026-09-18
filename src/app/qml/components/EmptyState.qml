@@ -17,9 +17,24 @@ Pane {
         anchors.centerIn: parent
         spacing: 12
 
+        Image {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: 4
+            Layout.preferredHeight: 112
+            Layout.preferredWidth: 112
+            fillMode: Image.PreserveAspectFit
+            mipmap: true
+            objectName: "emptyLogo"
+            opacity: 0.95
+            source: Theme.logo
+            sourceSize.height: 224
+            sourceSize.width: 224
+        }
+
         Label {
             Layout.alignment: Qt.AlignHCenter
             font.bold: true
+            font.pixelSize: 18
             text: qsTr("No notebook is open")
         }
 

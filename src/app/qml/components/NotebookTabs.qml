@@ -14,7 +14,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Theme.shaded(palette.window, Theme.strongStep)
+        color: Theme.surfaceStrong
         z: -1
     }
 
@@ -133,12 +133,9 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: newDialog
 
-        anchors.centerIn: Overlay.overlay
-        modal: true
-        parent: Overlay.overlay
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: qsTr("New notebook")
 
@@ -153,14 +150,11 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: renameDialog
 
         property int index: 0
 
-        anchors.centerIn: Overlay.overlay
-        modal: true
-        parent: Overlay.overlay
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: qsTr("Rename notebook")
 
@@ -175,14 +169,11 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: deleteDialog
 
         property string notebookName: ""
 
-        anchors.centerIn: Overlay.overlay
-        modal: true
-        parent: Overlay.overlay
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: qsTr("Delete notebook")
 

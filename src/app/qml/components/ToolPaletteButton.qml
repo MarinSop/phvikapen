@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import PhvikaPen.Ui
 
 ToolButton {
     id: root
@@ -21,12 +22,23 @@ ToolButton {
 
     // The picked tool is marked by a bar as well as by colour.
     Rectangle {
-        color: palette.highlight
         height: parent.height - 12
-        radius: 1
+        radius: 1.5
         visible: root.checked
         width: 3
         x: 0
         y: 6
+
+        gradient: Gradient {
+            GradientStop {
+                color: Theme.mode === Theme.Brand ? Theme.brandStart : Theme.accent
+                position: 0.0
+            }
+
+            GradientStop {
+                color: Theme.mode === Theme.Brand ? Theme.brandEnd : Theme.accent
+                position: 1.0
+            }
+        }
     }
 }

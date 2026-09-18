@@ -3,15 +3,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
-Dialog {
+AppDialog {
     id: root
 
     property NotebookViewModel notebook: null
 
-    anchors.centerIn: Overlay.overlay
-    modal: true
     objectName: "pageSetupDialog"
-    parent: Overlay.overlay
     standardButtons: Dialog.Close
     title: qsTr("Page setup")
     width: 380

@@ -14,7 +14,7 @@ Pane {
     padding: 4
 
     background: Rectangle {
-        color: Theme.shaded(palette.window, Theme.strongStep)
+        color: Theme.surfaceStrong
 
         Rectangle {
             anchors.right: parent.right

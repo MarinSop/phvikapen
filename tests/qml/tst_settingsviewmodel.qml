@@ -21,6 +21,19 @@ TestCase {
         later.lookForUpdates = true;
     }
 
+    function test_b2_theThemeIsRememberedForTheNextTime() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+        compare(settings.theme, 0);
+
+        settings.theme = 2;
+        settings.theme = 7;
+
+        compare(settings.theme, 2);
+        const later = createTemporaryObject(settingsComponent, testCase);
+        compare(later.theme, 2);
+        later.theme = 0;
+    }
+
     function test_c_saysWhereNotebooksAreKept() {
         const settings = createTemporaryObject(settingsComponent, testCase);
 

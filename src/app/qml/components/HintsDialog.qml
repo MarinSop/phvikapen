@@ -3,17 +3,15 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import PhvikaPen.Ui
 
-Dialog {
+AppDialog {
     id: root
 
     readonly property list<string> hintKeys: [qsTr("Shift while drawing a shape"), qsTr("Alt while drawing a shape"), qsTr("Shift with the straight line"), qsTr("Drag inside the marquee"), qsTr("Ctrl and the wheel"), qsTr("Shift and the wheel"), qsTr("Two fingers"), qsTr("Pinch"), qsTr("The eraser"), qsTr("The pen of a tablet turned over")]
     readonly property list<string> hintMeanings: [qsTr("Keeps it even: a square, a circle"), qsTr("Grows it from the middle instead of from the corner"), qsTr("Snaps the line to every 45 degrees"), qsTr("Moves what is picked; Delete removes it"), qsTr("Zooms in and out around the pointer"), qsTr("Moves the page sideways"), qsTr("Move the page"), qsTr("Zooms in and out"), qsTr("Takes away only what is under it, not the whole stroke"), qsTr("Erases while it is held that way")]
 
-    anchors.centerIn: Overlay.overlay
-    modal: true
     objectName: "hintsDialog"
-    parent: Overlay.overlay
     standardButtons: Dialog.Close
     title: qsTr("Keys and hints")
     width: 520

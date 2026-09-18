@@ -40,7 +40,7 @@ Pane {
     padding: 8
 
     background: Rectangle {
-        color: Theme.shaded(palette.window, Theme.weakStep)
+        color: Theme.surface
 
         Rectangle {
             anchors.right: parent.right
@@ -399,17 +399,14 @@ Pane {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: deleteDialog
 
         property int index: 0
         property string itemTitle: ""
         property bool sectionScope: true
 
-        anchors.centerIn: Overlay.overlay
-        modal: true
         objectName: "deleteDialog"
-        parent: Overlay.overlay
         standardButtons: Dialog.Ok | Dialog.Cancel
         title: deleteDialog.sectionScope ? qsTr("Delete section") : qsTr("Delete page")
 

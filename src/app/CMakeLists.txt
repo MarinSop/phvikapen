@@ -64,6 +64,7 @@ qt_add_qml_module(phvikapen_ui
         qml/Icons.qml
         qml/Theme.qml
         qml/components/AboutDialog.qml
+        qml/components/AppDialog.qml
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
@@ -83,12 +84,19 @@ qt_add_qml_module(phvikapen_ui
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
         qml/components/ShortcutField.qml
+        qml/components/ThemeCard.qml
         qml/components/ToolPalette.qml
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
 )
 
+
+qt_add_resources(phvikapen_ui "phvikapen_brand"
+    PREFIX "/brand"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/brand"
+    FILES brand/logo-256.png
+)
 
 qt_add_resources(phvikapen_ui "phvikapen_icons"
     PREFIX "/icons"
@@ -142,9 +150,41 @@ target_link_libraries(phvikapen
         phvikapen_sanitizers
 )
 
+if(WIN32)
+    target_sources(phvikapen PRIVATE brand/phvikapen.rc)
+endif()
+
+if(APPLE)
+    # The bundle icon is built from the same picture the window and the about box show.
+    set(iconset "${CMAKE_CURRENT_BINARY_DIR}/PhvikaPen.iconset")
+    set(icns "${CMAKE_CURRENT_BINARY_DIR}/PhvikaPen.icns")
+    add_custom_command(OUTPUT "${icns}"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${iconset}"
+        COMMAND sips -Z 16 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_16x16.png"
+        COMMAND sips -Z 32 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_16x16@2x.png"
+        COMMAND sips -Z 32 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_32x32.png"
+        COMMAND sips -Z 64 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_32x32@2x.png"
+        COMMAND sips -Z 128 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_128x128.png"
+        COMMAND sips -Z 256 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_128x128@2x.png"
+        COMMAND sips -Z 256 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_256x256.png"
+        COMMAND sips -Z 512 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_256x256@2x.png"
+        COMMAND sips -Z 512 "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" --out "${iconset}/icon_512x512.png"
+        COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png" "${iconset}/icon_512x512@2x.png"
+        COMMAND iconutil -c icns "${iconset}" -o "${icns}"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/brand/logo.png"
+        COMMENT "Building the application icon"
+        VERBATIM
+    )
+    target_sources(phvikapen PRIVATE "${icns}")
+    set_source_files_properties("${icns}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+endif()
+
 set_target_properties(phvikapen PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_GUI_IDENTIFIER app.phvikapen.PhvikaPen
+    MACOSX_BUNDLE_BUNDLE_NAME PhvikaPen
+    MACOSX_BUNDLE_ICON_FILE PhvikaPen.icns
     # Own directory: on Windows, shared output makes parallel DLL copying collide.
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )

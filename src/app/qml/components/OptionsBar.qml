@@ -48,7 +48,7 @@ ToolBar {
     objectName: "optionsBar"
 
     background: Rectangle {
-        color: Theme.shaded(palette.window, Theme.weakStep)
+        color: Theme.surface
 
         Rectangle {
             anchors.bottom: parent.bottom

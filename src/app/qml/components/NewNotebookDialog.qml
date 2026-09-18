@@ -5,7 +5,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
-Dialog {
+AppDialog {
     id: root
 
     required property NotebooksViewModel notebooks
@@ -15,10 +15,7 @@ Dialog {
     readonly property list<int> papers: [PageOptions.Infinite, PageOptions.A3, PageOptions.A4, PageOptions.A5, PageOptions.Letter, PageOptions.Legal, PageOptions.Custom]
     readonly property list<string> paperNames: [qsTr("Infinite"), qsTr("A3"), qsTr("A4"), qsTr("A5"), qsTr("Letter"), qsTr("Legal"), qsTr("Own size")]
 
-    anchors.centerIn: Overlay.overlay
-    modal: true
     objectName: "newNotebookDialog"
-    parent: Overlay.overlay
     standardButtons: Dialog.Ok | Dialog.Cancel
     title: qsTr("New notebook")
     width: 420

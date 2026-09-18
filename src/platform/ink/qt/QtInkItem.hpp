@@ -55,11 +55,14 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
     Q_PROPERTY(int visibleSheetCount READ visibleSheetCount NOTIFY viewChanged FINAL)
+    Q_PROPERTY(QColor deskColor READ deskColor WRITE setDeskColor NOTIFY deskColorChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
     Q_PROPERTY(QPointF viewOrigin READ viewOrigin NOTIFY viewChanged FINAL)
 
 public:
     static constexpr qreal kDefaultEraserRadius = 8.0;
+    // The light grey the window had before a theme said otherwise.
+    static constexpr QRgb kDefaultDesk = 0xFFE3E6E8;
 
     explicit QtInkItem(QQuickItem* parent = nullptr);
     ~QtInkItem() override;
@@ -141,6 +144,10 @@ public:
 
     void setSelecting(bool selecting) override;
 
+    [[nodiscard]] QColor deskColor() const { return m_deskColor; }
+
+    void setDeskColor(const QColor& colour);
+
     [[nodiscard]] bool picking() const noexcept { return m_picking; }
 
     void setPicking(bool picking) override;
@@ -213,6 +220,7 @@ signals:
     void selectingChanged();
     void panningChanged();
     void pickingChanged();
+    void deskColorChanged();
     void shapeChanged();
     void smoothingChanged();
     void selectionChanged();
@@ -346,6 +354,7 @@ private:
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;
+    QColor m_deskColor{kDefaultDesk};
     std::uint64_t m_mediaGeneration{0};
     core::Uuid m_shownPage;
     bool m_viewFitted{false};

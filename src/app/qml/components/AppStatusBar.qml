@@ -13,7 +13,7 @@ ToolBar {
     objectName: "statusBar"
 
     background: Rectangle {
-        color: Theme.shaded(palette.window, Theme.strongStep)
+        color: Theme.surfaceStrong
 
         Rectangle {
             color: Theme.line

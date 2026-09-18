@@ -5,6 +5,7 @@
 #include "platform/update/StartupHook.hpp"
 
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QString>
@@ -22,6 +23,8 @@ int main(int argc, char* argv[]) {
     QGuiApplication::setApplicationVersion(
         QString::fromLatin1(phvikapen::core::version::kString.data(),
                             static_cast<qsizetype>(phvikapen::core::version::kString.size())));
+
+    QGuiApplication::setWindowIcon(QIcon{QStringLiteral(":/brand/logo-256.png")});
 
     phvikapen::app::initializeLogging();
 

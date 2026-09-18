@@ -13,7 +13,25 @@ ApplicationWindow {
     property int exportScope: settings.exportScope
     readonly property NotebookViewModel notebook: notebooks.current
 
+    color: Theme.window
     height: 800
+    palette.accent: Theme.accent
+    palette.base: Theme.base
+    palette.button: Theme.surface
+    palette.buttonText: Theme.text
+    palette.dark: Theme.surfaceStrong
+    palette.highlight: Theme.accent
+    palette.highlightedText: Theme.accentText
+    palette.light: Theme.surface
+    palette.mid: Theme.line
+    palette.midlight: Theme.line
+    palette.placeholderText: Theme.subtleText
+    palette.shadow: Theme.surfaceStrong
+    palette.text: Theme.text
+    palette.toolTipBase: Theme.surface
+    palette.toolTipText: Theme.text
+    palette.window: Theme.window
+    palette.windowText: Theme.text
     title: root.notebook === null ? qsTr("PhvikaPen %1").arg(AppInfo.version) : qsTr("%1 — PhvikaPen %2").arg(root.notebook.title).arg(AppInfo.version)
     visible: true
     width: 1280
@@ -46,6 +64,12 @@ ApplicationWindow {
     }
 
     Component.onCompleted: notebooks.canvas = canvas
+
+    Binding {
+        property: "mode"
+        target: Theme
+        value: settings.theme
+    }
 
     ToolViewModel {
         id: toolState
@@ -133,6 +157,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             Layout.fillWidth: true
             enabled: root.notebook !== null && root.notebook.loaded
+            deskColor: Theme.desk
             eraserRadius: toolState.eraserRadius
             erasing: toolState.currentTool === ToolViewModel.Eraser
             panning: toolState.currentTool === ToolViewModel.Hand

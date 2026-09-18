@@ -5,10 +5,12 @@
 
 #include <QDesktopServices>
 #include <QDir>
+#include <QGuiApplication>
 #include <QKeySequence>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>
+#include <QStyleHints>
 #include <QUrl>
 #include <QVariant>
 
@@ -18,6 +20,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
+constexpr auto kThemeSetting = "look/theme";
 constexpr auto kShortcutPrefix = "shortcuts/";
 constexpr auto kSmoothingSetting = "ink/smoothing";
 constexpr auto kExportScopeSetting = "export/scope";
@@ -39,6 +42,8 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
       m_folder{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks"} {
     const QSettings settings;
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
+    m_theme = std::clamp(settings.value(kThemeSetting, m_theme).toInt(), 0, kThemeCount - 1);
+    applyTheme();
     m_style = defaults::pageStyle();
     m_smoothing = std::clamp(settings.value(kSmoothingSetting, m_smoothing).toDouble(), 0.0, 1.0);
     m_exportScope = std::clamp(settings.value(kExportScopeSetting, m_exportScope).toInt(), 0,
@@ -53,6 +58,27 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
         }
     }
     m_shortcutList.setSequences(m_shortcuts);
+}
+
+// The style draws its own controls light or dark, so it is told which of the two this theme is.
+void SettingsViewModel::applyTheme() const {
+    QStyleHints* const hints = QGuiApplication::styleHints();
+    if (hints != nullptr) {
+        hints->setColorScheme(m_theme == kLightTheme ? Qt::ColorScheme::Light
+                                                     : Qt::ColorScheme::Dark);
+    }
+}
+
+void SettingsViewModel::setTheme(int theme) {
+    const int wanted = std::clamp(theme, 0, kThemeCount - 1);
+    if (wanted == m_theme) {
+        return;
+    }
+    m_theme = wanted;
+    QSettings settings;
+    settings.setValue(kThemeSetting, m_theme);
+    applyTheme();
+    emit themeChanged();
 }
 
 void SettingsViewModel::setLookForUpdates(bool wanted) {

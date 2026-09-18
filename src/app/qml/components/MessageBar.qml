@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import PhvikaPen.Ui
 
 Pane {
     id: root
@@ -12,6 +13,7 @@ Pane {
     }
 
     opacity: root.message === "" ? 0 : 1
+    padding: 12
     visible: opacity > 0
 
     Behavior on opacity {
@@ -19,8 +21,15 @@ Pane {
             duration: 150
         }
     }
+    background: Rectangle {
+        border.color: Theme.line
+        border.width: 1
+        color: Theme.surface
+        radius: 8
+    }
 
     Label {
+        color: Theme.text
         objectName: "messageLabel"
         text: root.message
     }

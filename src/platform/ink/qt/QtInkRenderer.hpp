@@ -7,6 +7,7 @@
 
 #include <rhi/qrhi.h>
 
+#include <QColor>
 #include <QImage>
 #include <QQuickRhiItem>
 #include <QRectF>
@@ -105,6 +106,7 @@ private:
     float m_logicalHeight{0.0F};
     core::Viewport m_viewport;
     core::PageStyle m_pageStyle;
+    QColor m_deskColor;
 };
 
 }

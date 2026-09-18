@@ -5,14 +5,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
-Dialog {
+AppDialog {
     id: root
 
     required property SettingsViewModel settings
     required property UpdateViewModel updates
 
-    anchors.centerIn: parent
-    modal: true
     objectName: "settingsDialog"
     standardButtons: Dialog.Close
     title: qsTr("Settings")
@@ -28,6 +26,45 @@ Dialog {
         ColumnLayout {
             spacing: 12
             width: scroller.availableWidth
+
+            Label {
+                font.bold: true
+                text: qsTr("Look")
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                objectName: "themeRow"
+                spacing: 8
+
+                Repeater {
+                    model: [Theme.Brand, Theme.Dark, Theme.Light]
+
+                    ThemeCard {
+                        id: themeCard
+
+                        required property int modelData
+
+                        Layout.fillWidth: true
+                        checked: root.settings.theme === themeCard.modelData
+                        mode: themeCard.modelData
+                        objectName: "themeCard" + themeCard.modelData
+
+                        onClicked: root.settings.theme = themeCard.modelData
+                    }
+                }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                color: palette.placeholderText
+                text: Theme.noteOf(root.settings.theme)
+                wrapMode: Text.WordWrap
+            }
+
+            MenuSeparator {
+                Layout.fillWidth: true
+            }
 
             Label {
                 font.bold: true

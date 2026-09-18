@@ -9,7 +9,19 @@ Pane {
     required property UpdateViewModel updates
 
     objectName: "updateBar"
+    padding: 8
     visible: root.updates.state === UpdateViewModel.Available || root.updates.state === UpdateViewModel.Installing
+
+    background: Rectangle {
+        color: Theme.accentSoft
+
+        Rectangle {
+            anchors.bottom: parent.bottom
+            color: Theme.line
+            height: 1
+            width: parent.width
+        }
+    }
 
     RowLayout {
         anchors.fill: parent

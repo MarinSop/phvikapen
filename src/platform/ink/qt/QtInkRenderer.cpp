@@ -403,6 +403,7 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
     m_logicalHeight = static_cast<float>(inkItem->height());
     m_viewport = inkItem->viewport();
     m_pageStyle = inkItem->pageStyle();
+    m_deskColor = inkItem->deskColor();
     m_sheets = inkItem->visibleSheets();
     if (inkItem->mediaGeneration() != m_mediaGeneration) {
         m_mediaGeneration = inkItem->mediaGeneration();
@@ -495,7 +496,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
         m_pageStyle.background == core::Background::Dotted ? dotRadius : lineWidth,
         paper && lined ? render::kLinedTopMargin : 0.0F,
     });
-    put(render::kDeskColor);
+    put(std::array{m_deskColor.redF(), m_deskColor.greenF(), m_deskColor.blueF(), 1.0F});
     put(render::kPaperColor);
     put(render::patternColor(m_pageStyle.background));
     put(render::kMarginColor);

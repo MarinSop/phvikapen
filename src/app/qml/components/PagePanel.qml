@@ -13,7 +13,7 @@ Pane {
     padding: 8
 
     background: Rectangle {
-        color: Theme.shaded(palette.window, Theme.weakStep)
+        color: Theme.surface
 
         Rectangle {
             color: Theme.line

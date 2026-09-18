@@ -5,16 +5,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
-Dialog {
+AppDialog {
     id: root
 
     property NotebookViewModel notebook: null
     property bool confirming: false
     readonly property int trashCount: root.notebook === null ? 0 : root.notebook.trash.count
 
-    anchors.centerIn: parent
     height: 380
-    modal: true
     objectName: "trashDialog"
     standardButtons: Dialog.Close
     title: qsTr("Deleted pages and sections")

@@ -17,6 +17,7 @@ class SettingsViewModel : public QObject {
     QML_ELEMENT
     Q_PROPERTY(bool lookForUpdates READ lookForUpdates WRITE setLookForUpdates NOTIFY
                    lookForUpdatesChanged FINAL)
+    Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged FINAL)
     Q_PROPERTY(QString notebookFolder READ notebookFolder CONSTANT FINAL)
     Q_PROPERTY(phvikapen::app::page_options::Paper paper READ paper WRITE setPaper NOTIFY
                    pageStyleChanged FINAL)
@@ -41,6 +42,13 @@ class SettingsViewModel : public QObject {
 
 public:
     explicit SettingsViewModel(QObject* parent = nullptr);
+
+    static constexpr int kThemeCount = 3;
+    static constexpr int kLightTheme = 2;
+
+    [[nodiscard]] int theme() const { return m_theme; }
+
+    void setTheme(int theme);
 
     [[nodiscard]] bool lookForUpdates() const { return m_lookForUpdates; }
 
@@ -95,6 +103,7 @@ public:
 
 signals:
     void lookForUpdatesChanged();
+    void themeChanged();
     void pageStyleChanged();
     void shortcutsChanged();
     void smoothingChanged();
@@ -104,11 +113,13 @@ signals:
 
 private:
     void changeStyle(const core::PageStyle& style);
+    void applyTheme() const;
 
     core::PageStyle m_style;
     QVariantMap m_shortcuts;
     qreal m_smoothing{kDefaultSmoothing};
     int m_exportScope{0};
+    int m_theme{0};
     bool m_continuousPages{true};
     bool m_showPagesPanel{true};
     bool m_showPagePanel{false};
