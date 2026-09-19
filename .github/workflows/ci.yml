@@ -185,4 +185,4 @@ jobs:
       # Qt is deployed by windeployqt when the release is built, and the debugging runtime stays here.
       - name: Check that the package carries its libraries
         shell: pwsh
-        run: ./.github/scripts/check-package.ps1 -Stage "${{ github.workspace }}\stage" -ProvidedLater 'qt6*', 'msvcp140d*', 'vcruntime140*d.dll', 'ucrtbased.dll'
+        run: ./.github/scripts/check-package.ps1 -Stage "${{ github.workspace }}\stage" -ProvidedLater 'qt6*', 'msvcp140*d.dll', 'msvcp140d_*.dll', 'vcruntime140*d.dll', 'concrt140d.dll', 'ucrtbased.dll'
