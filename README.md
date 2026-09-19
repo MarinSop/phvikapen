@@ -8,29 +8,35 @@ The target platform is Windows 11 on ARM64. Development happens on macOS, where 
 builds and runs with a Qt-based ink canvas that accepts pen and mouse input.
 
 What works today: notebooks in tabs, each with sections and pages, written on with a pen, a mouse
-or a finger on a touch screen. Pages are paper of a chosen size or an endless canvas, blank, lined,
-squared or dotted, or a page of an imported PDF or a picture to write on top of. Three pens, a
-highlighter, an eraser and a tool that picks strokes to move, copy, recolour or delete share a
-colour palette and their widths, the pen can draw straight lines, boxes and ovals, every change can
-be undone, and
-everything is written to the notebook file as it happens. A notebook can be written out as a PDF or
-copied somewhere safe, and the application updates itself from its published releases.
+or a finger on a touch screen. A section is read as one column, page after page. Pages are paper of
+a chosen size or an endless canvas, blank, lined, squared or dotted, in the colours the reader
+chooses, or a page of an imported PDF or a picture to write on top of. Three pens, a highlighter,
+an eraser and a tool that picks strokes to move, copy, recolour or delete share one colour and
+their widths, the pen can draw straight lines, boxes and ovals with corners as round as they are
+wanted, and every change can be undone. A notebook is a draft until it is saved, and is written to
+its own file from then on. A notebook can be written out as a PDF or copied somewhere safe, and the
+application updates itself from its published releases.
 
 ## The window
 
 The window is laid out the way drawing and document applications are: text menus across the top
-(File, Edit, View, Insert, Tools, Window, Help), a palette of tools down the left side, the pages of
-the notebook beside it, the sheet in the middle, the page setup on the right, and the page and zoom
-at the bottom. Menus carry the commands and their shortcuts; the palette carries only the tools that
-are used on the sheet, each with a tooltip that names it. On Windows the menus sit in the window; on
-macOS they sit in the menu bar at the top of the screen, as that platform expects. The keys the
-commands answer to can be changed in the settings.
+(File, Edit, View, Insert, Help), a palette of tools down the left side, the sections and the pages
+of the notebook beside it, the sheet in the middle, the page setup on the right, and the page and
+zoom at the bottom. Menus carry the commands and their shortcuts; the palette carries only the
+tools that are used on the sheet, each with a tooltip that names it. The panels of sections and
+pages can be resized, hidden and brought back from the View menu. On Windows the menus sit in the
+window; on macOS they sit in the menu bar at the top of the screen, as that platform expects. The
+keys the commands answer to can be changed in the settings, and the application is worn light,
+dark or the way the system is, which it asks for the first time it is started.
 
 Ink is not confined to the sheet: writing beside it stays where it was put, and whether a page of
 an exported document holds that as well is a setting.
 
-The application opens the notebooks that were left open, and nothing at all the first time: a
-notebook is made from the File menu, which asks for its name and the paper its pages start on.
+The application opens the notebooks that were left open, or starts fresh every time, whichever the
+settings say, and opens nothing at all the first time: a notebook is made from the File menu, which
+asks for its name and the paper its pages start on, or starts from a PDF or a picture and takes the
+size of the document. A notebook made this way is a draft until it is saved, and closing it or the
+application with unwritten changes asks first.
 
 ## Updates
 

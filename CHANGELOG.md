@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-19
 
 ### Added
 
@@ -54,6 +54,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them in the sidebar.
 - The sidebar shows a small picture of every page, with the imported page and the ink on it, drawn
   when the page comes into view and drawn again whenever the page changes.
+- A section is read page after page in one column, scrolled through without leafing, and endless
+  paper can be written on far past the sheet while the pages stay one below another.
+- A notebook is a draft until it is saved: the first Save asks where it belongs, later ones write
+  without a word, and closing a notebook or the application with unwritten changes asks first.
+- A new notebook can start from a PDF or a picture, on the size the document itself is, or on a
+  size chosen instead.
+- The colour is one colour: it is picked from anywhere on the page or from the palette, and the pen
+  and the highlighter both write in it.
+- Boxes can be given rounded corners, from a slider or a typed number, and the same setting decides
+  whether lines end flat or round.
+- Pages, sections and notebook tabs are carried into another order by dragging them, with a line
+  showing where the carried one will land.
+- The sections and the pages have panels of their own that can be resized, hidden and brought back,
+  from the View menu or from the edge of the panel.
+- Paper a reader can choose: the colour of the paper, the colour and the width of its lines, and
+  whether the line down the side is drawn, in what colour and how far in. It belongs to the section
+  and can be set for new notebooks in the settings.
+- The application carries its own picture, on the window and on the executable, and wears a light,
+  a dark or the system theme, which it asks for the first time it is started.
+- Sizes are typed in the unit that suits the work: pixels, millimetres, centimetres or inches.
+- The settings are laid out in tabs, and say whether to open the notebooks that were left open or
+  to start fresh every time.
 
 ### Changed
 
@@ -62,23 +84,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ink can be written beside the sheet as well as on it. What a page of an exported document holds
   is a setting: the sheet alone, or the sheet with everything written around it.
 - How much the pen is smoothed can be set.
-
 - A new notebook is made through a dialog that asks for its name and the paper its pages start on.
 - The application starts with no notebook open when none was left open, shows what to do instead of
   an empty sheet, and every notebook can be closed or deleted.
 - Widths and sizes are typed as numbers with arrows instead of dragged on a slider.
 - The keys for the commands can be changed in the settings, and a key that is already taken is
   refused with the name of the command that has it.
-
 - The window follows the shape of a desktop drawing application: text menus across the top, a
   palette of tools down the left with an icon and a tooltip for each, the pages of the notebook and
   the page setup in panels either side of the sheet, and the page and the zoom in a bar at the
   bottom. Commands that are not tools moved out of the tool bar into the menus they belong to.
 - A tool for dragging the page under the window.
-
-- An imported page is drawn only where it is on screen, so its text stays sharp however far the
-  page is zoomed in, instead of the whole page being drawn to a picture of a fixed size.
-
+- An imported page is drawn at the size it is shown at, so its text stays sharp however far the
+  page is zoomed in, instead of a picture of a fixed size being stretched over it.
 - Erasing, undoing and leafing back to a page reuse the shapes of the strokes that did not change
   instead of working all of them out again.
 - Pictures are read on their own thread, so a large photograph no longer holds up the window.
@@ -90,12 +108,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every stroke keeps a fixed place on its page; notebooks from earlier schema versions are upgraded.
 - Notebooks live in the application data folder instead of the local application data folder,
   which the Windows installer deletes on uninstall.
-- Ink stays on the sheet: a stroke cannot be started beside fixed paper and is clipped to it.
 - Settings are stored under the application's own domain instead of the placeholder Qt falls back to.
+- The tool bar carries tools alone: no line of text naming the one in use, a shape chosen by its
+  own icon rather than from a list, marks large enough to read, and a tool that stays chosen when
+  it is pressed again. Where the pen will write and how wide it is is shown under the pointer.
+- The Window and the Tools menus are gone and what they held moved to the menus it belongs to. The
+  application's picture sits at the top left beside the notebook tabs, which are thinner and carry
+  the name alone, and the bar at the bottom no longer repeats the name of the notebook.
+- The page setup belongs to the section: every page of it changes together, in one undoable step.
+- A stroke is drawn from a round tip, with its corners mitred where it turns, so a line is an even
+  ribbon and a tap leaves a dot rather than a square.
+- The tool bar presets show their colour on a filled backing, and their marks grow and shrink with
+  the width they stand for.
 
 ### Fixed
 
 - Removing an ink canvas no longer runs code on the half destroyed item.
+- What is drawn belongs to the sheet it was started on: pressing on another page neither moves the
+  view nor carries the line onto a page it was not written on.
+- Scrolling no longer resets the zoom or pulls the view onto a page of its own accord.
+- Pages of an imported document no longer stay blank, blurred or half drawn while a section is
+  read, and are drawn again whenever the sheet under them changes size.
+- Pages no longer overlap or leave the sheet empty when the paper size changes, and the page being
+  looked at changes with the rest instead of at the next turn of the page.
+- A notebook started from a document no longer keeps an empty first page.
+- A page keeps its name when it is carried into another order, and lands where the line says.
+- A new section is no longer named with a number in brackets after it, and the name offered for a
+  new page or section is taken when the work carries on elsewhere.
+- A box closes with square corners and an oval closes without a gap.
+- The buttons in the dialogs and the buttons that close things light up under the pointer.
 
 ## [0.1.0] - 2026-09-16
 
