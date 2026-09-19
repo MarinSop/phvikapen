@@ -1,4 +1,4 @@
-find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED GLOBAL)
 
 add_library(phvikapen_core STATIC)
 add_library(PhvikaPen::core ALIAS phvikapen_core)
