@@ -22,11 +22,20 @@ set(_phvikapen_velopack_dir "${velopack_libc_SOURCE_DIR}")
 
 if(WIN32)
     set(_phvikapen_velopack_name "velopack_libc_win_${_phvikapen_velopack_arch}_msvc")
+    # Programs ask the loader for the name the import library carries, not the name of the file
+    # in the package.
+    set(_phvikapen_velopack_dll "${_phvikapen_velopack_dir}/lib/velopack_libc.dll")
+    file(COPY_FILE
+        "${_phvikapen_velopack_dir}/lib/${_phvikapen_velopack_name}.dll"
+        "${_phvikapen_velopack_dll}"
+        ONLY_IF_DIFFERENT
+    )
     add_library(Velopack::velopack SHARED IMPORTED GLOBAL)
     set_target_properties(Velopack::velopack PROPERTIES
-        IMPORTED_LOCATION "${_phvikapen_velopack_dir}/lib/${_phvikapen_velopack_name}.dll"
+        IMPORTED_LOCATION "${_phvikapen_velopack_dll}"
         IMPORTED_IMPLIB "${_phvikapen_velopack_dir}/lib/${_phvikapen_velopack_name}.dll.lib"
     )
+    unset(_phvikapen_velopack_dll)
 elseif(APPLE)
     add_library(Velopack::velopack STATIC IMPORTED GLOBAL)
     set_target_properties(Velopack::velopack PROPERTIES

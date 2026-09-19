@@ -176,14 +176,6 @@ jobs:
       - name: Set up sccache
         uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
 
-      # Windows has no rpath, and the test programs run from the build tree.
-      - name: Let the test programs find their libraries
-        shell: pwsh
-        run: |
-          $installed = "${{ github.workspace }}\build\win-arm64-debug\vcpkg_installed\arm64-windows"
-          @("$env:QT_ROOT_DIR\bin", "$installed\debug\bin", "$installed\bin") |
-            Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-
       - name: Configure, build and test
         run: cmake --workflow --preset win-arm64-debug
 
