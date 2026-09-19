@@ -53,6 +53,32 @@ ColumnLayout {
         onActivated: root.notebook.background = root.backgrounds[backgroundBox.currentIndex]
     }
 
+    MenuSeparator {
+        Layout.fillWidth: true
+    }
+
+    PageLook {
+        Layout.fillWidth: true
+        enabled: root.notebook !== null
+        lineColor: root.notebook === null ? "transparent" : root.notebook.lineColor
+        lineSpacing: root.notebook === null ? 7 : root.notebook.lineSpacing
+        lineWidth: root.notebook === null ? 1 : root.notebook.lineWidth
+        lined: root.notebook !== null && root.notebook.background === PageOptions.Lined
+        marginAt: root.notebook === null ? 25 : root.notebook.marginAt
+        marginColor: root.notebook === null ? "transparent" : root.notebook.marginColor
+        marginShown: root.notebook !== null && root.notebook.margin
+        objectName: "pageLook"
+        paperColor: root.notebook === null ? "transparent" : root.notebook.paperColor
+
+        onLineColorPicked: wanted => root.notebook.lineColor = wanted
+        onLineSpacingChosen: wanted => root.notebook.lineSpacing = wanted
+        onLineWidthChosen: wanted => root.notebook.lineWidth = wanted
+        onMarginAtChosen: wanted => root.notebook.marginAt = wanted
+        onMarginColorPicked: wanted => root.notebook.marginColor = wanted
+        onMarginShownChosen: wanted => root.notebook.margin = wanted
+        onPaperColorPicked: wanted => root.notebook.paperColor = wanted
+    }
+
     Switch {
         id: landscapeSwitch
 

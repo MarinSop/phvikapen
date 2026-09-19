@@ -58,8 +58,8 @@ constexpr float kPasteOffset = 24.0F;
 constexpr float kPickRadius = 6.0F;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
-constexpr int kPagesAround = 2;
-constexpr int kMediaAround = 4;
+constexpr int kPagesAround = 3;
+constexpr int kMediaAround = 5;
 
 // The picture of a page belongs to the sheet it was drawn for; a sheet of another size needs
 // another picture.
@@ -558,6 +558,108 @@ void NotebookViewModel::setBackground(page_options::Background background) {
     }
 }
 
+namespace {
+
+[[nodiscard]] QColor asQColor(core::Color color) {
+    return color.alpha == 0 ? QColor{}
+                            : QColor::fromRgb(color.red, color.green, color.blue, color.alpha);
+}
+
+[[nodiscard]] core::Color asColor(const QColor& color) {
+    if (!color.isValid()) {
+        return core::PageStyle::kUnset;
+    }
+    return core::Color{
+        .red = static_cast<std::uint8_t>(color.red()),
+        .green = static_cast<std::uint8_t>(color.green()),
+        .blue = static_cast<std::uint8_t>(color.blue()),
+        .alpha = static_cast<std::uint8_t>(color.alpha()),
+    };
+}
+
+}
+
+// The look of the paper: a colour nobody chose comes back as an invalid one, which the window
+// shows as "the usual one for this ruling".
+QColor NotebookViewModel::paperColor() const {
+    const core::PageInfo* const info = currentPageInfo();
+    return asQColor(info == nullptr ? core::PageStyle{}.paperColor : info->style.paperColor);
+}
+
+void NotebookViewModel::setPaperColor(const QColor& color) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.paperColor = asColor(color);
+        changeStyle(core::normalized(style));
+    }
+}
+
+QColor NotebookViewModel::lineColor() const {
+    const core::PageInfo* const info = currentPageInfo();
+    return asQColor(info == nullptr ? core::PageStyle{}.lineColor : info->style.lineColor);
+}
+
+void NotebookViewModel::setLineColor(const QColor& color) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.lineColor = asColor(color);
+        changeStyle(core::normalized(style));
+    }
+}
+
+QColor NotebookViewModel::marginColor() const {
+    const core::PageInfo* const info = currentPageInfo();
+    return asQColor(info == nullptr ? core::PageStyle{}.marginColor : info->style.marginColor);
+}
+
+void NotebookViewModel::setMarginColor(const QColor& color) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.marginColor = asColor(color);
+        changeStyle(core::normalized(style));
+    }
+}
+
+qreal NotebookViewModel::lineWidth() const {
+    const core::PageInfo* const info = currentPageInfo();
+    return info == nullptr ? core::PageStyle{}.lineWidth : info->style.lineWidth;
+}
+
+void NotebookViewModel::setLineWidth(qreal width) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.lineWidth = static_cast<float>(width);
+        changeStyle(core::normalized(style));
+    }
+}
+
+qreal NotebookViewModel::marginAt() const {
+    const core::PageInfo* const info = currentPageInfo();
+    const float at = info == nullptr ? core::PageStyle{}.marginAt : info->style.marginAt;
+    return at / core::millimeters(1.0F);
+}
+
+void NotebookViewModel::setMarginAt(qreal millimeters) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.marginAt = core::millimeters(static_cast<float>(millimeters));
+        changeStyle(core::normalized(style));
+    }
+}
+
+bool NotebookViewModel::margin() const {
+    const core::PageInfo* const info = currentPageInfo();
+    return info == nullptr ? core::PageStyle{}.margin : info->style.margin;
+}
+
+void NotebookViewModel::setMargin(bool shown) {
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        core::PageStyle style = info->style;
+        style.margin = shown;
+        changeStyle(core::normalized(style));
+    }
+}
+
 qreal NotebookViewModel::lineSpacing() const {
     const core::PageInfo* const info = currentPageInfo();
     const float spacing = info == nullptr ? core::PageStyle{}.spacing : info->style.spacing;
@@ -619,6 +721,13 @@ void NotebookViewModel::changeStyle(const core::PageStyle& style) {
         }
     }
     if (wanted.empty()) {
+        return;
+    }
+    // The small pictures were drawn on the old paper, so they are thrown away with it.
+    for (const core::Uuid& page : wanted) {
+        forgetThumbnail(page);
+    }
+    if (!m_storage) {
         return;
     }
     runCommand(std::make_unique<core::SetSectionStyleCommand>(&m_outline, &*m_storage,

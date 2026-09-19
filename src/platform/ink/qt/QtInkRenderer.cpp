@@ -470,8 +470,9 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
             : 1.0F;
     const std::optional<core::PaperSize> paper = core::paperSize(m_pageStyle);
     const bool lined = m_pageStyle.background == core::Background::Lined;
-    const float lineWidth = render::kRuleWidth * pixelRatio;
-    const float dotRadius = render::kDotRadius * pixelRatio;
+    const float ruleWidth = render::lineWidthOf(m_pageStyle);
+    const float lineWidth = ruleWidth * pixelRatio;
+    const float dotRadius = ruleWidth * render::kDotsPerRule * pixelRatio;
 
     QMatrix4x4 projection = rhi()->clipSpaceCorrMatrix();
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
@@ -488,7 +489,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
         paper ? paper->width : 0.0F,
         paper ? paper->height : 0.0F,
         paper ? 1.0F : 0.0F,
-        paper && lined ? render::kLinedLeftMargin : -1.0F,
+        paper && lined && m_pageStyle.margin ? m_pageStyle.marginAt : -1.0F,
     });
     put(std::array{
         static_cast<float>(m_pageStyle.background),
@@ -497,9 +498,9 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
         paper && lined ? render::kLinedTopMargin : 0.0F,
     });
     put(std::array{m_deskColor.redF(), m_deskColor.greenF(), m_deskColor.blueF(), 1.0F});
-    put(render::kPaperColor);
-    put(render::patternColor(m_pageStyle.background));
-    put(render::kMarginColor);
+    put(render::paperColorOf(m_pageStyle));
+    put(render::lineColorOf(m_pageStyle));
+    put(render::marginColorOf(m_pageStyle));
 
     // The sheets in view come first, then how each of them is ruled; the rest of the room is
     // left empty.
@@ -507,11 +508,14 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
     std::size_t at = 0;
     for (const QtInkItem::VisibleSheet& sheet : m_sheets) {
         put(std::array{sheet.area.left, sheet.area.top, sheet.area.width(), sheet.area.height()});
+        const float sheetWidth = render::lineWidthOf(sheet.style) * pixelRatio;
         rulings.at(at++) = static_cast<float>(sheet.style.background);
         rulings.at(at++) = sheet.style.spacing;
+        rulings.at(at++) = sheet.style.background == core::Background::Dotted
+                               ? sheetWidth * render::kDotsPerRule
+                               : sheetWidth;
         rulings.at(at++) =
-            sheet.style.background == core::Background::Dotted ? dotRadius : lineWidth;
-        rulings.at(at++) = sheet.style.background == core::Background::Lined ? 1.0F : 0.0F;
+            sheet.style.background == core::Background::Lined && sheet.style.margin ? 1.0F : 0.0F;
     }
     std::advance(out, kFloatsPerVector * (kMostSheets - m_sheets.size()));
     put(rulings);

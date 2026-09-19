@@ -86,11 +86,20 @@ constexpr std::string_view kSchemaVersion4 = R"sql(
     ALTER TABLE pages ADD COLUMN media_index INTEGER NOT NULL DEFAULT 0;
 )sql";
 
+// The paper a page is written on: its colour, the colour and thickness of its ruling, and the
+// line down the side. A colour of nothing means "whatever suits this ruling".
+constexpr std::string_view kSchemaVersion5 = R"sql(
+    ALTER TABLE pages ADD COLUMN paper_color INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN line_color INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN margin_color INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN line_width REAL NOT NULL DEFAULT 1;
+    ALTER TABLE pages ADD COLUMN margin_at REAL NOT NULL DEFAULT 94.4881889763779;
+    ALTER TABLE pages ADD COLUMN margin INTEGER NOT NULL DEFAULT 1;
+)sql";
+
 constexpr std::array kMigrations{
-    std::pair{1, kSchemaVersion1},
-    std::pair{2, kSchemaVersion2},
-    std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4},
+    std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
+    std::pair{4, kSchemaVersion4}, std::pair{5, kSchemaVersion5},
 };
 
 constexpr std::string_view kDefaultSectionTitle = "Section 1";
@@ -439,6 +448,7 @@ Result<NotebookOutline> NotebookStore::readOutline() const {
     Result<sqlite::Statement> pages = sqlite::Statement::prepare(
         m_database,
         "SELECT id, title, paper, orientation, background, spacing, custom_width, custom_height, "
+        "paper_color, line_color, margin_color, line_width, margin_at, margin, "
         "media_asset, media_index FROM pages WHERE section_id = ? AND trashed = 0 "
         "ORDER BY ordinal, rowid;");
     if (!pages) {
@@ -468,6 +478,12 @@ Result<NotebookOutline> NotebookStore::readOutline() const {
                     .spacing = static_cast<float>(pages->real(column++)),
                     .customWidth = static_cast<float>(pages->real(column++)),
                     .customHeight = static_cast<float>(pages->real(column++)),
+                    .paperColor = unpacked(static_cast<std::uint32_t>(pages->integer(column++))),
+                    .lineColor = unpacked(static_cast<std::uint32_t>(pages->integer(column++))),
+                    .marginColor = unpacked(static_cast<std::uint32_t>(pages->integer(column++))),
+                    .lineWidth = static_cast<float>(pages->real(column++)),
+                    .marginAt = static_cast<float>(pages->real(column++)),
+                    .margin = pages->integer(column++) != 0,
                 }),
                 .media = std::nullopt,
             };
@@ -607,8 +623,9 @@ Result<void> NotebookStore::writePage(const Uuid& sectionId, const PageInfo& pag
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
         "INSERT INTO pages (id, section_id, ordinal, title, paper, orientation, background, "
-        "spacing, custom_width, custom_height, media_asset, media_index) "
-        "VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+        "spacing, custom_width, custom_height, paper_color, line_color, margin_color, "
+        "line_width, margin_at, margin, media_asset, media_index) "
+        "VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -625,6 +642,12 @@ Result<void> NotebookStore::writePage(const Uuid& sectionId, const PageInfo& pag
                        statement->bindReal(index++, page.style.spacing),
                        statement->bindReal(index++, page.style.customWidth),
                        statement->bindReal(index++, page.style.customHeight),
+                       statement->bindInteger(index++, packed(page.style.paperColor)),
+                       statement->bindInteger(index++, packed(page.style.lineColor)),
+                       statement->bindInteger(index++, packed(page.style.marginColor)),
+                       statement->bindReal(index++, page.style.lineWidth),
+                       statement->bindReal(index++, page.style.marginAt),
+                       statement->bindInteger(index++, page.style.margin ? 1 : 0),
                        page.media ? statement->bindBlob(index++, contentBytes(page.media->asset))
                                   : statement->bindNull(index++),
                        statement->bindInteger(index++, page.media ? page.media->index : 0),
@@ -666,7 +689,8 @@ Result<void> NotebookStore::renamePage(const Uuid& pageId, std::string_view titl
 Result<void> NotebookStore::setPageStyle(const Uuid& pageId, const PageStyle& style) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "UPDATE pages SET paper = ?, orientation = ?, background = ?, spacing = ?, "
-                    "custom_width = ?, custom_height = ? WHERE id = ?;");
+                    "custom_width = ?, custom_height = ?, paper_color = ?, line_color = ?, "
+                    "margin_color = ?, line_width = ?, margin_at = ?, margin = ? WHERE id = ?;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -679,6 +703,12 @@ Result<void> NotebookStore::setPageStyle(const Uuid& pageId, const PageStyle& st
                    statement->bindReal(index++, style.spacing),
                    statement->bindReal(index++, style.customWidth),
                    statement->bindReal(index++, style.customHeight),
+                   statement->bindInteger(index++, packed(style.paperColor)),
+                   statement->bindInteger(index++, packed(style.lineColor)),
+                   statement->bindInteger(index++, packed(style.marginColor)),
+                   statement->bindReal(index++, style.lineWidth),
+                   statement->bindReal(index++, style.marginAt),
+                   statement->bindInteger(index++, style.margin ? 1 : 0),
                    statement->bindId(index++, pageId),
                })
         .and_then([&] { return statement->run(); })

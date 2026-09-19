@@ -3,6 +3,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
+#include "core/model/Color.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -10,17 +11,6 @@
 #include <vector>
 
 namespace phvikapen::core {
-
-struct Color {
-    static constexpr std::uint8_t kOpaque = 255;
-
-    std::uint8_t red{};
-    std::uint8_t green{};
-    std::uint8_t blue{};
-    std::uint8_t alpha{kOpaque};
-
-    friend constexpr bool operator==(const Color&, const Color&) = default;
-};
 
 struct StrokeStyle {
     static constexpr float kDefaultWidth = 2.0F;

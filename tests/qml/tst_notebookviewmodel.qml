@@ -640,6 +640,38 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_thePaperCanBeGivenItsOwnColoursAndLines() {
+        const path = newNotebookPath();
+        const notebook = openNotebook(path);
+        notebook.addPage();
+
+        notebook.paperColor = "#fffbe6";
+        notebook.lineColor = "#c8a2c8";
+        notebook.marginColor = "#3366cc";
+        notebook.lineWidth = 2.5;
+        notebook.marginAt = 40;
+        notebook.margin = false;
+
+        compare(notebook.paperColor.toString(), "#fffbe6");
+        compare(notebook.lineWidth, 2.5);
+        compare(Math.round(notebook.marginAt), 40);
+        verify(!notebook.margin);
+
+        // The notebook lets go of its file before the same one is opened again.
+        notebook.destroy();
+        wait(100);
+        const reopened = openNotebook(path);
+        compare(reopened.paperColor.toString(), "#fffbe6", "the paper colour was not kept");
+        compare(reopened.lineColor.toString(), "#c8a2c8");
+        compare(reopened.marginColor.toString(), "#3366cc");
+        compare(reopened.lineWidth, 2.5);
+        compare(Math.round(reopened.marginAt), 40);
+        verify(!reopened.margin);
+        reopened.currentPage = 1;
+        compare(reopened.paperColor.toString(), "#fffbe6", "the rest of the section was left behind");
+        compare(reopened.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

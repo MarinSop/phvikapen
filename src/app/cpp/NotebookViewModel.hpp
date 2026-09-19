@@ -86,6 +86,13 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
         qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
         qreal customHeight READ customHeight WRITE setCustomHeight NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(QColor paperColor READ paperColor WRITE setPaperColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(QColor lineColor READ lineColor WRITE setLineColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        QColor marginColor READ marginColor WRITE setMarginColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(qreal lineWidth READ lineWidth WRITE setLineWidth NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(qreal marginAt READ marginAt WRITE setMarginAt NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(bool margin READ margin WRITE setMargin NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
     Q_PROPERTY(bool continuous READ continuous WRITE setContinuous NOTIFY continuousChanged FINAL)
     Q_PROPERTY(phvikapen::app::TrashListModel* trash READ trash CONSTANT FINAL)
@@ -155,6 +162,19 @@ public:
     void setOrientation(page_options::Orientation orientation);
     [[nodiscard]] page_options::Background background() const;
     void setBackground(page_options::Background background);
+    [[nodiscard]] QColor paperColor() const;
+    void setPaperColor(const QColor& color);
+    [[nodiscard]] QColor lineColor() const;
+    void setLineColor(const QColor& color);
+    [[nodiscard]] QColor marginColor() const;
+    void setMarginColor(const QColor& color);
+    [[nodiscard]] qreal lineWidth() const;
+    void setLineWidth(qreal width);
+    [[nodiscard]] qreal marginAt() const;
+    void setMarginAt(qreal millimeters);
+    [[nodiscard]] bool margin() const;
+    void setMargin(bool shown);
+
     [[nodiscard]] qreal lineSpacing() const;
     void setLineSpacing(qreal millimeters);
     [[nodiscard]] qreal customWidth() const;

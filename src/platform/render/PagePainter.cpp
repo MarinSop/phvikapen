@@ -78,7 +78,8 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
         return;
     }
 
-    const QColor color = toColor(patternColor(style.background));
+    const QColor color = toColor(lineColorOf(style));
+    const float width = lineWidthOf(style);
     const bool lined = style.background == core::Background::Lined;
     const float firstRow = lined && hasPaper ? std::max(area.top, kLinedTopMargin) : area.top;
     const Rules rows = rulesBetween(firstRow, area.bottom, style.spacing);
@@ -89,15 +90,15 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
         painter.setBrush(color);
         for (int row = rows.first; row <= rows.last; ++row) {
             for (int column = columns.first; column <= columns.last; ++column) {
-                painter.drawEllipse(QPointF{columns.at(column), rows.at(row)}, kDotRadius,
-                                    kDotRadius);
+                painter.drawEllipse(QPointF{columns.at(column), rows.at(row)}, width * kDotsPerRule,
+                                    width * kDotsPerRule);
             }
         }
         painter.setBrush(Qt::NoBrush);
         return;
     }
 
-    painter.setPen(QPen{color, kRuleWidth});
+    painter.setPen(QPen{color, width});
     for (int row = rows.first; row <= rows.last; ++row) {
         painter.drawLine(QPointF{area.left, rows.at(row)}, QPointF{area.right, rows.at(row)});
     }
@@ -108,10 +109,9 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
         }
         return;
     }
-    if (lined && hasPaper) {
-        painter.setPen(QPen{toColor(kMarginColor), kRuleWidth});
-        painter.drawLine(QPointF{kLinedLeftMargin, area.top},
-                         QPointF{kLinedLeftMargin, area.bottom});
+    if (lined && hasPaper && style.margin) {
+        painter.setPen(QPen{toColor(marginColorOf(style)), width});
+        painter.drawLine(QPointF{style.marginAt, area.top}, QPointF{style.marginAt, area.bottom});
     }
 }
 
@@ -160,7 +160,7 @@ void paintPage(QPainter& painter, const PageContents& page, const core::Rect& ar
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
     painter.translate(-area.left, -area.top);
-    painter.fillRect(toRect(area), toColor(kPaperColor));
+    painter.fillRect(toRect(area), toColor(paperColorOf(page.style)));
 
     paintRuling(painter, page.style, area, paper.has_value());
 

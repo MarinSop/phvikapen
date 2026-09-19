@@ -16,6 +16,12 @@ constexpr auto kBackgroundKey = "pages/background";
 constexpr auto kSpacingKey = "pages/spacing";
 constexpr auto kCustomWidthKey = "pages/customWidth";
 constexpr auto kCustomHeightKey = "pages/customHeight";
+constexpr auto kPaperColorKey = "pages/paperColor";
+constexpr auto kLineColorKey = "pages/lineColor";
+constexpr auto kMarginColorKey = "pages/marginColor";
+constexpr auto kLineWidthKey = "pages/lineWidth";
+constexpr auto kMarginAtKey = "pages/marginAt";
+constexpr auto kMarginKey = "pages/margin";
 
 constexpr float kOwnWidth = core::millimeters(210.0F);
 constexpr float kOwnHeight = core::millimeters(297.0F);
@@ -44,6 +50,15 @@ core::PageStyle pageStyle() {
         .spacing = static_cast<float>(settings.value(kSpacingKey, usual.spacing).toDouble()),
         .customWidth = static_cast<float>(settings.value(kCustomWidthKey, kOwnWidth).toDouble()),
         .customHeight = static_cast<float>(settings.value(kCustomHeightKey, kOwnHeight).toDouble()),
+        .paperColor =
+            core::unpacked(settings.value(kPaperColorKey, core::packed(usual.paperColor)).toUInt()),
+        .lineColor =
+            core::unpacked(settings.value(kLineColorKey, core::packed(usual.lineColor)).toUInt()),
+        .marginColor = core::unpacked(
+            settings.value(kMarginColorKey, core::packed(usual.marginColor)).toUInt()),
+        .lineWidth = static_cast<float>(settings.value(kLineWidthKey, usual.lineWidth).toDouble()),
+        .marginAt = static_cast<float>(settings.value(kMarginAtKey, usual.marginAt).toDouble()),
+        .margin = settings.value(kMarginKey, usual.margin).toBool(),
     });
 }
 
@@ -55,6 +70,12 @@ void setPageStyle(const core::PageStyle& style) {
     settings.setValue(kSpacingKey, static_cast<double>(style.spacing));
     settings.setValue(kCustomWidthKey, static_cast<double>(style.customWidth));
     settings.setValue(kCustomHeightKey, static_cast<double>(style.customHeight));
+    settings.setValue(kPaperColorKey, core::packed(style.paperColor));
+    settings.setValue(kLineColorKey, core::packed(style.lineColor));
+    settings.setValue(kMarginColorKey, core::packed(style.marginColor));
+    settings.setValue(kLineWidthKey, static_cast<double>(style.lineWidth));
+    settings.setValue(kMarginAtKey, static_cast<double>(style.marginAt));
+    settings.setValue(kMarginKey, style.margin);
 }
 
 }

@@ -146,6 +146,97 @@ void SettingsViewModel::setBackground(page_options::Background background) {
     changeStyle(style);
 }
 
+namespace {
+
+[[nodiscard]] QColor asQColor(core::Color color) {
+    return color.alpha == 0 ? QColor{}
+                            : QColor::fromRgb(color.red, color.green, color.blue, color.alpha);
+}
+
+[[nodiscard]] core::Color asColor(const QColor& color) {
+    if (!color.isValid()) {
+        return core::PageStyle::kUnset;
+    }
+    return core::Color{
+        .red = static_cast<std::uint8_t>(color.red()),
+        .green = static_cast<std::uint8_t>(color.green()),
+        .blue = static_cast<std::uint8_t>(color.blue()),
+        .alpha = static_cast<std::uint8_t>(color.alpha()),
+    };
+}
+
+}
+
+QColor SettingsViewModel::paperColor() const {
+    return asQColor(m_style.paperColor);
+}
+
+void SettingsViewModel::setPaperColor(const QColor& color) {
+    core::PageStyle style = m_style;
+    style.paperColor = asColor(color);
+    changeStyle(core::normalized(style));
+}
+
+QColor SettingsViewModel::lineColor() const {
+    return asQColor(m_style.lineColor);
+}
+
+void SettingsViewModel::setLineColor(const QColor& color) {
+    core::PageStyle style = m_style;
+    style.lineColor = asColor(color);
+    changeStyle(core::normalized(style));
+}
+
+QColor SettingsViewModel::marginColor() const {
+    return asQColor(m_style.marginColor);
+}
+
+void SettingsViewModel::setMarginColor(const QColor& color) {
+    core::PageStyle style = m_style;
+    style.marginColor = asColor(color);
+    changeStyle(core::normalized(style));
+}
+
+qreal SettingsViewModel::lineWidth() const {
+    return m_style.lineWidth;
+}
+
+void SettingsViewModel::setLineWidth(qreal width) {
+    core::PageStyle style = m_style;
+    style.lineWidth = static_cast<float>(width);
+    changeStyle(core::normalized(style));
+}
+
+qreal SettingsViewModel::lineSpacing() const {
+    return m_style.spacing / core::millimeters(1.0F);
+}
+
+void SettingsViewModel::setLineSpacing(qreal millimeters) {
+    core::PageStyle style = m_style;
+    style.spacing = core::millimeters(static_cast<float>(millimeters));
+    changeStyle(core::normalized(style));
+}
+
+qreal SettingsViewModel::marginAt() const {
+    return m_style.marginAt / core::millimeters(1.0F);
+}
+
+void SettingsViewModel::setMarginAt(qreal millimeters) {
+    core::PageStyle style = m_style;
+    style.marginAt = core::millimeters(static_cast<float>(millimeters));
+    changeStyle(core::normalized(style));
+}
+
+bool SettingsViewModel::margin() const {
+    return m_style.margin;
+}
+
+void SettingsViewModel::setMargin(bool shown) {
+    core::PageStyle style = m_style;
+    style.margin = shown;
+    changeStyle(core::normalized(style));
+}
+
 bool SettingsViewModel::landscape() const {
     return m_style.orientation == core::Orientation::Landscape;
 }

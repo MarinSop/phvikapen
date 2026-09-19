@@ -78,6 +78,18 @@ PageStyle normalized(PageStyle style) noexcept {
     }
     style.spacing =
         std::clamp(style.spacing, PageStyle::kMinimumSpacing, PageStyle::kMaximumSpacing);
+    if (!std::isfinite(style.lineWidth)) {
+        style.lineWidth = PageStyle::kDefaultLineWidth;
+    }
+    style.lineWidth =
+        std::clamp(style.lineWidth, PageStyle::kThinnestLine, PageStyle::kThickestLine);
+    if (!std::isfinite(style.marginAt) || style.marginAt < 0.0F) {
+        style.marginAt = PageStyle::kDefaultMargin;
+    }
+    // The line down the side stays on the paper.
+    if (const std::optional<PaperSize> paper = paperSize(style)) {
+        style.marginAt = std::min(style.marginAt, paper->width);
+    }
     return style;
 }
 

@@ -4,6 +4,7 @@
 #include "app/cpp/Shortcuts.hpp"
 #include "core/model/PageStyle.hpp"
 
+#include <QColor>
 #include <QObject>
 #include <QString>
 #include <QUrl>
@@ -24,6 +25,15 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(phvikapen::app::page_options::Background background READ background WRITE
                    setBackground NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool landscape READ landscape WRITE setLandscape NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(QColor paperColor READ paperColor WRITE setPaperColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(QColor lineColor READ lineColor WRITE setLineColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        QColor marginColor READ marginColor WRITE setMarginColor NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(qreal lineWidth READ lineWidth WRITE setLineWidth NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(
+        qreal lineSpacing READ lineSpacing WRITE setLineSpacing NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(qreal marginAt READ marginAt WRITE setMarginAt NOTIFY pageStyleChanged FINAL)
+    Q_PROPERTY(bool margin READ margin WRITE setMargin NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(
         int exportScope READ exportScope WRITE setExportScope NOTIFY exportScopeChanged FINAL)
@@ -66,6 +76,21 @@ public:
     void setPaper(page_options::Paper paper);
     [[nodiscard]] page_options::Background background() const;
     void setBackground(page_options::Background background);
+    [[nodiscard]] QColor paperColor() const;
+    void setPaperColor(const QColor& color);
+    [[nodiscard]] QColor lineColor() const;
+    void setLineColor(const QColor& color);
+    [[nodiscard]] QColor marginColor() const;
+    void setMarginColor(const QColor& color);
+    [[nodiscard]] qreal lineWidth() const;
+    void setLineWidth(qreal width);
+    [[nodiscard]] qreal lineSpacing() const;
+    void setLineSpacing(qreal millimeters);
+    [[nodiscard]] qreal marginAt() const;
+    void setMarginAt(qreal millimeters);
+    [[nodiscard]] bool margin() const;
+    void setMargin(bool shown);
+
     [[nodiscard]] bool landscape() const;
     void setLandscape(bool landscape);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/model/Color.hpp"
+
 #include <cstdint>
 #include <optional>
 
@@ -45,6 +47,12 @@ struct PageStyle {
     static constexpr float kDefaultSpacing = 7.0F * kPageUnitsPerInch / kMillimetersPerInch;
     static constexpr float kMinimumSpacing = 2.0F * kPageUnitsPerInch / kMillimetersPerInch;
     static constexpr float kMaximumSpacing = 30.0F * kPageUnitsPerInch / kMillimetersPerInch;
+    static constexpr float kDefaultMargin = 25.0F * kPageUnitsPerInch / kMillimetersPerInch;
+    static constexpr float kDefaultLineWidth = 1.0F;
+    static constexpr float kThinnestLine = 0.5F;
+    static constexpr float kThickestLine = 6.0F;
+    // A colour nobody has chosen: the paper then wears whatever suits its ruling.
+    static constexpr Color kUnset{.red = 0, .green = 0, .blue = 0, .alpha = 0};
 
     Paper paper{Paper::A4};
     Orientation orientation{Orientation::Portrait};
@@ -52,6 +60,12 @@ struct PageStyle {
     float spacing{kDefaultSpacing};
     float customWidth{};
     float customHeight{};
+    Color paperColor{kUnset};
+    Color lineColor{kUnset};
+    Color marginColor{kUnset};
+    float lineWidth{kDefaultLineWidth};
+    float marginAt{kDefaultMargin};
+    bool margin{true};
 
     friend constexpr bool operator==(const PageStyle&, const PageStyle&) = default;
 };

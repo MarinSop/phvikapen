@@ -243,6 +243,36 @@ AppDialog {
 
                 Label {
                     font.bold: true
+                    text: qsTr("How new pages are ruled")
+                }
+
+                PageLook {
+                    Layout.fillWidth: true
+                    lineColor: root.settings.lineColor
+                    lineSpacing: root.settings.lineSpacing
+                    lineWidth: root.settings.lineWidth
+                    lined: root.settings.background === PageOptions.Lined
+                    marginAt: root.settings.marginAt
+                    marginColor: root.settings.marginColor
+                    marginShown: root.settings.margin
+                    objectName: "defaultLook"
+                    paperColor: root.settings.paperColor
+
+                    onLineColorPicked: wanted => root.settings.lineColor = wanted
+                    onLineSpacingChosen: wanted => root.settings.lineSpacing = wanted
+                    onLineWidthChosen: wanted => root.settings.lineWidth = wanted
+                    onMarginAtChosen: wanted => root.settings.marginAt = wanted
+                    onMarginColorPicked: wanted => root.settings.marginColor = wanted
+                    onMarginShownChosen: wanted => root.settings.margin = wanted
+                    onPaperColorPicked: wanted => root.settings.paperColor = wanted
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    font.bold: true
                     text: qsTr("Where the notebooks are kept")
                 }
 

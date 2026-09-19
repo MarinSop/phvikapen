@@ -73,6 +73,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
+        qml/components/ColorField.qml
         qml/components/ConfirmDialog.qml
         qml/components/ArrowButton.qml
         qml/components/DropLine.qml
@@ -85,6 +86,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/OptionsBar.qml
         qml/components/PagePanel.qml
         qml/components/PagesPanel.qml
+        qml/components/PageLook.qml
         qml/components/PageSetup.qml
         qml/components/PageSetupDialog.qml
         qml/components/HintsDialog.qml
