@@ -30,6 +30,14 @@ TestCase {
         });
     }
 
+    // A library that brings back whatever was open the time before.
+    function openLibraryAgain(directory) {
+        return createTemporaryObject(notebooksComponent, testCase, {
+            directory: directory,
+            reopenLast: true
+        });
+    }
+
     function libraryWithOne(directory) {
         const notebooks = openLibrary(directory);
         testCase.addNotebook(notebooks, "Notes");
@@ -152,7 +160,7 @@ TestCase {
         before.destroy();
         wait(0);
 
-        const after = openLibrary(directory);
+        const after = openLibraryAgain(directory);
 
         tryVerify(() => after.current !== null);
         compare(after.openNotebooks.join(","), expected);
@@ -239,6 +247,20 @@ TestCase {
 
         tryCompare(given.current, "pageCount", 2);
         tryCompare(given.current, "paper", PageOptions.A5, 3000, "the paper that was asked for never reached the pages");
+    }
+
+    function test_z6_nothingIsOpenedAgainUnlessTheReaderAsksForIt() {
+        const directory = newLibrary();
+        const before = openLibrary(directory);
+        testCase.keepNotebook(before, directory, "Physics");
+        before.destroy();
+        wait(0);
+
+        const after = openLibrary(directory);
+
+        wait(200);
+        compare(after.openNotebooks.length, 0, "a notebook came back although the reader starts fresh");
+        compare(after.current, null);
     }
 
     name: "NotebooksViewModel"

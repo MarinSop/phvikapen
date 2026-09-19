@@ -332,9 +332,6 @@ private:
     void showPicture(std::uint64_t opening, const core::ContentId& asset, const QImage& picture);
     void drawMedia();
     void redrawMedia();
-    void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
-                          const core::Rect& area, const platform::pdf::PageImage& image);
-    [[nodiscard]] static core::Rect wantedRegion(const core::PaperSize& paper);
     void showPageMedia(const core::Uuid& page, const QImage& picture, const QRectF& area);
     void publishMedia();
     void wantNeighbours();

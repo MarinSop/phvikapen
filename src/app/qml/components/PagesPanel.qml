@@ -20,22 +20,21 @@ Pane {
     property int renamingSection: -1
     readonly property SettingsViewModel settings: root.actions.settings
 
-    // Which row of a list the pointer is over. Above the first row counts as the first, and the
-    // blank space under the last row counts as the last, the way other applications do it.
-    function landingIn(list, scenePosition) {
+    // The gap a carried row would drop into: 0 is above the first row, count is under the last.
+    // It is worked out from where the rows rest, so the row in hand does not move the answer.
+    function gapIn(list, scenePosition) {
         if (list.count === 0) {
-            return -1;
-        }
-        const point = list.mapFromItem(null, scenePosition);
-        const inContent = point.y + list.contentY;
-        if (inContent < 0) {
             return 0;
         }
-        if (inContent >= list.contentHeight) {
-            return list.count - 1;
-        }
-        const found = list.indexAt(list.width / 2, inContent);
-        return found < 0 ? list.count - 1 : found;
+        const step = list.contentHeight / list.count;
+        const point = list.mapFromItem(null, scenePosition);
+        const inContent = point.y + list.contentY;
+        return Math.max(0, Math.min(list.count, Math.round(inContent / step)));
+    }
+
+    // Where a row taken from `from` ends up when it is dropped into `gap`.
+    function landingOf(from, gap) {
+        return gap > from ? gap - 1 : gap;
     }
 
     function askToDelete(sectionScope, index, title) {
@@ -229,7 +228,7 @@ Pane {
 
                         onCentroidChanged: {
                             if (sectionDrag.active) {
-                                root.sectionLanding = root.landingIn(sectionList, sectionDrag.centroid.scenePosition);
+                                root.sectionLanding = root.gapIn(sectionList, sectionDrag.centroid.scenePosition);
                             }
                         }
                         onActiveChanged: {
@@ -241,11 +240,13 @@ Pane {
                             }
                             root.sectionLanding = -1;
                             const carried = root.draggedSection;
+                            const gap = root.sectionLanding;
                             root.draggedSection = -1;
+                            root.sectionLanding = -1;
                             sectionDelegate.y = sectionDelegate.restingY;
                             sectionList.forceLayout();
-                            const landed = root.landingIn(sectionList, sectionDrag.centroid.scenePosition);
-                            if (carried >= 0 && landed >= 0 && landed !== carried) {
+                            const landed = root.landingOf(carried, gap);
+                            if (carried >= 0 && landed !== carried) {
                                 root.notebook.moveSection(carried, landed);
                             }
                         }
@@ -437,7 +438,7 @@ Pane {
 
                         onCentroidChanged: {
                             if (pageDrag.active) {
-                                root.pageLanding = root.landingIn(pageList, pageDrag.centroid.scenePosition);
+                                root.pageLanding = root.gapIn(pageList, pageDrag.centroid.scenePosition);
                             }
                         }
                         onActiveChanged: {
@@ -449,13 +450,14 @@ Pane {
                             }
                             root.pageLanding = -1;
                             const carried = root.draggedPage;
+                            const gap = root.pageLanding;
                             root.draggedPage = -1;
-                            // The carried row goes back in line first, so that the list can say
-                            // which row the pointer is really over.
+                            root.pageLanding = -1;
+                            // The carried row goes back in line; the list puts it where it belongs.
                             pageDelegate.y = pageDelegate.restingY;
                             pageList.forceLayout();
-                            const landed = root.landingIn(pageList, pageDrag.centroid.scenePosition);
-                            if (carried >= 0 && landed >= 0 && landed !== carried) {
+                            const landed = root.landingOf(carried, gap);
+                            if (carried >= 0 && landed !== carried) {
                                 root.notebook.movePage(carried, landed);
                             }
                         }

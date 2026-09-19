@@ -386,12 +386,24 @@ void NotebooksViewModel::deleteNotebook(const QString& name) {
     refreshLibrary();
 }
 
+void NotebooksViewModel::setReopenLast(bool reopen) {
+    if (reopen == m_reopenLast) {
+        return;
+    }
+    m_reopenLast = reopen;
+    emit reopenLastChanged();
+}
+
 void NotebooksViewModel::restoreSession() {
     m_restoring = true;
     const QSettings settings;
     QStringList names = settings.value(kOpenSetting).toStringList();
     // Drafts are not in the library, but they were open, so they open again.
     names.removeIf([this](const QString& name) { return !QFile::exists(existingPathFor(name)); });
+    if (!m_reopenLast) {
+        // The reader asked to start fresh: what was open is remembered, but nothing is opened.
+        names.clear();
+    }
     for (const QString& name : names) {
         openNotebook(name);
     }

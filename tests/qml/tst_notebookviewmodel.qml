@@ -583,6 +583,20 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_onePageAtATimeAlsoFollowsTheNewPaper() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        verify(!notebook.continuous);
+        tryVerify(() => canvas.mediaArea.width > 0);
+
+        notebook.paper = PageOptions.A3;
+
+        tryVerify(() => canvas.mediaArea.width === canvas.sheetRect(0).width, 5000, "the picture never caught up with the new paper");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();
@@ -725,9 +739,10 @@ TestCase {
         tryVerify(() => canvas.mediaSize.width > 0);
         const faraway = canvas.mediaSize.width;
 
-        for (let step = 0; step < 8; ++step) {
+        for (let step = 0; step < 16; ++step) {
             canvas.zoomIn();
         }
+        verify(canvas.zoom > 2, "the test did not come close enough");
 
         tryVerify(() => canvas.mediaSize.width > faraway, 5000, "the document stayed as coarse as it was");
         compare(notebook.errorMessage, "");

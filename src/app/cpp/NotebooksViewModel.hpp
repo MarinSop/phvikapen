@@ -29,6 +29,7 @@ class NotebooksViewModel : public QObject, public QQmlParserStatus {
                    canvasChanged FINAL)
     Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
                    continuousPagesChanged FINAL)
+    Q_PROPERTY(bool reopenLast READ reopenLast WRITE setReopenLast NOTIFY reopenLastChanged FINAL)
 
 public:
     explicit NotebooksViewModel(QObject* parent = nullptr);
@@ -70,6 +71,11 @@ public:
     Q_INVOKABLE [[nodiscard]] bool isEdited(int index) const;
     Q_INVOKABLE [[nodiscard]] NotebookViewModel* notebookAt(int index) const;
     void forgetDraftOf(const NotebookViewModel& notebook) const;
+
+    [[nodiscard]] bool reopenLast() const { return m_reopenLast; }
+
+    void setReopenLast(bool reopen);
+
     Q_INVOKABLE void moveNotebook(int from, int to);
 
     // A notebook that has never been saved lives among the drafts, out of the library's way.
@@ -86,6 +92,7 @@ signals:
     void currentChanged();
     void canvasChanged();
     void continuousPagesChanged();
+    void reopenLastChanged();
     void errorMessage(const QString& message);
 
 private:
@@ -103,6 +110,7 @@ private:
     QPointer<platform::ink::QtInkItem> m_canvas;
     int m_currentIndex{-1};
     bool m_continuousPages{false};
+    bool m_reopenLast{false};
     bool m_completed{false};
     bool m_restoring{false};
 };

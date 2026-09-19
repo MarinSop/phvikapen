@@ -32,6 +32,8 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(
         bool showPagePanel READ showPagePanel WRITE setShowPagePanel NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool themeChosen READ themeChosen WRITE setThemeChosen NOTIFY themeChanged FINAL)
+    Q_PROPERTY(bool reopenNotebooks READ reopenNotebooks WRITE setReopenNotebooks NOTIFY
+                   panelsChanged FINAL)
     Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
     Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
@@ -85,6 +87,11 @@ public:
 
     static constexpr int kDefaultPanelWidth = 220;
     static constexpr int kDefaultSectionsHeight = 150;
+
+    // Whether the notebooks that were open come back the next time, or the reader starts fresh.
+    [[nodiscard]] bool reopenNotebooks() const { return m_reopenNotebooks; }
+
+    void setReopenNotebooks(bool reopen);
 
     [[nodiscard]] bool themeChosen() const { return m_themeChosen; }
 
@@ -146,6 +153,7 @@ private:
     bool m_continuousPages{true};
     bool m_showPagePanel{false};
     bool m_themeChosen{false};
+    bool m_reopenNotebooks{false};
     bool m_showSections{true};
     bool m_showPages{true};
     int m_panelWidth{kDefaultPanelWidth};

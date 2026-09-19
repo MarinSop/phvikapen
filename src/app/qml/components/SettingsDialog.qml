@@ -49,8 +49,8 @@ AppDialog {
             }
 
             TabButton {
-                objectName: "updatesTab"
-                text: qsTr("Updates")
+                objectName: "generalTab"
+                text: qsTr("General")
             }
         }
 
@@ -328,6 +328,30 @@ AppDialog {
 
             SettingsPage {
                 objectName: "updatesPage"
+
+                Label {
+                    font.bold: true
+                    text: qsTr("Starting up")
+                }
+
+                Switch {
+                    checked: root.settings.reopenNotebooks
+                    objectName: "reopenNotebooksSwitch"
+                    text: qsTr("Open the notebooks that were open last time")
+
+                    onToggled: root.settings.reopenNotebooks = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("Off, PhvikaPen starts with nothing open and waits for you to make or open a notebook.")
+                    wrapMode: Text.WordWrap
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
 
                 Label {
                     font.bold: true

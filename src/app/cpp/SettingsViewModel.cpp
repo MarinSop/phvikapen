@@ -27,6 +27,7 @@ constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
 constexpr auto kPagePanelSetting = "view/pagePanel";
 constexpr auto kThemeChosenSetting = "look/chosen";
+constexpr auto kReopenSetting = "session/reopen";
 constexpr auto kSectionsSetting = "view/sections";
 constexpr auto kPagesSetting = "view/pages";
 constexpr auto kPanelWidthSetting = "view/panelWidth";
@@ -58,6 +59,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
                                kExportScopes - 1);
     m_continuousPages = settings.value(kContinuousPagesSetting, m_continuousPages).toBool();
     m_themeChosen = settings.value(kThemeChosenSetting, m_themeChosen).toBool();
+    m_reopenNotebooks = settings.value(kReopenSetting, m_reopenNotebooks).toBool();
     m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
     m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
     m_panelWidth = std::clamp(settings.value(kPanelWidthSetting, m_panelWidth).toInt(),
@@ -206,6 +208,16 @@ void SettingsViewModel::setShowPagePanel(bool shown) {
     m_showPagePanel = shown;
     QSettings settings;
     settings.setValue(kPagePanelSetting, m_showPagePanel);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setReopenNotebooks(bool reopen) {
+    if (reopen == m_reopenNotebooks) {
+        return;
+    }
+    m_reopenNotebooks = reopen;
+    QSettings settings;
+    settings.setValue(kReopenSetting, m_reopenNotebooks);
     emit panelsChanged();
 }
 

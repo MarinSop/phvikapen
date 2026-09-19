@@ -1354,7 +1354,6 @@ void NotebookViewModel::drawMedia() {
         return;
     }
 
-    const core::Rect wanted = wantedRegion(*paper);
     const qreal scale = drawScale(*paper, kSmallestMediaScale);
     const auto already = m_drawnAt.find(m_currentPage);
     const auto shown = m_shownMedia.find(m_currentPage);
@@ -1362,58 +1361,12 @@ void NotebookViewModel::drawMedia() {
         && shown != m_shownMedia.end() && fitsSheet(shown->second.area, *paper)) {
         return;
     }
-    const auto width = static_cast<int>(std::max(1.0, static_cast<double>(wanted.width()) * scale));
-    const auto height =
-        static_cast<int>(std::max(1.0, static_cast<double>(wanted.height()) * scale));
 
     m_mediaScale = scale;
-    m_drawnAt[m_currentPage] = scale;
-    const std::uint64_t opening = m_opening;
+    // The document page is drawn to fill the sheet it stands on, the same way the pages around
+    // it are: a wider sheet shows a wider page, not a page with white space beside it.
     const core::ContentId asset = info->media->asset;
-    const platform::pdf::PageRegion region{
-        .left = wanted.left,
-        .top = wanted.top,
-        .width = wanted.width(),
-        .height = wanted.height(),
-    };
-    m_pdf->renderRegion(
-        asset, info->media->index, width, height, region,
-        [this, opening, asset, wanted](core::Result<platform::pdf::PageImage> image) {
-            if (!image) {
-                return;
-            }
-            QMetaObject::invokeMethod(
-                this,
-                [this, opening, asset, wanted, drawn = std::move(*image)] {
-                    showRenderedPage(opening, asset, wanted, drawn);
-                },
-                Qt::QueuedConnection);
-        });
-}
-
-// The sheet is drawn whole, as finely as the reader is close, and never in pieces: half a page
-// of a document is worse than a slightly coarse one.
-core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) {
-    return core::Rect{
-        .left = 0.0F,
-        .top = 0.0F,
-        .right = paper.width,
-        .bottom = paper.height,
-    };
-}
-
-void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
-                                         const core::Rect& area,
-                                         const platform::pdf::PageImage& image) {
-    const core::PageInfo* const info = currentPageInfo();
-    if (opening != m_opening || m_canvas.isNull() || info == nullptr || !info->media
-        || info->media->asset != asset) {
-        return;
-    }
-    const QImage drawn{image.pixels.data(), image.width, image.height,
-                       static_cast<qsizetype>(image.width) * 4, QImage::Format_RGBA8888};
-    showPageMedia(m_currentPage, drawn.copy(),
-                  QRectF{area.left, area.top, area.width(), area.height()});
+    drawColumnPage(m_currentPage, info->media->index, asset);
 }
 
 void NotebookViewModel::showPageMedia(const core::Uuid& page, const QImage& picture,

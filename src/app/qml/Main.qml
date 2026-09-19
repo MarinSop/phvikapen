@@ -125,6 +125,7 @@ ApplicationWindow {
         id: notebooks
 
         continuousPages: settings.continuousPages
+        reopenLast: settings.reopenNotebooks
 
         onErrorMessage: message => messageBar.show(message)
     }
