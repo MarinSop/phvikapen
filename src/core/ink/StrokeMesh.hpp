@@ -3,6 +3,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 
+#include <span>
 #include <vector>
 
 namespace phvikapen::core {
@@ -26,5 +27,8 @@ void appendDisc(std::vector<InkVertex>& vertices, float x, float y, float radius
                 const Color& color);
 
 void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke);
+
+void appendStroke(std::vector<InkVertex>& vertices, std::span<const InkSample> samples,
+                  const StrokeStyle& style);
 
 }

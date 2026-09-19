@@ -23,6 +23,9 @@ struct StrokeStyle {
     friend constexpr bool operator==(const StrokeStyle&, const StrokeStyle&) = default;
 };
 
+// A light touch still leaves a line, and the pressures a writing hand uses spread over the width.
+[[nodiscard]] float widthAt(const StrokeStyle& style, float pressure) noexcept;
+
 class Stroke {
 public:
     explicit Stroke(Uuid id, StrokeStyle style = {}) noexcept;

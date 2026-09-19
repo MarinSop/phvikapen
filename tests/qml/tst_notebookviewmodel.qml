@@ -57,12 +57,14 @@ TestCase {
         canvas.eraserRadius = 30;
         canvas.erasing = true;
 
-        mousePress(canvas, 40, 30);
-        mouseMove(canvas, 40, 80, -1, Qt.LeftButton);
-        mouseMove(canvas, 40, 150, -1, Qt.LeftButton);
-        mouseRelease(canvas, 40, 150);
+        // One sweep runs along the first stroke and back down the second.
+        mousePress(canvas, 40, 40);
+        mouseMove(canvas, 80, 60, -1, Qt.LeftButton);
+        mouseMove(canvas, 40, 120, -1, Qt.LeftButton);
+        mouseMove(canvas, 80, 140, -1, Qt.LeftButton);
+        mouseRelease(canvas, 80, 140);
         const afterErasing = notebook.strokeCount;
-        verify(afterErasing !== 3);
+        compare(afterErasing, 1);
 
         notebook.undo();
         compare(notebook.strokeCount, 3);

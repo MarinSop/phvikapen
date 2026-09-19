@@ -52,6 +52,12 @@ void QtInkRenderer::initialize(QRhiCommandBuffer* /*commandBuffer*/) {
         return;
     }
     m_sampleCount = renderTarget()->sampleCount();
+    m_compositePipeline.reset();
+    m_layerPipeline.reset();
+    m_layerTarget.reset();
+    m_layerPass.reset();
+    m_layerSamples.reset();
+    m_layerTexture.reset();
     createInkPipeline();
     createBackgroundPipeline();
     createMediaPipeline();
@@ -146,7 +152,7 @@ void QtInkRenderer::createLayerPipeline() {
                         loadShader(QStringLiteral(":/phvikapen/ink/qt/shaders/ink.frag.qsb"))},
     });
     m_layerPipeline->setTargetBlends({layerBlend});
-    m_layerPipeline->setSampleCount(1);
+    m_layerPipeline->setSampleCount(m_sampleCount);
     m_layerPipeline->setVertexInputLayout(inkLayout);
     m_layerPipeline->setShaderResourceBindings(m_bindings.get());
     m_layerPipeline->setRenderPassDescriptor(m_layerPass.get());
@@ -192,7 +198,19 @@ void QtInkRenderer::updateLayerTarget() {
         device->newTexture(QRhiTexture::RGBA8, wanted, 1, QRhiTexture::RenderTarget));
     m_layerTexture->create();
 
-    m_layerTarget.reset(device->newTextureRenderTarget({m_layerTexture.get()}));
+    // The layer is drawn with as many samples to a pixel as the window, and resolved for blending.
+    QRhiColorAttachment colour;
+    if (m_sampleCount > 1) {
+        m_layerSamples.reset(device->newRenderBuffer(QRhiRenderBuffer::Color, wanted, m_sampleCount,
+                                                     {}, m_layerTexture->format()));
+        m_layerSamples->create();
+        colour.setRenderBuffer(m_layerSamples.get());
+        colour.setResolveTexture(m_layerTexture.get());
+    } else {
+        m_layerSamples.reset();
+        colour.setTexture(m_layerTexture.get());
+    }
+    m_layerTarget.reset(device->newTextureRenderTarget(QRhiTextureRenderTargetDescription{colour}));
     if (!m_layerPass) {
         m_layerPass.reset(m_layerTarget->newCompatibleRenderPassDescriptor());
     }

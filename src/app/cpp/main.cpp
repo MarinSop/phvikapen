@@ -16,6 +16,8 @@ int main(int argc, char* argv[]) {
     // Must run first: it may restart or end the process.
     phvikapen::platform::update::runStartupHook();
     phvikapen::app::keepSystemItemsOutOfMenus();
+    // Every position the pen reports is ink; none may be merged away.
+    QGuiApplication::setAttribute(Qt::AA_CompressTabletEvents, false);
 
     const QGuiApplication application(argc, argv);
     QGuiApplication::setApplicationName(QStringLiteral("PhvikaPen"));

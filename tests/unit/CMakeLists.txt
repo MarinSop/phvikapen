@@ -7,7 +7,6 @@ add_executable(phvikapen_tests
     core/ErrorTest.cpp
     core/NotebookOutlineTest.cpp
     core/NotebookStoreTest.cpp
-    core/OneEuroFilterTest.cpp
     core/OutlineCommandsTest.cpp
     core/OutlineTest.cpp
     core/PageStyleTest.cpp
@@ -23,6 +22,7 @@ add_executable(phvikapen_tests
     core/StrokeSelectionTest.cpp
     core/StrokeShapesTest.cpp
     core/StrokeSplineTest.cpp
+    core/StrokeSteadierTest.cpp
     core/StrokeTest.cpp
     core/TrashTest.cpp
     core/UndoStackTest.cpp

@@ -15,9 +15,9 @@ namespace {
 
 constexpr float kHalf = 0.5F;
 
-[[nodiscard]] bool segmentTouches(const InkSample& start, const InkSample& end, float width,
-                                  const EraserSweep& sweep) noexcept {
-    const float halfWidth = width * std::max(start.pressure, end.pressure) * kHalf;
+[[nodiscard]] bool segmentTouches(const InkSample& start, const InkSample& end,
+                                  const StrokeStyle& style, const EraserSweep& sweep) noexcept {
+    const float halfWidth = widthAt(style, std::max(start.pressure, end.pressure)) * kHalf;
     const float reach = sweep.radius + halfWidth;
     return squaredDistanceBetweenSegments({.x = start.x, .y = start.y}, {.x = end.x, .y = end.y},
                                           sweep.from, sweep.to)
@@ -43,12 +43,12 @@ bool touches(const Stroke& stroke, const EraserSweep& sweep) noexcept {
     }
 
     const std::span<const InkSample> samples = stroke.samples();
-    const float width = stroke.style().width;
+    const StrokeStyle& style = stroke.style();
     if (samples.size() == 1) {
-        return segmentTouches(samples.front(), samples.front(), width, sweep);
+        return segmentTouches(samples.front(), samples.front(), style, sweep);
     }
     for (std::size_t i = 1; i < samples.size(); ++i) {
-        if (segmentTouches(samples[i - 1], samples[i], width, sweep)) {
+        if (segmentTouches(samples[i - 1], samples[i], style, sweep)) {
             return true;
         }
     }

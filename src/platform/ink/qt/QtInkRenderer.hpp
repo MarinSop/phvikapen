@@ -81,6 +81,7 @@ private:
     std::unique_ptr<QRhiGraphicsPipeline> m_backgroundPipeline;
     std::unique_ptr<QRhiGraphicsPipeline> m_layerPipeline;
     std::unique_ptr<QRhiTexture> m_layerTexture;
+    std::unique_ptr<QRhiRenderBuffer> m_layerSamples;
     std::unique_ptr<QRhiTextureRenderTarget> m_layerTarget;
     std::unique_ptr<QRhiRenderPassDescriptor> m_layerPass;
     std::unique_ptr<QRhiSampler> m_layerSampler;

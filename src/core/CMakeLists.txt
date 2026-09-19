@@ -9,8 +9,6 @@ configure_file(version.hpp.in "${generated_dir}/core/version.hpp" @ONLY)
 target_sources(phvikapen_core
     PRIVATE
         Error.cpp
-        filter/InkFilter.cpp
-        filter/OneEuroFilter.cpp
         geometry/Distance.cpp
         geometry/Viewport.cpp
         id/ContentId.cpp
@@ -24,6 +22,7 @@ target_sources(phvikapen_core
         ink/StrokeSelection.cpp
         ink/StrokeShapes.cpp
         ink/StrokeSpline.cpp
+        ink/StrokeSteadier.cpp
         model/Outline.cpp
         model/Page.cpp
         model/PageStyle.cpp
@@ -43,8 +42,6 @@ target_sources(phvikapen_core
             "${generated_dir}"
         FILES
             Error.hpp
-            filter/InkFilter.hpp
-            filter/OneEuroFilter.hpp
             geometry/Distance.hpp
             geometry/Rect.hpp
             geometry/Viewport.hpp
@@ -60,6 +57,7 @@ target_sources(phvikapen_core
             ink/StrokeSelection.hpp
             ink/StrokeShapes.hpp
             ink/StrokeSpline.hpp
+            ink/StrokeSteadier.hpp
             model/Asset.hpp
             model/Outline.hpp
             model/Page.hpp

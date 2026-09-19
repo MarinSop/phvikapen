@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/filter/InkFilter.hpp"
 #include "core/geometry/Viewport.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
@@ -8,6 +7,7 @@
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeMesh.hpp"
 #include "core/ink/StrokeShapes.hpp"
+#include "core/ink/StrokeSteadier.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "platform/ink/IInkBackend.hpp"
@@ -290,12 +290,13 @@ private:
     void appendToStroke(const core::InkSample& sample);
     void endStroke(const core::InkSample& sample);
     void cancelStroke();
+    [[nodiscard]] core::InkSample inOrder(core::InkSample sample) const noexcept;
 
     core::Uuid7Generator m_ids;
-    core::InkFilter m_filter;
     core::StrokeStyle m_style;
     IInkSink* m_sink{nullptr};
     std::optional<core::Stroke> m_activeStroke;
+    std::optional<core::StrokeSteadier> m_steadier;
     std::optional<core::InkSample> m_eraserPosition;
     bool m_erasing{false};
     bool m_pressureSensitive{true};

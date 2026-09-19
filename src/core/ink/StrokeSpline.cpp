@@ -16,8 +16,11 @@ namespace {
 constexpr float kMinimumKnotInterval = 1e-4F;
 constexpr float kMinimumDistance = 1e-3F;
 constexpr float kMinimumSpacing = 0.1F;
-constexpr std::size_t kMaximumSubdivisions = 32;
+constexpr std::size_t kMaximumSubdivisions = 256;
 constexpr float kTwice = 2.0F;
+// How far a chord may stray from its curve, in page units: unseen even zoomed in.
+constexpr float kFlatness = 0.02F;
+constexpr float kSagitta = 8.0F;
 
 struct Vector {
     float x{};
@@ -66,12 +69,14 @@ struct Vector {
     return lerp(b1, b2, t1, t2, t);
 }
 
-// A turn this sharp is a corner the writer meant, and the curve must not round it off.
-constexpr float kCornerTurn = 0.5F;
+// A corner is a turn back on itself, or a sharp turn its neighbours do not share.
+constexpr float kReversal = 1.83F;
+constexpr float kSharpTurn = 0.92F;
+constexpr float kLoneTurn = 0.35F;
 
-[[nodiscard]] bool isCorner(std::span<const InkSample> samples, std::size_t index) noexcept {
+[[nodiscard]] float turnAt(std::span<const InkSample> samples, std::size_t index) noexcept {
     if (index == 0 || index + 1 >= samples.size()) {
-        return false;
+        return 0.0F;
     }
     const InkSample& before = samples[index - 1];
     const InkSample& here = samples[index];
@@ -80,12 +85,28 @@ constexpr float kCornerTurn = 0.5F;
     const float inY = here.y - before.y;
     const float outX = after.x - here.x;
     const float outY = after.y - here.y;
-    const float inLength = std::hypot(inX, inY);
-    const float outLength = std::hypot(outX, outY);
-    if (inLength <= kMinimumDistance || outLength <= kMinimumDistance) {
-        return false;
+    if (std::hypot(inX, inY) <= kMinimumDistance || std::hypot(outX, outY) <= kMinimumDistance) {
+        return 0.0F;
     }
-    return ((inX * outX) + (inY * outY)) / (inLength * outLength) < kCornerTurn;
+    return std::abs(std::atan2((inX * outY) - (inY * outX), (inX * outX) + (inY * outY)));
+}
+
+[[nodiscard]] bool isCorner(std::span<const InkSample> samples, std::size_t index) noexcept {
+    const float turn = turnAt(samples, index);
+    if (turn >= kReversal) {
+        return true;
+    }
+    return turn >= kSharpTurn && turnAt(samples, index - 1) <= kLoneTurn * turn
+           && turnAt(samples, index + 1) <= kLoneTurn * turn;
+}
+
+// How far the direction of the curve swings between the two ends of one piece of it.
+[[nodiscard]] float swing(std::span<const Vector, 4> points) noexcept {
+    const float inX = points[2].x - points[0].x;
+    const float inY = points[2].y - points[0].y;
+    const float outX = points[3].x - points[1].x;
+    const float outY = points[3].y - points[1].y;
+    return std::abs(std::atan2((inX * outY) - (inY * outX), (inX * outX) + (inY * outY)));
 }
 
 [[nodiscard]] InkSample interpolate(const InkSample& from, const InkSample& to, Vector at,
@@ -140,8 +161,10 @@ std::vector<InkSample> fitSpline(std::span<const InkSample> samples, float spaci
         };
 
         const float length = std::hypot(end.x - start.x, end.y - start.y);
+        const float wanted =
+            std::max(length / step, std::sqrt(length * swing(points) / (kSagitta * kFlatness)));
         const auto subdivisions = std::clamp<std::size_t>(
-            static_cast<std::size_t>(std::ceil(length / step)), 1, kMaximumSubdivisions);
+            static_cast<std::size_t>(std::ceil(wanted)), 1, kMaximumSubdivisions);
         for (std::size_t k = 1; k < subdivisions; ++k) {
             const float fraction = static_cast<float>(k) / static_cast<float>(subdivisions);
             fitted.push_back(interpolate(from, to, centripetal(points, fraction), fraction));

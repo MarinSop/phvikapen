@@ -125,8 +125,9 @@ into a real problem earlier.
 - **The tip of a stroke is a straight piece.** The body of a stroke being written is redrawn along
   its curve about eighty times a second; the newest samples are strung on straight until the next
   redraw, which is visible only on a very fast hand.
-- **Smoothing is one number.** It moves the filter's cutoff; the part that follows how fast the pen
-  moves is fixed, and nothing yet measures what either should be on the target device.
+- **Smoothing is one reach.** Samples are averaged along the line as far as the setting reaches,
+  the same at every speed of the pen; how far each step should reach, and whether a slow hand needs
+  more than a fast one, is still to be measured on the target device.
 - **Ink beside the sheet is not in the small pictures.** The sidebar draws the sheet, so anything
   written around it is left out there even when an exported document takes it in.
 
@@ -141,8 +142,9 @@ into a real problem earlier.
   stroke can never cover ink drawn before it.
 - **The view of a page is forgotten when the notebook closes.** Each page returns to the zoom and
   the place it was left at, but only until the application is closed.
-- **Pen pressure curve.** Width follows pressure directly. A curve per pen, and a way to tune it,
-  belongs with the measurements on the target device.
+- **Pen pressure curve.** Every pen follows the same curve from pressure to width, with a floor so
+  a light touch still shows. A curve per pen, and a way to tune it, belongs with the measurements on
+  the target device.
 - **Accessibility.** The tools have shortcuts now, but the focus order through the sidebar has not
   been checked, nothing has been tested with a screen reader, and the shortcuts cannot be changed.
 
@@ -151,6 +153,6 @@ into a real problem earlier.
 - **The Windows build of everything since the skeleton.** Sections, pages, the viewport, the
   background shader, the tabs and the tools have only ever been built and run on macOS.
 - **Pen behaviour.** Latency, wobble, pressure, tilt and the eraser end of the pen are unmeasured,
-  and the beta of the One Euro filter is a provisional value chosen on a simulated stroke.
+  and the reach of the smoothing was chosen on simulated strokes.
 - **Golden image tests.** Stroke appearance is checked by unit tests on the geometry, not by
   comparing rendered images against recordings from the real pen.

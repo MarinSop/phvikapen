@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Writing on Windows follows the pen. Windows hands over several positions of the pen at once, all
+  stamped with the same time, and all but the first were dropped, which cut the corners of letters
+  and set lines wobbling. Every position is kept now.
+
+### Changed
+
+- Smoothing averages each sample with its neighbours along the line instead of over time, so it
+  evens out a shaky hand without pulling the line behind the pen or rounding off what was written.
+  Both ends of a stroke stay where the pen was, the setting is gentle at first and strong only near
+  the top of its scale, and its reach is measured on the screen, the same at every zoom.
+- A pen rounds the turns it makes with its tip instead of meeting them in a point; drawn shapes keep
+  square corners.
+- A light touch still leaves a line: width follows a curve with a floor rather than the raw pressure.
+- The edges of the ink, the highlighter included, are drawn with several samples to a pixel.
+- Curves are cut into as many pieces as their bend needs, and round tips into as many sides as their
+  size needs, so both stay round when zoomed in. Exported pages end their strokes round as well.
+
+### Removed
+
+- The One Euro filter, which smoothing no longer needs.
+
 ## [0.2.0] - 2026-09-19
 
 ### Added

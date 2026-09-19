@@ -40,6 +40,10 @@ constexpr std::size_t kMostSheetsDrawn = 16;
 // How far down the window the page that is being read is taken from.
 constexpr float kReadingLine = 0.3F;
 constexpr float kHalfWidth = 0.5F;
+// How far the smoothing reaches at its strongest, in pixels of the window: about a millimetre.
+constexpr float kSteadiestReach = 4.5F;
+// Four samples to a pixel keep the edge of the ink smooth.
+constexpr int kInkSamples = 4;
 
 [[nodiscard]] InkSample makeSample(const QPointF& position, qreal pressure, qreal tiltX,
                                    qreal tiltY, quint64 timestampMs) {
@@ -55,6 +59,14 @@ constexpr float kHalfWidth = 0.5F;
     };
 }
 
+[[nodiscard]] core::Stroke steadyStroke(const core::Stroke& drawn, core::StrokeSteadier& steadier) {
+    core::Stroke steady{drawn.id(), drawn.style()};
+    for (const InkSample& sample : steadier.settled()) {
+        steady.append(sample);
+    }
+    return steady;
+}
+
 [[nodiscard]] core::Point toPoint(const QPointF& point) {
     return {.x = static_cast<float>(point.x()), .y = static_cast<float>(point.y())};
 }
@@ -66,6 +78,7 @@ constexpr float kHalfWidth = 0.5F;
 }
 
 QtInkItem::QtInkItem(QQuickItem* parent) : QQuickRhiItem(parent) {
+    setSampleCount(kInkSamples);
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptTouchEvents(true);
     setAcceptHoverEvents(true);
@@ -475,7 +488,6 @@ void QtInkItem::setSmoothing(qreal smoothing) {
         return;
     }
     m_smoothing = wanted;
-    m_filter.setParameters(core::smoothingOf(static_cast<float>(m_smoothing)));
     emit smoothingChanged();
 }
 
@@ -1169,9 +1181,12 @@ void QtInkItem::beginStroke(const InkSample& sample) {
     m_style.roundEnds = m_shape == core::Shape::Freehand || m_corner > 0.0;
     finishErase();
     cancelStroke();
-    m_filter.reset();
     m_activeStroke.emplace(m_ids.next(), m_style);
-    m_activeStroke->append(m_filter.filter(sample));
+    m_activeStroke->append(sample);
+    // Gentle at first and strong only near the top of the scale, measured on the glass.
+    const auto amount = static_cast<float>(m_smoothing * m_smoothing);
+    m_steadier.emplace(amount * kSteadiestReach / m_viewport.scale());
+    m_steadier->append(sample);
     m_activeIsTranslucent = m_style.color.alpha < core::Color::kOpaque;
     m_activeStrokeFirstVertex = activeVertices().size();
     m_liveSamples = 1;
@@ -1182,10 +1197,12 @@ void QtInkItem::beginStroke(const InkSample& sample) {
 }
 
 void QtInkItem::appendToStroke(const InkSample& sample) {
-    if (!m_activeStroke) {
+    if (!m_activeStroke || !m_steadier) {
         return;
     }
-    m_activeStroke->append(m_filter.filter(sample));
+    const InkSample next = inOrder(sample);
+    m_activeStroke->append(next);
+    m_steadier->append(next);
     if (m_shape == core::Shape::Freehand) {
         // The body of the stroke is redrawn along its curve every so often, while the newest
         // samples are strung on as they arrive so the tip keeps up with the pen.
@@ -1214,9 +1231,9 @@ void QtInkItem::refreshLiveStroke(bool full) {
     const std::span<const InkSample> samples = stroke.samples();
     std::vector<InkVertex>& into = activeVertices();
 
-    if (full) {
+    if (full && m_steadier) {
         into.resize(m_activeStrokeFirstVertex);
-        core::appendStroke(into, stroke);
+        core::appendStroke(into, m_steadier->settled(), style);
         m_liveSamples = samples.size();
         ++m_generation;
         return;
@@ -1225,7 +1242,7 @@ void QtInkItem::refreshLiveStroke(bool full) {
     for (std::size_t i = std::max<std::size_t>(m_liveSamples, 1); i < samples.size(); ++i) {
         core::appendSegment(into, samples[i - 1], samples[i], style);
         core::appendDisc(into, samples[i].x, samples[i].y,
-                         style.width * samples[i].pressure * kHalfWidth, style.color);
+                         core::widthAt(style, samples[i].pressure) * kHalfWidth, style.color);
     }
     m_liveSamples = samples.size();
     ++m_generation;
@@ -1233,6 +1250,10 @@ void QtInkItem::refreshLiveStroke(bool full) {
 
 void QtInkItem::redrawActiveStroke() {
     if (!m_activeStroke) {
+        return;
+    }
+    if (m_shape == core::Shape::Freehand) {
+        refreshLiveStroke(true);
         return;
     }
     const core::Stroke preview =
@@ -1244,14 +1265,24 @@ void QtInkItem::redrawActiveStroke() {
 }
 
 void QtInkItem::endStroke(const InkSample& sample) {
-    if (!m_activeStroke) {
+    if (!m_activeStroke || !m_steadier) {
         return;
     }
-    m_activeStroke->append(m_filter.filter(sample));
+    InkSample lifted = inOrder(sample);
+    // A pen leaving the glass reports no pressure, which is not how hard it was writing.
+    if (lifted.pressure <= 0.0F) {
+        lifted.pressure = m_activeStroke->samples().back().pressure;
+    }
+    m_activeStroke->append(lifted);
+    m_steadier->append(lifted);
     const core::Stroke drawn = std::move(*m_activeStroke);
+    core::StrokeSteadier steadier = std::move(*m_steadier);
     m_activeStroke.reset();
+    m_steadier.reset();
     const core::Stroke finished =
-        core::shaped(drawn, m_shape, m_shapeKeys, static_cast<float>(m_corner));
+        m_shape == core::Shape::Freehand
+            ? steadyStroke(drawn, steadier)
+            : core::shaped(drawn, m_shape, m_shapeKeys, static_cast<float>(m_corner));
 
     std::vector<InkVertex>& into = activeVertices();
     into.resize(m_activeStrokeFirstVertex);
@@ -1272,11 +1303,19 @@ void QtInkItem::endStroke(const InkSample& sample) {
     update();
 }
 
+InkSample QtInkItem::inOrder(InkSample sample) const noexcept {
+    if (m_activeStroke && !m_activeStroke->empty()) {
+        sample.timestamp = std::max(sample.timestamp, m_activeStroke->samples().back().timestamp);
+    }
+    return sample;
+}
+
 void QtInkItem::cancelStroke() {
     if (!m_activeStroke) {
         return;
     }
     m_activeStroke.reset();
+    m_steadier.reset();
     activeVertices().resize(m_activeStrokeFirstVertex);
     ++m_generation;
     if (m_sink != nullptr) {

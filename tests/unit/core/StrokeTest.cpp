@@ -62,5 +62,29 @@ TEST(StrokeTest, KeepsSamplesInInputOrder) {
     EXPECT_EQ(stroke.samples().back(), second);
 }
 
+TEST(StrokeTest, APenIsAsWideAsItsStyleAtFullPressure) {
+    const StrokeStyle style{.width = 5.0F};
+
+    EXPECT_FLOAT_EQ(widthAt(style, 1.0F), 5.0F);
+    EXPECT_FLOAT_EQ(widthAt(style, 3.0F), 5.0F);
+}
+
+TEST(StrokeTest, ALightTouchStillLeavesALine) {
+    const StrokeStyle style{.width = 5.0F};
+
+    EXPECT_GT(widthAt(style, 0.0F), 5.0F / 3.0F);
+    EXPECT_GT(widthAt(style, 0.3F), 5.0F / 2.0F);
+}
+
+TEST(StrokeTest, PressingHarderNeverMakesALineThinner) {
+    const StrokeStyle style{.width = 4.0F};
+    float before = widthAt(style, 0.0F);
+    for (int step = 1; step <= 100; ++step) {
+        const float width = widthAt(style, static_cast<float>(step) / 100.0F);
+        EXPECT_GT(width, before);
+        before = width;
+    }
+}
+
 }
 }

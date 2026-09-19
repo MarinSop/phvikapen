@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <numbers>
 #include <vector>
 
 namespace phvikapen::core {
@@ -120,6 +121,43 @@ TEST(StrokeSplineTest, KeepsASharpCornerSharp) {
     EXPECT_TRUE(std::ranges::any_of(fitted, [](const InkSample& sample) {
         return std::abs(sample.x - 20.0F) < 0.01F && std::abs(sample.y) < 0.01F;
     }));
+}
+
+TEST(StrokeSplineTest, AFewSamplesRoundALoopInsteadOfCuttingItsCorners) {
+    // Five samples to a turn, as a fast hand leaves them: each turns seventy two degrees.
+    std::vector<InkSample> samples;
+    for (int i = 0; i <= 10; ++i) {
+        const float angle = 2.0F * std::numbers::pi_v<float> * static_cast<float>(i) / 5.0F;
+        samples.push_back(sampleAt(20.0F * std::cos(angle), 20.0F * std::sin(angle)));
+    }
+
+    const std::vector<InkSample> fitted = fitSpline(samples);
+
+    // A chord between two of them would pass almost four units inside the loop.
+    const auto second = std::ranges::find(fitted, samples[1]);
+    const auto beforeLast = std::ranges::find(fitted, samples[9]);
+    ASSERT_NE(second, fitted.end());
+    ASSERT_NE(beforeLast, fitted.end());
+    for (auto it = second; it != beforeLast; ++it) {
+        EXPECT_NEAR(std::hypot(it->x, it->y), 20.0F, 1.2F) << it->x << ", " << it->y;
+    }
+}
+
+TEST(StrokeSplineTest, ATightTurnIsDrawnInFinerSteps) {
+    const std::vector<InkSample> straight{
+        sampleAt(0.0F, 0.0F),
+        sampleAt(10.0F, 0.0F),
+        sampleAt(20.0F, 0.0F),
+        sampleAt(30.0F, 0.0F),
+    };
+    const std::vector<InkSample> bent{
+        sampleAt(0.0F, 0.0F),
+        sampleAt(10.0F, 0.0F),
+        sampleAt(16.0F, 8.0F),
+        sampleAt(16.0F, 18.0F),
+    };
+
+    EXPECT_GT(fitSpline(bent, 10.0F).size(), fitSpline(straight, 10.0F).size());
 }
 
 TEST(StrokeSplineTest, KeepsASingleSampleAsItIs) {

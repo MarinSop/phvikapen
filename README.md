@@ -116,8 +116,8 @@ git ls-files '*.qml' | xargs "$QT_ROOT_DIR/bin/qmlformat" -i
 
 ## Recording pen input
 
-The ink recorder captures raw pen and mouse events so that filters can be tuned on real data from
-the target device:
+The ink recorder captures raw pen and mouse events so that the smoothing can be tuned on real data
+from the target device:
 
 ```bash
 open build/mac-debug/tools/ink-recorder/ink_recorder.app
