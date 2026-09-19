@@ -597,6 +597,21 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aPageKeepsItsNameWhereverItIsCarried() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.addPage();
+        const nameOf = index => notebook.pages.data(notebook.pages.index(index, 0), Qt.UserRole + 1);
+        compare(nameOf(0), "Page 1");
+        compare(nameOf(2), "Page 3");
+
+        notebook.movePage(0, 2);
+
+        compare(nameOf(2), "Page 1", "the page took the name of the place it was carried to");
+        compare(nameOf(0), "Page 2");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

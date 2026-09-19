@@ -834,22 +834,71 @@ void NotebookViewModel::clearPage() {
     }
 }
 
+// "Page 3" is the name of a page, not of the third place in the section, so a new page takes the
+// lowest number no other page goes by.
+QString NotebookViewModel::freePageName(std::size_t section) const {
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[section].pages;
+    for (std::size_t number = 1;; ++number) {
+        const QString wanted = tr("Page %1").arg(number);
+        const bool taken = std::ranges::any_of(pages, [&wanted](const core::PageInfo& page) {
+            return QString::fromStdString(page.title) == wanted;
+        });
+        if (!taken) {
+            return wanted;
+        }
+    }
+}
+
+// Pages made before names were given keep the names they are shown by, so that carrying one
+// somewhere else does not renumber the rest. This is bookkeeping, not an edit, so it is not
+// something to undo.
+void NotebookViewModel::nameEveryPage(std::size_t section) {
+    if (!m_storage) {
+        return;
+    }
+    const std::vector<core::PageInfo> pages = m_outline.sections()[section].pages;
+    for (std::size_t index = 0; index < pages.size(); ++index) {
+        if (!pages[index].title.empty()) {
+            continue;
+        }
+        const core::Uuid id = pages[index].id;
+        // Held by a pointer the writer can take along without any chance of failing.
+        const auto title =
+            std::make_shared<const std::string>(tr("Page %1").arg(index + 1).toStdString());
+        if (!m_outline.renamePage(id, *title)) {
+            continue;
+        }
+        m_storage->submit(
+            [id, title](core::NotebookStore& store) { return store.renamePage(id, *title); });
+    }
+}
+
 void NotebookViewModel::addPage() {
     const std::optional<core::PagePlace> place = currentPlace();
+    const std::optional<std::size_t> section = currentSectionIndex();
     const core::PageInfo* const info = currentPageInfo();
-    if (!place || info == nullptr || !m_storage) {
+    if (!place || !section || info == nullptr || !m_storage) {
+        return;
+    }
+    // Pages that still go by where they sit are named first, so the new one takes a free number.
+    const std::size_t at = *section;
+    const core::Uuid sectionId = place->sectionId;
+    const std::size_t after = place->index;
+    nameEveryPage(at);
+    if (!m_storage) {
         return;
     }
     const core::PageInfo page{
         .id = m_ids.next(),
-        .title = {},
+        // The name belongs to the page, not to the place it sits in, so it is given now.
+        .title = freePageName(at).toStdString(),
         .style = info->style,
         .media = std::nullopt,
     };
     m_pages.emplace(page.id, std::make_unique<core::Page>(page.id));
     runCommand(std::make_unique<core::AddPageCommand>(
-        &m_outline, &*m_storage,
-        core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1}, page));
+        &m_outline, &*m_storage, core::PagePlace{.sectionId = sectionId, .index = after + 1},
+        page));
     emit pageAdded(currentPage());
 }
 
@@ -937,13 +986,20 @@ void NotebookViewModel::movePage(int from, int to) {
     if (!section || !m_storage) {
         return;
     }
-    const core::SectionInfo& info = m_outline.sections()[*section];
+    const std::size_t at = *section;
+    nameEveryPage(at);
+    if (!m_storage) {
+        return;
+    }
+    const core::SectionInfo& info = m_outline.sections()[at];
     const std::optional<std::size_t> source = checkedIndex(from, info.pages.size());
     const std::optional<std::size_t> target = checkedIndex(to, info.pages.size());
     if (source && target && source != target) {
+        const std::size_t take = *source;
+        const std::size_t put = *target;
         runCommand(std::make_unique<core::MovePageCommand>(
-            &m_outline, &*m_storage, info.pages[*source].id,
-            core::PagePlace{.sectionId = info.id, .index = *target}));
+            &m_outline, &*m_storage, info.pages[take].id,
+            core::PagePlace{.sectionId = info.id, .index = put}));
     }
 }
 

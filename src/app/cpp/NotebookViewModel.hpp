@@ -321,6 +321,8 @@ private:
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
+    [[nodiscard]] QString freePageName(std::size_t section) const;
+    void nameEveryPage(std::size_t section);
     void publishOutline();
     void dropStartingPage();
     void markEdited();

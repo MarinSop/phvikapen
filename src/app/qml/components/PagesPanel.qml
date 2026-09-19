@@ -147,6 +147,7 @@ Pane {
             ListView {
                 id: sectionList
 
+                objectName: "sectionList"
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 clip: true
@@ -238,7 +239,6 @@ Pane {
                                 root.sectionLanding = sectionDelegate.index;
                                 return;
                             }
-                            root.sectionLanding = -1;
                             const carried = root.draggedSection;
                             const gap = root.sectionLanding;
                             root.draggedSection = -1;
@@ -327,6 +327,7 @@ Pane {
             ListView {
                 id: pageList
 
+                objectName: "pageList"
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 clip: true
@@ -448,7 +449,6 @@ Pane {
                                 root.pageLanding = pageDelegate.index;
                                 return;
                             }
-                            root.pageLanding = -1;
                             const carried = root.draggedPage;
                             const gap = root.pageLanding;
                             root.draggedPage = -1;

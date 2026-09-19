@@ -12,15 +12,14 @@ AbstractButton {
     implicitWidth: 34
 
     background: Rectangle {
-        border.color: root.checked ? Theme.accent : "transparent"
-        border.width: 2
         color: root.hovered ? Theme.base : "transparent"
         radius: 8
     }
     contentItem: Item {
         Rectangle {
             anchors.centerIn: parent
-            color: Theme.line
+            // The pen in hand carries the accent behind its mark.
+            color: root.checked ? Theme.accent : Theme.line
             height: 24
             radius: 6
             width: 24
