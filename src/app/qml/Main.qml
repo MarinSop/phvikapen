@@ -134,10 +134,17 @@ ApplicationWindow {
         anchors.fill: parent
         orientation: Qt.Horizontal
 
-        handle: Rectangle {
-            color: SplitHandle.pressed ? Theme.accent : Theme.line
-            implicitHeight: 3
-            implicitWidth: 3
+        handle: Item {
+            id: sideHandle
+
+            implicitWidth: 7
+
+            Rectangle {
+                anchors.centerIn: parent
+                color: sideHandle.SplitHandle.pressed || sideHandle.SplitHandle.hovered ? Theme.accent : Theme.line
+                height: parent.height
+                width: sideHandle.SplitHandle.pressed || sideHandle.SplitHandle.hovered ? 3 : 1
+            }
         }
 
         ToolPalette {

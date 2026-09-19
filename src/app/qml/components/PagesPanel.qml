@@ -72,10 +72,17 @@ Pane {
         anchors.fill: parent
         orientation: Qt.Vertical
 
-        handle: Rectangle {
-            color: SplitHandle.pressed ? Theme.accent : Theme.line
-            implicitHeight: 3
-            implicitWidth: 3
+        handle: Item {
+            id: listHandle
+
+            implicitHeight: 7
+
+            Rectangle {
+                anchors.centerIn: parent
+                color: listHandle.SplitHandle.pressed || listHandle.SplitHandle.hovered ? Theme.accent : Theme.line
+                height: listHandle.SplitHandle.pressed || listHandle.SplitHandle.hovered ? 3 : 1
+                width: parent.width
+            }
         }
 
         ColumnLayout {
