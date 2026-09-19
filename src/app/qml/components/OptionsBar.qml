@@ -80,9 +80,9 @@ ToolBar {
                 Rectangle {
                     anchors.centerIn: parent
                     color: root.tools.strokeColor
-                    height: 15
+                    height: 14
                     radius: height / 2
-                    width: 15
+                    width: 14
                 }
             }
 

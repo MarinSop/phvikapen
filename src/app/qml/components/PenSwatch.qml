@@ -8,20 +8,23 @@ AbstractButton {
     property color color: "black"
     property real penWidth: 2
 
-    implicitHeight: 32
-    implicitWidth: 32
+    implicitHeight: 34
+    implicitWidth: 34
 
     background: Rectangle {
-        color: root.checked ? Theme.accent : root.hovered ? Theme.line : "transparent"
+        border.color: root.checked ? Theme.accent : "transparent"
+        border.width: 2
+        color: root.checked || root.hovered ? Theme.line : "transparent"
         radius: 6
     }
     contentItem: Item {
         Rectangle {
             anchors.centerIn: parent
             color: root.color
-            height: Math.max(3, Math.min(14, root.penWidth * 1.5))
+            // The thicker the pen, the thicker the mark it leaves here.
+            height: Math.max(4, Math.min(20, root.penWidth * 1.6))
             radius: height / 2
-            width: 18
+            width: 22
         }
     }
 }

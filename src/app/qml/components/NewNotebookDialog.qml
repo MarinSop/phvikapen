@@ -11,22 +11,11 @@ AppDialog {
 
     property url document
     required property NotebooksViewModel notebooks
-    readonly property list<real> perMillimetre: [1, 0.1, 0.0393701, 3.77953]
-    readonly property list<string> unitNames: [qsTr("mm"), qsTr("cm"), qsTr("in"), qsTr("px")]
-    readonly property real unitStep: unitBox.currentIndex === 1 ? 0.5 : unitBox.currentIndex === 2 ? 0.5 : 1
     required property SettingsViewModel settings
     readonly property list<int> backgrounds: [PageOptions.Blank, PageOptions.Lined, PageOptions.Grid, PageOptions.Dotted]
     readonly property list<string> backgroundNames: [qsTr("Blank"), qsTr("Lined"), qsTr("Squares"), qsTr("Dots")]
     readonly property list<int> papers: [PageOptions.Infinite, PageOptions.A3, PageOptions.A4, PageOptions.A5, PageOptions.Letter, PageOptions.Legal, PageOptions.Custom]
     readonly property list<string> paperNames: [qsTr("Infinite"), qsTr("A3"), qsTr("A4"), qsTr("A5"), qsTr("Letter"), qsTr("Legal"), qsTr("Own size")]
-
-    function inMillimetres(value) {
-        return value / root.perMillimetre[unitBox.currentIndex];
-    }
-
-    function inUnit(millimetres) {
-        return millimetres * root.perMillimetre[unitBox.currentIndex];
-    }
 
     objectName: "newNotebookDialog"
     standardButtons: Dialog.Ok | Dialog.Cancel
@@ -37,8 +26,6 @@ AppDialog {
         root.settings.paper = root.papers[paperBox.currentIndex];
         root.settings.background = root.backgrounds[backgroundBox.currentIndex];
         root.settings.landscape = landscapeSwitch.checked;
-        root.settings.customWidth = root.inMillimetres(widthField.number);
-        root.settings.customHeight = root.inMillimetres(heightField.number);
         root.notebooks.createNotebookWithSetup(nameField.text.trim(), root.papers[paperBox.currentIndex], root.backgrounds[backgroundBox.currentIndex], landscapeSwitch.checked, root.document);
     }
     onOpened: {
@@ -115,51 +102,16 @@ AppDialog {
             }
         }
 
-        RowLayout {
+        SizeFields {
             Layout.fillWidth: true
-            spacing: 6
+            heightMillimetres: root.settings.customHeight
+            objectName: "newNotebookSize"
             visible: root.papers[paperBox.currentIndex] === PageOptions.Custom
+            widthMillimetres: root.settings.customWidth
 
-            Label {
-                text: qsTr("w:")
-            }
-
-            NumberField {
-                id: widthField
-
-                Layout.fillWidth: true
-                maximum: root.inUnit(2000)
-                minimum: root.inUnit(10)
-                number: root.inUnit(root.settings.customWidth)
-                objectName: "newNotebookWidth"
-                step: root.unitStep
-
-                onNumberEdited: value => root.settings.customWidth = root.inMillimetres(value)
-            }
-
-            Label {
-                text: qsTr("h:")
-            }
-
-            NumberField {
-                id: heightField
-
-                Layout.fillWidth: true
-                maximum: root.inUnit(2000)
-                minimum: root.inUnit(10)
-                number: root.inUnit(root.settings.customHeight)
-                objectName: "newNotebookHeight"
-                step: root.unitStep
-
-                onNumberEdited: value => root.settings.customHeight = root.inMillimetres(value)
-            }
-
-            ComboBox {
-                id: unitBox
-
-                Layout.preferredWidth: 80
-                model: root.unitNames
-                objectName: "newNotebookUnit"
+            onSizeEdited: (wide, tall) => {
+                root.settings.customWidth = wide;
+                root.settings.customHeight = tall;
             }
         }
 

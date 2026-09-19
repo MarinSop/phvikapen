@@ -93,6 +93,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/SettingsPage.qml
         qml/components/ShapeButton.qml
         qml/components/ShortcutField.qml
+        qml/components/SizeFields.qml
         qml/components/ThemeCard.qml
         qml/components/ToolPalette.qml
         qml/components/ToolPaletteButton.qml

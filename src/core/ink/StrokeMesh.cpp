@@ -21,8 +21,8 @@ constexpr float kMaxChannel = 255.0F;
 constexpr float kMinSegmentLength = 1e-4F;
 constexpr std::size_t kVerticesPerSegment = 6;
 constexpr std::size_t kDiscCorners = 16;
-// Straight enough to need no tip left behind: about twenty degrees of turn.
-constexpr float kStraightEnough = 0.94F;
+// Past this much of a turn the corner would run away from the line, so the pen tip fills it.
+constexpr float kSharpestCorner = 0.35F;
 
 [[nodiscard]] float normalizedChannel(std::uint8_t channel) {
     return static_cast<float>(channel) / kMaxChannel;
@@ -33,12 +33,9 @@ struct Normal {
     float y{};
 };
 
-[[nodiscard]] Normal normalAt(std::span<const InkSample> samples, std::size_t index,
-                              Normal previous) {
-    const InkSample& before = samples[index == 0 ? 0 : index - 1];
-    const InkSample& after = samples[std::min(index + 1, samples.size() - 1)];
-    const float dx = after.x - before.x;
-    const float dy = after.y - before.y;
+[[nodiscard]] Normal normalOf(const InkSample& from, const InkSample& to, Normal previous) {
+    const float dx = to.x - from.x;
+    const float dy = to.y - from.y;
     const float length = std::hypot(dx, dy);
     if (length <= kMinSegmentLength) {
         return previous;
@@ -46,8 +43,27 @@ struct Normal {
     return {.x = -dy / length, .y = dx / length};
 }
 
-[[nodiscard]] bool turnsSharply(Normal before, Normal after) {
-    return (before.x * after.x) + (before.y * after.y) < kStraightEnough;
+// Where a line turns, its two sides meet at a point further out than half its width: that is what
+// makes a corner a corner instead of a round tip.
+struct Join {
+    Normal normal;
+    float reach{1.0F};
+    bool tipped{};
+};
+
+[[nodiscard]] Join joinOf(Normal before, Normal after) {
+    const float x = before.x + after.x;
+    const float y = before.y + after.y;
+    const float length = std::hypot(x, y);
+    if (length <= kMinSegmentLength) {
+        return {.normal = after, .reach = 1.0F, .tipped = true};
+    }
+    const Normal bisector{.x = x / length, .y = y / length};
+    const float closeness = (bisector.x * before.x) + (bisector.y * before.y);
+    if (closeness < kSharpestCorner) {
+        return {.normal = bisector, .reach = 1.0F, .tipped = true};
+    }
+    return {.normal = bisector, .reach = 1.0F / closeness, .tipped = false};
 }
 
 }
@@ -133,9 +149,9 @@ void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke) {
         .blue = normalizedChannel(style.color.blue),
         .alpha = normalizedChannel(style.color.alpha),
     };
-    const auto edges = [&](std::size_t index, Normal normal) {
+    const auto edges = [&](std::size_t index, Normal normal, float reach) {
         const InkSample& sample = samples[index];
-        const float half = style.width * sample.pressure * kHalf;
+        const float half = style.width * sample.pressure * kHalf * reach;
         InkVertex left = color;
         left.x = sample.x + (normal.x * half);
         left.y = sample.y + (normal.y * half);
@@ -155,17 +171,25 @@ void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke) {
     vertices.reserve(vertices.size() + ((samples.size() - 1) * kVerticesPerSegment));
     tipAt(0);
     tipAt(samples.size() - 1);
-    Normal normal = normalAt(samples, 0, Normal{.x = 0.0F, .y = 1.0F});
-    auto [fromLeft, fromRight] = edges(0, normal);
-    for (std::size_t i = 1; i < samples.size(); ++i) {
-        const Normal before = normal;
-        normal = normalAt(samples, i, normal);
-        // A corner would leave the two ends of the line gaping, so the pen tip fills it.
-        if (turnsSharply(before, normal)) {
+    const std::size_t last = samples.size() - 1;
+    Normal held{.x = 0.0F, .y = 1.0F};
+    const auto normalAt = [&](std::size_t index) {
+        held = normalOf(samples[index], samples[index + 1], held);
+        return held;
+    };
+
+    Normal incoming = normalAt(0);
+    auto [fromLeft, fromRight] = edges(0, incoming, 1.0F);
+    for (std::size_t i = 1; i <= last; ++i) {
+        const Normal outgoing = i == last ? incoming : normalAt(i);
+        const Join join = i == last ? Join{.normal = incoming, .reach = 1.0F, .tipped = false}
+                                    : joinOf(incoming, outgoing);
+        if (join.tipped) {
             tipAt(i);
         }
-        const auto [toLeft, toRight] = edges(i, normal);
+        const auto [toLeft, toRight] = edges(i, join.normal, join.reach);
         vertices.insert(vertices.end(), {fromLeft, fromRight, toLeft, toLeft, fromRight, toRight});
+        incoming = outgoing;
         fromLeft = toLeft;
         fromRight = toRight;
     }

@@ -216,37 +216,16 @@ AppDialog {
                     }
                 }
 
-                RowLayout {
+                SizeFields {
                     Layout.fillWidth: true
-                    spacing: 8
+                    heightMillimetres: root.settings.customHeight
+                    objectName: "defaultSize"
                     visible: root.settings.paper === PageOptions.Custom
+                    widthMillimetres: root.settings.customWidth
 
-                    NumberField {
-                        Layout.fillWidth: true
-                        maximum: 2000
-                        minimum: 10
-                        number: root.settings.customWidth
-                        objectName: "defaultWidthField"
-                        step: 1
-                        suffix: qsTr(" mm")
-
-                        onNumberEdited: value => root.settings.customWidth = value
-                    }
-
-                    Label {
-                        text: "×"
-                    }
-
-                    NumberField {
-                        Layout.fillWidth: true
-                        maximum: 2000
-                        minimum: 10
-                        number: root.settings.customHeight
-                        objectName: "defaultHeightField"
-                        step: 1
-                        suffix: qsTr(" mm")
-
-                        onNumberEdited: value => root.settings.customHeight = value
+                    onSizeEdited: (wide, tall) => {
+                        root.settings.customWidth = wide;
+                        root.settings.customHeight = tall;
                     }
                 }
 

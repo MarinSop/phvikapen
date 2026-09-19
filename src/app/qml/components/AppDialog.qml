@@ -30,5 +30,18 @@ Dialog {
         spacing: 8
         topPadding: 6
         visible: count > 0
+
+        delegate: Button {
+            id: answer
+
+            highlighted: answer.DialogButtonBox.buttonRole === DialogButtonBox.AcceptRole
+
+            background: Rectangle {
+                border.color: Theme.line
+                border.width: 1
+                color: answer.pressed ? Theme.accent : answer.hovered ? Theme.line : answer.highlighted ? Theme.base : "transparent"
+                radius: 6
+            }
+        }
     }
 }

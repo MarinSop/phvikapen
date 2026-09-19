@@ -83,21 +83,36 @@ TEST(StrokeMeshTest, BothEndsOfAStrokeAreRounded) {
     EXPECT_TRUE(reaches(22.0F));
 }
 
-TEST(StrokeMeshTest, ACornerIsFilledInsteadOfLeftGaping) {
+TEST(StrokeMeshTest, ACornerMeetsAtAPointInsteadOfBeingRoundedOff) {
+    std::vector<InkVertex> vertices;
+    Stroke corner{Uuid{}, StrokeStyle{.width = 6.0F}};
+    corner.append(InkSample{.x = 0.0F, .y = 0.0F});
+    corner.append(InkSample{.x = 20.0F, .y = 0.0F});
+    corner.append(InkSample{.x = 20.0F, .y = 20.0F});
+
+    appendStroke(vertices, corner);
+
+    // The outside of a square turn reaches half the width out along both sides.
+    EXPECT_TRUE(std::ranges::any_of(vertices, [](const InkVertex& vertex) {
+        return std::abs(vertex.x - 23.0F) < 0.2F && std::abs(vertex.y + 3.0F) < 0.2F;
+    })) << "the corner was rounded off instead of meeting at a point";
+}
+
+TEST(StrokeMeshTest, AVerySharpTurnKeepsThePenTipInstead) {
     std::vector<InkVertex> straight;
     Stroke line{Uuid{}, StrokeStyle{.width = 6.0F}};
     line.append(InkSample{.x = 0.0F, .y = 0.0F});
     line.append(InkSample{.x = 40.0F, .y = 0.0F});
     appendStroke(straight, line);
 
-    std::vector<InkVertex> bent;
-    Stroke corner{Uuid{}, StrokeStyle{.width = 6.0F}};
-    corner.append(InkSample{.x = 0.0F, .y = 0.0F});
-    corner.append(InkSample{.x = 20.0F, .y = 0.0F});
-    corner.append(InkSample{.x = 20.0F, .y = 20.0F});
-    appendStroke(bent, corner);
+    std::vector<InkVertex> folded;
+    Stroke back{Uuid{}, StrokeStyle{.width = 6.0F}};
+    back.append(InkSample{.x = 0.0F, .y = 0.0F});
+    back.append(InkSample{.x = 20.0F, .y = 0.0F});
+    back.append(InkSample{.x = 0.0F, .y = 2.0F});
+    appendStroke(folded, back);
 
-    EXPECT_GT(bent.size(), straight.size());
+    EXPECT_GT(folded.size(), straight.size());
 }
 
 TEST(StrokeMeshTest, AStrokeOfOneSampleIsARoundDot) {

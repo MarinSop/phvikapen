@@ -158,7 +158,10 @@ Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys, float corner) {
         const float right = box.right;
         const float top = box.top;
         const float bottom = box.bottom;
-        appendEdge(drawn, Point{.x = left + round, .y = top}, Point{.x = right - round, .y = top},
+        // The line starts and ends in the middle of the top side, where the two round tips of the
+        // pen meet on a straight run and no corner is left looking blunt.
+        const float middle = (left + right) * kHalf;
+        appendEdge(drawn, Point{.x = middle, .y = top}, Point{.x = right - round, .y = top},
                    pressure);
         if (round > 0.0F) {
             appendArc(drawn, Point{.x = right - round, .y = top + round}, round, -kQuarterTurn,
@@ -182,6 +185,8 @@ Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys, float corner) {
             appendArc(drawn, Point{.x = left + round, .y = top + round}, round, kHalfTurn,
                       kThreeQuarterTurn, pressure);
         }
+        appendEdge(drawn, Point{.x = left + round, .y = top}, Point{.x = middle, .y = top},
+                   pressure);
         return drawn;
     }
 

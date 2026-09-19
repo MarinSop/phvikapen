@@ -55,9 +55,13 @@ Control {
             verticalAlignment: Text.AlignVCenter
 
             onActiveFocusChanged: {
-                if (!field.activeFocus) {
-                    field.text = Qt.binding(() => root.shown + root.suffix);
+                if (field.activeFocus) {
+                    if (root.hasSlider) {
+                        sliderPopup.open();
+                    }
+                    return;
                 }
+                field.text = Qt.binding(() => root.shown + root.suffix);
             }
             onEditingFinished: root.change(Number(field.text.replace(root.suffix, "").trim()))
         }
@@ -91,12 +95,6 @@ Control {
         onWheel: wheel => root.change(root.number + (wheel.angleDelta.y > 0 ? root.step : -root.step))
     }
 
-    TapHandler {
-        enabled: root.hasSlider
-
-        onTapped: sliderPopup.opened ? sliderPopup.close() : sliderPopup.open()
-    }
-
     Popup {
         id: sliderPopup
 
@@ -111,6 +109,9 @@ Control {
             color: Theme.surface
             radius: 8
         }
+
+        // Leaving the slider leaves the number as well, so the keys belong to the page again.
+        onClosed: field.focus = false
 
         RowLayout {
             anchors.fill: parent

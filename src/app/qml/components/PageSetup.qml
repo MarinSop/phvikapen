@@ -29,41 +29,16 @@ ColumnLayout {
         onActivated: root.notebook.paper = root.papers[paperBox.currentIndex]
     }
 
-    RowLayout {
+    SizeFields {
         Layout.fillWidth: true
-        spacing: 8
+        heightMillimetres: root.notebook === null ? 297 : root.notebook.customHeight
+        objectName: "pageSize"
         visible: root.notebook !== null && root.notebook.paper === PageOptions.Custom
+        widthMillimetres: root.notebook === null ? 210 : root.notebook.customWidth
 
-        Label {
-            text: qsTr("Size")
-        }
-
-        NumberField {
-            Layout.fillWidth: true
-            maximum: 2000
-            minimum: 10
-            number: root.notebook === null ? 210 : root.notebook.customWidth
-            objectName: "widthField"
-            step: 1
-            suffix: qsTr(" mm")
-
-            onNumberEdited: value => root.notebook.customWidth = value
-        }
-
-        Label {
-            text: "×"
-        }
-
-        NumberField {
-            Layout.fillWidth: true
-            maximum: 2000
-            minimum: 10
-            number: root.notebook === null ? 297 : root.notebook.customHeight
-            objectName: "heightField"
-            step: 1
-            suffix: qsTr(" mm")
-
-            onNumberEdited: value => root.notebook.customHeight = value
+        onSizeEdited: (wide, tall) => {
+            root.notebook.customWidth = wide;
+            root.notebook.customHeight = tall;
         }
     }
 
