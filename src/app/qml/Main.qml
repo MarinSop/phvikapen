@@ -11,7 +11,37 @@ ApplicationWindow {
     id: root
 
     property int exportScope: settings.exportScope
+    property bool leaving: false
     readonly property NotebookViewModel notebook: notebooks.current
+
+    // Everything with changes is written where it belongs, or the one that has nowhere to go
+    // asks for a place first.
+    function saveEverything() {
+        for (let index = 0; index < notebooks.openNotebooks.length; ++index) {
+            if (!notebooks.isEdited(index)) {
+                continue;
+            }
+            const kept = notebooks.notebookAt(index);
+            if (kept === null) {
+                continue;
+            }
+            if (!kept.save()) {
+                notebooks.currentIndex = index;
+                appActions.saveWanted();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function somethingIsUnsaved() {
+        for (let index = 0; index < notebooks.openNotebooks.length; ++index) {
+            if (notebooks.isEdited(index)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     color: Theme.window
     height: 800
@@ -64,6 +94,12 @@ ApplicationWindow {
         notebooks: notebooks
     }
 
+    onClosing: close => {
+        if (!root.leaving && root.somethingIsUnsaved()) {
+            close.accepted = false;
+            leaveDialog.open();
+        }
+    }
     Component.onCompleted: {
         notebooks.canvas = canvas;
         if (!settings.themeChosen) {
@@ -112,6 +148,7 @@ ApplicationWindow {
         tools: toolState
 
         onAboutWanted: aboutDialog.open()
+        onLeaveWanted: root.close()
         onCloseAsked: index => {
             closeDialog.index = index;
             closeDialog.notebookName = notebooks.openNotebooks[index];
@@ -247,6 +284,33 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.margins: 16
+    }
+
+    AppDialog {
+        id: leaveDialog
+
+        objectName: "leaveDialog"
+        standardButtons: Dialog.Save | Dialog.Discard | Dialog.Cancel
+        title: qsTr("Leave PhvikaPen")
+        width: 380
+
+        onAccepted: {
+            if (root.saveEverything()) {
+                root.leaving = true;
+                root.close();
+            }
+        }
+        onDiscarded: {
+            root.leaving = true;
+            leaveDialog.close();
+            root.close();
+        }
+
+        Label {
+            width: parent.width
+            text: qsTr("Some notebooks have changes that are not saved yet.")
+            wrapMode: Text.WordWrap
+        }
     }
 
     AppDialog {

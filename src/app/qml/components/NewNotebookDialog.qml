@@ -106,6 +106,7 @@ AppDialog {
                 enabled: !root.keepsDocumentSize
                 model: root.paperNames
                 objectName: "newNotebookPaper"
+                opacity: enabled ? 1 : 0.4
             }
 
             ComboBox {
@@ -135,6 +136,7 @@ AppDialog {
 
             enabled: !root.keepsDocumentSize && root.papers[paperBox.currentIndex] !== PageOptions.Infinite && root.papers[paperBox.currentIndex] !== PageOptions.Custom
             objectName: "newNotebookLandscape"
+            opacity: enabled ? 1 : 0.4
             text: qsTr("Landscape")
         }
     }

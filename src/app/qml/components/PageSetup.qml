@@ -56,6 +56,7 @@ ColumnLayout {
     Switch {
         id: landscapeSwitch
 
+        opacity: enabled ? 1 : 0.4
         checked: root.notebook !== null && root.notebook.orientation === PageOptions.Landscape
         enabled: root.notebook !== null && root.notebook.paper !== PageOptions.Infinite && root.notebook.paper !== PageOptions.Custom
         objectName: "landscapeSwitch"

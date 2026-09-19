@@ -68,6 +68,7 @@ public:
     void openAt(const QString& name, const QString& path);
     Q_INVOKABLE void closeNotebook(int index);
     Q_INVOKABLE [[nodiscard]] bool isEdited(int index) const;
+    Q_INVOKABLE [[nodiscard]] NotebookViewModel* notebookAt(int index) const;
     void forgetDraftOf(const NotebookViewModel& notebook) const;
     Q_INVOKABLE void moveNotebook(int from, int to);
 

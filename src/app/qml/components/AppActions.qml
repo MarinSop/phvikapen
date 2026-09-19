@@ -307,11 +307,12 @@ Item {
         shortcut: StandardKey.Quit
         text: qsTr("Quit")
 
-        onTriggered: Qt.quit()
+        onTriggered: root.leaveWanted()
     }
 
     signal aboutWanted
     signal closeAsked(int index)
+    signal leaveWanted
     signal saveWanted
     signal exportWanted(int scope)
     signal hintsWanted

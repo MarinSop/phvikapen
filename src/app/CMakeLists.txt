@@ -188,6 +188,11 @@ if(APPLE)
     )
     target_sources(phvikapen PRIVATE "${icns}")
     set_source_files_properties("${icns}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    # Finder and the Dock keep the icon they saw first; touching the bundle makes them look again.
+    add_custom_command(TARGET phvikapen POST_BUILD
+        COMMAND touch "$<TARGET_BUNDLE_DIR:phvikapen>"
+        VERBATIM
+    )
 endif()
 
 set_target_properties(phvikapen PROPERTIES

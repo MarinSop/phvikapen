@@ -245,8 +245,9 @@ Result<void> SetSectionStyleCommand::revert() {
     return {};
 }
 
+// The whole section changes at once, so the reader stays on the page they were reading.
 std::optional<Uuid> SetSectionStyleCommand::pageToShow() const {
-    return m_pageIds.empty() ? std::nullopt : std::optional<Uuid>{m_pageIds.front()};
+    return std::nullopt;
 }
 
 SetPageMediaCommand::SetPageMediaCommand(Outline* outline, StorageThread* storage,

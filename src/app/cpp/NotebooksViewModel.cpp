@@ -304,6 +304,13 @@ void NotebooksViewModel::forgetDraftOf(const NotebookViewModel& notebook) const 
     }
 }
 
+NotebookViewModel* NotebooksViewModel::notebookAt(int index) const {
+    if (index < 0 || std::cmp_greater_equal(index, m_open.size())) {
+        return nullptr;
+    }
+    return m_open[static_cast<std::size_t>(index)].get();
+}
+
 bool NotebooksViewModel::isEdited(int index) const {
     if (index < 0 || std::cmp_greater_equal(index, m_open.size())) {
         return false;

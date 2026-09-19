@@ -1815,12 +1815,23 @@ void NotebookViewModel::forgetFarMedia(std::span<const core::PageInfo> pages, in
     for (int index = first; index <= last; ++index) {
         kept.insert(pages[static_cast<std::size_t>(index)].id);
     }
+    std::map<core::Uuid, core::PaperSize> sheets;
+    for (const core::PageInfo& page : pages) {
+        if (const std::optional<core::PaperSize> paper = core::paperSize(page.style)) {
+            sheets.emplace(page.id, *paper);
+        }
+    }
+
     bool dropped = false;
     for (auto piece = m_shownMedia.begin(); piece != m_shownMedia.end();) {
-        if (kept.contains(piece->first)) {
+        const auto sheet = sheets.find(piece->first);
+        // A page keeps its picture while it is near and while the picture still fits its sheet.
+        const bool stale = sheet != sheets.end() && !fitsSheet(piece->second.area, sheet->second);
+        if (kept.contains(piece->first) && !stale) {
             ++piece;
             continue;
         }
+        m_drawnAt.erase(piece->first);
         piece = m_shownMedia.erase(piece);
         dropped = true;
     }
