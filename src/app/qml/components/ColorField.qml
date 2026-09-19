@@ -67,6 +67,7 @@ RowLayout {
         enabled: !root.usual
         objectName: "clearColorButton"
         text: qsTr("Usual")
+
         // A colour with nothing in it is how "let the application choose" is handed over.
 
         onClicked: root.picked("transparent")

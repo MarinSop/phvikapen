@@ -17,6 +17,7 @@
 #include "core/undo/StrokeCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
 #include "platform/render/PagePainter.hpp"
+#include "platform/render/PaperLook.hpp"
 #include "platform/render/PdfExporter.hpp"
 
 #include <QCryptographicHash>
@@ -1354,7 +1355,8 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
     const int height =
         std::max(1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * ratio));
     QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
-    picture.fill(Qt::white);
+    const platform::render::Rgba paper = platform::render::paperColorOf(work.page.style);
+    picture.fill(QColor::fromRgbF(paper[0], paper[1], paper[2], paper[3]));
     if (anything) {
         QPainter painter{&picture};
         painter.scale(static_cast<double>(thumbnails::kWidth) / static_cast<double>(area.width()),

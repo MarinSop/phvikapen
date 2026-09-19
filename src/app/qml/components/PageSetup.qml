@@ -90,25 +90,4 @@ ColumnLayout {
 
         onToggled: root.notebook.orientation = landscapeSwitch.checked ? PageOptions.Landscape : PageOptions.Portrait
     }
-
-    RowLayout {
-        Layout.fillWidth: true
-        visible: root.notebook !== null && root.notebook.background !== PageOptions.Blank
-
-        Label {
-            text: qsTr("Spacing")
-        }
-
-        NumberField {
-            Layout.fillWidth: true
-            maximum: 30
-            minimum: 2
-            number: root.notebook === null ? 7 : root.notebook.lineSpacing
-            objectName: "spacingField"
-            step: 0.5
-            suffix: qsTr(" mm")
-
-            onNumberEdited: value => root.notebook.lineSpacing = value
-        }
-    }
 }
