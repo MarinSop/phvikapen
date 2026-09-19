@@ -19,13 +19,14 @@ public:
 
     virtual void strokeFinished(const core::InkSample& sample) = 0;
 
-    // Filtered stroke; the other calls carry raw device samples.
-    virtual void strokeCompleted(const core::Stroke& stroke) = 0;
+    // Filtered stroke, in the coordinates of the sheet it was drawn on. `sheet` is which sheet
+    // of the column that is, or -1 for the page being read.
+    virtual void strokeCompleted(const core::Stroke& stroke, int sheet) = 0;
 
     virtual void strokeCancelled() = 0;
 
-    virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to,
-                             float radius) = 0;
+    virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to, float radius,
+                             int sheet) = 0;
 
     virtual void eraseFinished() = 0;
 
@@ -33,7 +34,7 @@ public:
 
     virtual void selectionMoved(float dx, float dy) = 0;
 
-    virtual void colourWanted(const core::InkSample& at) = 0;
+    virtual void colourWanted(const core::InkSample& at, int sheet) = 0;
 };
 
 class IInkBackend {

@@ -336,6 +336,8 @@ private:
     [[nodiscard]] bool overSelection(const core::InkSample& sample) const noexcept;
     [[nodiscard]] std::optional<core::Rect> selectionBounds() const noexcept;
     [[nodiscard]] float currentTop() const noexcept;
+    // The sheet a gesture belongs to: the one it started on, whatever the reader scrolls to.
+    [[nodiscard]] float workingTop() const noexcept;
     [[nodiscard]] int sheetAt(float y) const noexcept;
     [[nodiscard]] std::optional<core::PaperSize> columnSize() const noexcept;
     [[nodiscard]] core::InkSample onSheet(core::InkSample sample) const noexcept;
@@ -351,6 +353,7 @@ private:
     std::vector<MediaPiece> m_media;
     std::vector<MediaDraw> m_mediaDraws;
     int m_current{0};
+    int m_workSheet{-1};
     bool m_followingScroll{false};
     std::vector<StrokeMesh> m_meshes;
     std::vector<core::InkVertex> m_vertices;

@@ -612,6 +612,34 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_drawingOnAnotherSheetLeavesTheViewWhereItIs() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+        for (let step = 0; step < 8; ++step) {
+            canvas.zoomOut();
+        }
+        const zoom = canvas.zoom;
+        const origin = canvas.viewOrigin;
+        const second = canvas.sheetRect(1);
+        const on = canvas.height / 2 + 20;
+
+        // A line started on the sheet below must not carry the view anywhere.
+        mousePress(canvas, canvas.width / 2, on);
+        mouseMove(canvas, canvas.width / 2 + 30, on + 10, -1, Qt.LeftButton);
+        mouseRelease(canvas, canvas.width / 2 + 30, on + 10);
+
+        compare(canvas.zoom, zoom, "drawing changed how close the page is");
+        compare(canvas.viewOrigin.x, origin.x, "drawing moved the view sideways");
+        compare(canvas.viewOrigin.y, origin.y, "drawing moved the view up or down");
+        verify(second.height > 0);
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

@@ -256,14 +256,14 @@ private:
         void strokeStarted(const core::InkSample& sample) override;
         void sampleAdded(const core::InkSample& sample) override;
         void strokeFinished(const core::InkSample& sample) override;
-        void strokeCompleted(const core::Stroke& stroke) override;
+        void strokeCompleted(const core::Stroke& stroke, int sheet) override;
         void strokeCancelled() override;
-        void eraserMoved(const core::InkSample& from, const core::InkSample& to,
-                         float radius) override;
+        void eraserMoved(const core::InkSample& from, const core::InkSample& to, float radius,
+                         int sheet) override;
         void eraseFinished() override;
         void selectionDrawn(std::span<const core::Point> shape) override;
         void selectionMoved(float dx, float dy) override;
-        void colourWanted(const core::InkSample& at) override;
+        void colourWanted(const core::InkSample& at, int sheet) override;
 
     private:
         NotebookViewModel* m_owner;
@@ -312,12 +312,14 @@ private:
     void changeStyle(const core::PageStyle& style);
     void changeStyleOfPage(const core::PageStyle& style);
 
-    void storeStroke(const core::Stroke& stroke);
+    void storeStroke(const core::Stroke& stroke, int sheet);
+    // Which page a sheet of the column is, or the page being read when the sheet is not one.
+    [[nodiscard]] core::Uuid pageOfSheet(int sheet) const;
     void selectInside(std::span<const core::Point> polygon);
     void moveSelection(float dx, float dy);
-    void pickColour(const core::InkSample& at);
+    void pickColour(const core::InkSample& at, int sheet);
     void pickFromMedia(const core::InkSample& at);
-    void erase(const core::InkSample& from, const core::InkSample& to, float radius);
+    void erase(const core::InkSample& from, const core::InkSample& to, float radius, int sheet);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
@@ -382,6 +384,7 @@ private:
     bool m_exporting{false};
     core::Uuid m_currentPage;
     core::Uuid m_startingPage;
+    core::Uuid m_erasedPage;
     QString m_keptAt;
     bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;

@@ -642,19 +642,19 @@ void NotebookViewModel::Sink::sampleAdded(const core::InkSample& /*sample*/) {}
 
 void NotebookViewModel::Sink::strokeFinished(const core::InkSample& /*sample*/) {}
 
-void NotebookViewModel::Sink::colourWanted(const core::InkSample& at) {
-    m_owner->pickColour(at);
+void NotebookViewModel::Sink::colourWanted(const core::InkSample& at, int sheet) {
+    m_owner->pickColour(at, sheet);
 }
 
-void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke) {
-    m_owner->storeStroke(stroke);
+void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke, int sheet) {
+    m_owner->storeStroke(stroke, sheet);
 }
 
 void NotebookViewModel::Sink::strokeCancelled() {}
 
 void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to,
-                                          float radius) {
-    m_owner->erase(from, to, radius);
+                                          float radius, int sheet) {
+    m_owner->erase(from, to, radius, sheet);
 }
 
 void NotebookViewModel::Sink::selectionDrawn(std::span<const core::Point> shape) {
@@ -669,9 +669,22 @@ void NotebookViewModel::Sink::eraseFinished() {
     m_owner->finishErasing();
 }
 
-void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
-    forgetThumbnail(m_currentPage);
-    core::Page* const page = currentPageData();
+core::Uuid NotebookViewModel::pageOfSheet(int sheet) const {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    // Only a column has sheets to tell apart; on its own, a page is the one being read.
+    if (!m_continuous || sheet < 0 || !section) {
+        return m_currentPage;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    const auto at = static_cast<std::size_t>(sheet);
+    return at < pages.size() ? pages[at].id : m_currentPage;
+}
+
+void NotebookViewModel::storeStroke(const core::Stroke& stroke, int sheet) {
+    const core::Uuid on = pageOfSheet(sheet);
+    forgetThumbnail(on);
+    const auto found = m_pages.find(on);
+    core::Page* const page = found == m_pages.end() ? nullptr : found->second.get();
     if (!m_loaded || page == nullptr || !m_storage) {
         refreshCanvas();
         return;
@@ -688,8 +701,9 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke) {
     emit historyChanged();
 }
 
-void NotebookViewModel::pickColour(const core::InkSample& at) {
-    const core::Page* const page = currentPageData();
+void NotebookViewModel::pickColour(const core::InkSample& at, int sheet) {
+    const auto found = m_pages.find(pageOfSheet(sheet));
+    const core::Page* const page = found == m_pages.end() ? nullptr : found->second.get();
     if (page == nullptr) {
         return;
     }
@@ -729,12 +743,16 @@ void NotebookViewModel::pickFromMedia(const core::InkSample& at) {
     }
 }
 
-void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to,
-                              float radius) {
-    const core::Page* const page = currentPageData();
+void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to, float radius,
+                              int sheet) {
+    const core::Uuid on = pageOfSheet(sheet);
+    const auto kept = m_pages.find(on);
+    const core::Page* const page = kept == m_pages.end() ? nullptr : kept->second.get();
     if (!m_loaded || page == nullptr) {
         return;
     }
+    // A sweep stays on the page it started on, even where the eraser runs past its edge.
+    m_erasedPage = on;
     const core::EraserSweep sweep{
         .from = {.x = from.x, .y = from.y},
         .to = {.x = to.x, .y = to.y},
@@ -782,7 +800,9 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
 }
 
 void NotebookViewModel::finishErasing() {
-    core::Page* const page = currentPageData();
+    const auto kept = m_pages.find(m_erasedPage.isNil() ? m_currentPage : m_erasedPage);
+    core::Page* const page = kept == m_pages.end() ? nullptr : kept->second.get();
+    m_erasedPage = core::Uuid{};
     if (m_erasing.empty() || page == nullptr || !m_storage) {
         m_erasing.clear();
         m_erasePieces.clear();

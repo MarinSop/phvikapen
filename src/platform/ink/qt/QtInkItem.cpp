@@ -272,18 +272,25 @@ std::optional<core::PaperSize> QtInkItem::columnSize() const noexcept {
     return core::PaperSize{.width = width, .height = height};
 }
 
+float QtInkItem::workingTop() const noexcept {
+    if (m_workSheet < 0 || std::cmp_greater_equal(m_workSheet, m_sheets.size())) {
+        return currentTop();
+    }
+    return m_sheets[static_cast<std::size_t>(m_workSheet)].top;
+}
+
 InkSample QtInkItem::onSheet(InkSample sample) const noexcept {
-    sample.y -= currentTop();
+    sample.y -= workingTop();
     return sample;
 }
 
 core::Point QtInkItem::onSheet(core::Point point) const noexcept {
-    point.y -= currentTop();
+    point.y -= workingTop();
     return point;
 }
 
 core::Stroke QtInkItem::onSheet(const core::Stroke& stroke) const {
-    const float top = currentTop();
+    const float top = workingTop();
     if (top == 0.0F) {
         return stroke;
     }
@@ -409,7 +416,7 @@ void QtInkItem::rebuildBuffers() {
         into.insert(into.end(), mesh.vertices.begin(), mesh.vertices.end());
     }
 
-    const float top = currentTop();
+    const float top = workingTop();
     for (const core::Stroke& stroke : m_extra) {
         std::vector<InkVertex>& into =
             stroke.style().color.alpha < core::Color::kOpaque ? m_highlights : m_vertices;
@@ -1046,16 +1053,12 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
     forceActiveFocus();
-    // A press on another sheet of the column reads that page first, and works on it from there.
-    if (const int under = sheetAt(sample.y); under >= 0 && under != m_current) {
-        emit pageWanted(under);
-        if (under != m_current) {
-            return;
-        }
-    }
+    // What is drawn belongs to the sheet it was started on. The view stays where it is: a stroke
+    // may run from one sheet onto the next, and it stays with the one it began on.
+    m_workSheet = sheetAt(sample.y);
     if (m_picking && !eraserTip) {
         if (m_sink != nullptr) {
-            m_sink->colourWanted(onSheet(sample));
+            m_sink->colourWanted(onSheet(sample), m_workSheet);
         }
         return;
     }
@@ -1103,6 +1106,7 @@ void QtInkItem::release(const InkSample& sample) {
     if (m_panFrom) {
         move(sample);
         m_panFrom.reset();
+        m_workSheet = -1;
         return;
     }
     if (m_dragFrom) {
@@ -1117,6 +1121,7 @@ void QtInkItem::release(const InkSample& sample) {
     } else {
         endStroke(sample);
     }
+    m_workSheet = -1;
 }
 
 bool QtInkItem::isTracking() const noexcept {
@@ -1130,7 +1135,7 @@ void QtInkItem::beginErase(const InkSample& sample) {
     m_eraserPosition = sample;
     if (m_sink != nullptr) {
         const InkSample local = onSheet(sample);
-        m_sink->eraserMoved(local, local, static_cast<float>(m_eraserRadius));
+        m_sink->eraserMoved(local, local, static_cast<float>(m_eraserRadius), m_workSheet);
     }
 }
 
@@ -1140,7 +1145,8 @@ void QtInkItem::moveEraser(const InkSample& sample) {
     }
     const InkSample from = std::exchange(*m_eraserPosition, sample);
     if (m_sink != nullptr) {
-        m_sink->eraserMoved(onSheet(from), onSheet(sample), static_cast<float>(m_eraserRadius));
+        m_sink->eraserMoved(onSheet(from), onSheet(sample), static_cast<float>(m_eraserRadius),
+                            m_workSheet);
     }
 }
 
@@ -1252,7 +1258,7 @@ void QtInkItem::endStroke(const InkSample& sample) {
     StrokeMesh mesh{
         .id = finished.id(),
         .vertices = {},
-        .top = currentTop(),
+        .top = workingTop(),
         .translucent = m_activeIsTranslucent,
     };
     core::appendStroke(mesh.vertices, finished);
@@ -1261,7 +1267,7 @@ void QtInkItem::endStroke(const InkSample& sample) {
     ++m_generation;
     if (m_sink != nullptr) {
         m_sink->strokeFinished(onSheet(sample));
-        m_sink->strokeCompleted(onSheet(finished));
+        m_sink->strokeCompleted(onSheet(finished), m_workSheet);
     }
     update();
 }
