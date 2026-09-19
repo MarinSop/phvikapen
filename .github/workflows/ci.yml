@@ -179,16 +179,18 @@ jobs:
       - name: Configure, build and test
         run: cmake --workflow --preset win-arm64-debug
 
-      - name: Show what the test programs are missing
+      - name: Show how far the QML tests get
         if: failure()
         shell: pwsh
         run: |
-          $exe = "build\win-arm64-debug\tests\platform\phvikapen_platform_tests.exe"
+          $exe = "build\win-arm64-debug\tests\qml\phvikapen_qml_tests.exe"
           if (Test-Path $exe) {
-            Write-Host "--- beside the program ---"
-            Get-ChildItem (Split-Path $exe) | Select-Object -ExpandProperty Name
-            Write-Host "--- what the program asks for ---"
-            dumpbin /dependents $exe
+            $env:QT_QPA_PLATFORM = "offscreen"
+            $env:QT_QUICK_BACKEND = "software"
+            $env:QT_FORCE_STDERR_LOGGING = "1"
+            & $exe -v2 *> qml-tests.log
+            Write-Host "exit code: $LASTEXITCODE"
+            Get-Content qml-tests.log -Tail 150
           } else {
             Write-Host "$exe was never built"
           }
