@@ -60,6 +60,16 @@ constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 2;
 constexpr int kMediaAround = 4;
+
+// The picture of a page belongs to the sheet it was drawn for; a sheet of another size needs
+// another picture.
+[[nodiscard]] bool fitsSheet(const QRectF& area, const core::PaperSize& paper) {
+    const auto wide = static_cast<qreal>(paper.width);
+    const auto tall = static_cast<qreal>(paper.height);
+    return qFuzzyCompare(area.width() + 1.0, wide + 1.0)
+           && qFuzzyCompare(area.height() + 1.0, tall + 1.0);
+}
+
 constexpr float kEmptyPageRatio = std::numbers::sqrt2_v<float>;
 constexpr qreal kSmallestMediaScale = 0.5;
 constexpr float kColumnMediaScale = 2.0F;
@@ -1344,8 +1354,9 @@ void NotebookViewModel::drawMedia() {
     const core::Rect wanted = wantedRegion(*paper);
     const qreal scale = drawScale(*paper, kSmallestMediaScale);
     const auto already = m_drawnAt.find(m_currentPage);
+    const auto shown = m_shownMedia.find(m_currentPage);
     if (already != m_drawnAt.end() && already->second + kFineEnough >= scale
-        && m_shownMedia.contains(m_currentPage)) {
+        && shown != m_shownMedia.end() && fitsSheet(shown->second.area, *paper)) {
         return;
     }
     const auto width = static_cast<int>(std::max(1.0, static_cast<double>(wanted.width()) * scale));
@@ -1442,10 +1453,7 @@ bool NotebookViewModel::hasWholeMedia(const core::PageInfo& page) const {
     if (drawn == m_drawnAt.end() || drawn->second * kMediaRedrawFactor < columnScale(*paper)) {
         return false;
     }
-    const QRectF& area = shown->second.area;
-    return area.left() <= 0.0 && area.top() <= 0.0
-           && area.right() >= static_cast<qreal>(paper->width)
-           && area.bottom() >= static_cast<qreal>(paper->height);
+    return fitsSheet(shown->second.area, *paper);
 }
 
 // A page near the one being read shows its document as a whole, drawn once.

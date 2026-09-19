@@ -125,6 +125,9 @@ public:
 
     Q_INVOKABLE void goToSheet(int index);
 
+    // Where a sheet of the column stands, in the coordinates of the column.
+    Q_INVOKABLE [[nodiscard]] QRectF sheetRect(int index) const;
+
     void showView(const core::Viewport& viewport);
 
     void showSelection(std::vector<core::Uuid> strokeIds);

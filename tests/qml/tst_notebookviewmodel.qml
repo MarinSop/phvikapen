@@ -522,6 +522,29 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_sheetsNeverOverlapWhateverThePaperIs() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+
+        for (const paper of [PageOptions.A3, PageOptions.A4, PageOptions.A5, PageOptions.A3]) {
+            notebook.paper = paper;
+            wait(50);
+            for (let sheet = 1; sheet < 3; ++sheet) {
+                const above = canvas.sheetRect(sheet - 1);
+                const below = canvas.sheetRect(sheet);
+                verify(below.y >= above.y + above.height, "sheet " + sheet + " runs into the one above it on " + paper);
+                compare(below.height, above.height, "the sheets of a section are not the same size");
+            }
+        }
+
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

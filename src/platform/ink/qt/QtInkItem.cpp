@@ -318,6 +318,15 @@ std::vector<QtInkItem::VisibleSheet> QtInkItem::visibleSheets() const {
     return shown;
 }
 
+QRectF QtInkItem::sheetRect(int index) const {
+    if (index < 0 || std::cmp_greater_equal(index, m_sheets.size())) {
+        return {};
+    }
+    const Sheet& sheet = m_sheets[static_cast<std::size_t>(index)];
+    return {0.0, static_cast<qreal>(sheet.top), static_cast<qreal>(sheet.width),
+            static_cast<qreal>(sheet.height)};
+}
+
 void QtInkItem::goToSheet(int index) {
     if (m_sheets.empty()) {
         return;
