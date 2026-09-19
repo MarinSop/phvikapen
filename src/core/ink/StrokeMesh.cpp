@@ -169,8 +169,10 @@ void appendStroke(std::vector<InkVertex>& vertices, const Stroke& stroke) {
     };
 
     vertices.reserve(vertices.size() + ((samples.size() - 1) * kVerticesPerSegment));
-    tipAt(0);
-    tipAt(samples.size() - 1);
+    if (style.roundEnds) {
+        tipAt(0);
+        tipAt(samples.size() - 1);
+    }
     const std::size_t last = samples.size() - 1;
     Normal held{.x = 0.0F, .y = 1.0F};
     const auto normalAt = [&](std::size_t index) {

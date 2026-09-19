@@ -47,6 +47,34 @@ TEST(StrokeCodecTest, RoundTripKeepsIdentityStyleAndSampleCount) {
     EXPECT_EQ(decoded->samples().size(), original.samples().size());
 }
 
+TEST(StrokeCodecTest, SquareEndsSurviveTheRoundTrip) {
+    Uuid7Generator ids;
+    Stroke stroke{ids.next(), StrokeStyle{.width = 3.0F, .roundEnds = false}};
+    stroke.append(InkSample{.x = 1.0F, .y = 2.0F});
+    stroke.append(InkSample{.x = 9.0F, .y = 2.0F});
+
+    const Result<Stroke> decoded = decodeStroke(encodeStroke(stroke));
+
+    ASSERT_TRUE(decoded.has_value()) << decoded.error().message;
+    EXPECT_FALSE(decoded->style().roundEnds);
+}
+
+TEST(StrokeCodecTest, AStrokeWrittenBeforeSquareEndsStillHasRoundOnes) {
+    const Stroke original = makeHandwrittenStroke(4);
+    std::vector<std::byte> older = encodeStroke(original);
+    ASSERT_FALSE(older.empty());
+    // An older writer left no room for the ends and stopped a byte earlier.
+    older.front() = static_cast<std::byte>(kSquareEndsVersion - 1);
+    const auto endsAt = static_cast<std::size_t>(1 + Uuid::Bytes{}.size() + 4 + 1);
+    older.erase(older.begin() + static_cast<std::ptrdiff_t>(endsAt));
+
+    const Result<Stroke> decoded = decodeStroke(older);
+
+    ASSERT_TRUE(decoded.has_value()) << decoded.error().message;
+    EXPECT_TRUE(decoded->style().roundEnds);
+    EXPECT_EQ(decoded->samples().size(), original.samples().size());
+}
+
 TEST(StrokeCodecTest, RoundTripKeepsSamplesWithinTheStoredPrecision) {
     const Stroke original = makeHandwrittenStroke(200);
 

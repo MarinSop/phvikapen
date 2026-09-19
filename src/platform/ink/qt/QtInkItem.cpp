@@ -118,7 +118,10 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
 // A page without a sheet of its own still takes the room of one, so that what is written on it
 // does not land on the page below.
 std::vector<QtInkItem::Sheet> QtInkItem::sheetsFor(std::span<const PageView> pages) {
-    core::PaperSize fallback{};
+    // A page without a sheet still needs somewhere to stand: it takes the room of the sheets
+    // around it, or of a plain sheet when the whole section is endless paper.
+    core::PaperSize fallback =
+        core::paperSize(core::PageStyle{.paper = core::Paper::A4}).value_or(core::PaperSize{});
     for (const PageView& view : pages) {
         if (const std::optional<core::PaperSize> paper = core::paperSize(view.style)) {
             fallback = *paper;
@@ -1022,6 +1025,7 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    forceActiveFocus();
     // A press on another sheet of the column reads that page first, and works on it from there.
     if (const int under = sheetAt(sample.y); under >= 0 && under != m_current) {
         emit pageWanted(under);
@@ -1135,6 +1139,8 @@ std::vector<InkVertex>& QtInkItem::activeVertices() noexcept {
 }
 
 void QtInkItem::beginStroke(const InkSample& sample) {
+    // A pen always leaves round ends; a shape follows how round its corners were asked to be.
+    m_style.roundEnds = m_shape == core::Shape::Freehand || m_corner > 0.0;
     finishErase();
     cancelStroke();
     m_filter.reset();

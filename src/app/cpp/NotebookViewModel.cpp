@@ -1678,10 +1678,7 @@ void NotebookViewModel::refreshCanvas() {
     if (m_canvas.isNull()) {
         return;
     }
-    // A column needs sheets: a page without one is endless, and stands on its own.
-    const core::PageInfo* const shown = currentPageInfo();
-    if (m_continuous && currentSectionIndex() && shown != nullptr
-        && core::paperSize(shown->style)) {
+    if (m_continuous && currentSectionIndex()) {
         showColumn();
         return;
     }

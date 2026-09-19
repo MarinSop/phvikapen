@@ -158,6 +158,7 @@ std::vector<std::byte> encodeStroke(const Stroke& stroke) {
     out.push_back(static_cast<std::byte>(style.color.blue));
     out.push_back(static_cast<std::byte>(style.color.alpha));
     appendVarint(out, zigzag(quantize(style.width, kStoredPositionsPerUnit)));
+    out.push_back(static_cast<std::byte>(style.roundEnds ? 1 : 0));
 
     const std::span<const InkSample> samples = stroke.samples();
     appendVarint(out, static_cast<std::uint64_t>(samples.size()));
@@ -193,6 +194,8 @@ Result<Stroke> decodeStroke(std::span<const std::byte> bytes) {
     style.color.blue = reader.readByte();
     style.color.alpha = reader.readByte();
     style.width = dequantize(reader.readSignedVarint(), kStoredPositionsPerUnit);
+    // Strokes written before ends could be square all have round ones.
+    style.roundEnds = version < kSquareEndsVersion || reader.readByte() != 0;
 
     const std::uint64_t sampleCount = reader.readVarint();
     if (reader.failed()) {

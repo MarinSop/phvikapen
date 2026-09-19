@@ -52,8 +52,9 @@ Pane {
         }
     }
 
-    HoverHandler {
-        id: overPanel
+    // Clicking anywhere else in the panel settles a name that is being typed.
+    TapHandler {
+        onTapped: root.forceActiveFocus()
     }
 
     Connections {
@@ -114,21 +115,12 @@ Pane {
                 }
 
                 QuickButton {
+                    Layout.rightMargin: 4
                     action: root.actions.addSection
                     display: AbstractButton.IconOnly
                     icon.source: Icons.plus
                     label: qsTr("New section")
                     objectName: "addSectionButton"
-                }
-
-                QuickButton {
-                    Layout.rightMargin: 4
-                    icon.source: Icons.close
-                    label: qsTr("Hide the sections")
-                    objectName: "hideSectionsButton"
-                    opacity: overPanel.hovered ? 1 : 0
-
-                    onClicked: root.settings.showSections = false
                 }
             }
 
@@ -296,21 +288,12 @@ Pane {
                 }
 
                 QuickButton {
+                    Layout.rightMargin: 4
                     action: root.actions.addPage
                     display: AbstractButton.IconOnly
                     icon.source: Icons.plus
                     label: qsTr("New page")
                     objectName: "addPageButton"
-                }
-
-                QuickButton {
-                    Layout.rightMargin: 4
-                    icon.source: Icons.close
-                    label: qsTr("Hide the pages")
-                    objectName: "hidePagesButton"
-                    opacity: overPanel.hovered ? 1 : 0
-
-                    onClicked: root.settings.showPages = false
                 }
             }
 

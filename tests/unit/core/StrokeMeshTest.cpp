@@ -115,6 +115,20 @@ TEST(StrokeMeshTest, AVerySharpTurnKeepsThePenTipInstead) {
     EXPECT_GT(folded.size(), straight.size());
 }
 
+TEST(StrokeMeshTest, SquareEndsStopWhereTheLineDoes) {
+    std::vector<InkVertex> vertices;
+    Stroke stroke{Uuid{}, StrokeStyle{.width = 4.0F, .roundEnds = false}};
+    stroke.append(InkSample{.x = 0.0F, .y = 0.0F});
+    stroke.append(InkSample{.x = 20.0F, .y = 0.0F});
+
+    appendStroke(vertices, stroke);
+
+    for (const InkVertex& vertex : vertices) {
+        EXPECT_GE(vertex.x, -0.01F);
+        EXPECT_LE(vertex.x, 20.01F);
+    }
+}
+
 TEST(StrokeMeshTest, AStrokeOfOneSampleIsARoundDot) {
     std::vector<InkVertex> vertices;
     Stroke stroke{Uuid{}, StrokeStyle{.width = 2.0F}};

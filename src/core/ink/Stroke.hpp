@@ -27,6 +27,8 @@ struct StrokeStyle {
 
     Color color{};
     float width{kDefaultWidth};
+    // A pen leaves round ends; a drawn shape may be asked for square ones instead.
+    bool roundEnds{true};
 
     friend constexpr bool operator==(const StrokeStyle&, const StrokeStyle&) = default;
 };

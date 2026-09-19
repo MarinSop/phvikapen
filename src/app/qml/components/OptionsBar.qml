@@ -51,8 +51,8 @@ ToolBar {
 
                 Layout.leftMargin: index === 0 ? 4 : 0
                 checked: root.tools.pen === index
-                color: root.tools.colorOfPen(index)
-                penWidth: root.tools.widthOfPen(index)
+                color: root.tools.penColors[index]
+                penWidth: root.tools.penWidths[index]
 
                 onClicked: root.tools.pen = index
             }

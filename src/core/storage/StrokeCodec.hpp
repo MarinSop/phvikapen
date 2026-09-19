@@ -10,7 +10,9 @@
 
 namespace phvikapen::core {
 
-inline constexpr std::uint8_t kStrokeFormatVersion = 1;
+inline constexpr std::uint8_t kStrokeFormatVersion = 2;
+// From this version on, a stroke says whether its ends are round.
+inline constexpr std::uint8_t kSquareEndsVersion = 2;
 
 inline constexpr float kStoredPositionsPerUnit = 32.0F;
 inline constexpr float kStoredPressureSteps = 65535.0F;

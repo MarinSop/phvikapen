@@ -28,6 +28,8 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         qreal eraserRadius READ eraserRadius WRITE setEraserRadius NOTIFY eraserChanged FINAL)
     Q_PROPERTY(QVariantList palette READ palette CONSTANT FINAL)
+    Q_PROPERTY(QVariantList penColors READ penColors NOTIFY toolChanged FINAL)
+    Q_PROPERTY(QVariantList penWidths READ penWidths NOTIFY toolChanged FINAL)
 
 public:
     enum class Shape : quint8 {
@@ -92,6 +94,9 @@ public:
     void setEraserRadius(qreal radius);
 
     [[nodiscard]] static QVariantList palette();
+
+    [[nodiscard]] QVariantList penColors() const;
+    [[nodiscard]] QVariantList penWidths() const;
 
     // The colour taken off the page belongs to every pen from then on, and the tool that was in
     // hand before the picker comes back.

@@ -504,6 +504,24 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_endlessPagesStandInAColumnToo() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.paper = PageOptions.Infinite;
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+
+        for (let step = 0; step < 60; ++step) {
+            mouseWheel(canvas, canvas.width / 2, canvas.height / 2, 0, -120);
+        }
+
+        tryCompare(notebook, "currentPage", 1, 5000, "scrolling did not carry on to the next page");
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

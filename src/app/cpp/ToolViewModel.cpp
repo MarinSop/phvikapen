@@ -165,6 +165,24 @@ void ToolViewModel::usePickedColour(const QColor& colour) {
     remember();
 }
 
+QVariantList ToolViewModel::penColors() const {
+    QVariantList colors;
+    colors.reserve(static_cast<qsizetype>(m_pens.size()));
+    for (const Nib& nib : m_pens) {
+        colors.append(nib.color);
+    }
+    return colors;
+}
+
+QVariantList ToolViewModel::penWidths() const {
+    QVariantList widths;
+    widths.reserve(static_cast<qsizetype>(m_pens.size()));
+    for (const Nib& nib : m_pens) {
+        widths.append(nib.width);
+    }
+    return widths;
+}
+
 QColor ToolViewModel::colorOfPen(int index) const {
     if (index < 0 || index >= penCount()) {
         return {};
