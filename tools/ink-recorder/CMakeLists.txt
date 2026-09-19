@@ -23,6 +23,8 @@ target_link_libraries(ink_recorder
         phvikapen_sanitizers
 )
 
+phvikapen_quiet_generated_qml(ink_recorder)
+
 set_target_properties(ink_recorder PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE

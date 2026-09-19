@@ -130,6 +130,8 @@ target_link_libraries(phvikapen_ui
         phvikapen_sanitizers
 )
 
+phvikapen_quiet_generated_qml(phvikapen_ui)
+
 qt_add_executable(phvikapen
     cpp/Logging.cpp
     cpp/Logging.hpp
@@ -163,6 +165,8 @@ target_link_libraries(phvikapen
         phvikapen_warnings
         phvikapen_sanitizers
 )
+
+phvikapen_quiet_generated_qml(phvikapen)
 
 if(WIN32)
     target_sources(phvikapen PRIVATE brand/phvikapen.rc)

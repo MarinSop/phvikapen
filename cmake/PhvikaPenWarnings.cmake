@@ -11,3 +11,11 @@ target_compile_options(phvikapen_warnings
 
 unset(_phvikapen_msvc_warnings)
 unset(_phvikapen_clang_warnings)
+
+# Code generated from QML inlines Qt headers where MSVC reports unreachable code, and the warnings
+# its code generator raises are out of reach of /external.
+function(phvikapen_quiet_generated_qml target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /wd4702)
+    endif()
+endfunction()
