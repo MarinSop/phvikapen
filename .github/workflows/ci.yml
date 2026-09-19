@@ -182,7 +182,7 @@ jobs:
       - name: Stage the application
         run: cmake --install build/win-arm64-debug --prefix ${{ github.workspace }}/stage
 
-      # Qt is deployed by windeployqt when the release is built.
+      # Qt is deployed by windeployqt when the release is built, and the debugging runtime stays here.
       - name: Check that the package carries its libraries
         shell: pwsh
-        run: ./.github/scripts/check-package.ps1 -Stage "${{ github.workspace }}\stage" -ProvidedLater 'qt6*'
+        run: ./.github/scripts/check-package.ps1 -Stage "${{ github.workspace }}\stage" -ProvidedLater 'qt6*', 'msvcp140d*', 'vcruntime140*d.dll', 'ucrtbased.dll'

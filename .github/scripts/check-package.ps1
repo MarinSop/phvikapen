@@ -32,9 +32,9 @@ foreach ($binary in $binaries) {
         $name = $Matches[1].ToLowerInvariant()
         if ($shipped.ContainsKey($name)) { continue }
         if ($name -like 'api-ms-*' -or $name -like 'ext-ms-*') { continue }
-        # The Visual C++ runtime is installed alongside the application.
-        if ($name -match '^(vcruntime|msvcp|concrt|vccorlib)\d+' -or $name -eq 'ucrtbased.dll') { continue }
-        if (Test-Path -LiteralPath (Join-Path $system $name)) { continue }
+        # A build machine has the Visual C++ runtime installed; a reader's machine may not.
+        $runtime = $name -match '^(vcruntime|msvcp|concrt|vccorlib)\d+'
+        if (-not $runtime -and (Test-Path -LiteralPath (Join-Path $system $name))) { continue }
         if (@($ProvidedLater | Where-Object { $name -like $_ }).Count -gt 0) { continue }
         $missing.Add("$($binary.Name) needs $name")
     }

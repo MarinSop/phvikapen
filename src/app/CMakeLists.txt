@@ -220,3 +220,9 @@ install(TARGETS phvikapen
 )
 
 phvikapen_install_runtime_dlls(phvikapen)
+
+# The Visual C++ runtime goes beside the program, so it starts where the runtime was never installed.
+if(MSVC)
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
+    include(InstallRequiredSystemLibraries)
+endif()
