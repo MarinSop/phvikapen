@@ -94,6 +94,10 @@ jobs:
           & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations `
             --no-compiler-runtime --qmldir src "${{ github.workspace }}\stage\phvikapen.exe"
 
+      - name: Check that the package carries its libraries
+        shell: pwsh
+        run: ./.github/scripts/check-package.ps1 -Stage "${{ github.workspace }}\stage"
+
       - name: Install the Velopack command line tool
         run: dotnet tool install -g vpk --version ${{ env.VELOPACK_VERSION }}
 

@@ -8,11 +8,7 @@ set(PHVIKAPEN_PRIVATE_RUNTIME_LIBRARIES
     Velopack::velopack
 )
 
-function(phvikapen_copy_runtime_dlls target)
-    if(NOT WIN32)
-        return()
-    endif()
-
+function(_phvikapen_hidden_runtime_dlls output)
     set(hidden "")
     foreach(library IN LISTS PHVIKAPEN_PRIVATE_RUNTIME_LIBRARIES)
         if(TARGET ${library})
@@ -22,11 +18,28 @@ function(phvikapen_copy_runtime_dlls target)
             endif()
         endif()
     endforeach()
+    set(${output} "${hidden}" PARENT_SCOPE)
+endfunction()
 
+function(phvikapen_copy_runtime_dlls target)
+    if(NOT WIN32)
+        return()
+    endif()
+
+    _phvikapen_hidden_runtime_dlls(hidden)
     add_custom_command(TARGET ${target} POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             -t "$<TARGET_FILE_DIR:${target}>" "$<TARGET_RUNTIME_DLLS:${target}>" ${hidden}
         COMMAND_EXPAND_LISTS
         VERBATIM
     )
+endfunction()
+
+function(phvikapen_install_runtime_dlls target)
+    if(NOT WIN32)
+        return()
+    endif()
+
+    _phvikapen_hidden_runtime_dlls(hidden)
+    install(FILES $<TARGET_RUNTIME_DLLS:${target}> ${hidden} DESTINATION .)
 endfunction()

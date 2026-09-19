@@ -219,7 +219,4 @@ install(TARGETS phvikapen
     RUNTIME DESTINATION .
 )
 
-if(WIN32)
-    install(FILES "$<TARGET_FILE:Velopack::velopack>" DESTINATION .)
-    install(FILES "$<TARGET_FILE:PDFium::pdfium>" DESTINATION .)
-endif()
+phvikapen_install_runtime_dlls(phvikapen)
