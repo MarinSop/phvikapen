@@ -173,8 +173,12 @@ bool NotebookViewModel::renameTo(const QString& path) {
         return false;
     }
     for (const auto* suffix : {"-wal", "-shm"}) {
+        std::filesystem::path fromSide = from;
+        std::filesystem::path toSide = to;
+        fromSide += suffix;
+        toSide += suffix;
         std::error_code ignored;
-        std::filesystem::rename(from.native() + suffix, to.native() + suffix, ignored);
+        std::filesystem::rename(fromSide, toSide, ignored);
     }
 
     QSettings settings;

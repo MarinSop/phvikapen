@@ -9,6 +9,11 @@ updates:
       prefix: ci
     labels:
       - dependencies
+    ignore:
+      # 4.4.0 refers to a step of its own with the self-repository syntax, which the runners
+      # refuse when the action is pinned to a commit. Take it again once that is fixed.
+      - dependency-name: jurplel/install-qt-action
+        versions: ["4.4.0"]
 
   - package-ecosystem: vcpkg
     directory: /
