@@ -9,7 +9,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
-    padding: 20
+    padding: 16
     parent: Overlay.overlay
 
     Overlay.modal: Rectangle {
@@ -20,5 +20,15 @@ Dialog {
         border.width: 1
         color: Theme.surface
         radius: 10
+    }
+    footer: DialogButtonBox {
+        alignment: Qt.AlignRight
+        background: null
+        bottomPadding: 16
+        leftPadding: 16
+        rightPadding: 16
+        spacing: 8
+        topPadding: 8
+        visible: count > 0
     }
 }

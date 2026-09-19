@@ -198,9 +198,12 @@ void QtInkItem::showColumn(std::span<const PageView> pages, int current,
     if (otherPage && m_sheets.size() <= 1) {
         m_meshes.clear();
     }
-    if ((otherPage || otherPaper || !m_viewFitted) && (otherColumn || m_sheets.size() <= 1)) {
+    // Scrolling carries the view itself: turning a page that way must not fit or snap it.
+    const bool mayMoveView = !m_followingScroll;
+    if (mayMoveView && (otherPage || otherPaper || !m_viewFitted)
+        && (otherColumn || m_sheets.size() <= 1)) {
         fitPage();
-    } else if (otherPage && !m_followingScroll) {
+    } else if (mayMoveView && otherPage) {
         goToSheet(m_current);
     }
 

@@ -73,6 +73,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppActions.qml
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
+        qml/components/ConfirmDialog.qml
         qml/components/ArrowButton.qml
         qml/components/EmptyState.qml
         qml/components/MenuCommand.qml

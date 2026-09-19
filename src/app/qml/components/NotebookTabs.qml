@@ -52,10 +52,17 @@ Item {
 
                     required property int index
                     required property string modelData
+                    readonly property bool open: tabBar.currentIndex === tab.index
 
-                    implicitHeight: 28
+                    implicitHeight: 26
+                    padding: 6
                     text: tab.modelData
-                    width: Math.min(160, implicitContentWidth + 24)
+                    width: Math.min(190, implicitContentWidth + 48)
+
+                    background: Rectangle {
+                        color: tab.open ? Theme.surface : "transparent"
+                        radius: 4
+                    }
 
                     onPressAndHold: tabMenu.popup()
 
@@ -63,6 +70,27 @@ Item {
                         acceptedButtons: Qt.RightButton
 
                         onTapped: tabMenu.popup()
+                    }
+
+                    ToolButton {
+                        anchors.right: parent.right
+                        anchors.rightMargin: 3
+                        anchors.verticalCenter: parent.verticalCenter
+                        bottomPadding: 0
+                        display: AbstractButton.IconOnly
+                        icon.color: palette.buttonText
+                        icon.height: 16
+                        icon.source: Icons.close
+                        icon.width: 16
+                        implicitHeight: 20
+                        implicitWidth: 20
+                        leftPadding: 0
+                        objectName: "closeNotebookButton"
+                        opacity: tab.open || tab.hovered ? 1 : 0
+                        rightPadding: 0
+                        topPadding: 0
+
+                        onClicked: root.notebooks.closeNotebook(tab.index)
                     }
 
                     Menu {
@@ -97,12 +125,12 @@ Item {
             }
         }
 
-        ToolButton {
-            implicitHeight: 28
+        QuickButton {
+            icon.source: Icons.plus
+            implicitHeight: 30
+            implicitWidth: 34
+            label: qsTr("Open or create a notebook")
             objectName: "notebooksButton"
-            text: qsTr("+")
-            ToolTip.text: qsTr("Open or create a notebook")
-            ToolTip.visible: hovered
 
             onClicked: libraryMenu.popup()
 
@@ -172,18 +200,14 @@ Item {
         }
     }
 
-    AppDialog {
+    ConfirmDialog {
         id: deleteDialog
 
         property string notebookName: ""
 
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        question: qsTr("Move “%1” and everything in it to the trash?").arg(deleteDialog.notebookName)
         title: qsTr("Delete notebook")
 
         onAccepted: root.notebooks.deleteNotebook(deleteDialog.notebookName)
-
-        Label {
-            text: qsTr("Move “%1” and everything in it to the trash?").arg(deleteDialog.notebookName)
-        }
     }
 }

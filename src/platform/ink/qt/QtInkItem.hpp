@@ -19,6 +19,7 @@
 #include <QQuickRhiItem>
 #include <QQuickWindow>
 #include <QRectF>
+#include <QSize>
 
 #include <chrono>
 #include <cstddef>
@@ -54,6 +55,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
+    Q_PROPERTY(QSize mediaSize READ mediaSize NOTIFY mediaChanged FINAL)
     Q_PROPERTY(int visibleSheetCount READ visibleSheetCount NOTIFY viewChanged FINAL)
     Q_PROPERTY(QColor deskColor READ deskColor WRITE setDeskColor NOTIFY deskColorChanged FINAL)
     Q_PROPERTY(qreal zoom READ zoom NOTIFY viewChanged FINAL)
@@ -168,6 +170,9 @@ public:
     [[nodiscard]] QImage media() const;
 
     [[nodiscard]] QRectF mediaArea() const;
+
+    // How many pixels the document of the page being read was drawn with.
+    [[nodiscard]] QSize mediaSize() const { return media().size(); }
 
     [[nodiscard]] std::uint64_t mediaGeneration() const noexcept { return m_mediaGeneration; }
 

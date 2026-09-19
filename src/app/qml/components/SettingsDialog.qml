@@ -13,6 +13,7 @@ AppDialog {
 
     height: 540
     objectName: "settingsDialog"
+    padding: 10
     standardButtons: Dialog.Close
     title: qsTr("Settings")
     width: 560

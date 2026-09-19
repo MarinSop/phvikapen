@@ -76,7 +76,7 @@ namespace {
         Command{.id = "eraserTool", .name = QObject::tr("Eraser tool"), .fallback = "E"},
         Command{
             .id = "colourTool",
-            .name = QObject::tr("Colour picker tool"),
+            .name = QObject::tr("Color picker tool"),
             .fallback = "K",
         },
     };

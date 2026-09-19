@@ -175,6 +175,9 @@ public:
     Q_INVOKABLE void movePage(int from, int to);
     Q_INVOKABLE void duplicatePage(int index);
     Q_INVOKABLE void wantThumbnail(int index);
+
+    // How many pixels across the document of a page was drawn with; nothing, where none is shown.
+    Q_INVOKABLE [[nodiscard]] int mediaPixelsOn(int index) const;
     Q_INVOKABLE void renamePage(int index, const QString& title);
 
     Q_INVOKABLE void importDocument(const QUrl& fileUrl);
@@ -326,6 +329,7 @@ private:
     void showAsset(std::uint64_t opening, core::Result<core::Asset> asset);
     void showPicture(std::uint64_t opening, const core::ContentId& asset, const QImage& picture);
     void drawMedia();
+    void redrawMedia();
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                           const core::Rect& area, const platform::pdf::PageImage& image);
     [[nodiscard]] core::Rect wantedRegion(const core::PaperSize& paper) const;
@@ -335,6 +339,7 @@ private:
     void wantMediaFor(const core::PageInfo& page);
     [[nodiscard]] bool hasWholeMedia(const core::PageInfo& page) const;
     void forgetFarMedia(std::span<const core::PageInfo> pages, int here);
+    [[nodiscard]] qreal columnScale(const core::PaperSize& paper) const;
     void drawColumnMedia(const core::Uuid& page, const core::PageStyle& style, int index,
                          core::Asset asset);
     void showColumn();
@@ -357,6 +362,7 @@ private:
     std::optional<platform::pdf::PdfRenderer> m_pdf;
     core::ContentId m_openAsset;
     std::map<core::Uuid, platform::ink::QtInkItem::MediaPiece> m_shownMedia;
+    std::map<core::Uuid, qreal> m_drawnAt;
     std::set<core::Uuid> m_wantedMedia;
     std::set<core::Uuid> m_wantedPages;
     bool m_continuous{false};

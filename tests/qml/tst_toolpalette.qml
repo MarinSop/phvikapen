@@ -11,7 +11,7 @@ TestCase {
     }
 
     function test_b_everyToolHasAButtonWithATooltip() {
-        const names = ["selectTool", "handTool", "penTool", "highlighterTool", "shapeTool", "eraserTool", "colour pickerTool"];
+        const names = ["selectTool", "handTool", "penTool", "highlighterTool", "shapeTool", "eraserTool", "color pickerTool"];
         for (const name of names) {
             const button = findChild(palette, name);
             verify(button !== null, name + " is missing");

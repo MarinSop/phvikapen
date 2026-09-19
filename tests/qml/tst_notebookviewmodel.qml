@@ -483,6 +483,27 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_scrollingToTheNextPageKeepsTheZoom() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.currentPage = 0;
+        notebook.continuous = true;
+        const canvas = notebook.canvas;
+        canvas.fitPage();
+        canvas.zoomIn();
+        canvas.zoomIn();
+        const zoom = canvas.zoom;
+
+        for (let step = 0; step < 60; ++step) {
+            mouseWheel(canvas, canvas.width / 2, canvas.height / 2, 0, -120);
+        }
+
+        tryCompare(notebook, "currentPage", 1);
+        compare(canvas.zoom, zoom, "scrolling changed how close the page is");
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();
@@ -588,6 +609,53 @@ TestCase {
         wait(300);
         compare(canvas.mediaArea.width, wholeWidth);
         compare(canvas.mediaArea.height, wholeHeight);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theDocumentIsDrawnAgainWhenTheReaderComesCloser() {
+        const path = newNotebookPath();
+        const first = openNotebook(path);
+        first.importDocument("file://" + samplePdf);
+        tryCompare(first, "pageCount", 3);
+        first.canvas = null;
+
+        // Opened afresh, as after a restart: nothing has been imported in this sitting.
+        const notebook = openNotebook(path);
+        const canvas = notebook.canvas;
+        notebook.currentPage = 1;
+        tryVerify(() => canvas.mediaSize.width > 0);
+
+        for (let step = 0; step < 6; ++step) {
+            canvas.zoomOut();
+        }
+        tryVerify(() => canvas.mediaSize.width > 0);
+        const faraway = canvas.mediaSize.width;
+
+        for (let step = 0; step < 8; ++step) {
+            canvas.zoomIn();
+        }
+
+        tryVerify(() => canvas.mediaSize.width > faraway, 5000, "the document stayed as coarse as it was");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theSheetsAroundAreDrawnFinelyWhenTheReaderComesCloser() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        notebook.continuous = true;
+        notebook.currentPage = 1;
+        tryVerify(() => notebook.mediaPixelsOn(2) > 0);
+        const faraway = notebook.mediaPixelsOn(2);
+
+        for (let step = 0; step < 14; ++step) {
+            canvas.zoomIn();
+        }
+        verify(canvas.zoom > 2, "the test did not come close enough");
+
+        tryVerify(() => notebook.mediaPixelsOn(2) > faraway, 5000, "the sheet below stayed coarse");
+        notebook.continuous = false;
         compare(notebook.errorMessage, "");
     }
 

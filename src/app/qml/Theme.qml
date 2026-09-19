@@ -96,7 +96,7 @@ QtObject {
         case Theme.Light:
             return qsTr("For a lit room, and beside a window.");
         default:
-            return qsTr("The colours of the application itself: indigo, violet and blue.");
+            return qsTr("The colors of the application itself: indigo, violet and blue.");
         }
     }
 }

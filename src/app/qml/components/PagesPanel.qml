@@ -103,6 +103,7 @@ Pane {
                 required property string title
 
                 highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
+                rightPadding: 0
                 width: sectionList.width
 
                 contentItem: RowLayout {
@@ -138,20 +139,13 @@ Pane {
                         }
                     }
 
-                    ToolButton {
-                        display: AbstractButton.IconOnly
+                    QuickButton {
                         enabled: root.ready && root.notebook.sectionCount > 1
-                        icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 24
                         icon.source: Icons.close
-                        icon.width: 24
-                        implicitHeight: 34
-                        implicitWidth: 34
+                        label: qsTr("Delete section")
                         objectName: "deleteSectionButton"
-                        ToolTip.delay: 600
-                        ToolTip.text: qsTr("Delete section")
-                        ToolTip.visible: hovered
-                        visible: sectionDelegate.hovered || sectionDelegate.highlighted
+                        // Always there, so that the row does not jump when the pointer crosses it.
+                        opacity: sectionDelegate.hovered || sectionDelegate.highlighted ? 1 : 0
 
                         onClicked: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
                     }
@@ -246,6 +240,7 @@ Pane {
                 Drag.source: pageDelegate
                 height: 64
                 highlighted: root.ready && pageDelegate.index === root.notebook.currentPage
+                rightPadding: 0
                 width: pageList.width
                 z: pageDrag.active ? 2 : 1
 
@@ -257,7 +252,7 @@ Pane {
                         Layout.preferredWidth: 44
                         border.color: palette.mid
                         border.width: 1
-                        color: palette.base
+                        color: "white"
 
                         Image {
                             anchors.fill: parent
@@ -298,20 +293,12 @@ Pane {
                         }
                     }
 
-                    ToolButton {
-                        display: AbstractButton.IconOnly
+                    QuickButton {
                         enabled: root.ready && root.notebook.pageCount > 1
-                        icon.color: enabled ? palette.buttonText : palette.placeholderText
-                        icon.height: 24
                         icon.source: Icons.close
-                        icon.width: 24
-                        implicitHeight: 34
-                        implicitWidth: 34
+                        label: qsTr("Delete page")
                         objectName: "deletePageButton"
-                        ToolTip.delay: 600
-                        ToolTip.text: qsTr("Delete page")
-                        ToolTip.visible: hovered
-                        visible: pageDelegate.hovered || pageDelegate.highlighted
+                        opacity: pageDelegate.hovered || pageDelegate.highlighted ? 1 : 0
 
                         onClicked: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
                     }
@@ -399,7 +386,7 @@ Pane {
         }
     }
 
-    AppDialog {
+    ConfirmDialog {
         id: deleteDialog
 
         property int index: 0
@@ -407,9 +394,8 @@ Pane {
         property bool sectionScope: true
 
         objectName: "deleteDialog"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        question: deleteDialog.sectionScope ? qsTr("Move “%1” and every page in it to the deleted pages?").arg(deleteDialog.itemTitle) : qsTr("Move “%1” to the deleted pages?").arg(deleteDialog.itemTitle)
         title: deleteDialog.sectionScope ? qsTr("Delete section") : qsTr("Delete page")
-        width: 380
 
         onAccepted: {
             if (deleteDialog.sectionScope) {
@@ -417,12 +403,6 @@ Pane {
             } else {
                 root.notebook.deletePage(deleteDialog.index);
             }
-        }
-
-        Label {
-            anchors.fill: parent
-            text: deleteDialog.sectionScope ? qsTr("Move “%1” and every page in it to the deleted pages?").arg(deleteDialog.itemTitle) : qsTr("Move “%1” to the deleted pages?").arg(deleteDialog.itemTitle)
-            wrapMode: Text.WordWrap
         }
     }
 }

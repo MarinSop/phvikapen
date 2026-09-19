@@ -59,19 +59,25 @@ ToolBar {
         }
 
         ToolButton {
+            id: colourButton
+
+            leftPadding: 30
             objectName: "colorButton"
-            text: qsTr("Colour")
+            text: qsTr("Color")
             visible: root.draws
 
             onClicked: colourMenu.popup()
 
             Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.margins: 4
+                anchors.left: parent.left
+                anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                border.color: Qt.rgba(0, 0, 0, 0.35)
+                border.width: 1
                 color: root.tools.strokeColor
-                height: 3
-                width: parent.width - 16
+                height: 16
+                radius: height / 2
+                width: 16
             }
 
             Menu {
@@ -111,7 +117,7 @@ ToolBar {
 
                 MenuItem {
                     objectName: "moreColoursItem"
-                    text: qsTr("More colours…")
+                    text: qsTr("More colors…")
 
                     onTriggered: {
                         colourDialog.selectedColor = root.tools.strokeColor;

@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <numbers>
 #include <optional>
 #include <ranges>
 #include <span>
@@ -60,6 +61,7 @@ constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 2;
 constexpr int kMediaAround = 4;
+constexpr float kEmptyPageRatio = std::numbers::sqrt2_v<float>;
 constexpr qreal kSmallestMediaScale = 0.5;
 constexpr float kColumnMediaScale = 2.0F;
 
@@ -107,7 +109,7 @@ constexpr float kColumnMediaScale = 2.0F;
 NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {
     m_mediaTimer.setSingleShot(true);
     m_mediaTimer.setInterval(kMediaRedrawDelay);
-    connect(&m_mediaTimer, &QTimer::timeout, this, &NotebookViewModel::drawMedia);
+    connect(&m_mediaTimer, &QTimer::timeout, this, &NotebookViewModel::redrawMedia);
 }
 
 NotebookViewModel::NotebookViewModel(QString path, QString startPage, QObject* parent)
@@ -1137,15 +1139,14 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);
-    if (area.width() <= 0.0F || area.height() <= 0.0F) {
-        return;
-    }
-
-    const int height = std::max(
-        1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * area.height() / area.width()));
+    const bool anything = area.width() > 0.0F && area.height() > 0.0F;
+    // A page with nothing on it is still a page: it shows as the empty sheet it is.
+    const float ratio = anything ? area.height() / area.width() : kEmptyPageRatio;
+    const int height =
+        std::max(1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * ratio));
     QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
     picture.fill(Qt::white);
-    {
+    if (anything) {
         QPainter painter{&picture};
         painter.scale(static_cast<double>(thumbnails::kWidth) / static_cast<double>(area.width()),
                       static_cast<double>(height) / static_cast<double>(area.height()));
@@ -1314,10 +1315,16 @@ void NotebookViewModel::showPicture(std::uint64_t opening, const core::ContentId
     showPageMedia(m_currentPage, picture, area);
 }
 
+void NotebookViewModel::redrawMedia() {
+    drawMedia();
+    if (m_continuous) {
+        wantNeighbours();
+    }
+}
+
 void NotebookViewModel::drawMedia() {
     const core::PageInfo* const info = currentPageInfo();
-    if (m_canvas.isNull() || info == nullptr || !info->media || !m_pdf
-        || info->media->asset != m_openAsset) {
+    if (m_canvas.isNull() || info == nullptr || !info->media || !m_pdf) {
         return;
     }
     const std::optional<core::PaperSize> paper = core::paperSize(info->style);
@@ -1390,7 +1397,9 @@ core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) const {
 void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                                          const core::Rect& area,
                                          const platform::pdf::PageImage& image) {
-    if (opening != m_opening || m_canvas.isNull() || asset != m_openAsset) {
+    const core::PageInfo* const info = currentPageInfo();
+    if (opening != m_opening || m_canvas.isNull() || info == nullptr || !info->media
+        || info->media->asset != asset) {
         return;
     }
     const QImage drawn{image.pixels.data(), image.width, image.height,
@@ -1435,6 +1444,10 @@ bool NotebookViewModel::hasWholeMedia(const core::PageInfo& page) const {
     if (!paper) {
         return true;
     }
+    const auto drawn = m_drawnAt.find(page.id);
+    if (drawn == m_drawnAt.end() || drawn->second * kMediaRedrawFactor < columnScale(*paper)) {
+        return false;
+    }
     const QRectF& area = shown->second.area;
     return area.left() <= 0.0 && area.top() <= 0.0
            && area.right() >= static_cast<qreal>(paper->width)
@@ -1468,6 +1481,27 @@ void NotebookViewModel::wantMediaFor(const core::PageInfo& page) {
         });
 }
 
+qreal NotebookViewModel::columnScale(const core::PaperSize& paper) const {
+    const qreal zoom = m_canvas.isNull() ? 1.0 : m_canvas->zoom();
+    const qreal wanted = std::max<qreal>(kColumnMediaScale, zoom);
+    const qreal widest = double{kMaximumMediaPixels} / std::max(paper.width, paper.height);
+    return std::clamp(wanted, double{kSmallestMediaScale}, widest);
+}
+
+int NotebookViewModel::mediaPixelsOn(int index) const {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!section) {
+        return 0;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    const std::optional<std::size_t> at = checkedIndex(index, pages.size());
+    if (!at) {
+        return 0;
+    }
+    const auto shown = m_shownMedia.find(pages[*at].id);
+    return shown == m_shownMedia.end() ? 0 : shown->second.picture.width();
+}
+
 void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::PageStyle& style,
                                         int index, core::Asset asset) {
     const std::optional<core::PaperSize> paper = core::paperSize(style);
@@ -1491,10 +1525,12 @@ void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::Page
         m_pdf.emplace();
     }
     const core::ContentId id = asset.id;
-    const auto width = static_cast<int>(std::clamp(paper->width * kColumnMediaScale, 1.0F,
-                                                   static_cast<float>(kMaximumMediaPixels)));
-    const auto height = static_cast<int>(std::clamp(paper->height * kColumnMediaScale, 1.0F,
-                                                    static_cast<float>(kMaximumMediaPixels)));
+    const auto scale = static_cast<float>(columnScale(*paper));
+    const auto width = static_cast<int>(
+        std::clamp(paper->width * scale, 1.0F, static_cast<float>(kMaximumMediaPixels)));
+    const auto height = static_cast<int>(
+        std::clamp(paper->height * scale, 1.0F, static_cast<float>(kMaximumMediaPixels)));
+    m_drawnAt[page] = scale;
     const QRectF area{0.0, 0.0, static_cast<qreal>(paper->width),
                       static_cast<qreal>(paper->height)};
     const std::uint64_t opening = m_opening;
@@ -1705,6 +1741,7 @@ void NotebookViewModel::setContinuous(bool continuous) {
     }
     m_continuous = continuous;
     m_shownMedia.clear();
+    m_drawnAt.clear();
     m_wantedMedia.clear();
     m_openAsset = core::ContentId{};
     m_mediaScale = 0.0;

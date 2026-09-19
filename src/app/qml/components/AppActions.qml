@@ -66,7 +66,7 @@ Item {
         checked: root.tools.currentTool === ToolViewModel.ColourPicker
         icon.source: Icons.colourPicker
         shortcut: root.keysFor("colourTool", "K")
-        text: qsTr("Colour Picker")
+        text: qsTr("Color Picker")
 
         onTriggered: root.tools.currentTool = ToolViewModel.ColourPicker
     }
