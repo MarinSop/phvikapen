@@ -128,25 +128,42 @@ ApplicationWindow {
         onTrashWanted: trashDialog.open()
     }
 
-    RowLayout {
+    SplitView {
+        id: mainSplit
+
         anchors.fill: parent
-        spacing: 0
+        orientation: Qt.Horizontal
+
+        handle: Rectangle {
+            color: SplitHandle.pressed ? Theme.accent : Theme.line
+            implicitHeight: 3
+            implicitWidth: 3
+        }
 
         ToolPalette {
-            Layout.fillHeight: true
+            SplitView.maximumWidth: implicitWidth
+            SplitView.minimumWidth: implicitWidth
             actions: appActions
         }
 
         PagesPanel {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 220
+            id: pagesPanel
+
+            SplitView.maximumWidth: 520
+            SplitView.minimumWidth: 140
             actions: appActions
-            visible: settings.showPagesPanel && root.notebook !== null
+            visible: settings.showPagesPanel && root.notebook !== null && (settings.showSections || settings.showPages)
+
+            Component.onCompleted: SplitView.preferredWidth = settings.panelWidth
+            onWidthChanged: {
+                if (mainSplit.resizing) {
+                    settings.panelWidth = pagesPanel.width;
+                }
+            }
         }
 
         EmptyState {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+            SplitView.fillWidth: true
             actions: appActions
             notebooks: notebooks
             visible: root.notebook === null
@@ -155,8 +172,7 @@ ApplicationWindow {
         InkCanvas {
             id: canvas
 
-            Layout.fillHeight: true
-            Layout.fillWidth: true
+            SplitView.fillWidth: true
             enabled: root.notebook !== null && root.notebook.loaded
             deskColor: Theme.desk
             eraserRadius: toolState.eraserRadius
@@ -198,8 +214,9 @@ ApplicationWindow {
         }
 
         PagePanel {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 220
+            SplitView.maximumWidth: 420
+            SplitView.minimumWidth: 160
+            SplitView.preferredWidth: 220
             actions: appActions
             visible: settings.showPagePanel && root.notebook !== null
         }

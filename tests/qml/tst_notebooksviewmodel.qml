@@ -188,6 +188,21 @@ TestCase {
         compare(notebooks.current.errorMessage, "");
     }
 
+    function test_z3_theTabsStandInTheOrderTheyArePutIn() {
+        const notebooks = openLibrary(newLibrary());
+        testCase.addNotebook(notebooks, "First");
+        testCase.addNotebook(notebooks, "Second");
+        testCase.addNotebook(notebooks, "Third");
+        compare(notebooks.openNotebooks, ["First", "Second", "Third"]);
+        notebooks.currentIndex = 2;
+
+        notebooks.moveNotebook(2, 0);
+
+        compare(notebooks.openNotebooks, ["Third", "First", "Second"]);
+        compare(notebooks.currentIndex, 0, "the notebook being read changed");
+        compare(notebooks.current.name, "Third");
+    }
+
     name: "NotebooksViewModel"
 
     Component {

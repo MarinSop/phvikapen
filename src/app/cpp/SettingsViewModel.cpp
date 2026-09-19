@@ -27,6 +27,14 @@ constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
 constexpr auto kPagesPanelSetting = "view/pagesPanel";
 constexpr auto kPagePanelSetting = "view/pagePanel";
+constexpr auto kSectionsSetting = "view/sections";
+constexpr auto kPagesSetting = "view/pages";
+constexpr auto kPanelWidthSetting = "view/panelWidth";
+constexpr auto kSectionsHeightSetting = "view/sectionsHeight";
+constexpr int kNarrowestPanel = 140;
+constexpr int kWidestPanel = 520;
+constexpr int kShortestList = 60;
+constexpr int kTallestList = 800;
 constexpr int kExportScopes = 3;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
@@ -50,6 +58,12 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
                                kExportScopes - 1);
     m_continuousPages = settings.value(kContinuousPagesSetting, m_continuousPages).toBool();
     m_showPagesPanel = settings.value(kPagesPanelSetting, m_showPagesPanel).toBool();
+    m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
+    m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
+    m_panelWidth = std::clamp(settings.value(kPanelWidthSetting, m_panelWidth).toInt(),
+                              kNarrowestPanel, kWidestPanel);
+    m_sectionsHeight = std::clamp(settings.value(kSectionsHeightSetting, m_sectionsHeight).toInt(),
+                                  kShortestList, kTallestList);
     m_showPagePanel = settings.value(kPagePanelSetting, m_showPagePanel).toBool();
     for (const Command& command : commands()) {
         const QString kept = settings.value(kShortcutPrefix + command.id).toString();
@@ -202,6 +216,48 @@ void SettingsViewModel::setShowPagePanel(bool shown) {
     m_showPagePanel = shown;
     QSettings settings;
     settings.setValue(kPagePanelSetting, m_showPagePanel);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setShowSections(bool shown) {
+    if (shown == m_showSections) {
+        return;
+    }
+    m_showSections = shown;
+    QSettings settings;
+    settings.setValue(kSectionsSetting, m_showSections);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setShowPages(bool shown) {
+    if (shown == m_showPages) {
+        return;
+    }
+    m_showPages = shown;
+    QSettings settings;
+    settings.setValue(kPagesSetting, m_showPages);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setPanelWidth(int width) {
+    const int wanted = std::clamp(width, kNarrowestPanel, kWidestPanel);
+    if (wanted == m_panelWidth) {
+        return;
+    }
+    m_panelWidth = wanted;
+    QSettings settings;
+    settings.setValue(kPanelWidthSetting, m_panelWidth);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setSectionsHeight(int height) {
+    const int wanted = std::clamp(height, kShortestList, kTallestList);
+    if (wanted == m_sectionsHeight) {
+        return;
+    }
+    m_sectionsHeight = wanted;
+    QSettings settings;
+    settings.setValue(kSectionsHeightSetting, m_sectionsHeight);
     emit panelsChanged();
 }
 

@@ -261,6 +261,26 @@ void NotebooksViewModel::closeNotebook(int index) {
     show(wanted);
 }
 
+// The tabs stand in the order the reader puts them in.
+void NotebooksViewModel::moveNotebook(int from, int to) {
+    const auto count = static_cast<int>(m_open.size());
+    if (from < 0 || from >= count || to < 0 || to >= count || from == to) {
+        return;
+    }
+    const NotebookViewModel* const shown = current();
+    std::unique_ptr<NotebookViewModel> carried = std::move(m_open[static_cast<std::size_t>(from)]);
+    m_open.erase(m_open.begin() + from);
+    m_open.insert(m_open.begin() + to, std::move(carried));
+    m_currentIndex = -1;
+    emit openNotebooksChanged();
+    const auto found =
+        std::ranges::find_if(m_open, [shown](const std::unique_ptr<NotebookViewModel>& kept) {
+            return kept.get() == shown;
+        });
+    show(found == m_open.end() ? to : static_cast<int>(std::distance(m_open.begin(), found)));
+    rememberSession();
+}
+
 // A notebook saved under another name goes by that name from then on.
 void NotebooksViewModel::takeName(NotebookViewModel& notebook, const QString& wanted) {
     const QString trimmed = wanted.trimmed();

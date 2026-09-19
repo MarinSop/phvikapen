@@ -55,7 +55,6 @@ constexpr int kMaximumMediaPixels = 4096;
 constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
-constexpr float kMediaMargin = 64.0F;
 constexpr float kPickRadius = 6.0F;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
@@ -64,6 +63,8 @@ constexpr int kMediaAround = 4;
 constexpr float kEmptyPageRatio = std::numbers::sqrt2_v<float>;
 constexpr qreal kSmallestMediaScale = 0.5;
 constexpr float kColumnMediaScale = 2.0F;
+constexpr double kMostMediaPixels = 8e6;
+constexpr qreal kFineEnough = 0.01;
 
 [[nodiscard]] core::ContentId hashOf(const QByteArray& data) {
     const QByteArray digest = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -369,14 +370,7 @@ void NotebookViewModel::setCanvas(platform::ink::QtInkItem* canvas) {
         if (m_canvas.isNull()) {
             return;
         }
-        const qreal scale = m_canvas->zoom();
-        const core::Rect seen = m_canvas->visibleOnPage();
-        const bool zoomed =
-            scale > m_mediaScale * kMediaRedrawFactor || scale * kMediaRedrawFactor < m_mediaScale;
-        const bool panned = seen.left < m_mediaRegion.left || seen.top < m_mediaRegion.top
-                            || seen.right > m_mediaRegion.right
-                            || seen.bottom > m_mediaRegion.bottom;
-        if (zoomed || panned) {
+        if (m_canvas->zoom() > m_mediaScale * kMediaRedrawFactor) {
             m_mediaTimer.start();
         }
     });
@@ -1333,14 +1327,18 @@ void NotebookViewModel::drawMedia() {
     }
 
     const core::Rect wanted = wantedRegion(*paper);
-    const qreal scale = std::max(m_canvas->zoom(), kSmallestMediaScale);
-    const auto width = static_cast<int>(
-        std::clamp(static_cast<double>(wanted.width()) * scale, 1.0, double{kMaximumMediaPixels}));
-    const auto height = static_cast<int>(
-        std::clamp(static_cast<double>(wanted.height()) * scale, 1.0, double{kMaximumMediaPixels}));
+    const qreal scale = drawScale(*paper, kSmallestMediaScale);
+    const auto already = m_drawnAt.find(m_currentPage);
+    if (already != m_drawnAt.end() && already->second + kFineEnough >= scale
+        && m_shownMedia.contains(m_currentPage)) {
+        return;
+    }
+    const auto width = static_cast<int>(std::max(1.0, static_cast<double>(wanted.width()) * scale));
+    const auto height =
+        static_cast<int>(std::max(1.0, static_cast<double>(wanted.height()) * scale));
 
     m_mediaScale = scale;
-    m_mediaRegion = wanted;
+    m_drawnAt[m_currentPage] = scale;
     const std::uint64_t opening = m_opening;
     const core::ContentId asset = info->media->asset;
     const platform::pdf::PageRegion region{
@@ -1364,34 +1362,15 @@ void NotebookViewModel::drawMedia() {
         });
 }
 
-core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) const {
-    const core::Rect paperArea{
+// The sheet is drawn whole, as finely as the reader is close, and never in pieces: half a page
+// of a document is worse than a slightly coarse one.
+core::Rect NotebookViewModel::wantedRegion(const core::PaperSize& paper) {
+    return core::Rect{
         .left = 0.0F,
         .top = 0.0F,
         .right = paper.width,
         .bottom = paper.height,
     };
-    if (m_canvas.isNull()) {
-        return paperArea;
-    }
-    // While the whole sheet still fits in one picture it is drawn whole: scrolling then never
-    // runs past what has been drawn.
-    const qreal scale = std::max(m_canvas->zoom(), kSmallestMediaScale);
-    if (paper.width * scale <= kMaximumMediaPixels && paper.height * scale <= kMaximumMediaPixels) {
-        return paperArea;
-    }
-
-    const core::Rect seen = m_canvas->visibleOnPage().inflated(kMediaMargin);
-    const core::Rect within{
-        .left = std::max(paperArea.left, seen.left),
-        .top = std::max(paperArea.top, seen.top),
-        .right = std::min(paperArea.right, seen.right),
-        .bottom = std::min(paperArea.bottom, seen.bottom),
-    };
-    if (within.width() <= 0.0F || within.height() <= 0.0F) {
-        return paperArea;
-    }
-    return within;
 }
 
 void NotebookViewModel::showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
@@ -1481,11 +1460,19 @@ void NotebookViewModel::wantMediaFor(const core::PageInfo& page) {
         });
 }
 
-qreal NotebookViewModel::columnScale(const core::PaperSize& paper) const {
+// A sheet is drawn as finely as the reader is close to it, within what one picture may hold.
+qreal NotebookViewModel::drawScale(const core::PaperSize& paper, qreal least) const {
     const qreal zoom = m_canvas.isNull() ? 1.0 : m_canvas->zoom();
-    const qreal wanted = std::max<qreal>(kColumnMediaScale, zoom);
     const qreal widest = double{kMaximumMediaPixels} / std::max(paper.width, paper.height);
-    return std::clamp(wanted, double{kSmallestMediaScale}, widest);
+    const qreal roomy =
+        std::sqrt(double{kMostMediaPixels}
+                  / (static_cast<double>(paper.width) * static_cast<double>(paper.height)));
+    const qreal wanted = std::max({zoom, least, double{kSmallestMediaScale}});
+    return std::min({wanted, widest, roomy});
+}
+
+qreal NotebookViewModel::columnScale(const core::PaperSize& paper) const {
+    return drawScale(paper, kColumnMediaScale);
 }
 
 int NotebookViewModel::mediaPixelsOn(int index) const {

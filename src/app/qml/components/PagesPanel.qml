@@ -8,12 +8,14 @@ import PhvikaPen.Ui
 Pane {
     id: root
 
-    property int draggedPage: -1
     required property AppActions actions
+    property int draggedPage: -1
+    property int draggedSection: -1
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
     property int renamingPage: -1
     property int renamingSection: -1
+    readonly property SettingsViewModel settings: root.actions.settings
 
     function askToDelete(sectionScope, index, title) {
         deleteDialog.sectionScope = sectionScope;
@@ -64,322 +66,392 @@ Pane {
         target: root.notebook
     }
 
-    ColumnLayout {
+    SplitView {
+        id: split
+
         anchors.fill: parent
-        spacing: 4
+        orientation: Qt.Vertical
 
-        RowLayout {
-            Layout.fillWidth: true
+        handle: Rectangle {
+            color: SplitHandle.pressed ? Theme.accent : Theme.line
+            implicitHeight: 3
+            implicitWidth: 3
+        }
 
-            Label {
+        ColumnLayout {
+            id: sectionsPart
+
+            SplitView.minimumHeight: 80
+            SplitView.preferredHeight: root.settings.sectionsHeight
+            spacing: 4
+            visible: root.settings.showSections
+
+            // Only what the reader drags is kept: laying out must not rewrite it.
+            onHeightChanged: {
+                if (split.resizing) {
+                    root.settings.sectionsHeight = sectionsPart.height;
+                }
+            }
+
+            RowLayout {
                 Layout.fillWidth: true
-                font.bold: true
-                text: qsTr("Sections")
-            }
 
-            QuickButton {
-                action: root.actions.addSection
-                display: AbstractButton.IconOnly
-                icon.source: Icons.plus
-                label: qsTr("New section")
-                objectName: "addSectionButton"
-            }
-        }
-
-        ListView {
-            id: sectionList
-
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(contentHeight, 140)
-            clip: true
-            model: root.ready ? root.notebook.sections : null
-
-            delegate: ItemDelegate {
-                id: sectionDelegate
-
-                required property int count
-                required property int index
-                readonly property bool renaming: root.renamingSection === sectionDelegate.index
-                required property string title
-
-                highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
-                rightPadding: 0
-                width: sectionList.width
-
-                contentItem: RowLayout {
-                    spacing: 4
-
-                    Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: sectionDelegate.title + " (" + sectionDelegate.count + ")"
-                        verticalAlignment: Text.AlignVCenter
-                        visible: !sectionDelegate.renaming
-                    }
-
-                    TextField {
-                        id: sectionName
-
-                        Layout.fillWidth: true
-                        objectName: "sectionNameField"
-                        text: sectionDelegate.title
-                        visible: sectionDelegate.renaming
-
-                        onAccepted: root.renameSection(sectionDelegate.index, sectionName.text)
-                        onActiveFocusChanged: {
-                            if (sectionName.visible && !sectionName.activeFocus) {
-                                root.renameSection(sectionDelegate.index, sectionName.text);
-                            }
-                        }
-                        onVisibleChanged: {
-                            if (sectionName.visible) {
-                                sectionName.selectAll();
-                                sectionName.forceActiveFocus();
-                            }
-                        }
-                    }
-
-                    QuickButton {
-                        enabled: root.ready && root.notebook.sectionCount > 1
-                        icon.source: Icons.close
-                        label: qsTr("Delete section")
-                        objectName: "deleteSectionButton"
-                        // Always there, so that the row does not jump when the pointer crosses it.
-                        opacity: sectionDelegate.hovered || sectionDelegate.highlighted ? 1 : 0
-
-                        onClicked: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
-                    }
+                Label {
+                    Layout.fillWidth: true
+                    font.bold: true
+                    text: qsTr("Sections")
                 }
 
-                onClicked: root.notebook.currentSection = sectionDelegate.index
-                onPressAndHold: sectionMenu.popup()
-
-                TapHandler {
-                    acceptedButtons: Qt.RightButton
-
-                    onTapped: sectionMenu.popup()
-                }
-
-                Menu {
-                    id: sectionMenu
-
-                    MenuItem {
-                        text: qsTr("Rename")
-
-                        onTriggered: root.renamingSection = sectionDelegate.index
-                    }
-
-                    MenuItem {
-                        enabled: sectionDelegate.index > 0
-                        text: qsTr("Move up")
-
-                        onTriggered: root.notebook.moveSection(sectionDelegate.index, sectionDelegate.index - 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && sectionDelegate.index + 1 < root.notebook.sectionCount
-                        text: qsTr("Move down")
-
-                        onTriggered: root.notebook.moveSection(sectionDelegate.index, sectionDelegate.index + 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && root.notebook.sectionCount > 1
-                        text: qsTr("Delete…")
-
-                        onTriggered: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
-                    }
+                QuickButton {
+                    Layout.rightMargin: 4
+                    action: root.actions.addSection
+                    display: AbstractButton.IconOnly
+                    icon.source: Icons.plus
+                    label: qsTr("New section")
+                    objectName: "addSectionButton"
                 }
             }
-        }
 
-        RowLayout {
-            Layout.fillWidth: true
+            ListView {
+                id: sectionList
 
-            Label {
+                Layout.fillHeight: true
                 Layout.fillWidth: true
-                font.bold: true
-                text: qsTr("Pages")
-            }
+                clip: true
+                model: root.ready ? root.notebook.sections : null
 
-            QuickButton {
-                action: root.actions.addPage
-                display: AbstractButton.IconOnly
-                icon.source: Icons.plus
-                label: qsTr("New page")
-                objectName: "addPageButton"
+                delegate: ItemDelegate {
+                    id: sectionDelegate
+
+                    required property int index
+                    readonly property bool renaming: root.renamingSection === sectionDelegate.index
+                    required property string title
+
+                    Drag.active: sectionDrag.active
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+                    Drag.source: sectionDelegate
+                    highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
+                    rightPadding: 4
+                    width: sectionList.width
+                    z: sectionDrag.active ? 2 : 1
+
+                    contentItem: RowLayout {
+                        spacing: 4
+
+                        Label {
+                            Layout.fillHeight: true
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: sectionDelegate.title
+                            verticalAlignment: Text.AlignVCenter
+                            visible: !sectionDelegate.renaming
+                        }
+
+                        TextField {
+                            id: sectionName
+
+                            Layout.fillWidth: true
+                            objectName: "sectionNameField"
+                            text: sectionDelegate.title
+                            visible: sectionDelegate.renaming
+
+                            onAccepted: root.renameSection(sectionDelegate.index, sectionName.text)
+                            onActiveFocusChanged: {
+                                if (sectionName.visible && !sectionName.activeFocus) {
+                                    root.renameSection(sectionDelegate.index, sectionName.text);
+                                }
+                            }
+                            onVisibleChanged: {
+                                if (sectionName.visible) {
+                                    sectionName.selectAll();
+                                    sectionName.forceActiveFocus();
+                                }
+                            }
+                        }
+
+                        QuickButton {
+                            enabled: root.ready && root.notebook.sectionCount > 1
+                            icon.source: Icons.close
+                            label: qsTr("Delete section")
+                            objectName: "deleteSectionButton"
+                            // Always there, so the row does not jump when the pointer crosses it.
+                            opacity: sectionDelegate.hovered || sectionDelegate.highlighted ? 1 : 0
+
+                            onClicked: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
+                        }
+                    }
+
+                    onClicked: root.notebook.currentSection = sectionDelegate.index
+                    onPressAndHold: sectionMenu.popup()
+
+                    DragHandler {
+                        id: sectionDrag
+
+                        target: null
+                        yAxis.enabled: true
+
+                        onActiveChanged: {
+                            if (active) {
+                                root.draggedSection = sectionDelegate.index;
+                                sectionDelegate.grabToImage(function (result) {
+                                    sectionDelegate.Drag.imageSource = result.url;
+                                });
+                            } else {
+                                sectionDelegate.Drag.drop();
+                                root.draggedSection = -1;
+                            }
+                        }
+                    }
+
+                    DropArea {
+                        anchors.fill: parent
+
+                        onDropped: {
+                            if (root.draggedSection >= 0 && root.draggedSection !== sectionDelegate.index) {
+                                root.notebook.moveSection(root.draggedSection, sectionDelegate.index);
+                            }
+                        }
+                    }
+
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
+
+                        onTapped: sectionMenu.popup()
+                    }
+
+                    Menu {
+                        id: sectionMenu
+
+                        MenuItem {
+                            text: qsTr("Rename")
+
+                            onTriggered: root.renamingSection = sectionDelegate.index
+                        }
+
+                        MenuItem {
+                            enabled: sectionDelegate.index > 0
+                            text: qsTr("Move up")
+
+                            onTriggered: root.notebook.moveSection(sectionDelegate.index, sectionDelegate.index - 1)
+                        }
+
+                        MenuItem {
+                            enabled: root.ready && sectionDelegate.index + 1 < root.notebook.sectionCount
+                            text: qsTr("Move down")
+
+                            onTriggered: root.notebook.moveSection(sectionDelegate.index, sectionDelegate.index + 1)
+                        }
+
+                        MenuItem {
+                            enabled: root.ready && root.notebook.sectionCount > 1
+                            text: qsTr("Delete…")
+
+                            onTriggered: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
+                        }
+                    }
+                }
             }
         }
 
-        ListView {
-            id: pageList
+        ColumnLayout {
+            id: pagesPart
 
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            clip: true
-            model: root.ready ? root.notebook.pages : null
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: 80
+            spacing: 4
+            visible: root.settings.showPages
 
-            delegate: ItemDelegate {
-                id: pageDelegate
+            RowLayout {
+                Layout.fillWidth: true
 
-                required property int index
-                readonly property bool panelReady: root.ready
-                readonly property bool renaming: root.renamingPage === pageDelegate.index
-                required property string thumbnail
-                required property string title
-
-                function askForThumbnail() {
-                    if (root.ready && pageDelegate.thumbnail === "") {
-                        root.notebook.wantThumbnail(pageDelegate.index);
-                    }
+                Label {
+                    Layout.fillWidth: true
+                    font.bold: true
+                    text: qsTr("Pages")
                 }
 
-                Drag.active: pageDrag.active
-                Drag.hotSpot.x: width / 2
-                Drag.hotSpot.y: height / 2
-                Drag.source: pageDelegate
-                height: 64
-                highlighted: root.ready && pageDelegate.index === root.notebook.currentPage
-                rightPadding: 0
-                width: pageList.width
-                z: pageDrag.active ? 2 : 1
+                QuickButton {
+                    Layout.rightMargin: 4
+                    action: root.actions.addPage
+                    display: AbstractButton.IconOnly
+                    icon.source: Icons.plus
+                    label: qsTr("New page")
+                    objectName: "addPageButton"
+                }
+            }
 
-                contentItem: RowLayout {
-                    spacing: 8
+            ListView {
+                id: pageList
 
-                    Rectangle {
-                        Layout.preferredHeight: 56
-                        Layout.preferredWidth: 44
-                        border.color: palette.mid
-                        border.width: 1
-                        color: "white"
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                clip: true
+                model: root.ready ? root.notebook.pages : null
 
-                        Image {
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            cache: false
-                            fillMode: Image.PreserveAspectFit
-                            source: pageDelegate.thumbnail
+                delegate: ItemDelegate {
+                    id: pageDelegate
+
+                    required property int index
+                    readonly property bool panelReady: root.ready
+                    readonly property bool renaming: root.renamingPage === pageDelegate.index
+                    required property string thumbnail
+                    required property string title
+
+                    function askForThumbnail() {
+                        if (root.ready && pageDelegate.thumbnail === "") {
+                            root.notebook.wantThumbnail(pageDelegate.index);
                         }
                     }
 
-                    Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        text: pageDelegate.title
-                        verticalAlignment: Text.AlignVCenter
-                        visible: !pageDelegate.renaming
-                    }
+                    Drag.active: pageDrag.active
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+                    Drag.source: pageDelegate
+                    height: 64
+                    highlighted: root.ready && pageDelegate.index === root.notebook.currentPage
+                    rightPadding: 4
+                    width: pageList.width
+                    z: pageDrag.active ? 2 : 1
 
-                    TextField {
-                        id: pageName
+                    contentItem: RowLayout {
+                        spacing: 8
 
-                        Layout.fillWidth: true
-                        objectName: "pageNameField"
-                        text: pageDelegate.title
-                        visible: pageDelegate.renaming
+                        Rectangle {
+                            Layout.preferredHeight: 56
+                            Layout.preferredWidth: 44
+                            border.color: palette.mid
+                            border.width: 1
+                            color: "white"
 
-                        onAccepted: root.renamePage(pageDelegate.index, pageName.text)
-                        onActiveFocusChanged: {
-                            if (pageName.visible && !pageName.activeFocus) {
-                                root.renamePage(pageDelegate.index, pageName.text);
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 1
+                                cache: false
+                                fillMode: Image.PreserveAspectFit
+                                source: pageDelegate.thumbnail
                             }
                         }
-                        onVisibleChanged: {
-                            if (pageName.visible) {
-                                pageName.selectAll();
-                                pageName.forceActiveFocus();
+
+                        Label {
+                            Layout.fillHeight: true
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            text: pageDelegate.title
+                            verticalAlignment: Text.AlignVCenter
+                            visible: !pageDelegate.renaming
+                        }
+
+                        TextField {
+                            id: pageName
+
+                            Layout.fillWidth: true
+                            objectName: "pageNameField"
+                            text: pageDelegate.title
+                            visible: pageDelegate.renaming
+
+                            onAccepted: root.renamePage(pageDelegate.index, pageName.text)
+                            onActiveFocusChanged: {
+                                if (pageName.visible && !pageName.activeFocus) {
+                                    root.renamePage(pageDelegate.index, pageName.text);
+                                }
+                            }
+                            onVisibleChanged: {
+                                if (pageName.visible) {
+                                    pageName.selectAll();
+                                    pageName.forceActiveFocus();
+                                }
+                            }
+                        }
+
+                        QuickButton {
+                            enabled: root.ready && root.notebook.pageCount > 1
+                            icon.source: Icons.close
+                            label: qsTr("Delete page")
+                            objectName: "deletePageButton"
+                            opacity: pageDelegate.hovered || pageDelegate.highlighted ? 1 : 0
+
+                            onClicked: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
+                        }
+                    }
+
+                    Component.onCompleted: pageDelegate.askForThumbnail()
+                    onPanelReadyChanged: pageDelegate.askForThumbnail()
+                    onThumbnailChanged: pageDelegate.askForThumbnail()
+                    onClicked: root.notebook.currentPage = pageDelegate.index
+                    onPressAndHold: pageMenu.popup()
+
+                    DragHandler {
+                        id: pageDrag
+
+                        target: null
+                        yAxis.enabled: true
+
+                        onActiveChanged: {
+                            if (active) {
+                                root.draggedPage = pageDelegate.index;
+                                pageDelegate.grabToImage(function (result) {
+                                    pageDelegate.Drag.imageSource = result.url;
+                                });
+                            } else {
+                                pageDelegate.Drag.drop();
+                                root.draggedPage = -1;
                             }
                         }
                     }
 
-                    QuickButton {
-                        enabled: root.ready && root.notebook.pageCount > 1
-                        icon.source: Icons.close
-                        label: qsTr("Delete page")
-                        objectName: "deletePageButton"
-                        opacity: pageDelegate.hovered || pageDelegate.highlighted ? 1 : 0
+                    DropArea {
+                        anchors.fill: parent
 
-                        onClicked: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
-                    }
-                }
-
-                Component.onCompleted: pageDelegate.askForThumbnail()
-                onPanelReadyChanged: pageDelegate.askForThumbnail()
-                onThumbnailChanged: pageDelegate.askForThumbnail()
-                onClicked: root.notebook.currentPage = pageDelegate.index
-                onPressAndHold: pageMenu.popup()
-
-                DragHandler {
-                    id: pageDrag
-
-                    target: null
-                    yAxis.enabled: true
-
-                    onActiveChanged: {
-                        if (active) {
-                            root.draggedPage = pageDelegate.index;
-                            pageDelegate.grabToImage(function (result) {
-                                pageDelegate.Drag.imageSource = result.url;
-                            });
-                        } else {
-                            pageDelegate.Drag.drop();
-                            root.draggedPage = -1;
+                        onDropped: {
+                            if (root.draggedPage >= 0 && root.draggedPage !== pageDelegate.index) {
+                                root.notebook.movePage(root.draggedPage, pageDelegate.index);
+                            }
                         }
                     }
-                }
 
-                DropArea {
-                    anchors.fill: parent
+                    TapHandler {
+                        acceptedButtons: Qt.RightButton
 
-                    onDropped: {
-                        if (root.draggedPage >= 0 && root.draggedPage !== pageDelegate.index) {
-                            root.notebook.movePage(root.draggedPage, pageDelegate.index);
+                        onTapped: pageMenu.popup()
+                    }
+
+                    Menu {
+                        id: pageMenu
+
+                        MenuItem {
+                            text: qsTr("Rename")
+
+                            onTriggered: root.renamingPage = pageDelegate.index
                         }
-                    }
-                }
 
-                TapHandler {
-                    acceptedButtons: Qt.RightButton
+                        MenuItem {
+                            objectName: "duplicatePageItem"
+                            text: qsTr("Duplicate")
 
-                    onTapped: pageMenu.popup()
-                }
+                            onTriggered: root.notebook.duplicatePage(pageDelegate.index)
+                        }
 
-                Menu {
-                    id: pageMenu
+                        MenuItem {
+                            enabled: pageDelegate.index > 0
+                            text: qsTr("Move up")
 
-                    MenuItem {
-                        text: qsTr("Rename")
+                            onTriggered: root.notebook.movePage(pageDelegate.index, pageDelegate.index - 1)
+                        }
 
-                        onTriggered: root.renamingPage = pageDelegate.index
-                    }
+                        MenuItem {
+                            enabled: root.ready && pageDelegate.index + 1 < root.notebook.pageCount
+                            text: qsTr("Move down")
 
-                    MenuItem {
-                        objectName: "duplicatePageItem"
-                        text: qsTr("Duplicate")
+                            onTriggered: root.notebook.movePage(pageDelegate.index, pageDelegate.index + 1)
+                        }
 
-                        onTriggered: root.notebook.duplicatePage(pageDelegate.index)
-                    }
+                        MenuItem {
+                            enabled: root.ready && root.notebook.pageCount > 1
+                            text: qsTr("Delete…")
 
-                    MenuItem {
-                        enabled: pageDelegate.index > 0
-                        text: qsTr("Move up")
-
-                        onTriggered: root.notebook.movePage(pageDelegate.index, pageDelegate.index - 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && pageDelegate.index + 1 < root.notebook.pageCount
-                        text: qsTr("Move down")
-
-                        onTriggered: root.notebook.movePage(pageDelegate.index, pageDelegate.index + 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && root.notebook.pageCount > 1
-                        text: qsTr("Delete…")
-
-                        onTriggered: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
+                            onTriggered: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
+                        }
                     }
                 }
             }

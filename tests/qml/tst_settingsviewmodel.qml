@@ -110,6 +110,25 @@ TestCase {
         later.exportScope = 0;
     }
 
+    function test_j_theShapeOfThePanelsIsRemembered() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+        verify(settings.showSections);
+        verify(settings.showPages);
+
+        settings.showSections = false;
+        settings.panelWidth = 320;
+        settings.sectionsHeight = 210;
+
+        const later = createTemporaryObject(settingsComponent, testCase);
+        verify(!later.showSections);
+        compare(later.panelWidth, 320);
+        compare(later.sectionsHeight, 210);
+
+        later.showSections = true;
+        later.panelWidth = 220;
+        later.sectionsHeight = 150;
+    }
+
     name: "SettingsViewModel"
 
     Component {

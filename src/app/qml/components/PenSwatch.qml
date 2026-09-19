@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import PhvikaPen.Ui
 
 AbstractButton {
     id: root
@@ -11,8 +12,8 @@ AbstractButton {
     implicitWidth: 32
 
     background: Rectangle {
-        border.color: root.checked ? root.palette.highlight : "transparent"
-        border.width: 2
+        border.color: root.checked ? Theme.accent : Theme.line
+        border.width: root.checked ? 2 : 1
         color: root.hovered ? Qt.rgba(0.5, 0.5, 0.5, 0.15) : "transparent"
         radius: 6
     }

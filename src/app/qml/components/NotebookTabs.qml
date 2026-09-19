@@ -8,9 +8,10 @@ import PhvikaPen.Ui
 Item {
     id: root
 
+    property int draggedTab: -1
     required property NotebooksViewModel notebooks
 
-    implicitHeight: tabRow.implicitHeight
+    implicitHeight: 36
 
     Rectangle {
         anchors.fill: parent
@@ -25,9 +26,9 @@ Item {
         spacing: 4
 
         Image {
-            Layout.leftMargin: 8
-            Layout.preferredHeight: 22
-            Layout.preferredWidth: 22
+            Layout.leftMargin: 7
+            Layout.preferredHeight: 26
+            Layout.preferredWidth: 26
             fillMode: Image.PreserveAspectFit
             mipmap: true
             objectName: "brandMark"
@@ -39,7 +40,9 @@ Item {
         TabBar {
             id: tabBar
 
+            Layout.fillHeight: true
             Layout.fillWidth: true
+            background: null
             currentIndex: root.notebooks.currentIndex
 
             onCurrentIndexChanged: root.notebooks.currentIndex = tabBar.currentIndex
@@ -54,17 +57,59 @@ Item {
                     required property string modelData
                     readonly property bool open: tabBar.currentIndex === tab.index
 
-                    implicitHeight: 26
-                    padding: 6
-                    text: tab.modelData
-                    width: Math.min(190, implicitContentWidth + 48)
+                    height: tabBar.height
+                    width: Math.min(200, name.implicitWidth + 52)
+                    Drag.active: tabDrag.active
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+                    Drag.source: tab
 
                     background: Rectangle {
                         color: tab.open ? Theme.surface : "transparent"
-                        radius: 4
+                        radius: 5
+                    }
+                    contentItem: Label {
+                        id: name
+
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignLeft
+                        leftPadding: 10
+                        rightPadding: 26
+                        text: tab.modelData
+                        verticalAlignment: Text.AlignVCenter
                     }
 
                     onPressAndHold: tabMenu.popup()
+
+                    DragHandler {
+                        id: tabDrag
+
+                        target: null
+                        xAxis.enabled: true
+                        yAxis.enabled: false
+
+                        onActiveChanged: {
+                            if (active) {
+                                root.draggedTab = tab.index;
+                                tab.grabToImage(function (result) {
+                                    tab.Drag.imageSource = result.url;
+                                });
+                            } else {
+                                tab.Drag.drop();
+                                root.draggedTab = -1;
+                            }
+                        }
+                    }
+
+                    DropArea {
+                        anchors.fill: parent
+
+                        onDropped: {
+                            if (root.draggedTab >= 0 && root.draggedTab !== tab.index) {
+                                root.notebooks.moveNotebook(root.draggedTab, tab.index);
+                            }
+                        }
+                    }
 
                     TapHandler {
                         acceptedButtons: Qt.RightButton
@@ -74,7 +119,7 @@ Item {
 
                     ToolButton {
                         anchors.right: parent.right
-                        anchors.rightMargin: 3
+                        anchors.rightMargin: 6
                         anchors.verticalCenter: parent.verticalCenter
                         bottomPadding: 0
                         display: AbstractButton.IconOnly
@@ -126,9 +171,8 @@ Item {
         }
 
         QuickButton {
+            Layout.rightMargin: 6
             icon.source: Icons.plus
-            implicitHeight: 30
-            implicitWidth: 34
             label: qsTr("Open or create a notebook")
             objectName: "notebooksButton"
 

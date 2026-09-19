@@ -61,7 +61,7 @@ ToolBar {
         ToolButton {
             id: colourButton
 
-            leftPadding: 30
+            leftPadding: 32
             objectName: "colorButton"
             text: qsTr("Color")
             visible: root.draws
@@ -70,14 +70,22 @@ ToolBar {
 
             Rectangle {
                 anchors.left: parent.left
-                anchors.leftMargin: 8
+                anchors.leftMargin: 6
                 anchors.verticalCenter: parent.verticalCenter
-                border.color: Qt.rgba(0, 0, 0, 0.35)
+                border.color: Theme.subtleText
                 border.width: 1
-                color: root.tools.strokeColor
-                height: 16
+                color: "transparent"
+                height: 22
                 radius: height / 2
-                width: 16
+                width: 22
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    color: root.tools.strokeColor
+                    height: 15
+                    radius: height / 2
+                    width: 15
+                }
             }
 
             Menu {

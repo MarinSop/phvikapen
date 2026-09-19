@@ -177,6 +177,16 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.sectionsList
+            objectName: "sectionsListItem"
+        }
+
+        MenuCommand {
+            action: root.actions.pagesList
+            objectName: "pagesListItem"
+        }
+
+        MenuCommand {
             action: root.actions.pagePanel
             objectName: "pagePanelItem"
         }

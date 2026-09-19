@@ -332,13 +332,14 @@ private:
     void redrawMedia();
     void showRenderedPage(std::uint64_t opening, const core::ContentId& asset,
                           const core::Rect& area, const platform::pdf::PageImage& image);
-    [[nodiscard]] core::Rect wantedRegion(const core::PaperSize& paper) const;
+    [[nodiscard]] static core::Rect wantedRegion(const core::PaperSize& paper);
     void showPageMedia(const core::Uuid& page, const QImage& picture, const QRectF& area);
     void publishMedia();
     void wantNeighbours();
     void wantMediaFor(const core::PageInfo& page);
     [[nodiscard]] bool hasWholeMedia(const core::PageInfo& page) const;
     void forgetFarMedia(std::span<const core::PageInfo> pages, int here);
+    [[nodiscard]] qreal drawScale(const core::PaperSize& paper, qreal least) const;
     [[nodiscard]] qreal columnScale(const core::PaperSize& paper) const;
     void drawColumnMedia(const core::Uuid& page, const core::PageStyle& style, int index,
                          core::Asset asset);
@@ -368,7 +369,6 @@ private:
     bool m_continuous{false};
     QTimer m_mediaTimer;
     qreal m_mediaScale{0.0};
-    core::Rect m_mediaRegion;
     std::jthread m_export;
     std::jthread m_pictures;
     bool m_exporting{false};

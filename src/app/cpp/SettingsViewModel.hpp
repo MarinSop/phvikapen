@@ -33,6 +33,11 @@ class SettingsViewModel : public QObject {
         bool showPagesPanel READ showPagesPanel WRITE setShowPagesPanel NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
         bool showPagePanel READ showPagePanel WRITE setShowPagePanel NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(
+        int sectionsHeight READ sectionsHeight WRITE setSectionsHeight NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
         qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
@@ -83,6 +88,25 @@ public:
 
     [[nodiscard]] bool showPagePanel() const { return m_showPagePanel; }
 
+    static constexpr int kDefaultPanelWidth = 220;
+    static constexpr int kDefaultSectionsHeight = 150;
+
+    [[nodiscard]] bool showSections() const { return m_showSections; }
+
+    void setShowSections(bool shown);
+
+    [[nodiscard]] bool showPages() const { return m_showPages; }
+
+    void setShowPages(bool shown);
+
+    [[nodiscard]] int panelWidth() const { return m_panelWidth; }
+
+    void setPanelWidth(int width);
+
+    [[nodiscard]] int sectionsHeight() const { return m_sectionsHeight; }
+
+    void setSectionsHeight(int height);
+
     void setShowPagePanel(bool shown);
 
     [[nodiscard]] qreal customWidth() const;
@@ -123,6 +147,10 @@ private:
     bool m_continuousPages{true};
     bool m_showPagesPanel{true};
     bool m_showPagePanel{false};
+    bool m_showSections{true};
+    bool m_showPages{true};
+    int m_panelWidth{kDefaultPanelWidth};
+    int m_sectionsHeight{kDefaultSectionsHeight};
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};

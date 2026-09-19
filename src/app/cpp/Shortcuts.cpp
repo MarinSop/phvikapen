@@ -61,6 +61,8 @@ namespace {
         },
         Command{.id = "pagesPanel", .name = QObject::tr("Pages panel"), .fallback = "Ctrl+1"},
         Command{.id = "pagePanel", .name = QObject::tr("Page panel"), .fallback = "Ctrl+2"},
+        Command{.id = "sectionsList", .name = QObject::tr("Sections list"), .fallback = "Ctrl+3"},
+        Command{.id = "pagesList", .name = QObject::tr("Pages list"), .fallback = "Ctrl+4"},
         Command{
             .id = "continuousPages",
             .name = QObject::tr("Pages one below the other"),

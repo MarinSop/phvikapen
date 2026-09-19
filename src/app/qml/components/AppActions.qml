@@ -287,6 +287,22 @@ Item {
 
         onTriggered: root.settings.showPagesPanel = !root.settings.showPagesPanel
     }
+    readonly property Action sectionsList: Action {
+        checkable: true
+        checked: root.settings.showSections
+        shortcut: root.keysFor("sectionsList", "Ctrl+3")
+        text: qsTr("Sections")
+
+        onTriggered: root.settings.showSections = !root.settings.showSections
+    }
+    readonly property Action pagesList: Action {
+        checkable: true
+        checked: root.settings.showPages
+        shortcut: root.keysFor("pagesList", "Ctrl+4")
+        text: qsTr("Pages")
+
+        onTriggered: root.settings.showPages = !root.settings.showPages
+    }
     readonly property Action pagePanel: Action {
         checkable: true
         checked: root.settings.showPagePanel

@@ -659,7 +659,7 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
-    function test_zoomingRightInAsksForASmallerPartOfTheImportedPage() {
+    function test_theWholeSheetIsDrawnHoweverCloseTheReaderComes() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
         notebook.importDocument("file://" + samplePdf);
@@ -668,12 +668,15 @@ TestCase {
         const wholeWidth = canvas.mediaArea.width;
         const wholeHeight = canvas.mediaArea.height;
 
-        for (let step = 0; step < 10; ++step) {
+        for (let step = 0; step < 16; ++step) {
             canvas.zoomIn();
         }
+        wait(400);
 
-        tryVerify(() => canvas.mediaArea.width < wholeWidth);
-        verify(canvas.mediaArea.height < wholeHeight);
+        compare(canvas.mediaArea.width, wholeWidth, "only a part of the sheet was drawn");
+        compare(canvas.mediaArea.height, wholeHeight);
+        verify(canvas.mediaSize.width <= 4096);
+        verify(canvas.mediaSize.height <= 4096);
         compare(notebook.errorMessage, "");
     }
 
