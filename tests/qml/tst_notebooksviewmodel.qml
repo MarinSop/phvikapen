@@ -20,7 +20,7 @@ TestCase {
     // A notebook is part of the library once the reader has saved it there.
     function keepNotebook(notebooks, directory, name) {
         testCase.addNotebook(notebooks, name);
-        notebooks.current.saveAs("file://" + directory + "/" + name + ".phvika");
+        notebooks.current.saveAs(AppInfo.fileUrl(directory + "/" + name + ".phvika"));
         tryVerify(() => notebooks.library.indexOf(name) >= 0);
     }
 
@@ -196,7 +196,7 @@ TestCase {
     function test_z2_aNotebookStartedFromADocumentHoldsOnlyItsPages() {
         const notebooks = openLibrary(newLibrary());
 
-        notebooks.createNotebookWithSetup("Reader", PageOptions.A4, PageOptions.Blank, false, "file://" + samplePdf);
+        notebooks.createNotebookWithSetup("Reader", PageOptions.A4, PageOptions.Blank, false, AppInfo.fileUrl(samplePdf));
 
         tryCompare(notebooks.current, "loaded", true);
         tryCompare(notebooks.current, "pageCount", 2);
@@ -227,7 +227,7 @@ TestCase {
         compare(notebooks.library.indexOf("Draft"), -1, "an unsaved notebook was put in the library");
         verify(notebooks.current.keptAt === "");
 
-        notebooks.current.saveAs("file://" + temporaryDirectory + "/kept-" + testCase.libraryCount + ".phvika");
+        notebooks.current.saveAs(AppInfo.fileUrl(temporaryDirectory + "/kept-" + testCase.libraryCount + ".phvika"));
 
         tryVerify(() => notebooks.library.indexOf("kept-" + testCase.libraryCount) >= 0, 3000, "a saved notebook is still missing from the library");
     }
@@ -235,7 +235,7 @@ TestCase {
     function test_z5_pagesFromADocumentKeepTheirOwnSizeUnlessPaperIsAskedFor() {
         const kept = openLibrary(newLibrary());
 
-        kept.createNotebookWithSetup("Reader", -1, PageOptions.Blank, false, "file://" + samplePdf);
+        kept.createNotebookWithSetup("Reader", -1, PageOptions.Blank, false, AppInfo.fileUrl(samplePdf));
 
         tryCompare(kept.current, "pageCount", 2);
         wait(200);
@@ -243,7 +243,7 @@ TestCase {
 
         const given = openLibrary(newLibrary());
 
-        given.createNotebookWithSetup("Reader", PageOptions.A5, PageOptions.Blank, false, "file://" + samplePdf);
+        given.createNotebookWithSetup("Reader", PageOptions.A5, PageOptions.Blank, false, AppInfo.fileUrl(samplePdf));
 
         tryCompare(given.current, "pageCount", 2);
         tryCompare(given.current, "paper", PageOptions.A5, 3000, "the paper that was asked for never reached the pages");

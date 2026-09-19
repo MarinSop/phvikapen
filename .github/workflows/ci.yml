@@ -190,7 +190,9 @@ jobs:
             $env:QT_FORCE_STDERR_LOGGING = "1"
             & $exe -v2 *> qml-tests.log
             Write-Host "exit code: $LASTEXITCODE"
-            Get-Content qml-tests.log -Tail 150
+            Select-String -Path qml-tests.log -Pattern "^FAIL!" -Context 0, 5 |
+              Select-Object -First 40
+            Get-Content qml-tests.log -Tail 20
           } else {
             Write-Host "$exe was never built"
           }

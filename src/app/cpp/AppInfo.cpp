@@ -4,6 +4,7 @@
 
 #include <QKeySequence>
 #include <QString>
+#include <QUrl>
 #include <QVariant>
 
 #include <string_view>
@@ -22,6 +23,10 @@ AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} 
 
 QString AppInfo::keyName(int key) {
     return QKeySequence{key}.toString(QKeySequence::PortableText);
+}
+
+QUrl AppInfo::fileUrl(const QString& path) {
+    return QUrl::fromLocalFile(path);
 }
 
 QString AppInfo::shortcutText(const QVariant& shortcut) {

@@ -157,9 +157,9 @@ ApplicationWindow {
         }
         onSaveWanted: {
             const kept = root.notebook.keptAt;
-            const folder = kept === "" ? StandardPaths.writableLocation(StandardPaths.DocumentsLocation) : "file://" + kept.substring(0, kept.lastIndexOf("/"));
+            const folder = kept === "" ? StandardPaths.writableLocation(StandardPaths.DocumentsLocation) : AppInfo.fileUrl(kept.substring(0, kept.lastIndexOf("/")));
             saveDialog.currentFolder = folder;
-            saveDialog.selectedFile = kept === "" ? folder + "/" + root.notebook.title + ".phvika" : "file://" + kept;
+            saveDialog.selectedFile = kept === "" ? folder + "/" + root.notebook.title + ".phvika" : AppInfo.fileUrl(kept);
             saveDialog.open();
         }
         onExportWanted: scope => {

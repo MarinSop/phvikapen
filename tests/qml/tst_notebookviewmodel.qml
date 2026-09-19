@@ -92,7 +92,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         compare(notebook.pageCount, 1);
 
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
 
         tryCompare(notebook, "pageCount", 3);
         compare(notebook.currentPage, 1);
@@ -112,7 +112,7 @@ TestCase {
     function test_animportedPageSurvivesReopening() {
         const path = newNotebookPath();
         const first = openNotebook(path);
-        first.importDocument("file://" + samplePdf);
+        first.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(first, "pageCount", 3);
         first.destroy();
         wait(0);
@@ -127,7 +127,7 @@ TestCase {
     function test_theNotebookCanBeWrittenOutAsAPdf() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 120, 120);
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         const target = temporaryDirectory + "/exported-" + notebookCount + ".pdf";
         const done = createTemporaryObject(signalSpyComponent, testCase, {
@@ -135,7 +135,7 @@ TestCase {
             signalName: "exported"
         });
 
-        notebook.exportToPdf("file://" + target);
+        notebook.exportToPdf(AppInfo.fileUrl(target));
 
         tryCompare(done, "count", 1);
         compare(done.signalArguments[0][0], target);
@@ -147,7 +147,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         const target = temporaryDirectory + "/missing/exported.pdf";
 
-        notebook.exportToPdf("file://" + target);
+        notebook.exportToPdf(AppInfo.fileUrl(target));
 
         tryVerify(() => notebook.errorMessage !== "");
         compare(notebook.exporting, false);
@@ -211,7 +211,7 @@ TestCase {
             signalName: "saved"
         });
 
-        notebook.saveAs("file://" + target);
+        notebook.saveAs(AppInfo.fileUrl(target));
 
         tryCompare(done, "count", 1);
         compare(notebook.keptAt, target);
@@ -548,7 +548,7 @@ TestCase {
     function test_thePageBeingReadFollowsTheNewPaperAtOnce() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         notebook.continuous = true;
         tryVerify(() => canvas.mediaArea.width > 0);
@@ -565,7 +565,7 @@ TestCase {
     function test_endlessPaperStillKeepsThePagesOfADocumentApart() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         notebook.continuous = true;
         notebook.currentPage = 1;
@@ -586,7 +586,7 @@ TestCase {
     function test_onePageAtATimeAlsoFollowsTheNewPaper() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         verify(!notebook.continuous);
         tryVerify(() => canvas.mediaArea.width > 0);
@@ -753,7 +753,7 @@ TestCase {
         verify(notebook.edited);
 
         const target = temporaryDirectory + "/kept-" + notebookCount + ".phvika";
-        notebook.saveAs("file://" + target);
+        notebook.saveAs(AppInfo.fileUrl(target));
 
         tryCompare(saved, "count", 1);
         verify(!notebook.edited);
@@ -779,7 +779,7 @@ TestCase {
     function test_theWholeImportedPageIsDrawnWhileItFitsInOnePicture() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         tryVerify(() => canvas.mediaArea.width > 0);
         const wholeWidth = canvas.mediaArea.width;
@@ -798,7 +798,7 @@ TestCase {
     function test_theDocumentIsDrawnAgainWhenTheReaderComesCloser() {
         const path = newNotebookPath();
         const first = openNotebook(path);
-        first.importDocument("file://" + samplePdf);
+        first.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(first, "pageCount", 3);
         first.canvas = null;
 
@@ -826,7 +826,7 @@ TestCase {
     function test_theSheetsAroundAreDrawnFinelyWhenTheReaderComesCloser() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         notebook.continuous = true;
         notebook.currentPage = 1;
@@ -846,7 +846,7 @@ TestCase {
     function test_theWholeSheetIsDrawnHoweverCloseTheReaderComes() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
         tryVerify(() => canvas.mediaArea.width > 0);
         const wholeWidth = canvas.mediaArea.width;
@@ -868,7 +868,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
 
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
 
         tryVerify(() => canvas.mediaArea.width > 0);
@@ -882,7 +882,7 @@ TestCase {
 
     function test_thePictureOfAnImportedPageHasTheDocumentInIt() {
         const notebook = openNotebook(newNotebookPath());
-        notebook.importDocument("file://" + samplePdf);
+        notebook.importDocument(AppInfo.fileUrl(samplePdf));
         tryCompare(notebook, "pageCount", 3);
 
         notebook.wantThumbnail(1);

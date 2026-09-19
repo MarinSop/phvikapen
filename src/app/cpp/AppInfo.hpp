@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QUrl>
 #include <QVariant>
 #include <QtQmlIntegration>
 
@@ -21,6 +22,8 @@ public:
     Q_INVOKABLE [[nodiscard]] static QString shortcutText(const QVariant& shortcut);
 
     Q_INVOKABLE [[nodiscard]] static QString keyName(int key);
+
+    Q_INVOKABLE [[nodiscard]] static QUrl fileUrl(const QString& path);
 
 private:
     QString m_version;
