@@ -118,8 +118,8 @@ TEST(StrokeShapesTest, ABoxKeepsItsCornersUntilTheyAreRoundedOff) {
         return nearest;
     };
 
-    const Stroke sharp = shaped(drawn, Shape::Rectangle, ShapeKeys{}, 0.0F);
-    const Stroke round = shaped(drawn, Shape::Rectangle, ShapeKeys{}, 20.0F);
+    const Stroke sharp = shaped(drawn, Shape::Rectangle, kNoKeys, 0.0F);
+    const Stroke round = shaped(drawn, Shape::Rectangle, kNoKeys, 20.0F);
 
     EXPECT_NEAR(nearestToCorner(sharp), 0.0F, 0.01F);
     EXPECT_GT(nearestToCorner(round), 5.0F);
@@ -133,8 +133,7 @@ TEST(StrokeShapesTest, TheRoundingOfACornerNeverPassesTheMiddleOfASide) {
     Uuid7Generator ids;
     const Stroke drawn = drag(ids, 0.0F, 0.0F, 40.0F, 40.0F);
 
-    const std::optional<Rect> box =
-        shaped(drawn, Shape::Rectangle, ShapeKeys{}, 500.0F).boundingBox();
+    const std::optional<Rect> box = shaped(drawn, Shape::Rectangle, kNoKeys, 500.0F).boundingBox();
 
     ASSERT_TRUE(box.has_value());
     EXPECT_NEAR(box->width(), 40.0F, 5.0F);

@@ -21,6 +21,8 @@ CheckOptions:
   cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
   cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
   readability-function-cognitive-complexity.Threshold: 25
+  readability-trailing-comma.MultiLineCommaPolicy: Append
+  readability-trailing-comma.SingleLineCommaPolicy: Ignore
   readability-implicit-bool-conversion.AllowPointerConditions: true
   readability-identifier-naming.NamespaceCase: lower_case
   readability-identifier-naming.ClassCase: CamelCase

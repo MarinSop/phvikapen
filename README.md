@@ -152,6 +152,10 @@ git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
 
+A version that is still being tried out is tagged with what it is after the version, as
+`vX.Y.Z-beta.1`. It is published the same way, under that full version, and is marked on GitHub as
+a release to try out rather than the one to install.
+
 The release workflow builds on Windows on ARM, refuses to continue if the tag and the project
 version disagree, deploys the Qt runtime, packages the installer and the update packages, and
 publishes them to a GitHub release together with their SHA-256 checksums.

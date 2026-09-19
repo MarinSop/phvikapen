@@ -478,7 +478,7 @@ void QtInkRenderer::updateBackground(QRhiResourceUpdateBatch& updates) {
     projection.ortho(0.0F, m_logicalWidth, m_logicalHeight, 0.0F, -1.0F, 1.0F);
 
     std::array<float, kBackgroundUniformCount> uniforms{};
-    auto* out = uniforms.begin();
+    auto* out = uniforms.data();
     const auto put = [&out](std::span<const float> values) {
         out = std::ranges::copy(values, out).out;
     };

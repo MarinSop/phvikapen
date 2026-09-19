@@ -31,12 +31,15 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ github.ref_name }}" -replace '^v', ''
+          $release = ($tag -split '-', 2)[0]
           $match = Select-String -Path CMakeLists.txt -Pattern 'VERSION\s+(\d+\.\d+\.\d+)' | Select-Object -First 1
           $project = $match.Matches[0].Groups[1].Value
-          if ($tag -ne $project) {
+          if ($release -ne $project) {
             throw "Tag $tag does not match the project version $project"
           }
           "VERSION=$tag" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $early = if ($tag -ne $release) { 'yes' } else { 'no' }
+          "EARLY=$early" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Set up the MSVC ARM64 environment
         shell: pwsh
@@ -131,6 +134,12 @@ jobs:
           --releaseName "PhvikaPen ${{ env.VERSION }}"
           --tag ${{ github.ref_name }}
           --merge
+
+      - name: Mark the release as one to try out
+        if: env.EARLY == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit ${{ github.ref_name }} --prerelease
 
       - name: Attach the checksums to the release
         env:
