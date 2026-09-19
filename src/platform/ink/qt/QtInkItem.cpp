@@ -117,7 +117,17 @@ void QtInkItem::showPage(const core::Page& page, const core::PageStyle& style,
 
 // A page without a sheet of its own still takes the room of one, so that what is written on it
 // does not land on the page below.
-std::vector<QtInkItem::Sheet> QtInkItem::sheetsFor(std::span<const PageView> pages) {
+// A page with no sheet of its own still needs room: as much as its picture takes, or as much as
+// the sheets around it.
+float QtInkItem::roomFor(const core::Uuid& page, const core::PaperSize& fallback) const {
+    const auto found = std::ranges::find(m_media, page, &MediaPiece::page);
+    if (found != m_media.end() && found->area.height() > 0.0) {
+        return static_cast<float>(found->area.height());
+    }
+    return fallback.height;
+}
+
+std::vector<QtInkItem::Sheet> QtInkItem::sheetsFor(std::span<const PageView> pages) const {
     // A page without a sheet still needs somewhere to stand: it takes the room of the sheets
     // around it, or of a plain sheet when the whole section is endless paper.
     core::PaperSize fallback =
@@ -133,15 +143,16 @@ std::vector<QtInkItem::Sheet> QtInkItem::sheetsFor(std::span<const PageView> pag
     sheets.reserve(pages.size());
     float top = 0.0F;
     for (const PageView& view : pages) {
+        const core::Uuid id = view.page == nullptr ? core::Uuid{} : view.page->id();
         const std::optional<core::PaperSize> paper = core::paperSize(view.style);
         const Sheet sheet{
-            .id = view.page == nullptr ? core::Uuid{} : view.page->id(),
+            .id = id,
             .style = view.style,
             .top = top,
             .width = paper ? paper->width : 0.0F,
             .height = paper ? paper->height : 0.0F,
         };
-        top += (paper ? paper->height : fallback.height) + kSheetGap;
+        top += (paper ? paper->height : roomFor(id, fallback)) + kSheetGap;
         sheets.push_back(sheet);
     }
     return sheets;

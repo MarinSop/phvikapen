@@ -607,8 +607,14 @@ void NotebookViewModel::changeStyle(const core::PageStyle& style) {
     if (!section || !m_storage) {
         return;
     }
+    // A page that carries a document keeps the size that document was written at: endless paper
+    // would leave it nothing to stand on in the column.
+    const bool endless = !core::paperSize(style).has_value();
     std::vector<core::Uuid> wanted;
     for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
+        if (endless && page.media) {
+            continue;
+        }
         if (page.style != style) {
             wanted.push_back(page.id);
         }

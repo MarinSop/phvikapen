@@ -17,6 +17,12 @@ Pane {
     property int renamingSection: -1
     readonly property SettingsViewModel settings: root.actions.settings
 
+    // Which row of a list the pointer was over when the carried one was let go.
+    function landingIn(list, scenePosition) {
+        const point = list.mapFromItem(null, scenePosition);
+        return list.indexAt(list.width / 2, point.y + list.contentY);
+    }
+
     function askToDelete(sectionScope, index, title) {
         deleteDialog.sectionScope = sectionScope;
         deleteDialog.index = index;
@@ -137,12 +143,9 @@ Pane {
 
                     required property int index
                     readonly property bool renaming: root.renamingSection === sectionDelegate.index
+                    property real restingY: 0
                     required property string title
 
-                    Drag.active: sectionDrag.active
-                    Drag.hotSpot.x: width / 2
-                    Drag.hotSpot.y: height / 2
-                    Drag.source: sectionDelegate
                     highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
                     rightPadding: 4
                     width: sectionList.width
@@ -204,28 +207,24 @@ Pane {
                     DragHandler {
                         id: sectionDrag
 
-                        target: null
+                        grabPermissions: PointerHandler.CanTakeOverFromAnything
+                        target: sectionDelegate
+                        xAxis.enabled: false
                         yAxis.enabled: true
 
                         onActiveChanged: {
-                            if (active) {
+                            if (sectionDrag.active) {
+                                sectionDelegate.restingY = sectionDelegate.y;
                                 root.draggedSection = sectionDelegate.index;
-                                sectionDelegate.grabToImage(function (result) {
-                                    sectionDelegate.Drag.imageSource = result.url;
-                                });
-                            } else {
-                                sectionDelegate.Drag.drop();
-                                root.draggedSection = -1;
+                                return;
                             }
-                        }
-                    }
-
-                    DropArea {
-                        anchors.fill: parent
-
-                        onDropped: {
-                            if (root.draggedSection >= 0 && root.draggedSection !== sectionDelegate.index) {
-                                root.notebook.moveSection(root.draggedSection, sectionDelegate.index);
+                            const carried = root.draggedSection;
+                            root.draggedSection = -1;
+                            sectionDelegate.y = sectionDelegate.restingY;
+                            sectionList.forceLayout();
+                            const landed = root.landingIn(sectionList, sectionDrag.centroid.scenePosition);
+                            if (carried >= 0 && landed >= 0 && landed !== carried) {
+                                root.notebook.moveSection(carried, landed);
                             }
                         }
                     }
@@ -310,6 +309,7 @@ Pane {
 
                     required property int index
                     readonly property bool panelReady: root.ready
+                    property real restingY: 0
                     readonly property bool renaming: root.renamingPage === pageDelegate.index
                     required property string thumbnail
                     required property string title
@@ -320,10 +320,6 @@ Pane {
                         }
                     }
 
-                    Drag.active: pageDrag.active
-                    Drag.hotSpot.x: width / 2
-                    Drag.hotSpot.y: height / 2
-                    Drag.source: pageDelegate
                     height: 64
                     highlighted: root.ready && pageDelegate.index === root.notebook.currentPage
                     rightPadding: 4
@@ -401,31 +397,32 @@ Pane {
                     onClicked: root.notebook.currentPage = pageDelegate.index
                     onPressAndHold: pageMenu.popup()
 
+                    // Picking a page up and carrying it: the row follows the pointer and the
+                    // page lands where it is let go.
                     DragHandler {
                         id: pageDrag
 
-                        target: null
+                        // The list would rather scroll; carrying a page has to win that argument.
+                        grabPermissions: PointerHandler.CanTakeOverFromAnything
+                        target: pageDelegate
+                        xAxis.enabled: false
                         yAxis.enabled: true
 
                         onActiveChanged: {
-                            if (active) {
+                            if (pageDrag.active) {
+                                pageDelegate.restingY = pageDelegate.y;
                                 root.draggedPage = pageDelegate.index;
-                                pageDelegate.grabToImage(function (result) {
-                                    pageDelegate.Drag.imageSource = result.url;
-                                });
-                            } else {
-                                pageDelegate.Drag.drop();
-                                root.draggedPage = -1;
+                                return;
                             }
-                        }
-                    }
-
-                    DropArea {
-                        anchors.fill: parent
-
-                        onDropped: {
-                            if (root.draggedPage >= 0 && root.draggedPage !== pageDelegate.index) {
-                                root.notebook.movePage(root.draggedPage, pageDelegate.index);
+                            const carried = root.draggedPage;
+                            root.draggedPage = -1;
+                            // The carried row goes back in line first, so that the list can say
+                            // which row the pointer is really over.
+                            pageDelegate.y = pageDelegate.restingY;
+                            pageList.forceLayout();
+                            const landed = root.landingIn(pageList, pageDrag.centroid.scenePosition);
+                            if (carried >= 0 && landed >= 0 && landed !== carried) {
+                                root.notebook.movePage(carried, landed);
                             }
                         }
                     }

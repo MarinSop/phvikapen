@@ -545,6 +545,46 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_thePageBeingReadFollowsTheNewPaperAtOnce() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        notebook.continuous = true;
+        tryVerify(() => canvas.mediaArea.width > 0);
+        const wasWide = canvas.mediaArea.width;
+
+        notebook.paper = PageOptions.A3;
+
+        verify(wasWide > 0);
+        tryVerify(() => canvas.mediaArea.width === canvas.sheetRect(notebook.currentPage).width, 5000, "the picture never caught up with the new paper");
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_endlessPaperLeavesPagesOfADocumentAsTheyAre() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        notebook.importDocument("file://" + samplePdf);
+        tryCompare(notebook, "pageCount", 3);
+        notebook.continuous = true;
+        notebook.currentPage = 1;
+        tryVerify(() => canvas.sheetRect(1).height > 0);
+        const wasTall = canvas.sheetRect(1).height;
+
+        notebook.paper = PageOptions.Infinite;
+
+        wait(200);
+        compare(canvas.sheetRect(1).height, wasTall, "a page of the document lost the sheet it needs");
+        for (let sheet = 1; sheet < 3; ++sheet) {
+            const above = canvas.sheetRect(sheet - 1);
+            const below = canvas.sheetRect(sheet);
+            verify(below.y >= above.y + above.height, "sheet " + sheet + " runs into the one above it");
+        }
+        notebook.continuous = false;
+        compare(notebook.errorMessage, "");
+    }
+
     function test_writingOnTheSecondSheetLandsOnTheSecondPage() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

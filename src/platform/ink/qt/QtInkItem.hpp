@@ -342,7 +342,8 @@ private:
     [[nodiscard]] core::Point onSheet(core::Point point) const noexcept;
     [[nodiscard]] core::Stroke onSheet(const core::Stroke& stroke) const;
     void rebuildMedia();
-    [[nodiscard]] static std::vector<Sheet> sheetsFor(std::span<const PageView> pages);
+    [[nodiscard]] float roomFor(const core::Uuid& page, const core::PaperSize& fallback) const;
+    [[nodiscard]] std::vector<Sheet> sheetsFor(std::span<const PageView> pages) const;
     void rebuildMeshes(std::span<const PageView> pages);
     void followScrolling();
 
