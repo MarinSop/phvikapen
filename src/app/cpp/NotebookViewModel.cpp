@@ -235,6 +235,11 @@ void NotebookViewModel::openNotebook() {
     m_erasing.clear();
     m_storage.reset();
     m_pages.clear();
+    m_shownMedia.clear();
+    m_drawnAt.clear();
+    m_wantedMedia.clear();
+    m_drawing.clear();
+    m_documentSizes.clear();
     m_outline = core::Outline{};
     m_currentPage = core::Uuid{};
     const std::uint64_t opening = ++m_opening;
@@ -1562,28 +1567,34 @@ void NotebookViewModel::drawColumnPage(const core::Uuid& page, int index,
         std::clamp(paper->width * scale, 1.0F, static_cast<float>(kMaximumMediaPixels)));
     const auto height = static_cast<int>(
         std::clamp(paper->height * scale, 1.0F, static_cast<float>(kMaximumMediaPixels)));
-    m_drawnAt[page] = scale;
+    if (!m_drawing.insert(page).second) {
+        return;
+    }
     const QRectF area{0.0, 0.0, static_cast<qreal>(paper->width),
                       static_cast<qreal>(paper->height)};
     const std::uint64_t opening = m_opening;
-    m_pdf->render(asset, index, width, height,
-                  [this, opening, page, area](core::Result<platform::pdf::PageImage> image) {
-                      if (!image) {
-                          return;
-                      }
-                      QMetaObject::invokeMethod(
-                          this,
-                          [this, opening, page, area, drawn = std::move(*image)] {
-                              if (opening != m_opening) {
-                                  return;
-                              }
-                              const QImage picture{drawn.pixels.data(), drawn.width, drawn.height,
-                                                   static_cast<qsizetype>(drawn.width) * 4,
-                                                   QImage::Format_RGBA8888};
-                              showPageMedia(page, picture.copy(), area);
-                          },
-                          Qt::QueuedConnection);
-                  });
+    m_pdf->render(
+        asset, index, width, height,
+        [this, opening, page, area, scale](core::Result<platform::pdf::PageImage> image) mutable {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, page, area, scale, image = std::move(image)] {
+                    if (opening != m_opening) {
+                        return;
+                    }
+                    m_drawing.erase(page);
+                    if (!image) {
+                        return;
+                    }
+                    // Only a page that was really drawn counts as drawn.
+                    m_drawnAt[page] = scale;
+                    const QImage picture{image->pixels.data(), image->width, image->height,
+                                         static_cast<qsizetype>(image->width) * 4,
+                                         QImage::Format_RGBA8888};
+                    showPageMedia(page, picture.copy(), area);
+                },
+                Qt::QueuedConnection);
+        });
 }
 
 void NotebookViewModel::startFromDocument(const QUrl& fileUrl) {
@@ -1771,6 +1782,7 @@ void NotebookViewModel::setContinuous(bool continuous) {
     m_shownMedia.clear();
     m_drawnAt.clear();
     m_wantedMedia.clear();
+    m_drawing.clear();
     m_openAsset = core::ContentId{};
     m_mediaScale = 0.0;
     if (!m_canvas.isNull()) {

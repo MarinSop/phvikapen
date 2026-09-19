@@ -370,6 +370,7 @@ private:
     std::map<core::Uuid, qreal> m_drawnAt;
     std::map<core::ContentId, std::vector<platform::pdf::PageSize>> m_documentSizes;
     std::set<core::Uuid> m_wantedMedia;
+    std::set<core::Uuid> m_drawing;
     std::set<core::Uuid> m_wantedPages;
     bool m_continuous{false};
     QTimer m_mediaTimer;
