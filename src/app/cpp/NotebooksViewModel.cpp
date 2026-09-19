@@ -21,6 +21,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kNotebookSuffix = ".phvika";
+constexpr auto kDraftsFolder = "drafts";
 constexpr auto kFirstNotebookName = "Notebook";
 constexpr auto kOpenSetting = "notebooks/open";
 constexpr auto kCurrentSetting = "notebooks/current";
@@ -66,6 +67,20 @@ QString NotebooksViewModel::pathFor(const QString& name) const {
     return m_directory + "/" + name + kNotebookSuffix;
 }
 
+QString NotebooksViewModel::draftPathFor(const QString& name) const {
+    return m_directory + "/" + kDraftsFolder + "/" + name + kNotebookSuffix;
+}
+
+// An open notebook is wherever it already is; a new one starts as a draft.
+QString NotebooksViewModel::existingPathFor(const QString& name) const {
+    QString kept = pathFor(name);
+    if (QFile::exists(kept)) {
+        return kept;
+    }
+    QString draft = draftPathFor(name);
+    return QFile::exists(draft) ? std::move(draft) : std::move(kept);
+}
+
 void NotebooksViewModel::setContinuousPages(bool continuous) {
     if (continuous == m_continuousPages) {
         return;
@@ -88,11 +103,6 @@ void NotebooksViewModel::refreshLibrary() {
     for (const QFileInfo& file :
          directory.entryInfoList({pattern}, QDir::Files, QDir::Name | QDir::IgnoreCase)) {
         found.append(file.completeBaseName());
-    }
-    for (const QString& name : openNotebooks()) {
-        if (!found.contains(name, Qt::CaseInsensitive)) {
-            found.append(name);
-        }
     }
     std::ranges::sort(found, [](const QString& first, const QString& second) {
         return first.compare(second, Qt::CaseInsensitive) < 0;
@@ -173,9 +183,11 @@ QString NotebooksViewModel::suggestedName() const {
 }
 
 bool NotebooksViewModel::isNameFree(const QString& name) const {
-    return isUsableName(name) && std::ranges::none_of(m_library, [&name](const QString& existing) {
-               return existing.compare(name, Qt::CaseInsensitive) == 0;
-           });
+    const auto taken = [&name](const QString& existing) {
+        return existing.compare(name, Qt::CaseInsensitive) == 0;
+    };
+    return isUsableName(name) && std::ranges::none_of(m_library, taken)
+           && std::ranges::none_of(openNotebooks(), taken) && !QFile::exists(draftPathFor(name));
 }
 
 void NotebooksViewModel::createNotebook(const QString& name) {
@@ -188,7 +200,8 @@ void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper,
         emit errorMessage(tr("A notebook called %1 is already there").arg(name));
         return;
     }
-    openNotebook(name);
+    QDir().mkpath(m_directory + "/" + kDraftsFolder);
+    openAt(name, draftPathFor(name));
     if (NotebookViewModel* const made = current(); made != nullptr) {
         core::PageStyle wanted = defaults::pageStyle();
         if (paper >= 0 && paper <= static_cast<int>(core::Paper::Custom)) {
@@ -222,6 +235,10 @@ void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper,
 }
 
 void NotebooksViewModel::openNotebook(const QString& name) {
+    openAt(name, existingPathFor(name));
+}
+
+void NotebooksViewModel::openAt(const QString& name, const QString& path) {
     if (!isUsableName(name)) {
         emit errorMessage(tr("%1 cannot be used as a name").arg(name));
         return;
@@ -231,12 +248,13 @@ void NotebooksViewModel::openNotebook(const QString& name) {
         return;
     }
 
-    auto notebook = std::make_unique<NotebookViewModel>(pathFor(name), rememberedPage(name), this);
+    auto notebook = std::make_unique<NotebookViewModel>(path, rememberedPage(name), this);
     notebook->setContinuous(m_continuousPages);
     connect(notebook.get(), &NotebookViewModel::notebookPathChanged, this,
             &NotebooksViewModel::openNotebooksChanged);
     connect(notebook.get(), &NotebookViewModel::nameWanted, this,
             [this, kept = notebook.get()](const QString& wanted) { takeName(*kept, wanted); });
+    connect(notebook.get(), &NotebookViewModel::saved, this, &NotebooksViewModel::refreshLibrary);
     m_open.push_back(std::move(notebook));
     emit openNotebooksChanged();
     m_currentIndex = -1;
@@ -250,6 +268,7 @@ void NotebooksViewModel::closeNotebook(int index) {
     }
     const auto position = static_cast<std::size_t>(index);
     rememberPage(*m_open[position]);
+    forgetDraftOf(*m_open[position]);
     if (index == m_currentIndex) {
         m_open[position]->setCanvas(nullptr);
     }
@@ -262,6 +281,24 @@ void NotebooksViewModel::closeNotebook(int index) {
 }
 
 // The tabs stand in the order the reader puts them in.
+// The working copy of a notebook that has been saved elsewhere is of no use once it is closed.
+void NotebooksViewModel::forgetDraftOf(const NotebookViewModel& notebook) const {
+    const QString working = notebook.notebookPath();
+    if (notebook.keptAt().isEmpty() || working != draftPathFor(notebook.name())) {
+        return;
+    }
+    for (const auto* suffix : {"", "-wal", "-shm"}) {
+        QFile::remove(working + suffix);
+    }
+}
+
+bool NotebooksViewModel::isEdited(int index) const {
+    if (index < 0 || std::cmp_greater_equal(index, m_open.size())) {
+        return false;
+    }
+    return m_open[static_cast<std::size_t>(index)]->edited();
+}
+
 void NotebooksViewModel::moveNotebook(int from, int to) {
     const auto count = static_cast<int>(m_open.size());
     if (from < 0 || from >= count || to < 0 || to >= count || from == to) {
@@ -307,7 +344,8 @@ void NotebooksViewModel::renameNotebook(int index, const QString& name) {
         emit errorMessage(tr("A notebook called %1 is already there").arg(trimmed));
         return;
     }
-    if (notebook.renameTo(pathFor(trimmed))) {
+    const QString folder = QFileInfo{notebook.notebookPath()}.absolutePath();
+    if (notebook.renameTo(folder + "/" + trimmed + kNotebookSuffix)) {
         emit openNotebooksChanged();
         refreshLibrary();
         rememberSession();
@@ -318,8 +356,8 @@ void NotebooksViewModel::deleteNotebook(const QString& name) {
     if (const int open = indexOf(name); open >= 0) {
         closeNotebook(open);
     }
-    const QString path = pathFor(name);
-    if (!QFile::moveToTrash(path) && !QFile::remove(path)) {
+    const QString path = existingPathFor(name);
+    if (QFile::exists(path) && !QFile::moveToTrash(path) && !QFile::remove(path)) {
         emit errorMessage(tr("Could not delete %1").arg(name));
         return;
     }
@@ -333,7 +371,8 @@ void NotebooksViewModel::restoreSession() {
     m_restoring = true;
     const QSettings settings;
     QStringList names = settings.value(kOpenSetting).toStringList();
-    names.removeIf([this](const QString& name) { return !m_library.contains(name); });
+    // Drafts are not in the library, but they were open, so they open again.
+    names.removeIf([this](const QString& name) { return !QFile::exists(existingPathFor(name)); });
     for (const QString& name : names) {
         openNotebook(name);
     }

@@ -52,14 +52,18 @@ TestCase {
     }
 
     function test_e_thePanelsCanBeTurnedOff() {
-        const item = findChild(menuBar, "pagesPanelItem");
-        verify(item !== null);
-        const before = settings.showPagesPanel;
+        const sections = findChild(menuBar, "sectionsListItem");
+        const pages = findChild(menuBar, "pagesListItem");
+        verify(sections !== null);
+        verify(pages !== null);
 
-        item.action.trigger();
+        sections.action.trigger();
+        compare(settings.showSections, false);
+        pages.action.trigger();
+        compare(settings.showPages, false);
 
-        compare(settings.showPagesPanel, !before);
-        settings.showPagesPanel = before;
+        settings.showSections = true;
+        settings.showPages = true;
     }
 
     height: 60

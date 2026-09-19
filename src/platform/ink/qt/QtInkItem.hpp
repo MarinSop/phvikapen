@@ -51,6 +51,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
     Q_PROPERTY(bool picking READ picking WRITE setPicking NOTIFY pickingChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
+    Q_PROPERTY(qreal corner READ corner WRITE setCorner NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
@@ -139,6 +140,10 @@ public:
     [[nodiscard]] int shape() const noexcept { return static_cast<int>(m_shape); }
 
     void setShape(int shape);
+
+    [[nodiscard]] qreal corner() const noexcept { return m_corner; }
+
+    void setCorner(qreal corner);
 
     [[nodiscard]] bool panning() const noexcept { return m_panning; }
 
@@ -360,6 +365,7 @@ private:
     std::optional<core::Point> m_dragFrom;
     core::Point m_dragOffset;
     core::Shape m_shape{core::Shape::Freehand};
+    qreal m_corner{0.0};
     qreal m_smoothing{kDefaultSmoothing};
     core::ShapeKeys m_shapeKeys;
     std::optional<core::Point> m_panFrom;

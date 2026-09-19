@@ -459,6 +459,15 @@ void QtInkItem::setShape(int shape) {
     emit shapeChanged();
 }
 
+void QtInkItem::setCorner(qreal corner) {
+    if (qFuzzyCompare(corner, m_corner)) {
+        return;
+    }
+    m_corner = corner;
+    emit shapeChanged();
+    redrawActiveStroke();
+}
+
 void QtInkItem::setDeskColor(const QColor& colour) {
     if (colour == m_deskColor) {
         return;
@@ -1194,7 +1203,8 @@ void QtInkItem::redrawActiveStroke() {
     if (!m_activeStroke) {
         return;
     }
-    const core::Stroke preview = core::shaped(*m_activeStroke, m_shape, m_shapeKeys);
+    const core::Stroke preview =
+        core::shaped(*m_activeStroke, m_shape, m_shapeKeys, static_cast<float>(m_corner));
     std::vector<InkVertex>& into = activeVertices();
     into.resize(m_activeStrokeFirstVertex);
     core::appendStroke(into, preview);
@@ -1208,7 +1218,8 @@ void QtInkItem::endStroke(const InkSample& sample) {
     m_activeStroke->append(m_filter.filter(sample));
     const core::Stroke drawn = std::move(*m_activeStroke);
     m_activeStroke.reset();
-    const core::Stroke finished = core::shaped(drawn, m_shape, m_shapeKeys);
+    const core::Stroke finished =
+        core::shaped(drawn, m_shape, m_shapeKeys, static_cast<float>(m_corner));
 
     std::vector<InkVertex>& into = activeVertices();
     into.resize(m_activeStrokeFirstVertex);

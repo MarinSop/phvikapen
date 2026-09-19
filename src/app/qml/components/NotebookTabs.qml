@@ -9,6 +9,7 @@ Item {
     id: root
 
     property int draggedTab: -1
+    required property AppActions actions
     required property NotebooksViewModel notebooks
 
     implicitHeight: 36
@@ -135,7 +136,7 @@ Item {
                         rightPadding: 0
                         topPadding: 0
 
-                        onClicked: root.notebooks.closeNotebook(tab.index)
+                        onClicked: root.actions.askToClose(tab.index)
                     }
 
                     Menu {
@@ -154,7 +155,7 @@ Item {
                         MenuItem {
                             text: qsTr("Close")
 
-                            onTriggered: root.notebooks.closeNotebook(tab.index)
+                            onTriggered: root.actions.askToClose(tab.index)
                         }
 
                         MenuItem {

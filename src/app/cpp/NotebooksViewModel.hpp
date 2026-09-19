@@ -65,8 +65,15 @@ public:
     Q_INVOKABLE void createNotebookWithSetup(const QString& name, int paper, int background,
                                              bool landscape, const QUrl& document = {});
     Q_INVOKABLE void openNotebook(const QString& name);
+    void openAt(const QString& name, const QString& path);
     Q_INVOKABLE void closeNotebook(int index);
+    Q_INVOKABLE [[nodiscard]] bool isEdited(int index) const;
+    void forgetDraftOf(const NotebookViewModel& notebook) const;
     Q_INVOKABLE void moveNotebook(int from, int to);
+
+    // A notebook that has never been saved lives among the drafts, out of the library's way.
+    [[nodiscard]] QString draftPathFor(const QString& name) const;
+    [[nodiscard]] QString existingPathFor(const QString& name) const;
     Q_INVOKABLE void renameNotebook(int index, const QString& name);
     void takeName(NotebookViewModel& notebook, const QString& wanted);
     Q_INVOKABLE void deleteNotebook(const QString& name);

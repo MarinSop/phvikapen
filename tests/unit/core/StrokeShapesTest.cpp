@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <optional>
 
 namespace phvikapen::core {
@@ -104,6 +105,40 @@ TEST(StrokeShapesTest, ABoxFromTheCentreGrowsBothWays) {
     ASSERT_TRUE(box.has_value());
     EXPECT_NEAR((box->left + box->right) / 2.0F, 100.0F, 1.0F);
     EXPECT_NEAR(box->width(), 80.0F, 5.0F);
+}
+
+TEST(StrokeShapesTest, ABoxKeepsItsCornersUntilTheyAreRoundedOff) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 0.0F, 0.0F, 100.0F, 80.0F);
+    const auto nearestToCorner = [](const Stroke& stroke) {
+        float nearest = std::numeric_limits<float>::max();
+        for (const InkSample& sample : stroke.samples()) {
+            nearest = std::min(nearest, std::hypot(sample.x, sample.y));
+        }
+        return nearest;
+    };
+
+    const Stroke sharp = shaped(drawn, Shape::Rectangle, ShapeKeys{}, 0.0F);
+    const Stroke round = shaped(drawn, Shape::Rectangle, ShapeKeys{}, 20.0F);
+
+    EXPECT_NEAR(nearestToCorner(sharp), 0.0F, 0.01F);
+    EXPECT_GT(nearestToCorner(round), 5.0F);
+    const std::optional<Rect> box = round.boundingBox();
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR(box->width(), 100.0F, 5.0F);
+    EXPECT_NEAR(box->height(), 80.0F, 5.0F);
+}
+
+TEST(StrokeShapesTest, TheRoundingOfACornerNeverPassesTheMiddleOfASide) {
+    Uuid7Generator ids;
+    const Stroke drawn = drag(ids, 0.0F, 0.0F, 40.0F, 40.0F);
+
+    const std::optional<Rect> box =
+        shaped(drawn, Shape::Rectangle, ShapeKeys{}, 500.0F).boundingBox();
+
+    ASSERT_TRUE(box.has_value());
+    EXPECT_NEAR(box->width(), 40.0F, 5.0F);
+    EXPECT_NEAR(box->height(), 40.0F, 5.0F);
 }
 
 TEST(StrokeShapesTest, AnEvenCircleIsAsWideAsItIsTall) {

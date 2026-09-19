@@ -30,9 +30,8 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
                    continuousPagesChanged FINAL)
     Q_PROPERTY(
-        bool showPagesPanel READ showPagesPanel WRITE setShowPagesPanel NOTIFY panelsChanged FINAL)
-    Q_PROPERTY(
         bool showPagePanel READ showPagePanel WRITE setShowPagePanel NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(bool themeChosen READ themeChosen WRITE setThemeChosen NOTIFY themeChanged FINAL)
     Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
     Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
@@ -82,14 +81,14 @@ public:
 
     void setContinuousPages(bool continuous);
 
-    [[nodiscard]] bool showPagesPanel() const { return m_showPagesPanel; }
-
-    void setShowPagesPanel(bool shown);
-
     [[nodiscard]] bool showPagePanel() const { return m_showPagePanel; }
 
     static constexpr int kDefaultPanelWidth = 220;
     static constexpr int kDefaultSectionsHeight = 150;
+
+    [[nodiscard]] bool themeChosen() const { return m_themeChosen; }
+
+    void setThemeChosen(bool chosen);
 
     [[nodiscard]] bool showSections() const { return m_showSections; }
 
@@ -145,8 +144,8 @@ private:
     int m_exportScope{0};
     int m_theme{0};
     bool m_continuousPages{true};
-    bool m_showPagesPanel{true};
     bool m_showPagePanel{false};
+    bool m_themeChosen{false};
     bool m_showSections{true};
     bool m_showPages{true};
     int m_panelWidth{kDefaultPanelWidth};

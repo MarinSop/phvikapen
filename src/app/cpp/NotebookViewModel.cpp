@@ -167,10 +167,20 @@ bool NotebookViewModel::renameTo(const QString& path) {
     }
 
     QSettings settings;
-    const QString wasKept = settings.value(QString{kKeptPrefix} + name()).toString();
+    QString wasKept = settings.value(QString{kKeptPrefix} + name()).toString();
     settings.remove(QString{kKeptPrefix} + name());
     m_notebookPath = path;
+    // The file the reader keeps goes by the notebook's name as well.
+    if (!wasKept.isEmpty() && QFile::exists(wasKept)) {
+        const QFileInfo kept{wasKept};
+        const QString renamed = kept.absolutePath() + "/" + name() + "." + kept.suffix();
+        if (renamed == wasKept || QFile::rename(wasKept, renamed)) {
+            wasKept = renamed;
+        }
+    }
     if (!wasKept.isEmpty()) {
+        m_keptAt = wasKept;
+        emit keptAtChanged();
         settings.setValue(QString{kKeptPrefix} + name(), wasKept);
     }
     emit notebookPathChanged();

@@ -12,9 +12,7 @@ AbstractButton {
     implicitWidth: 32
 
     background: Rectangle {
-        border.color: root.checked ? Theme.accent : Theme.line
-        border.width: root.checked ? 2 : 1
-        color: root.hovered ? Qt.rgba(0.5, 0.5, 0.5, 0.15) : "transparent"
+        color: root.checked ? Theme.accent : root.hovered ? Theme.line : "transparent"
         radius: 6
     }
     contentItem: Item {

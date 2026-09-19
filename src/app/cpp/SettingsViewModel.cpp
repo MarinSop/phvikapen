@@ -25,8 +25,8 @@ constexpr auto kShortcutPrefix = "shortcuts/";
 constexpr auto kSmoothingSetting = "ink/smoothing";
 constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
-constexpr auto kPagesPanelSetting = "view/pagesPanel";
 constexpr auto kPagePanelSetting = "view/pagePanel";
+constexpr auto kThemeChosenSetting = "look/chosen";
 constexpr auto kSectionsSetting = "view/sections";
 constexpr auto kPagesSetting = "view/pages";
 constexpr auto kPanelWidthSetting = "view/panelWidth";
@@ -57,7 +57,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_exportScope = std::clamp(settings.value(kExportScopeSetting, m_exportScope).toInt(), 0,
                                kExportScopes - 1);
     m_continuousPages = settings.value(kContinuousPagesSetting, m_continuousPages).toBool();
-    m_showPagesPanel = settings.value(kPagesPanelSetting, m_showPagesPanel).toBool();
+    m_themeChosen = settings.value(kThemeChosenSetting, m_themeChosen).toBool();
     m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
     m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
     m_panelWidth = std::clamp(settings.value(kPanelWidthSetting, m_panelWidth).toInt(),
@@ -199,16 +199,6 @@ void SettingsViewModel::setContinuousPages(bool continuous) {
     emit continuousPagesChanged();
 }
 
-void SettingsViewModel::setShowPagesPanel(bool shown) {
-    if (shown == m_showPagesPanel) {
-        return;
-    }
-    m_showPagesPanel = shown;
-    QSettings settings;
-    settings.setValue(kPagesPanelSetting, m_showPagesPanel);
-    emit panelsChanged();
-}
-
 void SettingsViewModel::setShowPagePanel(bool shown) {
     if (shown == m_showPagePanel) {
         return;
@@ -217,6 +207,16 @@ void SettingsViewModel::setShowPagePanel(bool shown) {
     QSettings settings;
     settings.setValue(kPagePanelSetting, m_showPagePanel);
     emit panelsChanged();
+}
+
+void SettingsViewModel::setThemeChosen(bool chosen) {
+    if (chosen == m_themeChosen) {
+        return;
+    }
+    m_themeChosen = chosen;
+    QSettings settings;
+    settings.setValue(kThemeChosenSetting, m_themeChosen);
+    emit themeChanged();
 }
 
 void SettingsViewModel::setShowSections(bool shown) {

@@ -17,6 +17,13 @@ TestCase {
         tryCompare(notebooks.current, "loaded", true);
     }
 
+    // A notebook is part of the library once the reader has saved it there.
+    function keepNotebook(notebooks, directory, name) {
+        testCase.addNotebook(notebooks, name);
+        notebooks.current.saveAs("file://" + directory + "/" + name + ".phvika");
+        tryVerify(() => notebooks.library.indexOf(name) >= 0);
+    }
+
     function openLibrary(directory) {
         return createTemporaryObject(notebooksComponent, testCase, {
             directory: directory
@@ -39,7 +46,7 @@ TestCase {
         testCase.addNotebook(notebooks, "Notes");
 
         compare(notebooks.openNotebooks.length, 1);
-        compare(notebooks.library.length, 1);
+        compare(notebooks.library.length, 0, "a notebook nobody saved was put in the library");
         compare(notebooks.current.name, "Notes");
         compare(notebooks.current.pageCount, 1);
     }
@@ -53,7 +60,6 @@ TestCase {
         compare(notebooks.openNotebooks, [first, "Physics"]);
         compare(notebooks.currentIndex, 1);
         compare(notebooks.current.name, "Physics");
-        verify(notebooks.library.indexOf("Physics") >= 0);
 
         notebooks.currentIndex = 0;
         compare(notebooks.current.name, first);
@@ -80,7 +86,7 @@ TestCase {
     function test_d_renamesANotebookWithItsFile() {
         const directory = newLibrary();
         const notebooks = libraryWithOne(directory);
-        testCase.addNotebook(notebooks, "Physics");
+        testCase.keepNotebook(notebooks, directory, "Physics");
         notebooks.current.addPage();
         compare(notebooks.current.pageCount, 2);
 
@@ -104,12 +110,13 @@ TestCase {
         notebooks.closeNotebook(0);
         compare(notebooks.openNotebooks.length, 0);
         compare(notebooks.current, null);
-        compare(notebooks.library.length, 2);
     }
 
     function test_e2_everyNotebookCanBeDeleted() {
-        const notebooks = libraryWithOne(newLibrary());
-        testCase.addNotebook(notebooks, "Physics");
+        const directory = newLibrary();
+        const notebooks = openLibrary(directory);
+        testCase.keepNotebook(notebooks, directory, "Notes");
+        testCase.keepNotebook(notebooks, directory, "Physics");
         compare(notebooks.library.length, 2);
 
         for (const name of notebooks.library.slice()) {
@@ -122,8 +129,10 @@ TestCase {
     }
 
     function test_f_deletesANotebookFromTheLibrary() {
-        const notebooks = libraryWithOne(newLibrary());
-        testCase.addNotebook(notebooks, "Physics");
+        const directory = newLibrary();
+        const notebooks = openLibrary(directory);
+        testCase.keepNotebook(notebooks, directory, "Notes");
+        testCase.keepNotebook(notebooks, directory, "Physics");
         compare(notebooks.library.length, 2);
 
         notebooks.deleteNotebook("Physics");
@@ -201,6 +210,18 @@ TestCase {
         compare(notebooks.openNotebooks, ["Third", "First", "Second"]);
         compare(notebooks.currentIndex, 0, "the notebook being read changed");
         compare(notebooks.current.name, "Third");
+    }
+
+    function test_z4_aNewNotebookIsNoPartOfTheLibraryUntilItIsSaved() {
+        const notebooks = openLibrary(newLibrary());
+        testCase.addNotebook(notebooks, "Draft");
+
+        compare(notebooks.library.indexOf("Draft"), -1, "an unsaved notebook was put in the library");
+        verify(notebooks.current.keptAt === "");
+
+        notebooks.current.saveAs("file://" + temporaryDirectory + "/kept-" + testCase.libraryCount + ".phvika");
+
+        tryVerify(() => notebooks.library.indexOf("kept-" + testCase.libraryCount) >= 0, 3000, "a saved notebook is still missing from the library");
     }
 
     name: "NotebooksViewModel"

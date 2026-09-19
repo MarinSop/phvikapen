@@ -44,6 +44,7 @@ ApplicationWindow {
 
         NotebookTabs {
             Layout.fillWidth: true
+            actions: appActions
             notebooks: notebooks
         }
 
@@ -63,7 +64,12 @@ ApplicationWindow {
         notebooks: notebooks
     }
 
-    Component.onCompleted: notebooks.canvas = canvas
+    Component.onCompleted: {
+        notebooks.canvas = canvas;
+        if (!settings.themeChosen) {
+            welcomeDialog.open();
+        }
+    }
 
     Binding {
         property: "mode"
@@ -106,6 +112,11 @@ ApplicationWindow {
         tools: toolState
 
         onAboutWanted: aboutDialog.open()
+        onCloseAsked: index => {
+            closeDialog.index = index;
+            closeDialog.notebookName = notebooks.openNotebooks[index];
+            closeDialog.open();
+        }
         onSaveWanted: {
             const kept = root.notebook.keptAt;
             const folder = kept === "" ? StandardPaths.writableLocation(StandardPaths.DocumentsLocation) : "file://" + kept.substring(0, kept.lastIndexOf("/"));
@@ -159,7 +170,7 @@ ApplicationWindow {
             SplitView.maximumWidth: 520
             SplitView.minimumWidth: 140
             actions: appActions
-            visible: settings.showPagesPanel && root.notebook !== null && (settings.showSections || settings.showPages)
+            visible: root.notebook !== null && (settings.showSections || settings.showPages)
 
             Component.onCompleted: SplitView.preferredWidth = settings.panelWidth
             onWidthChanged: {
@@ -188,6 +199,7 @@ ApplicationWindow {
             picking: toolState.currentTool === ToolViewModel.ColourPicker
             pressureSensitive: toolState.pressureSensitive
             selecting: toolState.currentTool === ToolViewModel.Selection
+            corner: toolState.corner
             shape: toolState.currentTool === ToolViewModel.Shape ? toolState.shape : ToolViewModel.Freehand
             smoothing: settings.smoothing
             strokeColor: toolState.strokeColor
@@ -237,6 +249,36 @@ ApplicationWindow {
         anchors.margins: 16
     }
 
+    AppDialog {
+        id: closeDialog
+
+        property int index: -1
+        property string notebookName: ""
+
+        objectName: "closeDialog"
+        standardButtons: Dialog.Save | Dialog.Discard | Dialog.Cancel
+        title: qsTr("Close notebook")
+        width: 380
+
+        onAccepted: {
+            if (root.notebook !== null && !root.notebook.save()) {
+                appActions.saveWanted();
+                return;
+            }
+            notebooks.closeNotebook(closeDialog.index);
+        }
+        onDiscarded: {
+            notebooks.closeNotebook(closeDialog.index);
+            closeDialog.close();
+        }
+
+        Label {
+            width: parent.width
+            text: qsTr("“%1” has changes that are not saved yet.").arg(closeDialog.notebookName)
+            wrapMode: Text.WordWrap
+        }
+    }
+
     NewNotebookDialog {
         id: newNotebookDialog
 
@@ -263,6 +305,12 @@ ApplicationWindow {
 
     AboutDialog {
         id: aboutDialog
+    }
+
+    WelcomeDialog {
+        id: welcomeDialog
+
+        settings: settings
     }
 
     TrashDialog {

@@ -17,6 +17,10 @@ constexpr float kEdgeSpacing = 6.0F;
 constexpr std::size_t kEllipseCorners = 96;
 constexpr std::size_t kSmallestCount = 2;
 constexpr float kEighthTurn = std::numbers::pi_v<float> / 4.0F;
+constexpr float kQuarterTurn = std::numbers::pi_v<float> / 2.0F;
+constexpr float kHalfTurn = std::numbers::pi_v<float>;
+constexpr float kThreeQuarterTurn = 3.0F * kQuarterTurn;
+constexpr float kHalf = 0.5F;
 
 [[nodiscard]] float averagePressure(const Stroke& stroke) {
     if (stroke.samples().empty()) {
@@ -31,6 +35,20 @@ constexpr float kEighthTurn = std::numbers::pi_v<float> / 4.0F;
 
 [[nodiscard]] std::size_t stepsAlong(float length) {
     return std::max(kSmallestCount, static_cast<std::size_t>(length / kEdgeSpacing));
+}
+
+void appendArc(Stroke& into, Point centre, float radius, float from, float to, float pressure) {
+    const auto steps = std::max<std::size_t>(
+        kSmallestCount, static_cast<std::size_t>(std::abs(to - from) * radius / kEdgeSpacing));
+    for (std::size_t i = 0; i <= steps; ++i) {
+        const float angle =
+            from + ((to - from) * static_cast<float>(i) / static_cast<float>(steps));
+        into.append(InkSample{
+            .x = centre.x + (radius * std::cos(angle)),
+            .y = centre.y + (radius * std::sin(angle)),
+            .pressure = pressure,
+        });
+    }
 }
 
 void appendEdge(Stroke& into, Point from, Point to, float pressure) {
@@ -109,7 +127,7 @@ namespace {
 
 }
 
-Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys) {
+Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys, float corner) {
     if (shape == Shape::Freehand || stroke.samples().size() < kSmallestCount) {
         return stroke;
     }
@@ -135,14 +153,35 @@ Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys) {
     }
 
     if (shape == Shape::Rectangle) {
-        appendEdge(drawn, Point{.x = box.left, .y = box.top}, Point{.x = box.right, .y = box.top},
+        const float round = std::clamp(corner, 0.0F, std::min(box.width(), box.height()) * kHalf);
+        const float left = box.left;
+        const float right = box.right;
+        const float top = box.top;
+        const float bottom = box.bottom;
+        appendEdge(drawn, Point{.x = left + round, .y = top}, Point{.x = right - round, .y = top},
                    pressure);
-        appendEdge(drawn, Point{.x = box.right, .y = box.top},
-                   Point{.x = box.right, .y = box.bottom}, pressure);
-        appendEdge(drawn, Point{.x = box.right, .y = box.bottom},
-                   Point{.x = box.left, .y = box.bottom}, pressure);
-        appendEdge(drawn, Point{.x = box.left, .y = box.bottom}, Point{.x = box.left, .y = box.top},
+        if (round > 0.0F) {
+            appendArc(drawn, Point{.x = right - round, .y = top + round}, round, -kQuarterTurn,
+                      0.0F, pressure);
+        }
+        appendEdge(drawn, Point{.x = right, .y = top + round},
+                   Point{.x = right, .y = bottom - round}, pressure);
+        if (round > 0.0F) {
+            appendArc(drawn, Point{.x = right - round, .y = bottom - round}, round, 0.0F,
+                      kQuarterTurn, pressure);
+        }
+        appendEdge(drawn, Point{.x = right - round, .y = bottom},
+                   Point{.x = left + round, .y = bottom}, pressure);
+        if (round > 0.0F) {
+            appendArc(drawn, Point{.x = left + round, .y = bottom - round}, round, kQuarterTurn,
+                      kHalfTurn, pressure);
+        }
+        appendEdge(drawn, Point{.x = left, .y = bottom - round}, Point{.x = left, .y = top + round},
                    pressure);
+        if (round > 0.0F) {
+            appendArc(drawn, Point{.x = left + round, .y = top + round}, round, kHalfTurn,
+                      kThreeQuarterTurn, pressure);
+        }
         return drawn;
     }
 

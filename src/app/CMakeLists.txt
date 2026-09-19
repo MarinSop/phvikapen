@@ -98,7 +98,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
-        qml/components/WidthField.qml
+        qml/components/WelcomeDialog.qml
 )
 
 

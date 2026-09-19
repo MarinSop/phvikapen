@@ -21,6 +21,7 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(int pen READ pen WRITE setPen NOTIFY penChanged FINAL)
     Q_PROPERTY(Shape shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(int penCount READ penCount CONSTANT FINAL)
+    Q_PROPERTY(qreal corner READ corner WRITE setCorner NOTIFY shapeChanged FINAL)
     Q_PROPERTY(QColor strokeColor READ strokeColor WRITE setStrokeColor NOTIFY toolChanged FINAL)
     Q_PROPERTY(qreal strokeWidth READ strokeWidth WRITE setStrokeWidth NOTIFY toolChanged FINAL)
     Q_PROPERTY(bool pressureSensitive READ pressureSensitive NOTIFY toolChanged FINAL)
@@ -63,6 +64,12 @@ public:
     [[nodiscard]] Shape shape() const { return m_shape; }
 
     void setShape(Shape shape);
+
+    [[nodiscard]] qreal corner() const { return m_corner; }
+
+    void setCorner(qreal corner);
+
+    static constexpr qreal kMaximumCorner = 60.0;
 
     [[nodiscard]] Tool currentTool() const { return m_currentTool; }
 
@@ -119,6 +126,7 @@ private:
     Tool m_beforePicking{Tool::Pen};
     Shape m_shape{Shape::Rectangle};
     qreal m_eraserRadius{kDefaultEraser};
+    qreal m_corner{0.0};
     int m_pen{0};
     bool m_completed{false};
 };

@@ -115,6 +115,20 @@ TestCase {
         tools.currentTool = ToolViewModel.Pen;
     }
 
+    function test_h_howRoundACornerIsStaysForTheNextTime() {
+        const tools = testCase.newTools();
+        compare(tools.corner, 0);
+
+        tools.corner = 18;
+        tools.corner = 500;
+        verify(tools.corner <= 60);
+
+        tools.corner = 18;
+        const later = testCase.newTools();
+        compare(later.corner, 18);
+        later.corner = 0;
+    }
+
     function test_z_theShapeIsRememberedForTheNextTime() {
         const tools = testCase.newTools();
         compare(tools.shape, ToolViewModel.Rectangle);

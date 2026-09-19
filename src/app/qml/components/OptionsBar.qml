@@ -72,12 +72,10 @@ ToolBar {
                 anchors.left: parent.left
                 anchors.leftMargin: 6
                 anchors.verticalCenter: parent.verticalCenter
-                border.color: Theme.subtleText
-                border.width: 1
-                color: "transparent"
-                height: 22
+                color: Theme.line
+                height: 24
                 radius: height / 2
-                width: 22
+                width: 24
 
                 Rectangle {
                     anchors.centerIn: parent
@@ -142,7 +140,8 @@ ToolBar {
             visible: root.draws || root.erases
         }
 
-        WidthField {
+        NumberField {
+            hasSlider: true
             maximum: root.erases ? 40 : 24
             minimum: root.erases ? 4 : 0.5
             number: root.erases ? root.tools.eraserRadius : root.tools.strokeWidth
@@ -161,6 +160,24 @@ ToolBar {
 
         ToolSeparator {
             visible: root.tools.currentTool === ToolViewModel.Shape
+        }
+
+        Label {
+            color: palette.placeholderText
+            text: qsTr("Corners")
+            visible: root.tools.currentTool === ToolViewModel.Shape
+        }
+
+        NumberField {
+            hasSlider: true
+            maximum: 60
+            minimum: 0
+            number: root.tools.corner
+            objectName: "cornerField"
+            step: 1
+            visible: root.tools.currentTool === ToolViewModel.Shape
+
+            onNumberEdited: value => root.tools.corner = value
         }
 
         Repeater {

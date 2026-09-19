@@ -171,19 +171,19 @@ MenuBar {
             objectName: "continuousPagesItem"
         }
 
-        MenuCommand {
-            action: root.actions.pagesPanel
-            objectName: "pagesPanelItem"
-        }
+        Menu {
+            objectName: "contentsMenu"
+            title: qsTr("Contents Panel")
 
-        MenuCommand {
-            action: root.actions.sectionsList
-            objectName: "sectionsListItem"
-        }
+            MenuCommand {
+                action: root.actions.sectionsList
+                objectName: "sectionsListItem"
+            }
 
-        MenuCommand {
-            action: root.actions.pagesList
-            objectName: "pagesListItem"
+            MenuCommand {
+                action: root.actions.pagesList
+                objectName: "pagesListItem"
+            }
         }
 
         MenuCommand {

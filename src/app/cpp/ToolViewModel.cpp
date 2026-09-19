@@ -17,6 +17,7 @@ constexpr auto kToolSetting = "tools/tool";
 constexpr auto kPenSetting = "tools/pen";
 constexpr auto kEraserSetting = "tools/eraser";
 constexpr auto kShapeSetting = "tools/shape";
+constexpr auto kCornerSetting = "tools/corner";
 constexpr auto kColorPrefix = "tools/color/";
 constexpr auto kWidthPrefix = "tools/width/";
 constexpr auto kHighlighterKey = "highlighter";
@@ -187,6 +188,16 @@ void ToolViewModel::setShape(Shape shape) {
     remember();
 }
 
+void ToolViewModel::setCorner(qreal corner) {
+    const qreal wanted = std::clamp(corner, 0.0, kMaximumCorner);
+    if (qFuzzyCompare(wanted + 1.0, m_corner + 1.0)) {
+        return;
+    }
+    m_corner = wanted;
+    emit shapeChanged();
+    remember();
+}
+
 void ToolViewModel::remember() const {
     if (!m_completed) {
         return;
@@ -196,6 +207,7 @@ void ToolViewModel::remember() const {
     settings.setValue(kPenSetting, m_pen);
     settings.setValue(kEraserSetting, m_eraserRadius);
     settings.setValue(kShapeSetting, static_cast<int>(m_shape));
+    settings.setValue(kCornerSetting, m_corner);
     for (int index = 0; index < penCount(); ++index) {
         const Nib& nib = m_pens.at(static_cast<std::size_t>(index));
         settings.setValue(kColorPrefix + penKey(index), nib.color.name(QColor::HexArgb));
@@ -230,6 +242,7 @@ void ToolViewModel::restore() {
     if (shape > static_cast<int>(Shape::Freehand) && shape <= static_cast<int>(Shape::Ellipse)) {
         m_shape = static_cast<Shape>(shape);
     }
+    m_corner = std::clamp(settings.value(kCornerSetting, m_corner).toDouble(), 0.0, kMaximumCorner);
     m_pen = std::clamp(settings.value(kPenSetting, m_pen).toInt(), 0, penCount() - 1);
     m_eraserRadius = std::clamp(settings.value(kEraserSetting, m_eraserRadius).toDouble(),
                                 kMinimumEraser, kMaximumEraser);

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import PhvikaPen.Ui
 
 ToolButton {
     id: root
@@ -14,11 +15,16 @@ ToolButton {
     display: AbstractButton.IconOnly
     icon.color: root.enabled ? palette.buttonText : palette.placeholderText
     bottomPadding: 0
-    icon.height: 28
-    icon.width: 28
-    implicitHeight: 38
-    implicitWidth: 38
+    icon.height: 24
+    icon.width: 24
+    implicitHeight: 34
+    implicitWidth: 34
     leftPadding: 0
     rightPadding: 0
     topPadding: 0
+
+    background: Rectangle {
+        color: root.pressed ? Theme.accent : root.hovered ? Theme.line : "transparent"
+        radius: 6
+    }
 }

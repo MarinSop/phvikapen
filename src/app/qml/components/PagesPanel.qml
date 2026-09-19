@@ -52,6 +52,10 @@ Pane {
         }
     }
 
+    HoverHandler {
+        id: overPanel
+    }
+
     Connections {
         function onPageAdded(index) {
             root.renamingSection = -1;
@@ -110,12 +114,21 @@ Pane {
                 }
 
                 QuickButton {
-                    Layout.rightMargin: 4
                     action: root.actions.addSection
                     display: AbstractButton.IconOnly
                     icon.source: Icons.plus
                     label: qsTr("New section")
                     objectName: "addSectionButton"
+                }
+
+                QuickButton {
+                    Layout.rightMargin: 4
+                    icon.source: Icons.close
+                    label: qsTr("Hide the sections")
+                    objectName: "hideSectionsButton"
+                    opacity: overPanel.hovered ? 1 : 0
+
+                    onClicked: root.settings.showSections = false
                 }
             }
 
@@ -143,6 +156,10 @@ Pane {
                     width: sectionList.width
                     z: sectionDrag.active ? 2 : 1
 
+                    background: Rectangle {
+                        color: sectionDelegate.highlighted ? Theme.base : sectionDelegate.hovered ? Theme.line : "transparent"
+                        radius: 6
+                    }
                     contentItem: RowLayout {
                         spacing: 4
 
@@ -279,12 +296,21 @@ Pane {
                 }
 
                 QuickButton {
-                    Layout.rightMargin: 4
                     action: root.actions.addPage
                     display: AbstractButton.IconOnly
                     icon.source: Icons.plus
                     label: qsTr("New page")
                     objectName: "addPageButton"
+                }
+
+                QuickButton {
+                    Layout.rightMargin: 4
+                    icon.source: Icons.close
+                    label: qsTr("Hide the pages")
+                    objectName: "hidePagesButton"
+                    opacity: overPanel.hovered ? 1 : 0
+
+                    onClicked: root.settings.showPages = false
                 }
             }
 
@@ -321,6 +347,10 @@ Pane {
                     width: pageList.width
                     z: pageDrag.active ? 2 : 1
 
+                    background: Rectangle {
+                        color: pageDelegate.highlighted ? Theme.base : pageDelegate.hovered ? Theme.line : "transparent"
+                        radius: 6
+                    }
                     contentItem: RowLayout {
                         spacing: 8
 

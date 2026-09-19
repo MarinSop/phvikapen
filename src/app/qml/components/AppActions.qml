@@ -191,7 +191,7 @@ Item {
         shortcut: root.keysFor("closeNotebook", AppInfo.shortcutText(StandardKey.Close))
         text: qsTr("Close Notebook")
 
-        onTriggered: root.notebooks.closeNotebook(root.notebooks.currentIndex)
+        onTriggered: root.askToClose(root.notebooks.currentIndex)
     }
     readonly property Action importDocument: Action {
         enabled: root.hasNotebook
@@ -279,18 +279,10 @@ Item {
 
         onTriggered: root.settings.continuousPages = !root.settings.continuousPages
     }
-    readonly property Action pagesPanel: Action {
-        checkable: true
-        checked: root.settings.showPagesPanel
-        shortcut: root.keysFor("pagesPanel", "Ctrl+1")
-        text: qsTr("Pages Panel")
-
-        onTriggered: root.settings.showPagesPanel = !root.settings.showPagesPanel
-    }
     readonly property Action sectionsList: Action {
         checkable: true
         checked: root.settings.showSections
-        shortcut: root.keysFor("sectionsList", "Ctrl+3")
+        shortcut: root.keysFor("sectionsList", "Ctrl+1")
         text: qsTr("Sections")
 
         onTriggered: root.settings.showSections = !root.settings.showSections
@@ -298,7 +290,7 @@ Item {
     readonly property Action pagesList: Action {
         checkable: true
         checked: root.settings.showPages
-        shortcut: root.keysFor("pagesList", "Ctrl+4")
+        shortcut: root.keysFor("pagesList", "Ctrl+2")
         text: qsTr("Pages")
 
         onTriggered: root.settings.showPages = !root.settings.showPages
@@ -306,8 +298,8 @@ Item {
     readonly property Action pagePanel: Action {
         checkable: true
         checked: root.settings.showPagePanel
-        shortcut: root.keysFor("pagePanel", "Ctrl+2")
-        text: qsTr("Page Panel")
+        shortcut: root.keysFor("pagePanel", "Ctrl+3")
+        text: qsTr("Page Setup Panel")
 
         onTriggered: root.settings.showPagePanel = !root.settings.showPagePanel
     }
@@ -319,6 +311,7 @@ Item {
     }
 
     signal aboutWanted
+    signal closeAsked(int index)
     signal saveWanted
     signal exportWanted(int scope)
     signal hintsWanted
@@ -327,6 +320,15 @@ Item {
     signal pageSetupWanted
     signal settingsWanted
     signal trashWanted
+
+    // Nothing is closed over the top of changes nobody has kept.
+    function askToClose(index) {
+        if (root.notebooks.isEdited(index)) {
+            root.closeAsked(index);
+        } else {
+            root.notebooks.closeNotebook(index);
+        }
+    }
 
     function keysFor(commandId, fallback) {
         const kept = root.settings.shortcuts[commandId];

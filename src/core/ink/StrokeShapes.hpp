@@ -20,8 +20,12 @@ struct ShapeKeys {
     bool fromCentre{}; // the shape grows out of where the stroke started
 };
 
-[[nodiscard]] Rect shapedBox(Point from, Point to, ShapeKeys keys = {});
+inline constexpr ShapeKeys kNoKeys{};
 
-[[nodiscard]] Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys = {});
+[[nodiscard]] Rect shapedBox(Point from, Point to, ShapeKeys keys = kNoKeys);
+
+// A box may have its corners taken off: `corner` is how far the rounding reaches, in page units.
+[[nodiscard]] Stroke shaped(const Stroke& stroke, Shape shape, ShapeKeys keys = kNoKeys,
+                            float corner = 0.0F);
 
 }
