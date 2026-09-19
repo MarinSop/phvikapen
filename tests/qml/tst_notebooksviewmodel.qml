@@ -224,6 +224,23 @@ TestCase {
         tryVerify(() => notebooks.library.indexOf("kept-" + testCase.libraryCount) >= 0, 3000, "a saved notebook is still missing from the library");
     }
 
+    function test_z5_pagesFromADocumentKeepTheirOwnSizeUnlessPaperIsAskedFor() {
+        const kept = openLibrary(newLibrary());
+
+        kept.createNotebookWithSetup("Reader", -1, PageOptions.Blank, false, "file://" + samplePdf);
+
+        tryCompare(kept.current, "pageCount", 2);
+        wait(200);
+        compare(kept.current.paper, PageOptions.Custom, "the document's own size was thrown away");
+
+        const given = openLibrary(newLibrary());
+
+        given.createNotebookWithSetup("Reader", PageOptions.A5, PageOptions.Blank, false, "file://" + samplePdf);
+
+        tryCompare(given.current, "pageCount", 2);
+        tryCompare(given.current, "paper", PageOptions.A5, 3000, "the paper that was asked for never reached the pages");
+    }
+
     name: "NotebooksViewModel"
 
     Component {

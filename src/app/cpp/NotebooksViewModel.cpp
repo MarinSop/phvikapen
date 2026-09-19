@@ -211,11 +211,23 @@ void NotebooksViewModel::createNotebookWithSetup(const QString& name, int paper,
             wanted.background = static_cast<core::Background>(background);
         }
         wanted.orientation = landscape ? core::Orientation::Landscape : core::Orientation::Portrait;
-        const auto settle = [wanted, document](NotebookViewModel* const ready) {
+        const bool ownPaper = paper >= 0;
+        const auto settle = [wanted, document, ownPaper](NotebookViewModel* const ready) {
             ready->applyStyle(wanted);
-            if (!document.isEmpty()) {
-                ready->startFromDocument(document);
+            if (document.isEmpty()) {
+                return;
             }
+            // Pages read in from a document keep the size they were written at, unless the
+            // reader asked for paper of their own.
+            if (ownPaper) {
+                const auto once = std::make_shared<QMetaObject::Connection>();
+                *once = connect(ready, &NotebookViewModel::documentStarted, ready,
+                                [ready, wanted, once] {
+                                    QObject::disconnect(*once);
+                                    ready->applyStyle(wanted);
+                                });
+            }
+            ready->startFromDocument(document);
         };
         if (made->loaded()) {
             settle(made);

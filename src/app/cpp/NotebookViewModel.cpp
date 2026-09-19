@@ -586,28 +586,33 @@ void NotebookViewModel::setCustomHeight(qreal millimeters) {
 }
 
 void NotebookViewModel::applyStyleToSection() {
-    const core::PageInfo* const info = currentPageInfo();
+    if (const core::PageInfo* const info = currentPageInfo()) {
+        changeStyle(info->style);
+    }
+}
+
+// The setup belongs to the section: every page in it is written on the same paper.
+void NotebookViewModel::changeStyle(const core::PageStyle& style) {
     const std::optional<std::size_t> section = currentSectionIndex();
-    if (info == nullptr || !section || !m_storage) {
+    if (!section || !m_storage) {
         return;
     }
-    const core::PageStyle style = info->style;
     std::vector<core::Uuid> wanted;
     for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
         if (page.style != style) {
             wanted.push_back(page.id);
         }
     }
-    for (const core::Uuid& page : wanted) {
-        if (!m_storage) {
-            return;
-        }
-        runCommand(
-            std::make_unique<core::SetPageStyleCommand>(&m_outline, &*m_storage, page, style));
+    if (wanted.empty()) {
+        return;
     }
+    runCommand(std::make_unique<core::SetSectionStyleCommand>(&m_outline, &*m_storage,
+                                                              std::move(wanted), style));
 }
 
-void NotebookViewModel::changeStyle(const core::PageStyle& style) {
+// The setup of a single page. Nothing asks for it now that the section carries the paper, but
+// pages may be given their own again.
+void NotebookViewModel::changeStyleOfPage(const core::PageStyle& style) {
     const core::PageInfo* const info = currentPageInfo();
     if (info == nullptr || info->style == style || !m_storage) {
         return;
@@ -1574,10 +1579,10 @@ void NotebookViewModel::dropStartingPage() {
         return;
     }
     const auto found = std::ranges::find(pages, going, &core::PageInfo::id);
-    if (found == pages.end()) {
-        return;
+    if (found != pages.end()) {
+        deletePage(static_cast<int>(std::distance(pages.begin(), found)));
     }
-    deletePage(static_cast<int>(std::distance(pages.begin(), found)));
+    emit documentStarted();
 }
 
 void NotebookViewModel::importDocument(const QUrl& fileUrl) {

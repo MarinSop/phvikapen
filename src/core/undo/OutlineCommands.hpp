@@ -117,6 +117,24 @@ private:
     PageStyle m_style;
 };
 
+// The setup of a section: every page in it takes the same paper, and goes back together.
+class SetSectionStyleCommand final : public ICommand {
+public:
+    SetSectionStyleCommand(Outline* outline, StorageThread* storage, std::vector<Uuid> pageIds,
+                           const PageStyle& style);
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Outline* m_outline;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_pageIds;
+    std::vector<PageStyle> m_wasStyle;
+    PageStyle m_style;
+};
+
 class SetPageMediaCommand final : public ICommand {
 public:
     SetPageMediaCommand(Outline* outline, StorageThread* storage, const Uuid& pageId,

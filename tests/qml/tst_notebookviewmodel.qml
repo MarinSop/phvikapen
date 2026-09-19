@@ -560,18 +560,33 @@ TestCase {
         compare(reopened.errorMessage, "");
     }
 
-    function test_theSetupOfAPageCanBeGivenToTheWholeSection() {
+    function test_theSetupBelongsToTheWholeSection() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();
-        notebook.background = PageOptions.Dotted;
-        notebook.currentPage = 0;
-        compare(notebook.background, PageOptions.Lined);
-
         notebook.currentPage = 1;
-        notebook.applyStyleToSection();
+
+        notebook.background = PageOptions.Dotted;
+        notebook.paper = PageOptions.A5;
 
         notebook.currentPage = 0;
-        compare(notebook.background, PageOptions.Dotted);
+        compare(notebook.background, PageOptions.Dotted, "the page before kept its own paper");
+        compare(notebook.paper, PageOptions.A5);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theSetupOfASectionGoesBackInOneStep() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.addPage();
+        notebook.currentPage = 0;
+        const wasBackground = notebook.background;
+
+        notebook.background = PageOptions.Dotted;
+        notebook.undo();
+
+        compare(notebook.background, wasBackground);
+        notebook.currentPage = 2;
+        compare(notebook.background, wasBackground, "one page was left behind by the undo");
         compare(notebook.errorMessage, "");
     }
 

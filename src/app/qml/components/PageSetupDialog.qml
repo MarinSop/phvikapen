@@ -25,15 +25,8 @@ AppDialog {
         Label {
             Layout.fillWidth: true
             color: palette.placeholderText
-            text: qsTr("The setup belongs to this page. New pages start the way the page they were added after does.")
+            text: qsTr("The setup belongs to the whole section: every page in it is written on the same paper.")
             wrapMode: Text.WordWrap
-        }
-
-        Button {
-            objectName: "applyToSectionButton"
-            text: qsTr("Give every page in the section this setup")
-
-            onClicked: root.notebook.applyStyleToSection()
         }
     }
 }

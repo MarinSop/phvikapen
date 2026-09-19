@@ -15,7 +15,7 @@ ColumnLayout {
     spacing: 4
 
     Label {
-        text: qsTr("Page setup")
+        text: qsTr("Paper of this section")
     }
 
     ComboBox {

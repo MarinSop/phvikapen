@@ -246,6 +246,7 @@ signals:
     void keptAtChanged();
     void editedChanged();
     void nameWanted(const QString& name);
+    void documentStarted();
 
 private:
     class Sink final : public platform::ink::IInkSink {
@@ -309,6 +310,7 @@ private:
     [[nodiscard]] std::optional<core::PagePlace> currentPlace() const;
     [[nodiscard]] std::optional<std::size_t> currentSectionIndex() const;
     void changeStyle(const core::PageStyle& style);
+    void changeStyleOfPage(const core::PageStyle& style);
 
     void storeStroke(const core::Stroke& stroke);
     void selectInside(std::span<const core::Point> polygon);

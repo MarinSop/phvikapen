@@ -210,6 +210,45 @@ std::optional<Uuid> SetPageStyleCommand::pageToShow() const {
     return m_pageId;
 }
 
+SetSectionStyleCommand::SetSectionStyleCommand(Outline* outline, StorageThread* storage,
+                                               std::vector<Uuid> pageIds, const PageStyle& style)
+    : m_outline{outline}, m_storage{storage}, m_pageIds{std::move(pageIds)}, m_style{style} {}
+
+Result<void> SetSectionStyleCommand::apply() {
+    std::vector<PageStyle> before;
+    before.reserve(m_pageIds.size());
+    for (const Uuid& pageId : m_pageIds) {
+        const Result<PageStyle> previous = m_outline->setPageStyle(pageId, m_style);
+        if (!previous) {
+            return std::unexpected{previous.error()};
+        }
+        before.push_back(*previous);
+        m_storage->submit([pageId, style = m_outline->page(pageId)->style](NotebookStore& store) {
+            return store.setPageStyle(pageId, style);
+        });
+    }
+    m_wasStyle = std::move(before);
+    return {};
+}
+
+Result<void> SetSectionStyleCommand::revert() {
+    for (std::size_t index = 0; index < m_pageIds.size() && index < m_wasStyle.size(); ++index) {
+        const Uuid& pageId = m_pageIds[index];
+        const Result<PageStyle> previous = m_outline->setPageStyle(pageId, m_wasStyle[index]);
+        if (!previous) {
+            return std::unexpected{previous.error()};
+        }
+        m_storage->submit([pageId, style = m_outline->page(pageId)->style](NotebookStore& store) {
+            return store.setPageStyle(pageId, style);
+        });
+    }
+    return {};
+}
+
+std::optional<Uuid> SetSectionStyleCommand::pageToShow() const {
+    return m_pageIds.empty() ? std::nullopt : std::optional<Uuid>{m_pageIds.front()};
+}
+
 SetPageMediaCommand::SetPageMediaCommand(Outline* outline, StorageThread* storage,
                                          const Uuid& pageId,
                                          std::optional<PageMedia> media) noexcept

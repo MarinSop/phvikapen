@@ -10,6 +10,7 @@ AppDialog {
     id: root
 
     property url document
+    readonly property bool keepsDocumentSize: root.document.toString() !== "" && !ownSizeSwitch.checked
     required property NotebooksViewModel notebooks
     required property SettingsViewModel settings
     readonly property list<int> backgrounds: [PageOptions.Blank, PageOptions.Lined, PageOptions.Grid, PageOptions.Dotted]
@@ -23,13 +24,17 @@ AppDialog {
     width: 420
 
     onAccepted: {
-        root.settings.paper = root.papers[paperBox.currentIndex];
         root.settings.background = root.backgrounds[backgroundBox.currentIndex];
-        root.settings.landscape = landscapeSwitch.checked;
-        root.notebooks.createNotebookWithSetup(nameField.text.trim(), root.papers[paperBox.currentIndex], root.backgrounds[backgroundBox.currentIndex], landscapeSwitch.checked, root.document);
+        if (!root.keepsDocumentSize) {
+            root.settings.paper = root.papers[paperBox.currentIndex];
+            root.settings.landscape = landscapeSwitch.checked;
+        }
+        // Handing over no paper leaves the pages of a document at the size they were written at.
+        root.notebooks.createNotebookWithSetup(nameField.text.trim(), root.keepsDocumentSize ? -1 : root.papers[paperBox.currentIndex], root.backgrounds[backgroundBox.currentIndex], landscapeSwitch.checked, root.document);
     }
     onOpened: {
         root.document = "";
+        ownSizeSwitch.checked = false;
         nameField.text = root.notebooks.suggestedName();
         paperBox.currentIndex = root.papers.indexOf(root.settings.paper);
         backgroundBox.currentIndex = root.backgrounds.indexOf(root.settings.background);
@@ -77,8 +82,17 @@ AppDialog {
             onClicked: documentDialog.open()
         }
 
+        Switch {
+            id: ownSizeSwitch
+
+            Layout.fillWidth: true
+            objectName: "ownSizeSwitch"
+            text: qsTr("Give the pages a size of my own")
+            visible: root.document.toString() !== ""
+        }
+
         Label {
-            text: qsTr("Pages start as")
+            text: root.keepsDocumentSize ? qsTr("Pages keep the size of the document") : qsTr("Pages start as")
         }
 
         RowLayout {
@@ -89,6 +103,7 @@ AppDialog {
                 id: paperBox
 
                 Layout.fillWidth: true
+                enabled: !root.keepsDocumentSize
                 model: root.paperNames
                 objectName: "newNotebookPaper"
             }
@@ -106,7 +121,7 @@ AppDialog {
             Layout.fillWidth: true
             heightMillimetres: root.settings.customHeight
             objectName: "newNotebookSize"
-            visible: root.papers[paperBox.currentIndex] === PageOptions.Custom
+            visible: !root.keepsDocumentSize && root.papers[paperBox.currentIndex] === PageOptions.Custom
             widthMillimetres: root.settings.customWidth
 
             onSizeEdited: (wide, tall) => {
@@ -118,7 +133,7 @@ AppDialog {
         Switch {
             id: landscapeSwitch
 
-            enabled: root.papers[paperBox.currentIndex] !== PageOptions.Infinite && root.papers[paperBox.currentIndex] !== PageOptions.Custom
+            enabled: !root.keepsDocumentSize && root.papers[paperBox.currentIndex] !== PageOptions.Infinite && root.papers[paperBox.currentIndex] !== PageOptions.Custom
             objectName: "newNotebookLandscape"
             text: qsTr("Landscape")
         }
