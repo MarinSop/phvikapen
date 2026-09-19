@@ -340,11 +340,16 @@ private:
     void wantNeighbours();
     void wantMediaFor(const core::PageInfo& page);
     [[nodiscard]] bool hasWholeMedia(const core::PageInfo& page) const;
+    // How big a page is: its own paper, or, where it has none, the document it carries.
+    [[nodiscard]] std::optional<core::PaperSize> sizeOfPage(const core::PageInfo& page) const;
+    void rememberDocument(const core::ContentId& asset,
+                          const std::vector<platform::pdf::PageSize>& sizes);
     void forgetFarMedia(std::span<const core::PageInfo> pages, int here);
     [[nodiscard]] qreal drawScale(const core::PaperSize& paper, qreal least) const;
     [[nodiscard]] qreal columnScale(const core::PaperSize& paper) const;
     void drawColumnMedia(const core::Uuid& page, const core::PageStyle& style, int index,
                          core::Asset asset);
+    void drawColumnPage(const core::Uuid& page, int index, const core::ContentId& asset);
     void showColumn();
     void goToShownPage(int index);
     void reportError(const QString& message);
@@ -366,6 +371,7 @@ private:
     core::ContentId m_openAsset;
     std::map<core::Uuid, platform::ink::QtInkItem::MediaPiece> m_shownMedia;
     std::map<core::Uuid, qreal> m_drawnAt;
+    std::map<core::ContentId, std::vector<platform::pdf::PageSize>> m_documentSizes;
     std::set<core::Uuid> m_wantedMedia;
     std::set<core::Uuid> m_wantedPages;
     bool m_continuous{false};

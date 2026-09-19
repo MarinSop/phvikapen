@@ -562,7 +562,7 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
-    function test_endlessPaperLeavesPagesOfADocumentAsTheyAre() {
+    function test_endlessPaperStillKeepsThePagesOfADocumentApart() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;
         notebook.importDocument("file://" + samplePdf);
@@ -574,13 +574,11 @@ TestCase {
 
         notebook.paper = PageOptions.Infinite;
 
-        wait(200);
-        compare(canvas.sheetRect(1).height, wasTall, "a page of the document lost the sheet it needs");
-        for (let sheet = 1; sheet < 3; ++sheet) {
-            const above = canvas.sheetRect(sheet - 1);
-            const below = canvas.sheetRect(sheet);
-            verify(below.y >= above.y + above.height, "sheet " + sheet + " runs into the one above it");
-        }
+        tryCompare(notebook, "paper", PageOptions.Infinite, 3000, "the pages refused endless paper");
+        wait(300);
+        compare(canvas.sheetRect(1).height, 0, "an endless page should have no sheet drawn");
+        verify(canvas.sheetRect(1).y - canvas.sheetRect(0).y >= wasTall, "the endless pages stand on top of each other");
+        verify(canvas.sheetRect(2).y - canvas.sheetRect(1).y >= wasTall);
         notebook.continuous = false;
         compare(notebook.errorMessage, "");
     }

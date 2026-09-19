@@ -607,14 +607,8 @@ void NotebookViewModel::changeStyle(const core::PageStyle& style) {
     if (!section || !m_storage) {
         return;
     }
-    // A page that carries a document keeps the size that document was written at: endless paper
-    // would leave it nothing to stand on in the column.
-    const bool endless = !core::paperSize(style).has_value();
     std::vector<core::Uuid> wanted;
     for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
-        if (endless && page.media) {
-            continue;
-        }
         if (page.style != style) {
             wanted.push_back(page.id);
         }
@@ -1308,17 +1302,20 @@ void NotebookViewModel::showAsset(std::uint64_t opening, core::Result<core::Asse
     }
     m_openAsset = asset->id;
     const std::uint64_t generation = m_opening;
-    m_pdf->open(std::move(*asset),
-                [this, generation](core::Result<std::vector<platform::pdf::PageSize>> pages) {
-                    QMetaObject::invokeMethod(
-                        this,
-                        [this, generation, ok = pages.has_value()] {
-                            if (generation == m_opening && ok) {
-                                drawMedia();
-                            }
-                        },
-                        Qt::QueuedConnection);
-                });
+    const core::ContentId opened = m_openAsset;
+    m_pdf->open(std::move(*asset), [this, generation, opened](
+                                       core::Result<std::vector<platform::pdf::PageSize>> pages) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, generation, opened, pages = std::move(pages)] {
+                if (generation != m_opening || !pages) {
+                    return;
+                }
+                rememberDocument(opened, *pages);
+                drawMedia();
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 void NotebookViewModel::showPicture(std::uint64_t opening, const core::ContentId& asset,
@@ -1352,7 +1349,7 @@ void NotebookViewModel::drawMedia() {
     if (m_canvas.isNull() || info == nullptr || !info->media || !m_pdf) {
         return;
     }
-    const std::optional<core::PaperSize> paper = core::paperSize(info->style);
+    const std::optional<core::PaperSize> paper = sizeOfPage(*info);
     if (!paper) {
         return;
     }
@@ -1424,6 +1421,19 @@ void NotebookViewModel::showPageMedia(const core::Uuid& page, const QImage& pict
     if (picture.isNull() || area.isEmpty()) {
         return;
     }
+    const core::PageInfo* const info = m_outline.page(page);
+    const std::optional<core::PaperSize> paper = info == nullptr ? std::nullopt : sizeOfPage(*info);
+    // The page may have changed size while this was being drawn; then it is drawn again rather
+    // than shown at a size it no longer has.
+    if (paper && !fitsSheet(area, *paper)) {
+        m_drawnAt.erase(page);
+        if (page == m_currentPage) {
+            drawMedia();
+        } else if (info != nullptr) {
+            wantMediaFor(*info);
+        }
+        return;
+    }
     m_shownMedia.insert_or_assign(page, platform::ink::QtInkItem::MediaPiece{
                                             .page = page,
                                             .picture = picture,
@@ -1446,12 +1456,38 @@ void NotebookViewModel::publishMedia() {
 
 // While a page is being read only the part of its document that shows is drawn, in full detail.
 // Once it is left behind, that part is all it has, so the column draws it whole again.
+void NotebookViewModel::rememberDocument(const core::ContentId& asset,
+                                         const std::vector<platform::pdf::PageSize>& sizes) {
+    if (!sizes.empty()) {
+        m_documentSizes.insert_or_assign(asset, sizes);
+    }
+}
+
+std::optional<core::PaperSize> NotebookViewModel::sizeOfPage(const core::PageInfo& page) const {
+    if (const std::optional<core::PaperSize> paper = core::paperSize(page.style)) {
+        return paper;
+    }
+    if (!page.media) {
+        return std::nullopt;
+    }
+    const auto document = m_documentSizes.find(page.media->asset);
+    if (document == m_documentSizes.end()) {
+        return std::nullopt;
+    }
+    const auto index = static_cast<std::size_t>(std::max(page.media->index, 0));
+    if (index >= document->second.size()) {
+        return std::nullopt;
+    }
+    const platform::pdf::PageSize& size = document->second[index];
+    return core::PaperSize{.width = size.width, .height = size.height};
+}
+
 bool NotebookViewModel::hasWholeMedia(const core::PageInfo& page) const {
     const auto shown = m_shownMedia.find(page.id);
     if (shown == m_shownMedia.end()) {
         return false;
     }
-    const std::optional<core::PaperSize> paper = core::paperSize(page.style);
+    const std::optional<core::PaperSize> paper = sizeOfPage(page);
     if (!paper) {
         return true;
     }
@@ -1520,12 +1556,14 @@ int NotebookViewModel::mediaPixelsOn(int index) const {
 
 void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::PageStyle& style,
                                         int index, core::Asset asset) {
-    const std::optional<core::PaperSize> paper = core::paperSize(style);
     if (asset.kind == core::AssetKind::Image) {
         QImage picture;
         if (!picture.loadFromData(toByteArray(asset.data))) {
             return;
         }
+        const core::PageInfo* const info = m_outline.page(page);
+        const std::optional<core::PaperSize> paper =
+            info == nullptr ? core::paperSize(style) : sizeOfPage(*info);
         const QRectF area = paper ? QRectF{0.0, 0.0, static_cast<qreal>(paper->width),
                                            static_cast<qreal>(paper->height)}
                                   : QRectF{0.0, 0.0, static_cast<qreal>(picture.width()),
@@ -1533,14 +1571,39 @@ void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::Page
         showPageMedia(page, picture, area);
         return;
     }
-    if (!paper) {
-        return;
-    }
 
     if (!m_pdf) {
         m_pdf.emplace();
     }
+    // The document is opened first: a page with no paper of its own takes the size it was
+    // written at, and that is only known once the document has been read.
     const core::ContentId id = asset.id;
+    const std::uint64_t opening = m_opening;
+    m_pdf->open(std::move(asset), [this, opening, id, page, index](
+                                      core::Result<std::vector<platform::pdf::PageSize>> sizes) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, id, page, index, sizes = std::move(sizes)] {
+                if (opening != m_opening || !sizes) {
+                    return;
+                }
+                rememberDocument(id, *sizes);
+                drawColumnPage(page, index, id);
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::drawColumnPage(const core::Uuid& page, int index,
+                                       const core::ContentId& asset) {
+    const core::PageInfo* const info = m_outline.page(page);
+    if (info == nullptr || !m_pdf) {
+        return;
+    }
+    const std::optional<core::PaperSize> paper = sizeOfPage(*info);
+    if (!paper) {
+        return;
+    }
     const auto scale = static_cast<float>(columnScale(*paper));
     const auto width = static_cast<int>(
         std::clamp(paper->width * scale, 1.0F, static_cast<float>(kMaximumMediaPixels)));
@@ -1550,8 +1613,7 @@ void NotebookViewModel::drawColumnMedia(const core::Uuid& page, const core::Page
     const QRectF area{0.0, 0.0, static_cast<qreal>(paper->width),
                       static_cast<qreal>(paper->height)};
     const std::uint64_t opening = m_opening;
-    m_pdf->open(std::move(asset), [](core::Result<std::vector<platform::pdf::PageSize>>) {});
-    m_pdf->render(id, index, width, height,
+    m_pdf->render(asset, index, width, height,
                   [this, opening, page, area](core::Result<platform::pdf::PageImage> image) {
                       if (!image) {
                           return;

@@ -11,16 +11,31 @@ Pane {
     required property AppActions actions
     property int draggedPage: -1
     property int draggedSection: -1
+    // Where the row in hand would land, so that a line can show it.
+    property int pageLanding: -1
+    property int sectionLanding: -1
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
     property int renamingPage: -1
     property int renamingSection: -1
     readonly property SettingsViewModel settings: root.actions.settings
 
-    // Which row of a list the pointer was over when the carried one was let go.
+    // Which row of a list the pointer is over. Above the first row counts as the first, and the
+    // blank space under the last row counts as the last, the way other applications do it.
     function landingIn(list, scenePosition) {
+        if (list.count === 0) {
+            return -1;
+        }
         const point = list.mapFromItem(null, scenePosition);
-        return list.indexAt(list.width / 2, point.y + list.contentY);
+        const inContent = point.y + list.contentY;
+        if (inContent < 0) {
+            return 0;
+        }
+        if (inContent >= list.contentHeight) {
+            return list.count - 1;
+        }
+        const found = list.indexAt(list.width / 2, inContent);
+        return found < 0 ? list.count - 1 : found;
     }
 
     function askToDelete(sectionScope, index, title) {
@@ -212,12 +227,19 @@ Pane {
                         xAxis.enabled: false
                         yAxis.enabled: true
 
+                        onCentroidChanged: {
+                            if (sectionDrag.active) {
+                                root.sectionLanding = root.landingIn(sectionList, sectionDrag.centroid.scenePosition);
+                            }
+                        }
                         onActiveChanged: {
                             if (sectionDrag.active) {
                                 sectionDelegate.restingY = sectionDelegate.y;
                                 root.draggedSection = sectionDelegate.index;
+                                root.sectionLanding = sectionDelegate.index;
                                 return;
                             }
+                            root.sectionLanding = -1;
                             const carried = root.draggedSection;
                             root.draggedSection = -1;
                             sectionDelegate.y = sectionDelegate.restingY;
@@ -265,6 +287,11 @@ Pane {
                             onTriggered: root.askToDelete(true, sectionDelegate.index, sectionDelegate.title)
                         }
                     }
+                }
+
+                DropLine {
+                    list: sectionList
+                    place: root.sectionLanding
                 }
             }
         }
@@ -408,12 +435,19 @@ Pane {
                         xAxis.enabled: false
                         yAxis.enabled: true
 
+                        onCentroidChanged: {
+                            if (pageDrag.active) {
+                                root.pageLanding = root.landingIn(pageList, pageDrag.centroid.scenePosition);
+                            }
+                        }
                         onActiveChanged: {
                             if (pageDrag.active) {
                                 pageDelegate.restingY = pageDelegate.y;
                                 root.draggedPage = pageDelegate.index;
+                                root.pageLanding = pageDelegate.index;
                                 return;
                             }
+                            root.pageLanding = -1;
                             const carried = root.draggedPage;
                             root.draggedPage = -1;
                             // The carried row goes back in line first, so that the list can say
@@ -470,6 +504,11 @@ Pane {
                             onTriggered: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
                         }
                     }
+                }
+
+                DropLine {
+                    list: pageList
+                    place: root.pageLanding
                 }
             }
         }
