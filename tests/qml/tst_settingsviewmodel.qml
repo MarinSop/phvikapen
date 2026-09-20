@@ -21,6 +21,17 @@ TestCase {
         later.lookForUpdates = true;
     }
 
+    function test_b1_testVersionsAreOfferedOnlyWhenAskedFor() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+        compare(settings.testVersions, false);
+
+        settings.testVersions = true;
+
+        const later = createTemporaryObject(settingsComponent, testCase);
+        compare(later.testVersions, true);
+        later.testVersions = false;
+    }
+
     function test_b2_theThemeIsRememberedForTheNextTime() {
         const settings = createTemporaryObject(settingsComponent, testCase);
         compare(settings.theme, 0);

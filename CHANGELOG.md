@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A setting for versions that are still being tried out. Off, only finished versions are offered;
+  on, the newest beta is offered as well and installs itself the same way.
+
 ### Fixed
 
 - Writing on Windows follows the pen. Windows hands over several positions of the pen at once, all

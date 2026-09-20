@@ -18,6 +18,8 @@ class SettingsViewModel : public QObject {
     QML_ELEMENT
     Q_PROPERTY(bool lookForUpdates READ lookForUpdates WRITE setLookForUpdates NOTIFY
                    lookForUpdatesChanged FINAL)
+    Q_PROPERTY(
+        bool testVersions READ testVersions WRITE setTestVersions NOTIFY testVersionsChanged FINAL)
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged FINAL)
     Q_PROPERTY(QString notebookFolder READ notebookFolder CONSTANT FINAL)
     Q_PROPERTY(phvikapen::app::page_options::Paper paper READ paper WRITE setPaper NOTIFY
@@ -68,7 +70,11 @@ public:
 
     [[nodiscard]] bool lookForUpdates() const { return m_lookForUpdates; }
 
+    [[nodiscard]] bool testVersions() const { return m_testVersions; }
+
     void setLookForUpdates(bool wanted);
+
+    void setTestVersions(bool wanted);
 
     [[nodiscard]] QString notebookFolder() const;
 
@@ -158,6 +164,7 @@ public:
 
 signals:
     void lookForUpdatesChanged();
+    void testVersionsChanged();
     void themeChanged();
     void pageStyleChanged();
     void shortcutsChanged();
@@ -186,6 +193,7 @@ private:
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};
+    bool m_testVersions{false};
 };
 
 }

@@ -15,7 +15,7 @@ public:
 
     // An http address is a GitHub repository, anything else a folder of releases.
     [[nodiscard]] static core::Result<std::unique_ptr<VelopackUpdater>>
-    open(std::string_view feed = {});
+    open(std::string_view feed = {}, bool testVersions = false);
 
     VelopackUpdater() noexcept;
 

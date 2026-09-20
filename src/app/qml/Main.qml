@@ -133,6 +133,8 @@ ApplicationWindow {
     UpdateViewModel {
         id: updates
 
+        testVersions: settings.testVersions
+
         Component.onCompleted: {
             if (settings.lookForUpdates) {
                 updates.check();

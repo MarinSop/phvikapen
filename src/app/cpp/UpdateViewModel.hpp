@@ -17,6 +17,8 @@ class UpdateViewModel : public QObject {
     Q_PROPERTY(State state READ state NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString version READ version NOTIFY stateChanged FINAL)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged FINAL)
+    Q_PROPERTY(
+        bool testVersions READ testVersions WRITE setTestVersions NOTIFY testVersionsChanged FINAL)
 
 public:
     enum class State : quint8 {
@@ -45,12 +47,17 @@ public:
         return m_state == State::Looking || m_state == State::Installing;
     }
 
+    [[nodiscard]] bool testVersions() const { return m_testVersions; }
+
+    void setTestVersions(bool wanted);
+
     Q_INVOKABLE void check();
 
     Q_INVOKABLE void install();
 
 signals:
     void stateChanged();
+    void testVersionsChanged();
     void failed(const QString& message);
     void restartWanted();
 
@@ -62,6 +69,8 @@ private:
     std::jthread m_worker;
     State m_state{State::Idle};
     QString m_version;
+    bool m_testVersions{false};
+    bool m_reopen{false};
 };
 
 }

@@ -44,6 +44,16 @@ void UpdateViewModel::showFailure(State state, const QString& message) {
     emit failed(message);
 }
 
+void UpdateViewModel::setTestVersions(bool wanted) {
+    if (m_testVersions == wanted) {
+        return;
+    }
+    m_testVersions = wanted;
+    // The place to look is settled when the updater is opened, so it is opened again.
+    m_reopen = true;
+    emit testVersionsChanged();
+}
+
 void UpdateViewModel::check() {
     if (busy()) {
         return;
@@ -52,12 +62,16 @@ void UpdateViewModel::check() {
     if (m_worker.joinable()) {
         m_worker.join();
     }
+    if (m_reopen) {
+        m_updater.reset();
+        m_reopen = false;
+    }
 
-    m_worker = std::jthread{[this] {
+    m_worker = std::jthread{[this, testVersions = m_testVersions] {
         try {
             if (!m_updater) {
                 core::Result<std::unique_ptr<platform::update::VelopackUpdater>> opened =
-                    platform::update::VelopackUpdater::open();
+                    platform::update::VelopackUpdater::open({}, testVersions);
                 if (!opened) {
                     const QString message = toQString(opened.error().message);
                     QMetaObject::invokeMethod(

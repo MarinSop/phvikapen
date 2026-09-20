@@ -20,6 +20,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
+constexpr auto kTestVersionsSetting = "updates/testVersions";
 constexpr auto kThemeSetting = "look/theme";
 constexpr auto kShortcutPrefix = "shortcuts/";
 constexpr auto kSmoothingSetting = "ink/smoothing";
@@ -51,6 +52,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
       m_folder{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks"} {
     const QSettings settings;
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
+    m_testVersions = settings.value(kTestVersionsSetting, false).toBool();
     m_theme = std::clamp(settings.value(kThemeSetting, m_theme).toInt(), 0, kThemeCount - 1);
     applyTheme();
     m_style = defaults::pageStyle();
@@ -105,6 +107,16 @@ void SettingsViewModel::setLookForUpdates(bool wanted) {
     QSettings settings;
     settings.setValue(kLookForUpdatesSetting, wanted);
     emit lookForUpdatesChanged();
+}
+
+void SettingsViewModel::setTestVersions(bool wanted) {
+    if (m_testVersions == wanted) {
+        return;
+    }
+    m_testVersions = wanted;
+    QSettings settings;
+    settings.setValue(kTestVersionsSetting, wanted);
+    emit testVersionsChanged();
 }
 
 QString SettingsViewModel::notebookFolder() const {

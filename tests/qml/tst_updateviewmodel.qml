@@ -35,6 +35,24 @@ TestCase {
         compare(restarts.count, 0);
     }
 
+    function test_askingForTestVersionsLooksAgainSomewhereElse() {
+        const updates = createTemporaryObject(updateComponent, testCase);
+        const changes = createTemporaryObject(signalSpyComponent, testCase, {
+            target: updates,
+            signalName: "testVersionsChanged"
+        });
+        compare(updates.testVersions, false);
+
+        updates.check();
+        tryCompare(updates, "state", UpdateViewModel.Unavailable);
+        updates.testVersions = true;
+
+        compare(changes.count, 1);
+        updates.check();
+        tryCompare(updates, "state", UpdateViewModel.Unavailable);
+        compare(updates.testVersions, true);
+    }
+
     function test_lookingTwiceAtOnceDoesNotStartTwoSearches() {
         const updates = createTemporaryObject(updateComponent, testCase);
         const changes = createTemporaryObject(signalSpyComponent, testCase, {

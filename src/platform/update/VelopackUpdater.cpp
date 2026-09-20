@@ -41,12 +41,13 @@ VelopackUpdater::VelopackUpdater(std::unique_ptr<Session> session) noexcept
 
 VelopackUpdater::~VelopackUpdater() = default;
 
-core::Result<std::unique_ptr<VelopackUpdater>> VelopackUpdater::open(std::string_view feed) {
+core::Result<std::unique_ptr<VelopackUpdater>> VelopackUpdater::open(std::string_view feed,
+                                                                     bool testVersions) {
     const std::string where{feed.empty() ? kUpdateFeed : feed};
     try {
         auto manager = where.starts_with("http")
                            ? std::make_unique<Velopack::UpdateManager>(
-                                 std::make_unique<Velopack::GithubSource>(where))
+                                 std::make_unique<Velopack::GithubSource>(where, "", testVersions))
                            : std::make_unique<Velopack::UpdateManager>(
                                  std::make_unique<Velopack::FileSource>(where));
         auto session = std::make_unique<Session>(std::move(manager), std::nullopt);

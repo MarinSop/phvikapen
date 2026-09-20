@@ -396,6 +396,21 @@ AppDialog {
                     onToggled: root.settings.lookForUpdates = checked
                 }
 
+                Switch {
+                    checked: root.settings.testVersions
+                    objectName: "testVersionsSwitch"
+                    text: qsTr("Offer versions that are still being tried out")
+
+                    onToggled: root.settings.testVersions = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("On, PhvikaPen offers beta versions as well. They carry what is newest and may still have faults.")
+                    wrapMode: Text.WordWrap
+                }
+
                 RowLayout {
                     Layout.fillWidth: true
 
