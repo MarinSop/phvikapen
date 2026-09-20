@@ -4,7 +4,10 @@
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Color.hpp"
+#include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/PageStyle.hpp"
 #include "core/storage/StrokeCodec.hpp"
 #include "support/TemporaryNotebook.hpp"
 
@@ -239,6 +242,76 @@ TEST(NotebookStoreTest, UpgradesANotebookFromSchemaVersion1) {
     ASSERT_EQ(strokes->size(), 1U);
     EXPECT_EQ(strokes->front().stroke.id(), stroke.id());
     EXPECT_FALSE(store->insertStroke(page, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)}));
+}
+
+TEST(NotebookStoreTest, AddsThePaperColumnsAnOlderNotebookNeverGot) {
+    const TemporaryNotebook notebook;
+    {
+        const Result<NotebookStore> store = NotebookStore::open(notebook.path());
+        ASSERT_TRUE(store.has_value()) << store.error().message;
+    }
+    // A notebook written before the paper of a page could be chosen, stamped with the version the
+    // paper went out under.
+    {
+        sqlite3* raw = nullptr;
+        ASSERT_EQ(sqlite3_open(notebook.path().string().c_str(), &raw), SQLITE_OK);
+        ASSERT_EQ(sqlite3_exec(raw, R"sql(
+            ALTER TABLE pages DROP COLUMN paper_color;
+            ALTER TABLE pages DROP COLUMN line_color;
+            ALTER TABLE pages DROP COLUMN margin_color;
+            ALTER TABLE pages DROP COLUMN line_width;
+            ALTER TABLE pages DROP COLUMN margin_at;
+            ALTER TABLE pages DROP COLUMN margin;
+            PRAGMA user_version = 4;
+        )sql",
+                               nullptr, nullptr, nullptr),
+                  SQLITE_OK);
+        sqlite3_close(raw);
+    }
+
+    const Result<NotebookStore> reopened = NotebookStore::open(notebook.path());
+
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message;
+    EXPECT_EQ(reopened->schemaVersion(), kNotebookSchemaVersion);
+    const Result<NotebookOutline> outline = reopened->readOutline();
+    ASSERT_TRUE(outline.has_value()) << outline.error().message;
+    ASSERT_FALSE(outline->sections.empty());
+    ASSERT_FALSE(outline->sections.front().pages.empty());
+    EXPECT_EQ(outline->sections.front().pages.front().style.paperColor, PageStyle::kUnset);
+}
+
+TEST(NotebookStoreTest, LeavesTheColumnsOfANotebookThatAlreadyHasThemAlone) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    {
+        Result<NotebookStore> store = NotebookStore::open(notebook.path());
+        ASSERT_TRUE(store.has_value()) << store.error().message;
+        const NotebookOutline outline = store->readOutline().value();
+        PageInfo page;
+        page.id = ids.next();
+        page.title = "Paper";
+        page.style.paperColor = Color{.red = 250, .green = 240, .blue = 200, .alpha = 255};
+        ASSERT_TRUE(store->insertPage(
+            outline.sections.front().id, page,
+            std::vector<Uuid>{outline.sections.front().pages.front().id, page.id}));
+    }
+    {
+        sqlite3* raw = nullptr;
+        ASSERT_EQ(sqlite3_open(notebook.path().string().c_str(), &raw), SQLITE_OK);
+        ASSERT_EQ(sqlite3_exec(raw, "PRAGMA user_version = 4;", nullptr, nullptr, nullptr),
+                  SQLITE_OK);
+        sqlite3_close(raw);
+    }
+
+    const Result<NotebookStore> reopened = NotebookStore::open(notebook.path());
+
+    ASSERT_TRUE(reopened.has_value()) << reopened.error().message;
+    EXPECT_EQ(reopened->schemaVersion(), kNotebookSchemaVersion);
+    const Result<NotebookOutline> outline = reopened->readOutline();
+    ASSERT_TRUE(outline.has_value()) << outline.error().message;
+    ASSERT_EQ(outline->sections.front().pages.size(), 2U);
+    EXPECT_EQ(outline->sections.front().pages.back().style.paperColor,
+              (Color{.red = 250, .green = 240, .blue = 200, .alpha = 255}));
 }
 
 TEST(NotebookStoreTest, RefusesANotebookFromANewerVersion) {

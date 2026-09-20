@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Notebooks written before a page could be given its own paper open again. The paper went out
+  without the number that tells a notebook what it carries, so those notebooks were read as though
+  they held columns they never got, and would not open. What is missing is added when they are
+  opened, whether they carry the columns already or not.
 - Writing on Windows follows the pen. Windows hands over several positions of the pen at once, all
   stamped with the same time, and all but the first were dropped, which cut the corners of letters
   and set lines wobbling. Every position is kept now.

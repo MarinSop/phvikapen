@@ -86,20 +86,24 @@ constexpr std::string_view kSchemaVersion4 = R"sql(
     ALTER TABLE pages ADD COLUMN media_index INTEGER NOT NULL DEFAULT 0;
 )sql";
 
-// The paper a page is written on: its colour, the colour and thickness of its ruling, and the
-// line down the side. A colour of nothing means "whatever suits this ruling".
-constexpr std::string_view kSchemaVersion5 = R"sql(
-    ALTER TABLE pages ADD COLUMN paper_color INTEGER NOT NULL DEFAULT 0;
-    ALTER TABLE pages ADD COLUMN line_color INTEGER NOT NULL DEFAULT 0;
-    ALTER TABLE pages ADD COLUMN margin_color INTEGER NOT NULL DEFAULT 0;
-    ALTER TABLE pages ADD COLUMN line_width REAL NOT NULL DEFAULT 1;
-    ALTER TABLE pages ADD COLUMN margin_at REAL NOT NULL DEFAULT 94.4881889763779;
-    ALTER TABLE pages ADD COLUMN margin INTEGER NOT NULL DEFAULT 1;
-)sql";
-
 constexpr std::array kMigrations{
-    std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4}, std::pair{5, kSchemaVersion5},
+    std::pair{1, kSchemaVersion1},
+    std::pair{2, kSchemaVersion2},
+    std::pair{3, kSchemaVersion3},
+    std::pair{4, kSchemaVersion4},
+};
+
+// The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
+// down the side. These went out while the version number stood still, so a notebook stamped with
+// the version before them may carry them or not, and both are put right by adding what is missing.
+constexpr std::array<std::pair<std::string_view, std::string_view>, 6> kPaperColumns{
+    std::pair<std::string_view, std::string_view>{"paper_color", "INTEGER NOT NULL DEFAULT 0"},
+    std::pair<std::string_view, std::string_view>{"line_color", "INTEGER NOT NULL DEFAULT 0"},
+    std::pair<std::string_view, std::string_view>{"margin_color", "INTEGER NOT NULL DEFAULT 0"},
+    std::pair<std::string_view, std::string_view>{"line_width", "REAL NOT NULL DEFAULT 1"},
+    std::pair<std::string_view, std::string_view>{"margin_at",
+                                                  "REAL NOT NULL DEFAULT 94.4881889763779"},
+    std::pair<std::string_view, std::string_view>{"margin", "INTEGER NOT NULL DEFAULT 1"},
 };
 
 constexpr std::string_view kDefaultSectionTitle = "Section 1";
@@ -166,6 +170,44 @@ constexpr std::string_view kDefaultSectionTitle = "Section 1";
     return *row ? statement->integer(0) : 0;
 }
 
+[[nodiscard]] Result<std::vector<std::string>> columnsOf(sqlite3* database,
+                                                         std::string_view table) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(database, "PRAGMA table_info(" + std::string{table} + ");");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    std::vector<std::string> names;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return names;
+        }
+        names.push_back(statement->text(1));
+    }
+}
+
+[[nodiscard]] Result<void> ensurePaperColumns(sqlite3* database) {
+    const Result<std::vector<std::string>> present = columnsOf(database, "pages");
+    if (!present) {
+        return std::unexpected{present.error()};
+    }
+    for (const auto& [name, kind] : kPaperColumns) {
+        if (std::ranges::find(*present, name) != present->end()) {
+            continue;
+        }
+        const std::string sql =
+            "ALTER TABLE pages ADD COLUMN " + std::string{name} + " " + std::string{kind} + ";";
+        if (const Result<void> added = sqlite::execute(database, sql); !added) {
+            return added;
+        }
+    }
+    return {};
+}
+
 [[nodiscard]] Result<void> migrate(sqlite3* database) {
     const Result<std::int64_t> version = queryInteger(database, "PRAGMA user_version;");
     if (!version) {
@@ -190,6 +232,9 @@ constexpr std::string_view kDefaultSectionTitle = "Section 1";
         if (const Result<void> applied = sqlite::execute(database, sql); !applied) {
             return applied;
         }
+    }
+    if (const Result<void> papered = ensurePaperColumns(database); !papered) {
+        return papered;
     }
     if (const Result<void> stamped = sqlite::execute(
             database, "PRAGMA user_version = " + std::to_string(kNotebookSchemaVersion) + ";");
