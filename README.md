@@ -13,11 +13,12 @@ a chosen size or an endless canvas, blank, lined, squared or dotted, in the colo
 chooses, or a page of an imported PDF or a picture to write on top of. Three pens, a highlighter,
 an eraser and a tool that picks strokes to move, copy, recolour or delete share one colour and
 their widths, the pen can draw straight lines, boxes and ovals with corners as round as they are
-wanted, and every change can be undone. A notebook is a draft until it is saved, and is written to
-its own file from then on. On Windows the handwriting is read in the background, so a notebook can
-be searched for what was written in it by hand, and a picked piece of writing can be copied as
-text. A notebook can be written out as a PDF or copied somewhere safe, and the application updates
-itself from its published releases.
+wanted, and every change can be undone. Typed text goes anywhere on the paper in a box of its own,
+in the font, size, colour and weight it is given. A notebook is a draft until it is saved, and is
+written to its own file from then on. On Windows the handwriting is read in the background, so a
+notebook can be searched for what was written in it by hand, and a picked piece of writing can be
+copied as text or turned into type on the page. A notebook can be written out as a PDF or copied
+somewhere safe, and the application updates itself from its published releases.
 
 ## The window
 

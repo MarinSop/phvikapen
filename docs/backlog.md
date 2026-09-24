@@ -35,6 +35,19 @@ into a real problem earlier.
 - **Nothing removes a file that no page shows any more.** Undoing an import leaves the file in the
   notebook, and emptying the trash should take it with it.
 
+## Typed text
+
+- **One face for a whole box.** A box of typed text wears one font, size and colour; a single word
+  inside it cannot be made bold on its own. Runs of formatting would have to be kept beside the
+  text, shown by the editor, printed by the painter and folded for searching.
+- **Line spacing is kept but never set.** The face of a box carries how loose its lines are, and
+  nothing changes it: the editor the window uses cannot show it, so no control offers it.
+- **Only the text tool touches text.** With the loop or the pen in hand, a box of text cannot be
+  picked up, moved or deleted; the text tool has to be chosen first. Making the loop pick up text
+  as well as ink means teaching the canvas that something above it owns that part of the page.
+- **A box cannot be turned.** Text sits square on the paper. Turning it needs an angle on the box,
+  on the editor and in the painter.
+
 ## Written documents
 
 - **The whole notebook, or nothing.** Export writes every section and every page. There is no way

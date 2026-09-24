@@ -210,6 +210,45 @@ TestCase {
         compare(notebook.pickedText, "");
     }
 
+    function test_handwritingBecomesTextOnlyWhereItCanBeRead() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const canvas = notebook.canvas;
+        mousePress(canvas, 120, 120);
+        mouseMove(canvas, 140, 130, -1, Qt.LeftButton);
+        mouseMove(canvas, 160, 140, -1, Qt.LeftButton);
+        mouseRelease(canvas, 160, 140);
+        compare(notebook.strokeCount, 1);
+        canvas.selecting = true;
+        mousePress(canvas, 100, 100);
+        mouseMove(canvas, 150, 150, -1, Qt.LeftButton);
+        mouseMove(canvas, 200, 200, -1, Qt.LeftButton);
+        mouseRelease(canvas, 200, 200);
+        compare(canvas.selectedCount, 1);
+
+        notebook.convertSelectionToText(tools.textStyle);
+
+        const rows = boxes(notebook);
+        if (notebook.readsHandwriting) {
+            tryVerify(() => rows.count === 1 || notebook.errorMessage !== "");
+        } else {
+            tryVerify(() => notebook.errorMessage !== "");
+            compare(rows.count, 0);
+            compare(notebook.strokeCount, 1);
+        }
+        canvas.selecting = false;
+    }
+
+    function test_nothingHappensWhenThereIsNothingToConvert() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+
+        notebook.convertSelectionToText(tools.textStyle);
+
+        compare(boxes(notebook).count, 0);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_theCanvasLeavesThePenAloneWhileTextIsBeingPlaced() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;

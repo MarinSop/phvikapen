@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   machine cannot read handwriting, the window says so rather than finding nothing quietly.
 - Copy as Text, from the Edit menu: what is picked with the loop is read and put on the clipboard as
   words, ready to be pasted anywhere else.
+- A text tool. Pick it from the palette or press T, tap anywhere on the paper, and type. A box of
+  text can be carried about by the bar above it, pulled wider by the grip on its right edge, and
+  taken away with the cross beside it. The bar above the window sets the font, the size, the colour,
+  bold, italic, underline, strikethrough and how the lines line up, either for the next box or for
+  the one being worked on. What is typed is kept with the page, printed with it, shown in the small
+  picture of it, and found by Find in Handwriting along with what was written by hand.
+- Convert to Text, from the Edit menu or Ctrl+Shift+R: what is picked with the loop is read, the
+  handwriting is taken away, and a box of type in its place says the same thing, in about the size
+  the hand wrote it. It can be corrected and moved like any other typed text, and one undo brings
+  the handwriting back.
 
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.
