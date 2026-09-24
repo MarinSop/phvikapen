@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The words a page of handwriting was read into are kept in the notebook, beside the strokes they
+  were written with, and searched without case, punctuation or the marks over letters: a search for
+  `cehoslovacka` finds `Čehoslovačka`, and several words are found where they follow one another.
+  Nothing reads handwriting yet; this is where what is read will be kept.
+
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.
 

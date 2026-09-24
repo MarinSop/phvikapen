@@ -80,6 +80,10 @@ Result<void> Statement::checkBind(int status) const {
 }
 
 Result<void> Statement::bindBlob(int index, std::span<const std::byte> bytes) {
+    // Nothing to bind is still a blob of nothing, where a pointer to nothing would be null.
+    if (bytes.empty()) {
+        return checkBind(sqlite3_bind_zeroblob(m_statement, index, 0));
+    }
     return checkBind(sqlite3_bind_blob(m_statement, index, bytes.data(),
                                        static_cast<int>(bytes.size()), SQLITE_TRANSIENT));
 }

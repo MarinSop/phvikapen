@@ -32,6 +32,7 @@ target_sources(phvikapen_core
         storage/Sqlite.hpp
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
+        text/Folding.cpp
         undo/OutlineCommands.cpp
         undo/StrokeCommands.cpp
         undo/UndoStack.cpp
@@ -66,6 +67,8 @@ target_sources(phvikapen_core
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
             storage/StrokeCodec.hpp
+            text/Folding.hpp
+            text/InkWord.hpp
             undo/OutlineCommands.hpp
             undo/StrokeCommands.hpp
             undo/UndoStack.hpp

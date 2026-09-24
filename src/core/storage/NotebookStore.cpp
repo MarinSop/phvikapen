@@ -8,6 +8,7 @@
 #include "core/model/PageStyle.hpp"
 #include "core/storage/Sqlite.hpp"
 #include "core/storage/StrokeCodec.hpp"
+#include "core/text/Folding.hpp"
 
 #include <sqlite3.h>
 
@@ -16,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -86,11 +88,31 @@ constexpr std::string_view kSchemaVersion4 = R"sql(
     ALTER TABLE pages ADD COLUMN media_index INTEGER NOT NULL DEFAULT 0;
 )sql";
 
+// The words a page was read into, and how far the reading got: a page whose ink has moved on from
+// what was read waits to be read again.
+constexpr std::string_view kSchemaVersion6 = R"sql(
+    CREATE TABLE page_words (
+        page_id      BLOB NOT NULL REFERENCES pages (id),
+        ordinal      INTEGER NOT NULL,
+        text         TEXT NOT NULL,
+        folded       TEXT NOT NULL,
+        left_edge    REAL NOT NULL,
+        top_edge     REAL NOT NULL,
+        right_edge   REAL NOT NULL,
+        bottom_edge  REAL NOT NULL,
+        strokes      BLOB NOT NULL,
+        PRIMARY KEY (page_id, ordinal)
+    );
+    CREATE INDEX page_words_by_word ON page_words (folded);
+    ALTER TABLE pages ADD COLUMN ink_revision INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE pages ADD COLUMN read_revision INTEGER NOT NULL DEFAULT 0;
+    UPDATE pages SET read_revision = -1 WHERE EXISTS
+        (SELECT 1 FROM strokes WHERE strokes.page_id = pages.id);
+)sql";
+
 constexpr std::array kMigrations{
-    std::pair{1, kSchemaVersion1},
-    std::pair{2, kSchemaVersion2},
-    std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4},
+    std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
+    std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -147,6 +169,70 @@ constexpr std::string_view kDefaultSectionTitle = "Section 1";
         return makeError(ErrorCode::NotFound, std::string{missing});
     }
     return {};
+}
+
+[[nodiscard]] std::vector<std::string> foldedWords(std::string_view text) {
+    std::vector<std::string> words;
+    std::size_t at = 0;
+    while (at < text.size()) {
+        const std::size_t space = text.find(' ', at);
+        const std::string word = folded(text.substr(at, space - at));
+        if (!word.empty()) {
+            words.push_back(word);
+        }
+        if (space == std::string_view::npos) {
+            break;
+        }
+        at = space + 1;
+    }
+    return words;
+}
+
+[[nodiscard]] bool runFollows(const std::vector<InkWord>& words, std::size_t from,
+                              const std::vector<std::string>& wanted) {
+    if (from + wanted.size() > words.size()) {
+        return false;
+    }
+    for (std::size_t step = 1; step < wanted.size(); ++step) {
+        if (!folded(words[from + step].text).contains(wanted[step])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] std::string escapedForLike(std::string_view text) {
+    std::string escaped;
+    escaped.reserve(text.size());
+    for (const char letter : text) {
+        if (letter == '%' || letter == '_' || letter == '\\') {
+            escaped.push_back('\\');
+        }
+        escaped.push_back(letter);
+    }
+    return escaped;
+}
+
+[[nodiscard]] InkWord wordFrom(const sqlite::Statement& statement, int first) {
+    InkWord word{
+        .text = statement.text(first),
+        .box =
+            Rect{
+                .left = static_cast<float>(statement.real(first + 1)),
+                .top = static_cast<float>(statement.real(first + 2)),
+                .right = static_cast<float>(statement.real(first + 3)),
+                .bottom = static_cast<float>(statement.real(first + 4)),
+            },
+        .strokes = {},
+    };
+    const std::span<const std::byte> stored = statement.blob(first + 5);
+    for (std::size_t at = 0; at + Uuid::kByteCount <= stored.size(); at += Uuid::kByteCount) {
+        Uuid::Bytes bytes{};
+        std::ranges::transform(stored.subspan(at, Uuid::kByteCount), bytes.begin(),
+                               [](std::byte value) { return static_cast<std::uint8_t>(value); });
+        word.strokes.emplace_back(bytes);
+    }
+    return word;
 }
 
 [[nodiscard]] Result<void> bindAll(std::initializer_list<Result<void>> bindings) {
@@ -324,7 +410,10 @@ Result<void> NotebookStore::insertStroke(const Uuid& pageId, const PlacedStroke&
             return bound;
         }
     }
-    return statement->run();
+    if (const Result<void> inserted = statement->run(); !inserted) {
+        return inserted;
+    }
+    return touchInk(pageId);
 }
 
 Result<void> NotebookStore::removeStroke(const Uuid& pageId, const Uuid& strokeId) {
@@ -347,7 +436,7 @@ Result<void> NotebookStore::removeStroke(const Uuid& pageId, const Uuid& strokeI
     if (sqlite::changes(m_database) == 0) {
         return makeError(ErrorCode::NotFound, "the page does not hold that stroke");
     }
-    return {};
+    return touchInk(pageId);
 }
 
 Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
@@ -362,7 +451,11 @@ Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
     if (const Result<void> removed = statement->run(); !removed) {
         return std::unexpected{removed.error()};
     }
-    return static_cast<std::size_t>(sqlite::changes(m_database));
+    const auto gone = static_cast<std::size_t>(sqlite::changes(m_database));
+    if (const Result<void> touched = touchInk(pageId); !touched) {
+        return std::unexpected{touched.error()};
+    }
+    return gone;
 }
 
 Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
@@ -392,6 +485,211 @@ Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageI
             PlacedStroke{.ordinal = statement->integer(0), .stroke = std::move(*stroke)});
     }
     return strokes;
+}
+
+Result<void> NotebookStore::touchInk(const Uuid& pageId) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE pages SET ink_revision = ink_revision + 1 WHERE id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<std::int64_t> NotebookStore::inkRevisionOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "SELECT ink_revision FROM pages WHERE id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    const Result<bool> row = statement->step();
+    if (!row) {
+        return std::unexpected{row.error()};
+    }
+    if (!*row) {
+        return makeError(ErrorCode::NotFound, "no such page");
+    }
+    return statement->integer(0);
+}
+
+Result<std::vector<Uuid>> NotebookStore::pagesWaitingToBeRead() const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT pages.id FROM pages JOIN sections ON sections.id = pages.section_id "
+                    "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+                    "  AND pages.read_revision != pages.ink_revision "
+                    "ORDER BY sections.ordinal, pages.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    std::vector<Uuid> pages;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return pages;
+        }
+        pages.push_back(statement->id(0));
+    }
+}
+
+Result<void> NotebookStore::setWordsOfPage(const Uuid& pageId, std::int64_t inkRevision,
+                                           std::span<const InkWord> words) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+
+    Result<sqlite::Statement> clear =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_words WHERE page_id = ?;");
+    if (!clear) {
+        return std::unexpected{clear.error()};
+    }
+    if (const Result<void> bound = clear->bindId(1, pageId); !bound) {
+        return bound;
+    }
+    if (const Result<void> cleared = clear->run(); !cleared) {
+        return cleared;
+    }
+
+    Result<sqlite::Statement> insert = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_words (page_id, ordinal, text, folded, left_edge, top_edge, "
+                    "right_edge, bottom_edge, strokes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
+    if (!insert) {
+        return std::unexpected{insert.error()};
+    }
+    std::int64_t ordinal = 0;
+    for (const InkWord& word : words) {
+        std::vector<std::byte> strokes;
+        strokes.reserve(word.strokes.size() * Uuid::kByteCount);
+        for (const Uuid& stroke : word.strokes) {
+            for (const std::uint8_t byte : stroke.bytes()) {
+                strokes.push_back(static_cast<std::byte>(byte));
+            }
+        }
+        const Result<void> bound = bindAll({
+            insert->bindId(1, pageId),
+            insert->bindInteger(2, ordinal),
+            insert->bindText(3, word.text),
+            insert->bindText(4, folded(word.text)),
+            insert->bindReal(5, word.box.left),
+            insert->bindReal(6, word.box.top),
+            insert->bindReal(7, word.box.right),
+            insert->bindReal(8, word.box.bottom),
+            insert->bindBlob(9, strokes),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> written = insert->run(); !written) {
+            return written;
+        }
+        if (const Result<void> ready = insert->reset(); !ready) {
+            return ready;
+        }
+        ++ordinal;
+    }
+
+    Result<sqlite::Statement> read =
+        sqlite::Statement::prepare(m_database, "UPDATE pages SET read_revision = ? WHERE id = ?;");
+    if (!read) {
+        return std::unexpected{read.error()};
+    }
+    if (const Result<void> bound =
+            bindAll({read->bindInteger(1, inkRevision), read->bindId(2, pageId)});
+        !bound) {
+        return bound;
+    }
+    if (const Result<void> written = read->run(); !written) {
+        return written;
+    }
+    return transaction->commit();
+}
+
+Result<std::vector<InkWord>> NotebookStore::wordsOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT text, left_edge, top_edge, right_edge, bottom_edge, strokes "
+                    "FROM page_words WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<InkWord> words;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return words;
+        }
+        words.push_back(wordFrom(*statement, 0));
+    }
+}
+
+Result<std::vector<FoundWord>> NotebookStore::findWords(std::string_view text) const {
+    const std::vector<std::string> wanted = foldedWords(text);
+    if (wanted.empty()) {
+        return std::vector<FoundWord>{};
+    }
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database,
+        "SELECT page_words.page_id, page_words.ordinal, page_words.text, page_words.left_edge, "
+        "       page_words.top_edge, page_words.right_edge, page_words.bottom_edge, "
+        "       page_words.strokes "
+        "FROM page_words "
+        "JOIN pages ON pages.id = page_words.page_id "
+        "JOIN sections ON sections.id = pages.section_id "
+        "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+        "  AND page_words.folded LIKE ? ESCAPE '\\' "
+        "ORDER BY sections.ordinal, pages.ordinal, page_words.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound =
+            statement->bindText(1, "%" + escapedForLike(wanted.front()) + "%");
+        !bound) {
+        return std::unexpected{bound.error()};
+    }
+
+    std::vector<FoundWord> found;
+    std::map<Uuid, std::vector<InkWord>> read;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return found;
+        }
+        const Uuid pageId = statement->id(0);
+        const auto ordinal = static_cast<std::size_t>(statement->integer(1));
+        InkWord word = wordFrom(*statement, 2);
+        if (wanted.size() > 1) {
+            if (!read.contains(pageId)) {
+                Result<std::vector<InkWord>> words = wordsOfPage(pageId);
+                if (!words) {
+                    return std::unexpected{words.error()};
+                }
+                read.emplace(pageId, std::move(*words));
+            }
+            // The words after the first have to follow it, so that a search of several words finds
+            // them written one after another.
+            if (!runFollows(read.at(pageId), ordinal, wanted)) {
+                continue;
+            }
+        }
+        found.push_back(FoundWord{.pageId = pageId, .word = std::move(word)});
+    }
 }
 
 Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
@@ -817,6 +1115,8 @@ Result<void> NotebookStore::emptyTrash() {
     }
 
     constexpr std::string_view kGone =
+        "DELETE FROM page_words WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM strokes WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM pages WHERE trashed = 1 "

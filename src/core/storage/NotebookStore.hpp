@@ -6,6 +6,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/text/InkWord.hpp"
 
 #include <cstddef>
 #include <filesystem>
@@ -19,7 +20,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 5;
+inline constexpr int kNotebookSchemaVersion = 6;
 
 struct TrashedItem {
     Uuid id;
@@ -50,6 +51,13 @@ public:
     [[nodiscard]] Result<std::size_t> removeStrokesOfPage(const Uuid& pageId);
 
     [[nodiscard]] Result<std::vector<PlacedStroke>> strokesOfPage(const Uuid& pageId) const;
+
+    [[nodiscard]] Result<std::int64_t> inkRevisionOfPage(const Uuid& pageId) const;
+    [[nodiscard]] Result<std::vector<Uuid>> pagesWaitingToBeRead() const;
+    [[nodiscard]] Result<void> setWordsOfPage(const Uuid& pageId, std::int64_t inkRevision,
+                                              std::span<const InkWord> words);
+    [[nodiscard]] Result<std::vector<InkWord>> wordsOfPage(const Uuid& pageId) const;
+    [[nodiscard]] Result<std::vector<FoundWord>> findWords(std::string_view text) const;
 
     [[nodiscard]] Result<NotebookOutline> readOutline() const;
 
@@ -94,6 +102,7 @@ private:
     void close() noexcept;
 
     [[nodiscard]] Result<void> ensureOutline(std::string_view defaultTitle);
+    [[nodiscard]] Result<void> touchInk(const Uuid& pageId);
     [[nodiscard]] Result<void> writeSectionOrder(std::span<const Uuid> sectionOrder);
     [[nodiscard]] Result<void> writePageOrder(const Uuid& sectionId,
                                               std::span<const Uuid> pageOrder);

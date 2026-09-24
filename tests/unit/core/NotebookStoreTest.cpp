@@ -256,6 +256,9 @@ TEST(NotebookStoreTest, AddsThePaperColumnsAnOlderNotebookNeverGot) {
         sqlite3* raw = nullptr;
         ASSERT_EQ(sqlite3_open(notebook.path().string().c_str(), &raw), SQLITE_OK);
         ASSERT_EQ(sqlite3_exec(raw, R"sql(
+            DROP TABLE page_words;
+            ALTER TABLE pages DROP COLUMN ink_revision;
+            ALTER TABLE pages DROP COLUMN read_revision;
             ALTER TABLE pages DROP COLUMN paper_color;
             ALTER TABLE pages DROP COLUMN line_color;
             ALTER TABLE pages DROP COLUMN margin_color;
@@ -298,7 +301,13 @@ TEST(NotebookStoreTest, LeavesTheColumnsOfANotebookThatAlreadyHasThemAlone) {
     {
         sqlite3* raw = nullptr;
         ASSERT_EQ(sqlite3_open(notebook.path().string().c_str(), &raw), SQLITE_OK);
-        ASSERT_EQ(sqlite3_exec(raw, "PRAGMA user_version = 4;", nullptr, nullptr, nullptr),
+        ASSERT_EQ(sqlite3_exec(raw, R"sql(
+            DROP TABLE page_words;
+            ALTER TABLE pages DROP COLUMN ink_revision;
+            ALTER TABLE pages DROP COLUMN read_revision;
+            PRAGMA user_version = 4;
+        )sql",
+                               nullptr, nullptr, nullptr),
                   SQLITE_OK);
         sqlite3_close(raw);
     }
