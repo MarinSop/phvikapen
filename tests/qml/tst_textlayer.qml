@@ -189,6 +189,29 @@ TestCase {
         notebook.pickedText = "";
     }
 
+    function test_leavingTheTextToolFinishesTheBox() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const at = placeOnPage(notebook, 40, 60);
+        const onScreen = Qt.point((at.x - notebook.canvas.viewOrigin.x) * notebook.canvas.zoom, (at.y - notebook.canvas.viewOrigin.y) * notebook.canvas.zoom);
+        mouseClick(layer, onScreen.x, onScreen.y);
+        const editor = findChild(layer, "textEditor");
+        editor.text = "Half a thought";
+
+        tools.currentTool = ToolViewModel.Pen;
+
+        const rows = boxes(notebook);
+        compare(rows.count, 1);
+        compare(rows.itemAt(0).text, "Half a thought");
+        compare(notebook.pickedText, "");
+    }
+
     function test_aBoxNobodyTypedInIsGivenUp() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);

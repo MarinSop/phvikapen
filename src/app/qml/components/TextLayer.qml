@@ -49,6 +49,12 @@ Item {
     enabled: (root.placing || root.typing) && root.notebook !== null && root.canvas !== null
     objectName: "textLayer"
 
+    // Picking up another tool finishes the box that was being typed in.
+    onPlacingChanged: {
+        if (!root.placing && root.typing) {
+            root.leave();
+        }
+    }
     onPickedIdChanged: {
         if (root.editingId !== "" && root.editingId !== root.pickedId) {
             root.commit();
