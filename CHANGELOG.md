@@ -65,6 +65,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.
 
+- A notebook can hold pictures that stand on a page: which picture it is, where it stands, how
+  large it is drawn and how far it has been turned. A picture is kept once, by what it contains, so
+  the same picture on ten pages costs the room of one, and putting one down, moving it, turning it
+  and taking it away are all changes that can be undone. Nothing puts a picture on a page yet;
+  this is where they will be kept.
+
 ### Fixed
 
 - The frame around what is picked stood still while the drawing under it was turned or sized, and

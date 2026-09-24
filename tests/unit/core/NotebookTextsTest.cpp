@@ -191,7 +191,8 @@ TEST(NotebookTextsTest, OpensANotebookAtTheVersionThatHoldsTypedText) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
 
     EXPECT_EQ(store->schemaVersion().value(), kNotebookSchemaVersion);
-    EXPECT_EQ(kNotebookSchemaVersion, 7);
+    // Typed text came with version seven; later versions carry it too.
+    EXPECT_GE(kNotebookSchemaVersion, 7);
 }
 
 }

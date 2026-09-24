@@ -27,6 +27,7 @@ target_sources(phvikapen_core
         model/Outline.cpp
         model/Page.cpp
         model/PageStyle.cpp
+        model/Picture.cpp
         model/StrokeGrid.cpp
         model/TextBox.cpp
         storage/NotebookStore.cpp
@@ -38,6 +39,7 @@ target_sources(phvikapen_core
         text/WrittenText.cpp
         undo/BundleCommand.cpp
         undo/OutlineCommands.cpp
+        undo/PictureCommands.cpp
         undo/StrokeCommands.cpp
         undo/TextCommands.cpp
         undo/UndoStack.cpp
@@ -69,6 +71,7 @@ target_sources(phvikapen_core
             model/Outline.hpp
             model/Page.hpp
             model/PageStyle.hpp
+            model/Picture.hpp
             model/StrokeGrid.hpp
             model/TextBox.hpp
             storage/NotebookStore.hpp
@@ -79,6 +82,7 @@ target_sources(phvikapen_core
             text/WrittenText.hpp
             undo/BundleCommand.hpp
             undo/OutlineCommands.hpp
+            undo/PictureCommands.hpp
             undo/StrokeCommands.hpp
             undo/TextCommands.hpp
             undo/UndoStack.hpp

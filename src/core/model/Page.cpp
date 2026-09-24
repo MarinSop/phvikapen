@@ -17,10 +17,13 @@ namespace phvikapen::core {
 
 Page::Page(const Uuid& id) noexcept : m_id{id} {}
 
-Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts)
-    : m_id{id}, m_strokes{std::move(strokes)}, m_texts{std::move(texts)} {
+Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts,
+           std::vector<PlacedPicture> pictures)
+    : m_id{id}, m_strokes{std::move(strokes)}, m_texts{std::move(texts)},
+      m_pictures{std::move(pictures)} {
     std::ranges::stable_sort(m_strokes, {}, &PlacedStroke::ordinal);
     std::ranges::stable_sort(m_texts, {}, &PlacedText::ordinal);
+    std::ranges::stable_sort(m_pictures, {}, &PlacedPicture::ordinal);
     for (const PlacedStroke& placed : m_strokes) {
         if (const std::optional<Rect> bounds = placed.stroke.boundingBox()) {
             m_grid.insert(placed.ordinal, *bounds);
@@ -127,6 +130,68 @@ const TextBox* Page::textUnder(Point at) const noexcept {
         const Rect area = areaOf(placed.box);
         if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
             return &placed.box;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<PlacedPicture> Page::takeAllPictures() noexcept {
+    return std::exchange(m_pictures, {});
+}
+
+std::int64_t Page::nextPictureOrdinal() const noexcept {
+    return m_pictures.empty() ? 0 : m_pictures.back().ordinal + 1;
+}
+
+Result<void> Page::insertPicture(PlacedPicture placed) {
+    const bool idTaken = std::ranges::any_of(m_pictures, [&](const PlacedPicture& existing) {
+        return existing.picture.id == placed.picture.id;
+    });
+    if (idTaken) {
+        return makeError(ErrorCode::InvalidArgument, "the page already holds that picture");
+    }
+
+    const auto position =
+        std::ranges::lower_bound(m_pictures, placed.ordinal, {}, &PlacedPicture::ordinal);
+    if (position != m_pictures.end() && position->ordinal == placed.ordinal) {
+        return makeError(ErrorCode::InvalidArgument, "another picture already has that place");
+    }
+    m_pictures.insert(position, placed);
+    return {};
+}
+
+Result<PlacedPicture> Page::removePicture(const Uuid& pictureId) {
+    const auto position = std::ranges::find_if(
+        m_pictures, [&](const PlacedPicture& placed) { return placed.picture.id == pictureId; });
+    if (position == m_pictures.end()) {
+        return makeError(ErrorCode::NotFound, "the page does not hold that picture");
+    }
+    const PlacedPicture removed = *position;
+    m_pictures.erase(position);
+    return removed;
+}
+
+Result<void> Page::replacePicture(Picture picture) {
+    const auto position = std::ranges::find_if(
+        m_pictures, [&](const PlacedPicture& placed) { return placed.picture.id == picture.id; });
+    if (position == m_pictures.end()) {
+        return makeError(ErrorCode::NotFound, "the page does not hold that picture");
+    }
+    position->picture = picture;
+    return {};
+}
+
+const Picture* Page::pictureAt(const Uuid& pictureId) const noexcept {
+    const auto position = std::ranges::find_if(
+        m_pictures, [&](const PlacedPicture& placed) { return placed.picture.id == pictureId; });
+    return position == m_pictures.end() ? nullptr : &position->picture;
+}
+
+const Picture* Page::pictureUnder(Point at) const noexcept {
+    for (const PlacedPicture& placed : std::ranges::reverse_view{m_pictures}) {
+        const Rect area = areaOf(placed.picture);
+        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
+            return &placed.picture;
         }
     }
     return nullptr;

@@ -5,6 +5,7 @@
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeTransform.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/Picture.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/undo/UndoStack.hpp"
 
@@ -42,6 +43,7 @@ private:
     StorageThread* m_storage;
     std::vector<PlacedStroke> m_removed;
     std::vector<PlacedText> m_removedTexts;
+    std::vector<PlacedPicture> m_removedPictures;
 };
 
 class MoveStrokesCommand final : public ICommand {

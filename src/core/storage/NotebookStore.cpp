@@ -135,9 +135,27 @@ constexpr std::string_view kSchemaVersion7 = R"sql(
     CREATE INDEX page_texts_by_word ON page_texts (folded);
 )sql";
 
+// Pictures put on a page: which picture, where it stands, how large it is drawn and how far it
+// has been turned. What the picture is made of is kept once, among the assets.
+constexpr std::string_view kSchemaVersion8 = R"sql(
+    CREATE TABLE page_pictures (
+        id          BLOB PRIMARY KEY NOT NULL,
+        page_id     BLOB NOT NULL REFERENCES pages (id),
+        ordinal     INTEGER NOT NULL,
+        source      BLOB NOT NULL,
+        left_edge   REAL NOT NULL,
+        top_edge    REAL NOT NULL,
+        width       REAL NOT NULL,
+        height      REAL NOT NULL,
+        turn        REAL NOT NULL
+    );
+    CREATE UNIQUE INDEX page_pictures_by_page ON page_pictures (page_id, ordinal);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
     std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
+    std::pair{8, kSchemaVersion8},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -310,6 +328,40 @@ enum class TextColumn : std::uint8_t {
         run.append(word);
     }
     return run;
+}
+
+enum class PictureColumn : std::uint8_t {
+    Id,
+    Ordinal,
+    Source,
+    Left,
+    Top,
+    Width,
+    Height,
+    Turn,
+};
+
+[[nodiscard]] constexpr int column(PictureColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+[[nodiscard]] PlacedPicture pictureFrom(const sqlite::Statement& statement) {
+    return PlacedPicture{
+        .ordinal = statement.integer(column(PictureColumn::Ordinal)),
+        .picture =
+            Picture{
+                .id = statement.id(column(PictureColumn::Id)),
+                .source = toContentId(statement.blob(column(PictureColumn::Source))),
+                .at =
+                    Point{
+                        .x = static_cast<float>(statement.real(column(PictureColumn::Left))),
+                        .y = static_cast<float>(statement.real(column(PictureColumn::Top))),
+                    },
+                .width = static_cast<float>(statement.real(column(PictureColumn::Width))),
+                .height = static_cast<float>(statement.real(column(PictureColumn::Height))),
+                .turn = static_cast<float>(statement.real(column(PictureColumn::Turn))),
+            },
+    };
 }
 
 [[nodiscard]] PlacedText textFrom(const sqlite::Statement& statement) {
@@ -1052,6 +1104,108 @@ Result<std::vector<PlacedText>> NotebookStore::textsOfPage(const Uuid& pageId) c
     }
 }
 
+Result<void> NotebookStore::insertPicture(const Uuid& pageId, const PlacedPicture& placed) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_pictures (id, page_id, ordinal, source, left_edge, "
+                    "top_edge, width, height, turn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Picture& picture = placed.picture;
+    const Result<void> bound = bindAll({
+        statement->bindId(1, picture.id),
+        statement->bindId(2, pageId),
+        statement->bindInteger(3, placed.ordinal),
+        statement->bindBlob(4, contentBytes(picture.source)),
+        statement->bindReal(5, picture.at.x),
+        statement->bindReal(6, picture.at.y),
+        statement->bindReal(7, picture.width),
+        statement->bindReal(8, picture.height),
+        statement->bindReal(9, picture.turn),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::updatePicture(const Uuid& pageId, const Picture& picture) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE page_pictures SET source = ?, left_edge = ?, top_edge = ?, width = ?, "
+                    "height = ?, turn = ? WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindBlob(1, contentBytes(picture.source)),
+        statement->bindReal(2, picture.at.x),
+        statement->bindReal(3, picture.at.y),
+        statement->bindReal(4, picture.width),
+        statement->bindReal(5, picture.height),
+        statement->bindReal(6, picture.turn),
+        statement->bindId(7, pageId),
+        statement->bindId(8, picture.id),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::removePicture(const Uuid& pageId, const Uuid& pictureId) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "DELETE FROM page_pictures WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, pageId),
+        statement->bindId(2, pictureId),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<std::size_t> NotebookStore::removePicturesOfPage(const Uuid& pageId) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_pictures WHERE page_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    if (const Result<void> removed = statement->run(); !removed) {
+        return std::unexpected{removed.error()};
+    }
+    return static_cast<std::size_t>(sqlite::changes(m_database));
+}
+
+Result<std::vector<PlacedPicture>> NotebookStore::picturesOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT id, ordinal, source, left_edge, top_edge, width, height, turn "
+                    "FROM page_pictures WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<PlacedPicture> pictures;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return pictures;
+        }
+        pictures.push_back(pictureFrom(*statement));
+    }
+}
+
 Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
     Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
     if (!transaction) {
@@ -1479,13 +1633,16 @@ Result<void> NotebookStore::emptyTrash() {
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM page_texts WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
+        "DELETE FROM page_pictures WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM strokes WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1);"
         "DELETE FROM sections WHERE trashed = 1;"
         "DELETE FROM assets WHERE id NOT IN "
-        "  (SELECT media_asset FROM pages WHERE media_asset IS NOT NULL);";
+        "  (SELECT media_asset FROM pages WHERE media_asset IS NOT NULL) "
+        "  AND id NOT IN (SELECT source FROM page_pictures);";
     if (const Result<void> removed = sqlite::execute(m_database, kGone); !removed) {
         return removed;
     }
