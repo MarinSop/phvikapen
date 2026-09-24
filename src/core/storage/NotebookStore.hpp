@@ -6,6 +6,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/text/InkWord.hpp"
 
 #include <cstddef>
@@ -20,7 +21,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 6;
+inline constexpr int kNotebookSchemaVersion = 7;
 
 struct TrashedItem {
     Uuid id;
@@ -58,6 +59,12 @@ public:
                                               std::span<const InkWord> words);
     [[nodiscard]] Result<std::vector<InkWord>> wordsOfPage(const Uuid& pageId) const;
     [[nodiscard]] Result<std::vector<FoundWord>> findWords(std::string_view text) const;
+
+    [[nodiscard]] Result<void> insertText(const Uuid& pageId, const PlacedText& placed);
+    [[nodiscard]] Result<void> updateText(const Uuid& pageId, const TextBox& box);
+    [[nodiscard]] Result<void> removeText(const Uuid& pageId, const Uuid& textId);
+    [[nodiscard]] Result<std::size_t> removeTextsOfPage(const Uuid& pageId);
+    [[nodiscard]] Result<std::vector<PlacedText>> textsOfPage(const Uuid& pageId) const;
 
     [[nodiscard]] Result<NotebookOutline> readOutline() const;
 

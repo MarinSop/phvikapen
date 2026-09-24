@@ -6,6 +6,7 @@
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/storage/Sqlite.hpp"
 #include "core/storage/StrokeCodec.hpp"
 #include "core/text/Folding.hpp"
@@ -110,9 +111,33 @@ constexpr std::string_view kSchemaVersion6 = R"sql(
         (SELECT 1 FROM strokes WHERE strokes.page_id = pages.id);
 )sql";
 
+// Text that was typed on a page rather than written: where it sits, how wide it may run, and the
+// face it wears.
+constexpr std::string_view kSchemaVersion7 = R"sql(
+    CREATE TABLE page_texts (
+        id          BLOB PRIMARY KEY NOT NULL,
+        page_id     BLOB NOT NULL REFERENCES pages (id),
+        ordinal     INTEGER NOT NULL,
+        left_edge   REAL NOT NULL,
+        top_edge    REAL NOT NULL,
+        width       REAL NOT NULL,
+        height      REAL NOT NULL,
+        text        TEXT NOT NULL,
+        folded      TEXT NOT NULL,
+        font        TEXT NOT NULL,
+        size        REAL NOT NULL,
+        color       INTEGER NOT NULL,
+        align       INTEGER NOT NULL,
+        line_height REAL NOT NULL,
+        marks       INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX page_texts_by_page ON page_texts (page_id, ordinal);
+    CREATE INDEX page_texts_by_word ON page_texts (folded);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6},
+    std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -233,6 +258,252 @@ constexpr std::string_view kDefaultSectionTitle = "Section 1";
         word.strokes.emplace_back(bytes);
     }
     return word;
+}
+
+constexpr std::uint64_t kBoldMark = 1U;
+constexpr std::uint64_t kItalicMark = 2U;
+constexpr std::uint64_t kUnderlineMark = 4U;
+constexpr std::uint64_t kStruckMark = 8U;
+
+// Where each part of a typed text sits in the row it is read from.
+enum class TextColumn : std::uint8_t {
+    Id,
+    Ordinal,
+    Left,
+    Top,
+    Width,
+    Height,
+    Text,
+    Font,
+    Size,
+    Color,
+    Align,
+    LineHeight,
+    Marks,
+};
+
+[[nodiscard]] constexpr int column(TextColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+[[nodiscard]] std::int64_t marksOf(const TextStyle& style) noexcept {
+    const std::uint64_t marks = (style.bold ? kBoldMark : 0U) | (style.italic ? kItalicMark : 0U)
+                                | (style.underline ? kUnderlineMark : 0U)
+                                | (style.struckOut ? kStruckMark : 0U);
+    return static_cast<std::int64_t>(marks);
+}
+
+[[nodiscard]] TextAlign toAlign(std::int64_t value) noexcept {
+    return value >= 0 && value <= static_cast<std::int64_t>(TextAlign::Justify)
+               ? static_cast<TextAlign>(value)
+               : TextAlign::Left;
+}
+
+// What a search runs against: the words of the text, plain and apart, so a phrase can be looked
+// for the same way as one written by hand.
+[[nodiscard]] std::string foldedRun(std::string_view text) {
+    std::string run;
+    for (const std::string& word : foldedWords(text)) {
+        if (!run.empty()) {
+            run.push_back(' ');
+        }
+        run.append(word);
+    }
+    return run;
+}
+
+[[nodiscard]] PlacedText textFrom(const sqlite::Statement& statement) {
+    const auto marks = static_cast<std::uint64_t>(statement.integer(column(TextColumn::Marks)));
+    return PlacedText{
+        .ordinal = statement.integer(column(TextColumn::Ordinal)),
+        .box =
+            TextBox{
+                .id = statement.id(column(TextColumn::Id)),
+                .at =
+                    Point{
+                        .x = static_cast<float>(statement.real(column(TextColumn::Left))),
+                        .y = static_cast<float>(statement.real(column(TextColumn::Top))),
+                    },
+                .width = static_cast<float>(statement.real(column(TextColumn::Width))),
+                .height = static_cast<float>(statement.real(column(TextColumn::Height))),
+                .text = statement.text(column(TextColumn::Text)),
+                .style =
+                    TextStyle{
+                        .font = statement.text(column(TextColumn::Font)),
+                        .size = static_cast<float>(statement.real(column(TextColumn::Size))),
+                        .color = unpacked(static_cast<std::uint32_t>(
+                            statement.integer(column(TextColumn::Color)))),
+                        .align = toAlign(statement.integer(column(TextColumn::Align))),
+                        .lineHeight =
+                            static_cast<float>(statement.real(column(TextColumn::LineHeight))),
+                        .bold = (marks & kBoldMark) != 0U,
+                        .italic = (marks & kItalicMark) != 0U,
+                        .underline = (marks & kUnderlineMark) != 0U,
+                        .struckOut = (marks & kStruckMark) != 0U,
+                    },
+            },
+    };
+}
+
+// Where the place of a hit sits in the rows a search reads.
+enum class WrittenColumn : std::uint8_t {
+    PageId,
+    Ordinal,
+    Text,
+    Left,
+    Top,
+    Right,
+    Bottom,
+    Strokes,
+    Section,
+    Page,
+};
+
+enum class TypedColumn : std::uint8_t {
+    PageId,
+    Text,
+    Left,
+    Top,
+    Width,
+    Height,
+    Section,
+    Page,
+};
+
+[[nodiscard]] constexpr int column(WrittenColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+[[nodiscard]] constexpr int column(TypedColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+// A hit, with the place in the notebook it came from, so that what was written and what was typed
+// can be listed in the order a reader turns the pages.
+struct Hit {
+    std::int64_t section{};
+    std::int64_t page{};
+    FoundWord found;
+};
+
+[[nodiscard]] Result<std::vector<Hit>> writtenHits(sqlite3* database, const NotebookStore& store,
+                                                   const std::vector<std::string>& wanted) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database,
+        "SELECT page_words.page_id, page_words.ordinal, page_words.text, page_words.left_edge, "
+        "       page_words.top_edge, page_words.right_edge, page_words.bottom_edge, "
+        "       page_words.strokes, sections.ordinal, pages.ordinal "
+        "FROM page_words "
+        "JOIN pages ON pages.id = page_words.page_id "
+        "JOIN sections ON sections.id = pages.section_id "
+        "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+        "  AND page_words.folded LIKE ? ESCAPE '\\' "
+        "ORDER BY sections.ordinal, pages.ordinal, page_words.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound =
+            statement->bindText(1, "%" + escapedForLike(wanted.front()) + "%");
+        !bound) {
+        return std::unexpected{bound.error()};
+    }
+
+    std::vector<Hit> hits;
+    std::map<Uuid, std::vector<InkWord>> read;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return hits;
+        }
+        const Uuid pageId = statement->id(column(WrittenColumn::PageId));
+        const auto ordinal =
+            static_cast<std::size_t>(statement->integer(column(WrittenColumn::Ordinal)));
+        InkWord word = wordFrom(*statement, column(WrittenColumn::Text));
+        if (wanted.size() > 1) {
+            if (!read.contains(pageId)) {
+                Result<std::vector<InkWord>> words = store.wordsOfPage(pageId);
+                if (!words) {
+                    return std::unexpected{words.error()};
+                }
+                read.emplace(pageId, std::move(*words));
+            }
+            // The words after the first have to follow it, so that a search of several words finds
+            // them written one after another.
+            if (!runFollows(read.at(pageId), ordinal, wanted)) {
+                continue;
+            }
+        }
+        hits.push_back(Hit{
+            .section = statement->integer(column(WrittenColumn::Section)),
+            .page = statement->integer(column(WrittenColumn::Page)),
+            .found = FoundWord{.pageId = pageId, .word = std::move(word)},
+        });
+    }
+}
+
+[[nodiscard]] Result<std::vector<Hit>> typedHits(sqlite3* database,
+                                                 const std::vector<std::string>& wanted) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database, "SELECT page_texts.page_id, page_texts.text, page_texts.left_edge, "
+                  "       page_texts.top_edge, page_texts.width, page_texts.height, "
+                  "       sections.ordinal, pages.ordinal "
+                  "FROM page_texts "
+                  "JOIN pages ON pages.id = page_texts.page_id "
+                  "JOIN sections ON sections.id = pages.section_id "
+                  "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+                  "  AND page_texts.folded LIKE ? ESCAPE '\\' "
+                  "ORDER BY sections.ordinal, pages.ordinal, page_texts.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    std::string phrase;
+    for (const std::string& word : wanted) {
+        if (!phrase.empty()) {
+            phrase.push_back(' ');
+        }
+        phrase.append(escapedForLike(word));
+    }
+    if (const Result<void> bound = statement->bindText(1, "%" + phrase + "%"); !bound) {
+        return std::unexpected{bound.error()};
+    }
+
+    std::vector<Hit> hits;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return hits;
+        }
+        const auto left = static_cast<float>(statement->real(column(TypedColumn::Left)));
+        const auto top = static_cast<float>(statement->real(column(TypedColumn::Top)));
+        const auto width = static_cast<float>(statement->real(column(TypedColumn::Width)));
+        const auto height = static_cast<float>(statement->real(column(TypedColumn::Height)));
+        hits.push_back(Hit{
+            .section = statement->integer(column(TypedColumn::Section)),
+            .page = statement->integer(column(TypedColumn::Page)),
+            .found =
+                FoundWord{
+                    .pageId = statement->id(column(TypedColumn::PageId)),
+                    .word =
+                        InkWord{
+                            .text = statement->text(column(TypedColumn::Text)),
+                            .box =
+                                Rect{
+                                    .left = left,
+                                    .top = top,
+                                    .right = left + width,
+                                    .bottom = top + height,
+                                },
+                            .strokes = {},
+                        },
+                },
+        });
+    }
 }
 
 [[nodiscard]] Result<void> bindAll(std::initializer_list<Result<void>> bindings) {
@@ -641,54 +912,144 @@ Result<std::vector<FoundWord>> NotebookStore::findWords(std::string_view text) c
     if (wanted.empty()) {
         return std::vector<FoundWord>{};
     }
+
+    Result<std::vector<Hit>> hits = writtenHits(m_database, *this, wanted);
+    if (!hits) {
+        return std::unexpected{hits.error()};
+    }
+    Result<std::vector<Hit>> typed = typedHits(m_database, wanted);
+    if (!typed) {
+        return std::unexpected{typed.error()};
+    }
+    hits->insert(hits->end(), std::make_move_iterator(typed->begin()),
+                 std::make_move_iterator(typed->end()));
+    std::ranges::stable_sort(*hits, {}, [](const Hit& hit) {
+        return std::pair{hit.section, hit.page};
+    });
+
+    std::vector<FoundWord> found;
+    found.reserve(hits->size());
+    for (Hit& hit : *hits) {
+        found.push_back(std::move(hit.found));
+    }
+    return found;
+}
+
+Result<void> NotebookStore::insertText(const Uuid& pageId, const PlacedText& placed) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
-        "SELECT page_words.page_id, page_words.ordinal, page_words.text, page_words.left_edge, "
-        "       page_words.top_edge, page_words.right_edge, page_words.bottom_edge, "
-        "       page_words.strokes "
-        "FROM page_words "
-        "JOIN pages ON pages.id = page_words.page_id "
-        "JOIN sections ON sections.id = pages.section_id "
-        "WHERE pages.trashed = 0 AND sections.trashed = 0 "
-        "  AND page_words.folded LIKE ? ESCAPE '\\' "
-        "ORDER BY sections.ordinal, pages.ordinal, page_words.ordinal;");
+        "INSERT INTO page_texts (id, page_id, ordinal, left_edge, top_edge, width, height, text, "
+        "folded, font, size, color, align, line_height, marks) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
-    if (const Result<void> bound =
-            statement->bindText(1, "%" + escapedForLike(wanted.front()) + "%");
-        !bound) {
+    const TextBox& box = placed.box;
+    const Result<void> bound = bindAll({
+        statement->bindId(1, box.id),
+        statement->bindId(2, pageId),
+        statement->bindInteger(3, placed.ordinal),
+        statement->bindReal(4, box.at.x),
+        statement->bindReal(5, box.at.y),
+        statement->bindReal(6, box.width),
+        statement->bindReal(7, box.height),
+        statement->bindText(8, box.text),
+        statement->bindText(9, foldedRun(box.text)),
+        statement->bindText(10, box.style.font),
+        statement->bindReal(11, box.style.size),
+        statement->bindInteger(12, packed(box.style.color)),
+        statement->bindInteger(13, static_cast<std::int64_t>(box.style.align)),
+        statement->bindReal(14, box.style.lineHeight),
+        statement->bindInteger(15, marksOf(box.style)),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::updateText(const Uuid& pageId, const TextBox& box) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE page_texts SET left_edge = ?, top_edge = ?, width = ?, height = ?, "
+                    "text = ?, folded = ?, font = ?, size = ?, color = ?, align = ?, "
+                    "line_height = ?, marks = ? WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindReal(1, box.at.x),
+        statement->bindReal(2, box.at.y),
+        statement->bindReal(3, box.width),
+        statement->bindReal(4, box.height),
+        statement->bindText(5, box.text),
+        statement->bindText(6, foldedRun(box.text)),
+        statement->bindText(7, box.style.font),
+        statement->bindReal(8, box.style.size),
+        statement->bindInteger(9, packed(box.style.color)),
+        statement->bindInteger(10, static_cast<std::int64_t>(box.style.align)),
+        statement->bindReal(11, box.style.lineHeight),
+        statement->bindInteger(12, marksOf(box.style)),
+        statement->bindId(13, pageId),
+        statement->bindId(14, box.id),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::removeText(const Uuid& pageId, const Uuid& textId) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "DELETE FROM page_texts WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, pageId),
+        statement->bindId(2, textId),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<std::size_t> NotebookStore::removeTextsOfPage(const Uuid& pageId) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_texts WHERE page_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
         return std::unexpected{bound.error()};
     }
+    if (const Result<void> removed = statement->run(); !removed) {
+        return std::unexpected{removed.error()};
+    }
+    return static_cast<std::size_t>(sqlite::changes(m_database));
+}
 
-    std::vector<FoundWord> found;
-    std::map<Uuid, std::vector<InkWord>> read;
+Result<std::vector<PlacedText>> NotebookStore::textsOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT id, ordinal, left_edge, top_edge, width, height, text, font, size, "
+                    "color, align, line_height, marks "
+                    "FROM page_texts WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<PlacedText> texts;
     while (true) {
         const Result<bool> row = statement->step();
         if (!row) {
             return std::unexpected{row.error()};
         }
         if (!*row) {
-            return found;
+            return texts;
         }
-        const Uuid pageId = statement->id(0);
-        const auto ordinal = static_cast<std::size_t>(statement->integer(1));
-        InkWord word = wordFrom(*statement, 2);
-        if (wanted.size() > 1) {
-            if (!read.contains(pageId)) {
-                Result<std::vector<InkWord>> words = wordsOfPage(pageId);
-                if (!words) {
-                    return std::unexpected{words.error()};
-                }
-                read.emplace(pageId, std::move(*words));
-            }
-            // The words after the first have to follow it, so that a search of several words finds
-            // them written one after another.
-            if (!runFollows(read.at(pageId), ordinal, wanted)) {
-                continue;
-            }
-        }
-        found.push_back(FoundWord{.pageId = pageId, .word = std::move(word)});
+        texts.push_back(textFrom(*statement));
     }
 }
 
@@ -1116,6 +1477,8 @@ Result<void> NotebookStore::emptyTrash() {
 
     constexpr std::string_view kGone =
         "DELETE FROM page_words WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
+        "DELETE FROM page_texts WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM strokes WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
