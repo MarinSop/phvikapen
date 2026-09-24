@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were written with, and searched without case, punctuation or the marks over letters: a search for
   `cehoslovacka` finds `Čehoslovačka`, and several words are found where they follow one another.
   Nothing reads handwriting yet; this is where what is read will be kept.
+- Handwriting is read by Windows itself, through the reader it carries: a page of strokes goes in,
+  and the words come back with the place they sit in and the strokes they were written with. The
+  application can say which languages the machine reads, and where there is no reader, which is
+  every machine that is not Windows, it says so instead.
 
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.

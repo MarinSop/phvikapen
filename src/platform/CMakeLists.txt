@@ -31,6 +31,7 @@ target_sources(phvikapen_platform
             render/PagePainter.hpp
             render/PdfExporter.hpp
             render/PaperLook.hpp
+            text/IHandwriting.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
             update/VelopackUpdater.hpp
@@ -55,12 +56,16 @@ if(WIN32)
     target_sources(phvikapen_platform
         PRIVATE
             ink/win/WinInkBackend.cpp
+            text/win/WindowsHandwriting.cpp
         PUBLIC
             FILE_SET HEADERS
             FILES
                 ink/win/WinInkBackend.hpp
+                text/win/WindowsHandwriting.hpp
     )
     target_link_libraries(phvikapen_platform PRIVATE Microsoft::CppWinRT)
+else()
+    target_sources(phvikapen_platform PRIVATE text/NoHandwriting.cpp)
 endif()
 
 target_link_libraries(phvikapen_platform
