@@ -5,6 +5,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeSelection.hpp"
+#include "core/ink/StrokeTransform.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/NotebookStore.hpp"
@@ -121,6 +122,59 @@ Result<void> MoveStrokesCommand::revert() {
 }
 
 std::optional<Uuid> MoveStrokesCommand::pageToShow() const {
+    return m_page->id();
+}
+
+TransformStrokesCommand::TransformStrokesCommand(Page* page, StorageThread* storage,
+                                                 std::vector<Uuid> strokeIds,
+                                                 Transform transform) noexcept
+    : m_page{page}, m_storage{storage}, m_strokeIds{std::move(strokeIds)}, m_transform{transform} {}
+
+Result<void> TransformStrokesCommand::apply() {
+    std::vector<PlacedStroke> before;
+    std::vector<PlacedStroke> after;
+    before.reserve(m_strokeIds.size());
+    after.reserve(m_strokeIds.size());
+
+    for (const Uuid& strokeId : m_strokeIds) {
+        Result<PlacedStroke> taken = m_page->remove(strokeId);
+        if (!taken) {
+            for (PlacedStroke& placed : before) {
+                std::ignore = m_page->insert(std::move(placed));
+            }
+            return std::unexpected{taken.error()};
+        }
+        after.push_back(PlacedStroke{
+            .ordinal = taken->ordinal,
+            .stroke = transformed(taken->stroke, m_transform),
+        });
+        before.push_back(std::move(*taken));
+    }
+
+    for (PlacedStroke& placed : after) {
+        const Uuid strokeId = placed.stroke.id();
+        if (const Result<void> put = m_page->insert(placed); !put) {
+            return put;
+        }
+        m_storage->removeStroke(m_page->id(), strokeId);
+        m_storage->insertStroke(m_page->id(), std::move(placed));
+    }
+    m_before = std::move(before);
+    return {};
+}
+
+Result<void> TransformStrokesCommand::revert() {
+    for (const PlacedStroke& placed : m_before) {
+        if (const Result<PlacedStroke> taken = m_page->remove(placed.stroke.id()); !taken) {
+            return std::unexpected{taken.error()};
+        }
+        m_storage->removeStroke(m_page->id(), placed.stroke.id());
+    }
+    std::vector<PlacedStroke> back = std::exchange(m_before, {});
+    return restoreStrokes(*m_page, *m_storage, std::move(back));
+}
+
+std::optional<Uuid> TransformStrokesCommand::pageToShow() const {
     return m_page->id();
 }
 

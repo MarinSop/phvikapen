@@ -105,5 +105,14 @@ TEST(StrokeEraserTest, ASinglePointLeftOverIsNotKept) {
     EXPECT_TRUE(erased(stroke, sweeps, ids).empty());
 }
 
+TEST(StrokeEraserTest, TakingAWholeLineReachesFarLessFarThanRubbingOneOut) {
+    EXPECT_FLOAT_EQ(reachOf(20.0F, EraseMode::Touched), 20.0F);
+    EXPECT_FLOAT_EQ(reachOf(20.0F, EraseMode::WholeStroke), 5.0F);
+}
+
+TEST(StrokeEraserTest, TheReachOfAWholeLineNeverFallsToNothing) {
+    EXPECT_FLOAT_EQ(reachOf(1.0F, EraseMode::WholeStroke), kNarrowestReach);
+}
+
 }
 }

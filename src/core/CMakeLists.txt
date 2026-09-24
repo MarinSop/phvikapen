@@ -23,6 +23,7 @@ target_sources(phvikapen_core
         ink/StrokeShapes.cpp
         ink/StrokeSpline.cpp
         ink/StrokeSteadier.cpp
+        ink/StrokeTransform.cpp
         model/Outline.cpp
         model/Page.cpp
         model/PageStyle.cpp
@@ -63,6 +64,7 @@ target_sources(phvikapen_core
             ink/StrokeShapes.hpp
             ink/StrokeSpline.hpp
             ink/StrokeSteadier.hpp
+            ink/StrokeTransform.hpp
             model/Asset.hpp
             model/Outline.hpp
             model/Page.hpp

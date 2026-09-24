@@ -3,6 +3,7 @@
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeTransform.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/undo/UndoStack.hpp"
@@ -60,6 +61,25 @@ private:
     std::vector<Uuid> m_strokeIds;
     float m_dx;
     float m_dy;
+};
+
+// Moving, sizing and turning are one change: what the strokes were is kept, so that undoing puts
+// them back exactly rather than working the sums backwards.
+class TransformStrokesCommand final : public ICommand {
+public:
+    TransformStrokesCommand(Page* page, StorageThread* storage, std::vector<Uuid> strokeIds,
+                            Transform transform) noexcept;
+
+    Result<void> apply() override;
+    Result<void> revert() override;
+    [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+private:
+    Page* m_page;
+    StorageThread* m_storage;
+    std::vector<Uuid> m_strokeIds;
+    Transform m_transform;
+    std::vector<PlacedStroke> m_before;
 };
 
 class AddStrokesCommand final : public ICommand {

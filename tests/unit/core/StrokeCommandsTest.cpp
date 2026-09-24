@@ -1,9 +1,11 @@
 #include "core/undo/StrokeCommands.hpp"
 
 #include "core/Error.hpp"
+#include "core/geometry/Distance.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeTransform.hpp"
 #include "core/model/Page.hpp"
 #include "core/storage/NotebookStore.hpp"
 #include "core/storage/StorageThread.hpp"
@@ -307,6 +309,57 @@ TEST(StrokeCommandsTest, AStrokeKeepsItsSamplesWhenItIsGivenAnotherColour) {
     ASSERT_TRUE(history.undo().has_value());
 
     EXPECT_EQ(notebook.page.strokes().front().stroke.style(), stroke.style());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(StrokeCommandsTest, TurningWhatIsPickedCanBeUndoneExactly) {
+    OpenNotebook notebook;
+    UndoStack history;
+    const Stroke stroke = makeStroke(notebook.ids, 10.0F);
+    ASSERT_TRUE(notebook.page.insert({.ordinal = 0, .stroke = stroke}).has_value());
+    notebook.storage.insertStroke(notebook.page.id(), {.ordinal = 0, .stroke = stroke});
+    const Transform quarter{
+        .pivot = Point{.x = 10.0F, .y = 50.0F},
+        .turn = 90.0F,
+    };
+
+    ASSERT_TRUE(history
+                    .run(std::make_unique<TransformStrokesCommand>(
+                        &notebook.page, &notebook.storage, std::vector<Uuid>{stroke.id()}, quarter))
+                    .has_value());
+
+    const Stroke& turned = notebook.page.strokes().front().stroke;
+    EXPECT_EQ(turned.id(), stroke.id());
+    EXPECT_NE(turned.samples().back().x, stroke.samples().back().x);
+    EXPECT_EQ(idsInFile(notebook, notebook.page.id()).size(), 1U);
+
+    ASSERT_TRUE(history.undo().has_value());
+
+    const Stroke& back = notebook.page.strokes().front().stroke;
+    ASSERT_EQ(back.samples().size(), stroke.samples().size());
+    EXPECT_FLOAT_EQ(back.samples().back().x, stroke.samples().back().x);
+    EXPECT_FLOAT_EQ(back.samples().back().y, stroke.samples().back().y);
+    EXPECT_EQ(back.style(), stroke.style());
+    EXPECT_TRUE(notebook.errors.empty());
+}
+
+TEST(StrokeCommandsTest, SizingWhatIsPickedIsOneChangeThatCanBeDoneAgain) {
+    OpenNotebook notebook;
+    UndoStack history;
+    const Stroke stroke = makeStroke(notebook.ids, 10.0F);
+    ASSERT_TRUE(notebook.page.insert({.ordinal = 0, .stroke = stroke}).has_value());
+    notebook.storage.insertStroke(notebook.page.id(), {.ordinal = 0, .stroke = stroke});
+    const Transform twice{.wide = 2.0F, .tall = 2.0F};
+
+    ASSERT_TRUE(history
+                    .run(std::make_unique<TransformStrokesCommand>(
+                        &notebook.page, &notebook.storage, std::vector<Uuid>{stroke.id()}, twice))
+                    .has_value());
+    ASSERT_TRUE(history.undo().has_value());
+    ASSERT_TRUE(history.redo().has_value());
+
+    EXPECT_FLOAT_EQ(notebook.page.strokes().front().stroke.style().width,
+                    stroke.style().width * 2.0F);
     EXPECT_TRUE(notebook.errors.empty());
 }
 

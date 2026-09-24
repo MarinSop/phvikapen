@@ -26,6 +26,7 @@ add_executable(phvikapen_tests
     core/StrokeShapesTest.cpp
     core/StrokeSplineTest.cpp
     core/StrokeSteadierTest.cpp
+    core/StrokeTransformTest.cpp
     core/StrokeTest.cpp
     core/TextBoxTest.cpp
     core/TextCommandsTest.cpp
