@@ -14,6 +14,9 @@ Item {
     // Which box the editor holds the words of, so that leaving one box for another puts what was
     // typed where it belongs.
     property string editingId: ""
+    // Which box the editor was filled from. Nothing is written back to a box the editor never
+    // loaded, so a box can never be emptied by an editor that came up blank.
+    property string loadedId: ""
     // What the reader is doing to the box right now, before it is written down: how far it has
     // been carried, in pixels of the window, and how much wider and taller, in units of the page.
     property real liveX: 0
@@ -35,7 +38,7 @@ Item {
     // corrected without first reaching for the text tool.
     readonly property bool picking: root.tools !== null && root.tools.currentTool === ToolViewModel.Selection
     readonly property bool reachable: root.placing || root.picking
-    readonly property string pickedId: root.picked.textId === undefined ? "" : root.picked.textId
+    readonly property string pickedId: root.notebook === null ? "" : root.notebook.pickedText
     readonly property bool typing: root.pickedId !== ""
     readonly property real zoom: root.canvas === null ? 1 : root.canvas.zoom
 
@@ -43,15 +46,22 @@ Item {
         return Qt.point((position.x / root.zoom) + root.origin.x, (position.y / root.zoom) + root.origin.y);
     }
 
-    // What is in the editor becomes what the box says.
+    // What is in the editor becomes what the box says, but only for the box the editor was
+    // filled from, and never nothing where the box says something: an editor that has fallen out
+    // of step with its box must not wipe it.
     function commit() {
-        if (root.notebook !== null && root.editingId !== "") {
-            root.notebook.finishText(root.editingId, editor.text, root.onPage);
+        if (root.notebook === null || root.editingId === "" || root.editingId !== root.loadedId) {
+            return;
         }
+        if (editor.text === "" && root.notebook.wordsOf(root.editingId) !== "") {
+            return;
+        }
+        root.notebook.finishText(root.editingId, editor.text, root.onPage);
     }
 
     function leave() {
         root.commit();
+        root.loadedId = "";
         root.liveX = 0;
         root.liveY = 0;
         root.liveWide = 0;
@@ -62,15 +72,20 @@ Item {
         }
     }
 
-    // A box is put down and made ready to type in. Reaching for the text tool puts one where the
-    // reader is looking, a little in from the top left of what is on the screen, so that typing
-    // can start at once; tapping elsewhere gives that one up, since a box nobody typed in is
-    // never kept.
+    // A box is put down where it was asked for, ready to be typed in.
     function putABoxAt(x, y) {
         const at = root.columnPointOf(Qt.point(x, y));
         // Every new box starts plain; the face of the last one stays with the last one.
         root.tools.resetTextStyle();
         root.notebook.addTextAt(at.x, at.y, root.tools.textStyle);
+    }
+
+    // The caret goes into the box that is being worked on, at the end of what it says.
+    function takeTheKeyboard() {
+        if (root.pickedId !== "" && !editor.activeFocus) {
+            editor.forceActiveFocus();
+            editor.cursorPosition = editor.length;
+        }
     }
 
     // Where the box has been carried and pulled to becomes where it is.
@@ -96,22 +111,25 @@ Item {
             root.leave();
         }
     }
-    // Reaching for the text tool is enough: a box is waiting with the caret in it.
-    onPlacingChanged: {
-        if (root.placing && !root.typing && root.notebook !== null && root.canvas !== null && root.width > 0) {
-            root.putABoxAt(root.width * 0.3, root.height * 0.4);
-        }
-    }
     onPickedIdChanged: {
         if (root.editingId !== "" && root.editingId !== root.pickedId) {
             root.commit();
         }
+        // Whether a box is being worked on is worked out here rather than read from `typing`:
+        // that answer is worked out from this very property, and has not been worked out again
+        // by the time this runs.
+        const holds = root.pickedId !== "";
         root.editingId = root.pickedId;
         // The editor is one and the same for every box, so what it holds is always replaced,
-        // never left over from the box before.
-        editor.text = root.typing ? root.picked.text : "";
-        if (root.typing) {
+        // never left over from the box before, and it is filled from the box itself rather than
+        // from whatever was last published.
+        root.loadedId = root.pickedId;
+        editor.text = holds ? root.notebook.wordsOf(root.pickedId) : "";
+        if (holds) {
+            // The box only becomes visible once this has returned, and nothing out of sight can
+            // hold the keyboard, so the caret is asked for again once it is on the screen.
             editor.forceActiveFocus();
+            Qt.callLater(root.takeTheKeyboard);
         } else if (editor.activeFocus) {
             editor.focus = false;
         }

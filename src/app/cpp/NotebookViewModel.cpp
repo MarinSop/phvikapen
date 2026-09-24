@@ -3048,6 +3048,11 @@ QVariantMap NotebookViewModel::styleOfText(const QString& textId) const {
     return found ? mapOfStyle(found->second.style) : QVariantMap{};
 }
 
+QString NotebookViewModel::wordsOf(const QString& textId) const {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    return found ? QString::fromStdString(found->second.text) : QString{};
+}
+
 void NotebookViewModel::convertSelectionToText(QVariantMap style) {
     const core::Page* const page = currentPageData();
     if (page == nullptr || m_canvas.isNull() || !m_storage) {

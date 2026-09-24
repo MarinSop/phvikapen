@@ -261,6 +261,83 @@ TestCase {
         notebook.pickedText = "";
     }
 
+    function test_theCaretIsInTheBoxAsSoonAsItIsPutDown() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const at = placeOnPage(notebook, 40, 60);
+        const onScreen = Qt.point((at.x - notebook.canvas.viewOrigin.x) * notebook.canvas.zoom, (at.y - notebook.canvas.viewOrigin.y) * notebook.canvas.zoom);
+
+        mouseClick(layer, onScreen.x, onScreen.y);
+
+        const editor = findChild(layer, "textEditor");
+        verify(editor !== null);
+        tryCompare(editor, "focus", true);
+        notebook.pickedText = "";
+    }
+
+    function test_takingHoldOfAWrittenBoxKeepsWhatItSays() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const at = placeOnPage(notebook, 40, 60);
+        notebook.addTextAt(at.x, at.y, tools.textStyle);
+        notebook.finishText(notebook.pickedText, "Keep me", 30);
+        notebook.pickedText = "";
+        const rows = boxes(notebook);
+        compare(rows.count, 1);
+        const textId = rows.itemAt(0).textId;
+
+        // The pick tool takes hold of it, as a tap on the box does.
+        tools.currentTool = ToolViewModel.Selection;
+        notebook.pickedText = textId;
+        compare(notebook.wordsOf(textId), "Keep me");
+        compare(layer.pickedId, textId);
+        compare(layer.editingId, textId);
+        const editor = findChild(layer, "textEditor");
+        compare(editor.text, "Keep me");
+
+        // Letting go of it must not write nothing over it.
+        notebook.pickedText = "";
+
+        compare(rows.count, 1);
+        compare(rows.itemAt(0).text, "Keep me");
+    }
+
+    function test_aBoxIsNeverEmptiedByAnEditorThatNeverHeldIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const at = placeOnPage(notebook, 40, 60);
+        notebook.addTextAt(at.x, at.y, tools.textStyle);
+        notebook.finishText(notebook.pickedText, "Still here", 30);
+        notebook.pickedText = "";
+        const rows = boxes(notebook);
+        const textId = rows.itemAt(0).textId;
+
+        layer.editingId = textId;
+        layer.loadedId = "";
+        layer.commit();
+
+        compare(rows.count, 1);
+        compare(rows.itemAt(0).text, "Still here");
+    }
+
     function test_leavingTheTextToolFinishesTheBox() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);

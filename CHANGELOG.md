@@ -72,9 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where the canvas draws its own, and follows the ink through the whole drag, about the very point
   the strokes are turned about. The grips are smaller, are drawn white with a colored edge, and
   step aside while a drag is under way.
-- Reaching for the text tool is enough to start typing: a box is put down where the reader is
-  looking, with the caret already in it, instead of waiting for a tap. Tapping elsewhere gives that
-  box up and puts one there instead, since a box nobody typed in was never kept.
+- Putting a box of text down left the caret behind, so it took a second tap before a word could be
+  typed; taking hold of a written box showed nothing in it; and letting go of that box then wiped
+  what it said. All three came of one thing: the box being worked on was asked for from an answer
+  that is worked out from the very change being handled, so it was still the answer from before.
+  It is worked out where it is needed now, and a box is filled from itself by name. Nothing is
+  written back to a box the editor was never filled from, and an editor holding nothing can no
+  longer empty a box that says something.
 - A new box of text came up holding whatever was typed into the one before it. One editor serves
   every box, and what it held was replaced on the way in but never cleared on the way out; it is
   cleared both ways now.

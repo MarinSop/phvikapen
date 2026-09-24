@@ -277,6 +277,10 @@ public:
 
     Q_INVOKABLE [[nodiscard]] QVariantMap styleOfText(const QString& textId) const;
 
+    // What a box says, asked for by name. The editor loads a box through this rather than from
+    // whatever was last published, so that it can never come up holding nothing by mistake.
+    Q_INVOKABLE [[nodiscard]] QString wordsOf(const QString& textId) const;
+
     // Read what is picked and put it on the page as text, taking the handwriting away.
     Q_INVOKABLE void convertSelectionToText(QVariantMap style);
 
