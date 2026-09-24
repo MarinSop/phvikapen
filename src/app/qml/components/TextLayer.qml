@@ -62,6 +62,17 @@ Item {
         }
     }
 
+    // A box is put down and made ready to type in. Reaching for the text tool puts one where the
+    // reader is looking, a little in from the top left of what is on the screen, so that typing
+    // can start at once; tapping elsewhere gives that one up, since a box nobody typed in is
+    // never kept.
+    function putABoxAt(x, y) {
+        const at = root.columnPointOf(Qt.point(x, y));
+        // Every new box starts plain; the face of the last one stays with the last one.
+        root.tools.resetTextStyle();
+        root.notebook.addTextAt(at.x, at.y, root.tools.textStyle);
+    }
+
     // Where the box has been carried and pulled to becomes where it is.
     function settle() {
         if (!root.typing) {
@@ -85,13 +96,21 @@ Item {
             root.leave();
         }
     }
+    // Reaching for the text tool is enough: a box is waiting with the caret in it.
+    onPlacingChanged: {
+        if (root.placing && !root.typing && root.notebook !== null && root.canvas !== null && root.width > 0) {
+            root.putABoxAt(root.width * 0.3, root.height * 0.4);
+        }
+    }
     onPickedIdChanged: {
         if (root.editingId !== "" && root.editingId !== root.pickedId) {
             root.commit();
         }
         root.editingId = root.pickedId;
+        // The editor is one and the same for every box, so what it holds is always replaced,
+        // never left over from the box before.
+        editor.text = root.typing ? root.picked.text : "";
         if (root.typing) {
-            editor.text = root.picked.text;
             editor.forceActiveFocus();
         } else if (editor.activeFocus) {
             editor.focus = false;
@@ -108,10 +127,7 @@ Item {
                 root.leave();
                 return;
             }
-            const at = root.columnPointOf(Qt.point(mouse.x, mouse.y));
-            // Every new box starts plain; the face of the last one stays with the last one.
-            root.tools.resetTextStyle();
-            root.notebook.addTextAt(at.x, at.y, root.tools.textStyle);
+            root.putABoxAt(mouse.x, mouse.y);
         }
     }
 

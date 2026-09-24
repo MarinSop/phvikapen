@@ -236,6 +236,31 @@ TestCase {
         notebook.pickedText = "";
     }
 
+    function test_aNewBoxStartsEmptyAfterAnotherOneWasTypedIn() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const first = placeOnPage(notebook, 40, 60);
+        const onFirst = Qt.point((first.x - notebook.canvas.viewOrigin.x) * notebook.canvas.zoom, (first.y - notebook.canvas.viewOrigin.y) * notebook.canvas.zoom);
+        mouseClick(layer, onFirst.x, onFirst.y);
+        const editor = findChild(layer, "textEditor");
+        verify(editor !== null);
+        editor.text = "Hello";
+
+        // The first tap leaves the box that was being typed in, the second puts down a new one.
+        mouseClick(layer, onFirst.x, onFirst.y + 140);
+        mouseClick(layer, onFirst.x, onFirst.y + 140);
+
+        verify(notebook.pickedText !== "");
+        compare(editor.text, "");
+        notebook.pickedText = "";
+    }
+
     function test_leavingTheTextToolFinishesTheBox() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);

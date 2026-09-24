@@ -72,6 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where the canvas draws its own, and follows the ink through the whole drag, about the very point
   the strokes are turned about. The grips are smaller, are drawn white with a colored edge, and
   step aside while a drag is under way.
+- Reaching for the text tool is enough to start typing: a box is put down where the reader is
+  looking, with the caret already in it, instead of waiting for a tap. Tapping elsewhere gives that
+  box up and puts one there instead, since a box nobody typed in was never kept.
+- A new box of text came up holding whatever was typed into the one before it. One editor serves
+  every box, and what it held was replaced on the way in but never cleared on the way out; it is
+  cleared both ways now.
 - A box of text being typed in is now marked the way picked ink is: a thin frame with small white
   grips. The dark square beside it, which said nothing about what it did, is gone; taking the box
   away is a round mark with a cross on it, beside the knob that carries the box.
