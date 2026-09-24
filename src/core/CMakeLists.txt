@@ -27,6 +27,7 @@ target_sources(phvikapen_core
         model/Page.cpp
         model/PageStyle.cpp
         model/StrokeGrid.cpp
+        model/TextBox.cpp
         storage/NotebookStore.cpp
         storage/Sqlite.cpp
         storage/Sqlite.hpp
@@ -64,6 +65,7 @@ target_sources(phvikapen_core
             model/Page.hpp
             model/PageStyle.hpp
             model/StrokeGrid.hpp
+            model/TextBox.hpp
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
             storage/StrokeCodec.hpp
