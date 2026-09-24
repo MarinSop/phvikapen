@@ -34,6 +34,7 @@ namespace phvikapen::platform::ink {
 struct MediaEntry {
     QImage picture;
     QRectF area;
+    float turn{};
     std::unique_ptr<QRhiTexture> texture;
     std::unique_ptr<QRhiBuffer> uniforms;
     std::unique_ptr<QRhiShaderResourceBindings> bindings;

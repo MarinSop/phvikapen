@@ -179,13 +179,13 @@ something to draw it in the window and in what is exported, and a place in the m
 under the pointer. The change of place, size and angle that the loop tool now uses is already
 written so that all of them can share it. They are listed in the order they are worth doing.
 
-- **Pictures on a page.** A picture is put on the paper, moved, sized, turned and taken away like
-  anything else. Most of what is needed is already there: a notebook keeps whole documents and
-  pictures as assets by their content, and the canvas already draws one behind a page. What is
-  missing is a picture that belongs to the page rather than being its background — several to a
-  page, each with its own place and size — plus cropping, and whether a picture sits above or below
-  the ink. Sizing a picture must leave its edges sharp, which means it does not take the part of the
-  change that makes lines thicker.
+- **Putting a picture on a page.** A page can hold pictures and the canvas draws them, but nothing
+  puts one there yet: what is missing is reading a picture from a file into the notebook's assets,
+  taking hold of one on the page, and the frame with grips that moves, sizes and turns it, which
+  the frame around picked ink is already written to share. Sizing a picture must leave its edges
+  sharp, so it does not take the part of that change which makes lines thicker.
+- **Cropping a picture.** A picture keeps the whole of what it was given. Cropping would be a
+  rectangle kept beside the rest, and can be added without moving anything already kept.
 - **Tables.** A real table of rows, columns and cells, each cell holding what a box of typed text
   holds, with rows and columns added, removed and resized, cells joined and split, and the keyboard
   walking from cell to cell. The table itself is one thing on the page that can be moved and sized.

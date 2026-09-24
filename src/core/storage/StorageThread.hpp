@@ -6,6 +6,7 @@
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/Picture.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/NotebookStore.hpp"
 
@@ -25,6 +26,7 @@ namespace phvikapen::core {
 struct LoadedPage {
     std::vector<PlacedStroke> strokes;
     std::vector<PlacedText> texts;
+    std::vector<PlacedPicture> pictures;
 };
 
 class StorageThread {

@@ -171,6 +171,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             .style = info.style,
             .strokes = *strokes,
             .texts = *texts,
+            .pictures = {},
             .media = nullptr,
         };
         const core::Rect area = areaFor(contents, options.scope);
@@ -179,6 +180,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             .style = info.style,
             .strokes = *strokes,
             .texts = *texts,
+            .pictures = {},
             .media = picture.isNull() ? nullptr : &picture,
         };
 

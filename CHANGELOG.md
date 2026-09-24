@@ -68,8 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A notebook can hold pictures that stand on a page: which picture it is, where it stands, how
   large it is drawn and how far it has been turned. A picture is kept once, by what it contains, so
   the same picture on ten pages costs the room of one, and putting one down, moving it, turning it
-  and taking it away are all changes that can be undone. Nothing puts a picture on a page yet;
-  this is where they will be kept.
+  and taking it away are all changes that can be undone. The canvas draws them over the document a
+  page was made from and under everything written on it, turned as they were left, and so does
+  what is printed and the small picture of a page. Nothing puts a picture on a page yet.
 
 ### Fixed
 

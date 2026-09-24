@@ -15,8 +15,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <iterator>
+#include <numbers>
 #include <optional>
 #include <span>
 #include <vector>
@@ -29,6 +31,10 @@ using core::InkVertex;
 constexpr quint32 kInitialVertexBufferBytes = 64U * 1024U;
 constexpr quint32 kMatrixBytes = 64;
 constexpr quint32 kVectorBytes = 16;
+// A picture is placed by where it stands and how far it has been turned: a matrix and two
+// vectors, the second of which carries the cosine and the sine of the angle.
+constexpr quint32 kMediaUniformBytes = kMatrixBytes + (2 * kVectorBytes);
+constexpr float kHalfTurn = 180.0F;
 constexpr std::size_t kMostSheets = 16;
 constexpr std::size_t kFloatsPerVector = 4;
 constexpr std::size_t kBackgroundUniformCount = 48 + (2 * kFloatsPerVector * kMostSheets);
@@ -281,8 +287,8 @@ void QtInkRenderer::createBackgroundPipeline() {
 void QtInkRenderer::createMediaPipeline() {
     QRhi* const device = rhi();
     if (!m_mediaUniforms) {
-        m_mediaUniforms.reset(device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer,
-                                                kMatrixBytes + kVectorBytes));
+        m_mediaUniforms.reset(
+            device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, kMediaUniformBytes));
         m_mediaUniforms->create();
     }
     if (!m_mediaSampler) {
@@ -353,7 +359,7 @@ void QtInkRenderer::updateMedia(QRhiResourceUpdateBatch& updates) {
         }
         if (!entry.uniforms) {
             entry.uniforms.reset(device->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer,
-                                                   kMatrixBytes + kVectorBytes));
+                                                   kMediaUniformBytes));
             entry.uniforms->create();
         }
         if (!entry.texture) {
@@ -366,12 +372,17 @@ void QtInkRenderer::updateMedia(QRhiResourceUpdateBatch& updates) {
             bindMedia(entry);
         }
 
-        std::array<float, (kMatrixBytes + kVectorBytes) / sizeof(float)> uniforms{};
-        std::copy_n(projection.constData(), kMatrixBytes / sizeof(float), uniforms.begin());
-        uniforms.at(kMatrixBytes / sizeof(float)) = static_cast<float>(entry.area.x());
-        uniforms.at((kMatrixBytes / sizeof(float)) + 1) = static_cast<float>(entry.area.y());
-        uniforms.at((kMatrixBytes / sizeof(float)) + 2) = static_cast<float>(entry.area.width());
-        uniforms.at((kMatrixBytes / sizeof(float)) + 3) = static_cast<float>(entry.area.height());
+        constexpr std::size_t kFloatsInMatrix = kMatrixBytes / sizeof(float);
+        constexpr std::size_t kFloatsInVector = kVectorBytes / sizeof(float);
+        std::array<float, kMediaUniformBytes / sizeof(float)> uniforms{};
+        std::copy_n(projection.constData(), kFloatsInMatrix, uniforms.begin());
+        uniforms.at(kFloatsInMatrix) = static_cast<float>(entry.area.x());
+        uniforms.at(kFloatsInMatrix + 1) = static_cast<float>(entry.area.y());
+        uniforms.at(kFloatsInMatrix + 2) = static_cast<float>(entry.area.width());
+        uniforms.at(kFloatsInMatrix + 3) = static_cast<float>(entry.area.height());
+        const float angle = entry.turn * std::numbers::pi_v<float> / kHalfTurn;
+        uniforms.at(kFloatsInMatrix + kFloatsInVector) = std::cos(angle);
+        uniforms.at(kFloatsInMatrix + kFloatsInVector + 1) = std::sin(angle);
         updates.updateDynamicBuffer(entry.uniforms.get(), 0,
                                     static_cast<quint32>(std::span{uniforms}.size_bytes()),
                                     uniforms.data());
@@ -433,12 +444,14 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
             });
             if (found != m_media.end()) {
                 found->area = draw.area;
+                found->turn = draw.turn;
                 kept.push_back(std::move(*found));
                 continue;
             }
             MediaEntry entry;
             entry.picture = draw.picture;
             entry.area = draw.area;
+            entry.turn = draw.turn;
             kept.push_back(std::move(entry));
         }
         m_media = std::move(kept);
@@ -446,6 +459,7 @@ void QtInkRenderer::synchronize(QQuickRhiItem* item) {
         const std::vector<QtInkItem::MediaDraw>& draws = inkItem->mediaDraws();
         for (std::size_t i = 0; i < m_media.size() && i < draws.size(); ++i) {
             m_media[i].area = draws[i].area;
+            m_media[i].turn = draws[i].turn;
         }
     }
 }

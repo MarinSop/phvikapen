@@ -79,7 +79,16 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(std::unexpected{texts.error()});
             return;
         }
-        onLoaded(LoadedPage{.strokes = std::move(*strokes), .texts = std::move(*texts)});
+        Result<std::vector<PlacedPicture>> pictures = m_store->picturesOfPage(pageId);
+        if (!pictures) {
+            onLoaded(std::unexpected{pictures.error()});
+            return;
+        }
+        onLoaded(LoadedPage{
+            .strokes = std::move(*strokes),
+            .texts = std::move(*texts),
+            .pictures = std::move(*pictures),
+        });
     });
 }
 

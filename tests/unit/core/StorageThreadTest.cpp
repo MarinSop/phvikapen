@@ -1,11 +1,13 @@
 #include "core/storage/StorageThread.hpp"
 
 #include "core/Error.hpp"
+#include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/Picture.hpp"
 #include "core/storage/NotebookStore.hpp"
 #include "support/TemporaryNotebook.hpp"
 
@@ -115,6 +117,41 @@ TEST(StorageThreadTest, LoadsAPageInDrawingOrder) {
     EXPECT_EQ((*loaded)->strokes.back().ordinal, 4);
     EXPECT_EQ((*loaded)->strokes.back().stroke.id(), late.id());
     EXPECT_TRUE((*loaded)->texts.empty());
+    EXPECT_TRUE((*loaded)->pictures.empty());
+}
+
+TEST(StorageThreadTest, LoadsThePicturesStandingOnAPage) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Uuid page;
+    {
+        Result<NotebookStore> store = NotebookStore::open(notebook.path());
+        ASSERT_TRUE(store.has_value()) << store.error().message;
+        page = store->readOutline().value().sections.front().pages.front().id;
+        const Picture picture{
+            .id = ids.next(),
+            .source = ContentId{ContentId::Bytes{3, 1, 4}},
+            .at = Point{.x = 12.0F, .y = 34.0F},
+            .width = 200.0F,
+            .height = 150.0F,
+            .turn = 30.0F,
+        };
+        ASSERT_TRUE(store->insertPicture(page, {.ordinal = 0, .picture = picture}));
+    }
+
+    ErrorLog log;
+    StorageThread storage{notebook.path(), log.handler()};
+    std::optional<Result<LoadedPage>> loaded;
+
+    storage.loadPage(page, [&](Result<LoadedPage> contents) { loaded = std::move(contents); });
+    storage.waitUntilIdle();
+
+    ASSERT_TRUE(loaded.has_value());
+    ASSERT_TRUE(loaded->has_value()) << loaded->error().message;
+    ASSERT_EQ((*loaded)->pictures.size(), 1U);
+    EXPECT_FLOAT_EQ((*loaded)->pictures.front().picture.turn, 30.0F);
+    EXPECT_FLOAT_EQ((*loaded)->pictures.front().picture.width, 200.0F);
+    EXPECT_TRUE(log.errors().empty());
 }
 
 TEST(StorageThreadTest, LoadsTheOutlineAndCarriesOutSubmittedChanges) {

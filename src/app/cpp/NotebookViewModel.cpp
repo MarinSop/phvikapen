@@ -1414,6 +1414,7 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
         .style = work.page.style,
         .strokes = work.strokes,
         .texts = work.texts,
+        .pictures = {},
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);

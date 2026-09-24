@@ -6,6 +6,7 @@
 #include "core/ink/Stroke.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Picture.hpp"
 #include "core/model/TextBox.hpp"
 #include "platform/render/PaperLook.hpp"
 
@@ -64,6 +65,7 @@ TEST(PagePainterTest, AFixedPageIsAsLargeAsItsPaper) {
         .style = core::PageStyle{.paper = core::Paper::A5},
         .strokes = kNoStrokes,
         .texts = {},
+        .pictures = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -82,6 +84,7 @@ TEST(PagePainterTest, AnInfinitePageIsAsLargeAsWhatWasWrittenOnIt) {
         .style = core::PageStyle{.paper = core::Paper::Infinite},
         .strokes = strokes,
         .texts = {},
+        .pictures = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -97,6 +100,7 @@ TEST(PagePainterTest, AnEmptyInfinitePageFallsBackToASheetOfPaper) {
         .style = core::PageStyle{.paper = core::Paper::Infinite},
         .strokes = kNoStrokes,
         .texts = {},
+        .pictures = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -113,6 +117,7 @@ TEST(PagePainterTest, TheSheetIsWhiteAndTheInkIsWhereItWasWritten) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = strokes,
         .texts = {},
+        .pictures = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -127,6 +132,7 @@ TEST(PagePainterTest, RuledPaperGetsItsLinesAndItsMargin) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Lined},
         .strokes = kNoStrokes,
         .texts = {},
+        .pictures = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
@@ -141,6 +147,7 @@ TEST(PagePainterTest, BlankPaperStaysBlank) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = kNoStrokes,
         .texts = {},
+        .pictures = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
@@ -177,6 +184,7 @@ TEST(PagePainterTest, TypedTextIsPrintedWhereItSits) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = kNoStrokes,
         .texts = texts,
+        .pictures = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -190,11 +198,90 @@ TEST(PagePainterTest, APageWithoutTypedTextPrintsNone) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = kNoStrokes,
         .texts = {},
+        .pictures = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
 
     EXPECT_FALSE(hasColorNear(sheet, QColor{220, 20, 40}));
+}
+
+TEST(PagePainterTest, APictureIsDrawnOverThePaperAndUnderTheInk) {
+    QImage red{8, 8, QImage::Format_ARGB32_Premultiplied};
+    red.fill(QColor{255, 0, 0});
+    const std::vector<core::PlacedStroke> strokes{
+        line(core::Color{.green = 255}, 8.0F, 10.0F, 190.0F, 60.0F),
+    };
+    const std::array pictures{
+        DrawnPicture{
+            .placed =
+                core::Picture{
+                    .id = {},
+                    .source = {},
+                    .at = core::Point{.x = 20.0F, .y = 100.0F},
+                    .width = 80.0F,
+                    .height = 60.0F,
+                    .turn = 0.0F,
+                },
+            .picture = &red,
+        },
+    };
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = strokes,
+        .texts = {},
+        .pictures = pictures,
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    EXPECT_EQ(sheet.pixelColor(60, 130), QColor(255, 0, 0));
+    EXPECT_EQ(sheet.pixelColor(100, 60), QColor(0, 255, 0));
+}
+
+TEST(PagePainterTest, APageWithoutPicturesPrintsNone) {
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = {},
+        .texts = {},
+        .pictures = {},
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    EXPECT_FALSE(hasColorNear(sheet, QColor{255, 0, 0}));
+}
+
+TEST(PagePainterTest, ATurnedPictureLeavesTheCornersOfItsUprightBoxBare) {
+    QImage red{8, 8, QImage::Format_ARGB32_Premultiplied};
+    red.fill(QColor{255, 0, 0});
+    const std::array upright{
+        DrawnPicture{
+            .placed =
+                core::Picture{
+                    .id = {},
+                    .source = {},
+                    .at = core::Point{.x = 40.0F, .y = 40.0F},
+                    .width = 100.0F,
+                    .height = 100.0F,
+                    .turn = 0.0F,
+                },
+            .picture = &red,
+        },
+    };
+    std::array turned = upright;
+    turned.front().placed.turn = 45.0F;
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const core::PageStyle style{.paper = core::Paper::A5, .background = core::Background::Blank};
+
+    const QImage flat =
+        paint(PageContents{.style = style, .strokes = {}, .texts = {}, .pictures = upright}, area);
+    const QImage spun =
+        paint(PageContents{.style = style, .strokes = {}, .texts = {}, .pictures = turned}, area);
+
+    EXPECT_EQ(flat.pixelColor(45, 45), QColor(255, 0, 0));
+    EXPECT_NE(spun.pixelColor(45, 45), QColor(255, 0, 0));
+    EXPECT_EQ(spun.pixelColor(90, 90), QColor(255, 0, 0));
 }
 
 TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
@@ -207,6 +294,7 @@ TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = strokes,
         .texts = {},
+        .pictures = {},
         .media = &media,
     };
 

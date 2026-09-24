@@ -726,7 +726,7 @@ void QtInkItem::clearMedia() {
 // Every picture is drawn where its own page stands in the column.
 void QtInkItem::rebuildMedia() {
     m_mediaDraws.clear();
-    m_mediaDraws.reserve(m_media.size());
+    m_mediaDraws.reserve(m_media.size() + m_pictures.size());
     for (const MediaPiece& piece : m_media) {
         const auto sheet = std::ranges::find(m_sheets, piece.page, &Sheet::id);
         if (sheet == m_sheets.end() || piece.picture.isNull() || piece.area.isEmpty()) {
@@ -735,8 +735,30 @@ void QtInkItem::rebuildMedia() {
         m_mediaDraws.push_back(MediaDraw{
             .picture = piece.picture,
             .area = piece.area.translated(0.0, static_cast<double>(sheet->top)),
+            .turn = 0.0F,
         });
     }
+    // Pictures put on a page come after the document that page was made from, so they stand over
+    // it, and before the ink, so that what is written on one stays on top of it.
+    for (const PicturePiece& piece : m_pictures) {
+        const auto sheet = std::ranges::find(m_sheets, piece.page, &Sheet::id);
+        if (sheet == m_sheets.end() || piece.picture.isNull() || piece.area.isEmpty()) {
+            continue;
+        }
+        m_mediaDraws.push_back(MediaDraw{
+            .picture = piece.picture,
+            .area = piece.area.translated(0.0, static_cast<double>(sheet->top)),
+            .turn = piece.turn,
+        });
+    }
+}
+
+void QtInkItem::showPictures(std::span<const PicturePiece> pieces) {
+    m_pictures.assign(pieces.begin(), pieces.end());
+    rebuildMedia();
+    ++m_mediaGeneration;
+    emit mediaChanged();
+    update();
 }
 
 QImage QtInkItem::media() const {

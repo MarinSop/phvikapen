@@ -3,6 +3,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Picture.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <span>
@@ -12,10 +13,17 @@ class QPainter;
 
 namespace phvikapen::platform::render {
 
+// A picture standing on a page, with what it is made of already decoded.
+struct DrawnPicture {
+    core::Picture placed;
+    const QImage* picture{nullptr};
+};
+
 struct PageContents {
     core::PageStyle style{};
     std::span<const core::PlacedStroke> strokes;
     std::span<const core::PlacedText> texts;
+    std::span<const DrawnPicture> pictures;
     const QImage* media{nullptr};
 };
 

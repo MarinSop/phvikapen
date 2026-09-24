@@ -216,6 +216,24 @@ core::Rect pageArea(const PageContents& page) {
     return ink->inflated(kInkMargin);
 }
 
+// Pictures stand over the document a page was made from and under everything written on it, each
+// turned about its own middle.
+void paintPictures(QPainter& painter, std::span<const DrawnPicture> pictures) {
+    for (const DrawnPicture& drawn : pictures) {
+        if (drawn.picture == nullptr || drawn.picture->isNull()) {
+            continue;
+        }
+        const core::Rect where = core::areaOf(drawn.placed);
+        const QRectF target = toRect(where);
+        painter.save();
+        painter.translate(target.center());
+        painter.rotate(static_cast<qreal>(drawn.placed.turn));
+        painter.translate(-target.center());
+        painter.drawImage(target, *drawn.picture);
+        painter.restore();
+    }
+}
+
 void paintPage(QPainter& painter, const PageContents& page, const core::Rect& area) {
     const std::optional<core::Rect> paper = paperRect(page.style);
 
@@ -232,6 +250,7 @@ void paintPage(QPainter& painter, const PageContents& page, const core::Rect& ar
         painter.drawImage(target, *page.media);
     }
 
+    paintPictures(painter, page.pictures);
     paintStrokes(painter, page.strokes);
     paintTexts(painter, page.texts);
     painter.restore();

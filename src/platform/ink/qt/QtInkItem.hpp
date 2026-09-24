@@ -117,6 +117,16 @@ public:
     struct MediaDraw {
         QImage picture;
         QRectF area;
+        float turn{};
+    };
+
+    // A picture standing on a page, in that page's own coordinates. Pictures are drawn over the
+    // document a page was made from and under everything written on it.
+    struct PicturePiece {
+        core::Uuid page;
+        QImage picture;
+        QRectF area;
+        float turn{};
     };
 
     void showPage(const core::Page& page, const core::PageStyle& style,
@@ -219,6 +229,8 @@ public:
 
     void showMedia(std::span<const MediaPiece> pieces);
     void clearMedia();
+
+    void showPictures(std::span<const PicturePiece> pieces);
 
     [[nodiscard]] QImage media() const;
 
@@ -413,6 +425,7 @@ private:
 
     std::vector<Sheet> m_sheets;
     std::vector<MediaPiece> m_media;
+    std::vector<PicturePiece> m_pictures;
     std::vector<MediaDraw> m_mediaDraws;
     int m_current{0};
     int m_workSheet{-1};
