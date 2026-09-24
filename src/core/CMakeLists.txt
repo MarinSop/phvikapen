@@ -34,8 +34,10 @@ target_sources(phvikapen_core
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
         text/Folding.cpp
+        undo/BundleCommand.cpp
         undo/OutlineCommands.cpp
         undo/StrokeCommands.cpp
+        undo/TextCommands.cpp
         undo/UndoStack.cpp
     PUBLIC
         FILE_SET HEADERS
@@ -71,8 +73,10 @@ target_sources(phvikapen_core
             storage/StrokeCodec.hpp
             text/Folding.hpp
             text/InkWord.hpp
+            undo/BundleCommand.hpp
             undo/OutlineCommands.hpp
             undo/StrokeCommands.hpp
+            undo/TextCommands.hpp
             undo/UndoStack.hpp
             "${generated_dir}/core/version.hpp"
 )
