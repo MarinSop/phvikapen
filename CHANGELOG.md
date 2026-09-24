@@ -72,6 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where the canvas draws its own, and follows the ink through the whole drag, about the very point
   the strokes are turned about. The grips are smaller, are drawn white with a colored edge, and
   step aside while a drag is under way.
+- The build on Windows on ARM failed to compile the table of plain letters. Looking a letter up
+  asked for a pointer where the compiler there hands back something of its own instead, which the
+  compiler used for the development machine happens to let pass. The table is walked plainly now,
+  which every compiler reads the same way.
 - Putting a box of text down left the caret behind, so it took a second tap before a word could be
   typed; taking hold of a written box showed nothing in it; and letting go of that box then wiped
   what it said. All three came of one thing: the box being worked on was asked for from an answer

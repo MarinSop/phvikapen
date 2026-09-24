@@ -451,8 +451,9 @@ void QtInkItem::rebuildBuffers() {
     const float outline = kOutlinePixels / std::max(m_viewport.scale(), 0.01F);
 
     if (!m_selected.empty()) {
-        if (const std::optional<core::Rect> bounds =
-                m_markSelection ? selectionBounds() : std::nullopt) {
+        const std::optional<core::Rect> bounds =
+            m_markSelection ? selectionBounds() : std::optional<core::Rect>{};
+        if (bounds) {
             const core::Rect shown =
                 core::Rect{
                     .left = bounds->left + m_dragOffset.x,

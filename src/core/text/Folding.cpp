@@ -1,6 +1,5 @@
 #include "core/text/Folding.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -125,10 +124,12 @@ constexpr std::array kPlainLetters{
 };
 
 [[nodiscard]] std::string_view plainLetters(char32_t code) {
-    const auto* const found = std::ranges::find_if(kPlainLetters, [code](const Range& range) {
-        return code >= range.from && code <= range.to;
-    });
-    return found == kPlainLetters.end() ? std::string_view{} : found->plain;
+    for (const Range& range : kPlainLetters) {
+        if (code >= range.from && code <= range.to) {
+            return range.plain;
+        }
+    }
+    return {};
 }
 
 }
