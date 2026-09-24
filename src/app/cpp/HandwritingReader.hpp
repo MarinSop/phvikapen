@@ -50,8 +50,8 @@ private:
     void readPages(const std::stop_token& stopToken, core::NotebookStore& store,
                    platform::text::IHandwriting& reader);
     [[nodiscard]] static core::Result<void> readPage(core::NotebookStore& store,
-                                                    platform::text::IHandwriting& reader,
-                                                    const core::Uuid& pageId);
+                                                     platform::text::IHandwriting& reader,
+                                                     const core::Uuid& pageId);
     void report(const core::Error& error);
 
     std::filesystem::path m_path;

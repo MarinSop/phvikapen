@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A notebook reads its own handwriting in the background, one page at a time, on a thread of its
   own: pages written on since they were last read are read again while the hand rests, and what is
   found can be searched for from the notebook.
+- Find in Handwriting, from the Edit menu or Ctrl+F: type what was written, and every place it was
+  written in this notebook is listed with the page it is on; choosing one opens that page. Where the
+  machine cannot read handwriting, the window says so rather than finding nothing quietly.
 
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.

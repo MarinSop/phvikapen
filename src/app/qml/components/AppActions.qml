@@ -247,6 +247,13 @@ Item {
 
         onTriggered: root.pageSetupWanted()
     }
+    readonly property Action findWriting: Action {
+        enabled: root.hasNotebook
+        shortcut: root.keysFor("find", "Ctrl+F")
+        text: qsTr("Find in Handwriting…")
+
+        onTriggered: root.findWanted()
+    }
     readonly property Action showTrash: Action {
         enabled: root.hasNotebook
         shortcut: root.keysFor("trash", "Ctrl+Shift+T")
@@ -320,6 +327,7 @@ Item {
     signal newNotebookWanted
     signal pageSetupWanted
     signal settingsWanted
+    signal findWanted
     signal trashWanted
 
     // Nothing is closed over the top of changes nobody has kept.

@@ -171,6 +171,7 @@ ApplicationWindow {
             exportDialog.selectedFile = folder + "/" + root.notebook.title + ".pdf";
             exportDialog.open();
         }
+        onFindWanted: findDialog.open()
         onHintsWanted: hintsDialog.open()
         onImportWanted: importDialog.open()
         onNewNotebookWanted: newNotebookDialog.open()
@@ -378,6 +379,13 @@ ApplicationWindow {
         id: welcomeDialog
 
         settings: settings
+    }
+
+    FindDialog {
+        id: findDialog
+
+        anchors.centerIn: Overlay.overlay
+        notebook: root.notebook
     }
 
     TrashDialog {

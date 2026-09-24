@@ -123,6 +123,9 @@ public:
     // Every word of handwriting that holds what was typed, wherever it is in this notebook.
     Q_INVOKABLE void find(const QString& text);
 
+    // Show the page one of the words found by the last search was written on.
+    Q_INVOKABLE void goToFound(int index);
+
     void setNotebookPath(const QString& path);
 
     [[nodiscard]] QString name() const;
@@ -360,7 +363,7 @@ private:
     void publishOutline();
     void dropStartingPage();
     void markEdited();
-    void showFound(const std::vector<core::FoundWord>& hits);
+    void publishFound(std::vector<core::FoundWord> hits);
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
@@ -420,6 +423,7 @@ private:
     core::Uuid m_erasedPage;
     QString m_keptAt;
     HandwritingReader m_reader{this};
+    std::vector<core::FoundWord> m_found;
     int m_pagesToRead{0};
     bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;

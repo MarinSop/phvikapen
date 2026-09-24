@@ -2178,15 +2178,25 @@ void NotebookViewModel::find(const QString& text) {
                 return std::unexpected{hits.error()};
             }
             QMetaObject::invokeMethod(
-                this, [this, hits = std::move(*hits)] { showFound(hits); }, Qt::QueuedConnection);
+                this, [this, hits = std::move(*hits)] mutable { publishFound(std::move(hits)); },
+                Qt::QueuedConnection);
             return {};
         });
 }
 
-void NotebookViewModel::showFound(const std::vector<core::FoundWord>& hits) {
+void NotebookViewModel::goToFound(int index) {
+    const std::optional<std::size_t> at = checkedIndex(index, m_found.size());
+    if (!at) {
+        return;
+    }
+    goToPage(m_found[*at].pageId);
+}
+
+void NotebookViewModel::publishFound(std::vector<core::FoundWord> hits) {
+    m_found = std::move(hits);
     QVariantList results;
-    results.reserve(static_cast<qsizetype>(std::min(hits.size(), kMostFound)));
-    for (const core::FoundWord& hit : hits) {
+    results.reserve(static_cast<qsizetype>(std::min(m_found.size(), kMostFound)));
+    for (const core::FoundWord& hit : m_found) {
         if (std::cmp_greater_equal(results.size(), kMostFound)) {
             break;
         }

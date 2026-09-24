@@ -130,6 +130,14 @@ MenuBar {
             action: root.actions.clearPage
         }
 
+        MenuSeparator {
+        }
+
+        MenuCommand {
+            action: root.actions.findWriting
+            objectName: "findItem"
+        }
+
         MenuCommand {
             action: root.actions.showTrash
             objectName: "trashItem"

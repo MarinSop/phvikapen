@@ -13,8 +13,8 @@
 
 #include <atomic>
 #include <chrono>
-#include <exception>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -25,7 +25,8 @@
 namespace phvikapen::app {
 namespace {
 
-// Long enough to leave a hand that is still writing alone, short enough that a reader does not wait.
+// Long enough to leave a hand that is still writing alone, short enough that a reader does not
+// wait.
 constexpr auto kRestBeforeReading = std::chrono::milliseconds{1500};
 
 }
