@@ -171,6 +171,35 @@ into a real problem earlier.
 - **Words are read, not text.** A page holds strokes; there is no typed text on a page yet, so what
   is read can be copied out but not put back onto the paper.
 
+## Things a page cannot hold yet
+
+Each of these is a new kind of thing on a page, and each needs the same five parts: something to
+put in the model, a column in the notebook and a version to go with it, a command or two to undo,
+something to draw it in the window and in what is exported, and a place in the menu that opens
+under the pointer. The change of place, size and angle that the loop tool now uses is already
+written so that all of them can share it. They are listed in the order they are worth doing.
+
+- **Pictures on a page.** A picture is put on the paper, moved, sized, turned and taken away like
+  anything else. Most of what is needed is already there: a notebook keeps whole documents and
+  pictures as assets by their content, and the canvas already draws one behind a page. What is
+  missing is a picture that belongs to the page rather than being its background — several to a
+  page, each with its own place and size — plus cropping, and whether a picture sits above or below
+  the ink. Sizing a picture must leave its edges sharp, which means it does not take the part of the
+  change that makes lines thicker.
+- **Tables.** A real table of rows, columns and cells, each cell holding what a box of typed text
+  holds, with rows and columns added, removed and resized, cells joined and split, and the keyboard
+  walking from cell to cell. The table itself is one thing on the page that can be moved and sized.
+  This is the largest of the three: it needs a model of its own, a way of laying it out that agrees
+  between the window and what is printed, and a menu of its own.
+- **Equations, and answering handwritten sums.** Handwriting is already read into words on Windows;
+  reading it into an equation is another matter, and the reader the platform carries does not do it.
+  The shape it should take is a chain that is not tied together: strokes are read into an equation,
+  the equation is kept as a structure rather than as a picture, something works it out, and the
+  answer goes back on the page as text. Each link can then be changed on its own. What is unsettled
+  is what reads the handwriting and what does the arithmetic: the platform reader is not enough for
+  either, so this needs a decision about a library, which needs an ADR of its own, and it is why
+  this is last rather than first.
+
 ## Verification that needs the target device or a real run
 
 - **The Windows build of everything since the skeleton.** Sections, pages, the viewport, the

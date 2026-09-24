@@ -36,11 +36,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the hand wrote it. It can be corrected and moved like any other typed text, and one undo brings
   the handwriting back.
 
+- A menu of what can be done right here, opened by a right click, by the button on the barrel of a
+  pen, or by holding the pen still for a moment. It offers what suits what is picked up: cut, copy,
+  duplicate, delete, convert to text and turning for a piece of drawing; paste, select everything,
+  undo, redo and a new page where nothing is picked. Holding still to open it can be turned off.
+- What is picked up can now be made larger, smaller and turned. A frame with eight grips appears
+  around it: the corners keep the drawing in proportion, the edges pull one way each, and the knob
+  above turns it, in steps of fifteen degrees while Shift is held. Turn Left and Turn Right, in
+  Edit ▸ Arrange or on Ctrl+[ and Ctrl+], square something up without dragging. It is all one
+  change that one undo puts back exactly.
+- Cut, Duplicate and Select All on the Page, from the Edit menu, the menu under the pointer and the
+  keys. Duplicate leaves the clipboard alone.
+- The eraser now takes either the part of a line it is rubbed over, as it always has, or the whole
+  line at a touch. The two are chosen from the bar above the window, from Tools ▸ Switch What the
+  Eraser Takes, or on Shift+E, and the choice is remembered. Taking whole lines reaches only a
+  quarter as far as the eraser is wide, so a line beside the one meant is left alone, and the ring
+  under the pointer shows that smaller reach.
+- The color picker carries a glass. While it is in hand the page is shown six times over around the
+  point that would be taken, with a cross on the very spot and the color that is in hand below it,
+  so that a color can be picked exactly with the tip of a pen.
+- Settings for how the application draws and how it is worked: whether how hard the pen presses
+  changes the width of the line, what the eraser takes, whether holding still opens the menu, how
+  much closer one step of the zoom brings the page, and how large the buttons, bars and menus are
+  drawn — which is what makes the window comfortable to work with a pen rather than a mouse. All of
+  them can be put back to what they came with in one press.
+- A Tools menu, listing every tool with its key and what the eraser takes.
+
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.
 
 ### Fixed
 
+- The keys did nothing on macOS. What was written beside a command — `⌘Z` and the like — was handed
+  back to the toolkit as the keys the command should answer to, and nothing can read that back, so
+  undo, redo, copy, paste, save, close, zoom and turning the page answered to no key at all. What a
+  command is shown as and what it answers to are now two different things, and the keys are decided
+  in one place for the menus, the palette, the bars and the keyboard alike.
+- Copy as Text and Pages One Below the Other had both been given Ctrl+Shift+C, which the toolkit
+  answers by refusing both. Every command now keeps its own keys, and a test says so.
+- A tool whose key is a plain letter no longer takes that letter out of a box of words being typed
+  in, and neither do cut, copy, paste, delete or undo, which belong to whoever is typing.
+- Delete now also answers to Backspace, which is what a Mac keyboard sends.
+- The text tool did nothing on paper that runs on without edges, and nothing beside a sheet: a tap
+  that fell on no sheet was quietly dropped. A box now goes where it was put, measured from the page
+  being read, and takes its usual width where there is no edge to measure from.
 - Notebooks written before a page could be given its own paper open again. The paper went out
   without the number that tells a notebook what it carries, so those notebooks were read as though
   they held columns they never got, and would not open. What is missing is added when they are
