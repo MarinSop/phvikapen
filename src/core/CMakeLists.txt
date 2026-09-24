@@ -34,6 +34,7 @@ target_sources(phvikapen_core
         storage/StorageThread.cpp
         storage/StrokeCodec.cpp
         text/Folding.cpp
+        text/WrittenText.cpp
         undo/BundleCommand.cpp
         undo/OutlineCommands.cpp
         undo/StrokeCommands.cpp
@@ -73,6 +74,7 @@ target_sources(phvikapen_core
             storage/StrokeCodec.hpp
             text/Folding.hpp
             text/InkWord.hpp
+            text/WrittenText.hpp
             undo/BundleCommand.hpp
             undo/OutlineCommands.hpp
             undo/StrokeCommands.hpp
