@@ -3,6 +3,11 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    readonly property url alignCenter: "qrc:/icons/align-middle.svg"
+    readonly property url alignJustify: "qrc:/icons/align-justify.svg"
+    readonly property url alignLeft: "qrc:/icons/align-left.svg"
+    readonly property url alignRight: "qrc:/icons/align-right.svg"
+    readonly property url bold: "qrc:/icons/bold.svg"
     readonly property url chevronDown: "qrc:/icons/chevron-down.svg"
     readonly property url chevronLeft: "qrc:/icons/chevron-left.svg"
     readonly property url chevronRight: "qrc:/icons/chevron-right.svg"
@@ -19,7 +24,11 @@ QtObject {
     readonly property url importDocument: "qrc:/icons/import.svg"
     readonly property url paste: "qrc:/icons/paste.svg"
     readonly property url pen: "qrc:/icons/pencil.svg"
+    readonly property url italic: "qrc:/icons/italic.svg"
+    readonly property url strikethrough: "qrc:/icons/strikethrough.svg"
     readonly property url straightLine: "qrc:/icons/minus.svg"
+    readonly property url text: "qrc:/icons/text.svg"
+    readonly property url underline: "qrc:/icons/underline.svg"
     readonly property url square: "qrc:/icons/square.svg"
     readonly property url plus: "qrc:/icons/plus.svg"
     readonly property url help: "qrc:/icons/help-circle.svg"

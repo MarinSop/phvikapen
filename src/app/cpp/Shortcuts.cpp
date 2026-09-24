@@ -86,6 +86,12 @@ namespace {
             .name = QObject::tr("Color picker tool"),
             .fallback = "K",
         },
+        Command{.id = "textTool", .name = QObject::tr("Text tool"), .fallback = "T"},
+        Command{
+            .id = "convertToText",
+            .name = QObject::tr("Convert to text"),
+            .fallback = "Ctrl+Shift+R",
+        },
     };
     return kCommands;
 }

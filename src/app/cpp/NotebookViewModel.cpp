@@ -15,8 +15,11 @@
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/text/InkWord.hpp"
+#include "core/text/WrittenText.hpp"
+#include "core/undo/BundleCommand.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
+#include "core/undo/TextCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
 #include "platform/render/PagePainter.hpp"
 #include "platform/render/PaperLook.hpp"
@@ -63,6 +66,8 @@ constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
 constexpr float kPickRadius = 6.0F;
+constexpr qreal kTextMargin = 8.0;
+constexpr qreal kNewTextWidth = core::TextBox::kDefaultWidth;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 3;
@@ -354,28 +359,28 @@ void NotebookViewModel::goToPage(const core::Uuid& pageId) {
         return;
     }
     const std::uint64_t opening = m_opening;
-    m_storage->loadPage(
-        pageId, [this, opening, pageId](core::Result<std::vector<core::PlacedStroke>> strokes) {
-            QMetaObject::invokeMethod(
-                this,
-                [this, opening, pageId, strokes = std::move(strokes)] mutable {
-                    showLoadedPage(opening, pageId, std::move(strokes));
-                },
-                Qt::QueuedConnection);
-        });
+    m_storage->loadPage(pageId, [this, opening, pageId](core::Result<core::LoadedPage> loaded) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, pageId, loaded = std::move(loaded)] mutable {
+                showLoadedPage(opening, pageId, std::move(loaded));
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& pageId,
-                                       core::Result<std::vector<core::PlacedStroke>> strokes) {
+                                       core::Result<core::LoadedPage> loaded) {
     if (opening != m_opening) {
         return;
     }
-    if (!strokes) {
-        reportError(QString::fromStdString(strokes.error().message));
+    if (!loaded) {
+        reportError(QString::fromStdString(loaded.error().message));
         return;
     }
     if (!m_pages.contains(pageId)) {
-        m_pages.emplace(pageId, std::make_unique<core::Page>(pageId, std::move(*strokes)));
+        m_pages.emplace(pageId, std::make_unique<core::Page>(pageId, std::move(loaded->strokes),
+                                                             std::move(loaded->texts)));
     }
     if (pageId == m_currentPage) {
         setLoaded(true);
@@ -1066,28 +1071,28 @@ void NotebookViewModel::duplicatePage(int index) {
     const core::PageInfo original = pages[*at];
 
     if (const auto cached = m_pages.find(original.id); cached != m_pages.end()) {
-        copyPage(original, cached->second->strokes());
+        copyPage(original, cached->second->strokes(), cached->second->texts());
         return;
     }
 
     const std::uint64_t opening = m_opening;
     const auto wanted = std::make_shared<const core::PageInfo>(original);
-    m_storage->loadPage(
-        wanted->id, [this, opening, wanted](core::Result<std::vector<core::PlacedStroke>> strokes) {
-            QMetaObject::invokeMethod(
-                this,
-                [this, opening, wanted, strokes = std::move(strokes)] {
-                    if (opening != m_opening || !strokes) {
-                        return;
-                    }
-                    copyPage(*wanted, *strokes);
-                },
-                Qt::QueuedConnection);
-        });
+    m_storage->loadPage(wanted->id, [this, opening, wanted](core::Result<core::LoadedPage> loaded) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, wanted, loaded = std::move(loaded)] {
+                if (opening != m_opening || !loaded) {
+                    return;
+                }
+                copyPage(*wanted, loaded->strokes, loaded->texts);
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 void NotebookViewModel::copyPage(const core::PageInfo& original,
-                                 std::span<const core::PlacedStroke> strokes) {
+                                 std::span<const core::PlacedStroke> strokes,
+                                 std::span<const core::PlacedText> texts) {
     const std::optional<core::PagePlace> place = m_outline.placeOf(original.id);
     if (!place || !m_storage) {
         return;
@@ -1112,12 +1117,21 @@ void NotebookViewModel::copyPage(const core::PageInfo& original,
         std::ignore = page->insert(made);
         copies.push_back(std::move(made));
     }
+
+    std::vector<core::PlacedText> textCopies;
+    textCopies.reserve(texts.size());
+    for (const core::PlacedText& placed : texts) {
+        core::PlacedText made{.ordinal = placed.ordinal, .box = placed.box};
+        made.box.id = m_ids.next();
+        std::ignore = page->insertText(made);
+        textCopies.push_back(std::move(made));
+    }
     m_pages.insert_or_assign(copy.id, std::move(page));
 
     runCommand(std::make_unique<core::DuplicatePageCommand>(
         &m_outline, &*m_storage,
         core::PagePlace{.sectionId = place->sectionId, .index = place->index + 1}, std::move(copy),
-        std::move(copies)));
+        std::move(copies), std::move(textCopies)));
 }
 
 void NotebookViewModel::deletePage(int index) {
@@ -1272,6 +1286,7 @@ void NotebookViewModel::wantThumbnail(int index) {
     const auto work = std::make_shared<ThumbnailWork>(ThumbnailWork{
         .page = pages[*at],
         .strokes = {},
+        .texts = {},
         .media = {},
     });
     if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
@@ -1282,19 +1297,20 @@ void NotebookViewModel::wantThumbnail(int index) {
     }
 
     const std::uint64_t opening = m_opening;
-    m_storage->loadPage(work->page.id, [this, opening, work](
-                                           core::Result<std::vector<core::PlacedStroke>> strokes) {
-        QMetaObject::invokeMethod(
-            this,
-            [this, opening, work, strokes = std::move(strokes)] mutable {
-                if (opening != m_opening || !strokes) {
-                    return;
-                }
-                work->strokes = std::move(*strokes);
-                gatherThumbnail(work);
-            },
-            Qt::QueuedConnection);
-    });
+    m_storage->loadPage(work->page.id,
+                        [this, opening, work](core::Result<core::LoadedPage> loaded) {
+                            QMetaObject::invokeMethod(
+                                this,
+                                [this, opening, work, loaded = std::move(loaded)] mutable {
+                                    if (opening != m_opening || !loaded) {
+                                        return;
+                                    }
+                                    work->strokes = std::move(loaded->strokes);
+                                    work->texts = std::move(loaded->texts);
+                                    gatherThumbnail(work);
+                                },
+                                Qt::QueuedConnection);
+                        });
 }
 
 void NotebookViewModel::gatherThumbnail(const std::shared_ptr<ThumbnailWork>& work) {
@@ -1951,6 +1967,7 @@ void NotebookViewModel::refreshCanvas() {
     if (const auto remembered = m_views.find(m_currentPage); remembered != m_views.end()) {
         m_canvas->showView(remembered->second);
     }
+    publishTexts();
 }
 
 // The pages of the section stand in one column; the ones that are not read yet are empty sheets
@@ -1980,6 +1997,7 @@ void NotebookViewModel::showColumn() {
         pieces.insert(pieces.end(), left.begin(), left.end());
     }
     m_canvas->showColumn(views, currentPage(), m_erasing, pieces);
+    publishTexts();
     wantNeighbours();
 }
 
@@ -2030,16 +2048,17 @@ void NotebookViewModel::wantNeighbours() {
             return;
         }
         const std::uint64_t opening = m_opening;
-        m_storage->loadPage(page, [this, opening,
-                                   page](core::Result<std::vector<core::PlacedStroke>> strokes) {
+        m_storage->loadPage(page, [this, opening, page](core::Result<core::LoadedPage> loaded) {
             QMetaObject::invokeMethod(
                 this,
-                [this, opening, page, strokes = std::move(strokes)] mutable {
+                [this, opening, page, loaded = std::move(loaded)] mutable {
                     m_wantedPages.erase(page);
-                    if (opening != m_opening || !strokes || m_pages.contains(page)) {
+                    if (opening != m_opening || !loaded || m_pages.contains(page)) {
                         return;
                     }
-                    m_pages.emplace(page, std::make_unique<core::Page>(page, std::move(*strokes)));
+                    m_pages.emplace(page,
+                                    std::make_unique<core::Page>(page, std::move(loaded->strokes),
+                                                                 std::move(loaded->texts)));
                     refreshCanvas();
                 },
                 Qt::QueuedConnection);
@@ -2536,6 +2555,361 @@ void NotebookViewModel::reportError(const QString& message) {
     qWarning("%s", qUtf8Printable(message));
     m_errorMessage = message;
     emit errorMessageChanged();
+}
+
+int NotebookViewModel::sheetCount() const {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!m_continuous || !section) {
+        return 1;
+    }
+    return static_cast<int>(m_outline.sections()[*section].pages.size());
+}
+
+int NotebookViewModel::sheetOfPage(const core::Uuid& pageId) const {
+    const std::optional<std::size_t> section = currentSectionIndex();
+    if (!m_continuous || !section) {
+        return 0;
+    }
+    const std::vector<core::PageInfo>& pages = m_outline.sections()[*section].pages;
+    for (std::size_t at = 0; at < pages.size(); ++at) {
+        if (pages[at].id == pageId) {
+            return static_cast<int>(at);
+        }
+    }
+    return 0;
+}
+
+std::optional<NotebookViewModel::TextPlace> NotebookViewModel::placeInColumn(QPointF column) const {
+    if (m_canvas.isNull()) {
+        return std::nullopt;
+    }
+    const int sheets = sheetCount();
+    for (int sheet = 0; sheet < sheets; ++sheet) {
+        const QRectF where = m_canvas->sheetRect(sheet);
+        if (where.isEmpty() || !where.contains(column)) {
+            continue;
+        }
+        return TextPlace{
+            .page = pageOfSheet(sheet),
+            .at =
+                core::Point{
+                    .x = static_cast<float>(column.x() - where.x()),
+                    .y = static_cast<float>(column.y() - where.y()),
+                },
+            .sheet = sheet,
+        };
+    }
+    return std::nullopt;
+}
+
+std::optional<std::pair<core::Uuid, core::TextBox>>
+NotebookViewModel::textById(const QString& textId) const {
+    if (m_draft && QString::fromStdString(m_draft->box.id.toString()) == textId) {
+        return std::pair{m_draft->page, m_draft->box};
+    }
+    for (const auto& [pageId, page] : m_pages) {
+        for (const core::PlacedText& placed : page->texts()) {
+            if (QString::fromStdString(placed.box.id.toString()) == textId) {
+                return std::pair{pageId, placed.box};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+void NotebookViewModel::setPickedText(const QString& textId) {
+    if (textId == m_pickedText) {
+        return;
+    }
+    m_pickedText = textId;
+    emit pickedTextChanged();
+    emit pickedBoxChanged();
+}
+
+QVariantMap NotebookViewModel::pickedBox() const {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(m_pickedText);
+    if (!found) {
+        return {};
+    }
+    const core::TextBox& box = found->second;
+    QVariantMap map = mapOfStyle(box.style);
+    const QRectF where =
+        m_canvas.isNull() ? QRectF{} : m_canvas->sheetRect(sheetOfPage(found->first));
+    map.insert("textId", m_pickedText);
+    map.insert("text", QString::fromStdString(box.text));
+    map.insert("columnX", where.x() + static_cast<qreal>(box.at.x));
+    map.insert("columnY", where.y() + static_cast<qreal>(box.at.y));
+    map.insert("boxWidth", static_cast<qreal>(box.width));
+    map.insert("boxHeight", static_cast<qreal>(box.height));
+    return map;
+}
+
+void NotebookViewModel::publishTexts() {
+    std::vector<TextItem> items;
+    if (!m_canvas.isNull()) {
+        const int sheets = sheetCount();
+        for (int sheet = 0; sheet < sheets; ++sheet) {
+            const core::Uuid pageId = pageOfSheet(sheet);
+            const auto found = m_pages.find(pageId);
+            if (found == m_pages.end()) {
+                continue;
+            }
+            const QRectF where = m_canvas->sheetRect(sheet);
+            const QString page = QString::fromStdString(pageId.toString());
+            std::vector<core::TextBox> boxes;
+            for (const core::PlacedText& placed : found->second->texts()) {
+                boxes.push_back(placed.box);
+            }
+            if (m_draft && m_draft->page == pageId) {
+                boxes.push_back(m_draft->box);
+            }
+            for (const core::TextBox& box : boxes) {
+                const core::Color colour = box.style.color;
+                items.push_back(TextItem{
+                    .textId = QString::fromStdString(box.id.toString()),
+                    .pageId = page,
+                    .text = QString::fromStdString(box.text),
+                    .font = QString::fromStdString(box.style.font),
+                    .color = QColor::fromRgb(colour.red, colour.green, colour.blue, colour.alpha),
+                    .columnX = where.x() + static_cast<qreal>(box.at.x),
+                    .columnY = where.y() + static_cast<qreal>(box.at.y),
+                    .width = static_cast<qreal>(box.width),
+                    .height = static_cast<qreal>(box.height),
+                    .size = static_cast<qreal>(box.style.size),
+                    .lineHeight = static_cast<qreal>(box.style.lineHeight),
+                    .align = static_cast<int>(box.style.align),
+                    .sheet = sheet,
+                    .bold = box.style.bold,
+                    .italic = box.style.italic,
+                    .underline = box.style.underline,
+                    .struckOut = box.style.struckOut,
+                });
+            }
+        }
+    }
+    m_textsModel.setItems(std::move(items));
+    emit pickedBoxChanged();
+}
+
+void NotebookViewModel::changeText(const core::Uuid& pageId, core::TextBox box) {
+    if (m_draft && m_draft->box.id == box.id) {
+        m_draft->box = core::normalized(std::move(box));
+        publishTexts();
+        return;
+    }
+    const auto found = m_pages.find(pageId);
+    if (found == m_pages.end() || !m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(pageId);
+    runCommand(std::make_unique<core::ChangeTextCommand>(found->second.get(), storage,
+                                                         core::normalized(std::move(box))));
+    publishTexts();
+}
+
+void NotebookViewModel::settleDraft() {
+    if (!m_draft) {
+        return;
+    }
+    const Draft draft = *m_draft;
+    m_draft.reset();
+    const auto found = m_pages.find(draft.page);
+    if (draft.box.text.empty() || found == m_pages.end() || !m_storage) {
+        return;
+    }
+    core::Page* const page = found->second.get();
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(draft.page);
+    runCommand(std::make_unique<core::AddTextCommand>(
+        page, storage, core::PlacedText{.ordinal = page->nextTextOrdinal(), .box = draft.box}));
+}
+
+void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMap& style) {
+    settleDraft();
+    const std::optional<TextPlace> place = placeInColumn(QPointF{columnX, columnY});
+    if (!place || !m_storage || m_canvas.isNull()) {
+        publishTexts();
+        return;
+    }
+    const auto found = m_pages.find(place->page);
+    if (found == m_pages.end()) {
+        publishTexts();
+        return;
+    }
+
+    const core::TextStyle face = styleOfMap(style);
+    const qreal room = m_canvas->sheetRect(place->sheet).width() - columnX
+                       + m_canvas->sheetRect(place->sheet).x() - kTextMargin;
+    core::TextBox box{
+        .id = m_ids.next(),
+        .at = place->at,
+        .width = static_cast<float>(std::max(std::min(room, kNewTextWidth), 0.0)),
+        .height = core::pageUnitsOfPoints(face.size) * face.lineHeight,
+        .text = {},
+        .style = face,
+    };
+    box = core::normalized(std::move(box));
+
+    m_draft = Draft{.page = place->page, .box = box};
+    publishTexts();
+    const QString textId = QString::fromStdString(box.id.toString());
+    setPickedText(textId);
+    emit textAdded(textId);
+}
+
+void NotebookViewModel::finishText(const QString& textId, const QString& text, qreal height) {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    if (!found) {
+        return;
+    }
+    if (text.isEmpty()) {
+        removeText(textId);
+        return;
+    }
+    const bool draft = m_draft && QString::fromStdString(m_draft->box.id.toString()) == textId;
+    core::TextBox box = found->second;
+    const std::string wanted = text.toStdString();
+    const auto tall = static_cast<float>(height);
+    if (wanted == box.text && qFuzzyCompare(tall + 1.0F, box.height + 1.0F)) {
+        return;
+    }
+    box.text = wanted;
+    box.height = tall;
+    changeText(found->first, std::move(box));
+    if (draft) {
+        settleDraft();
+        publishTexts();
+    }
+}
+
+void NotebookViewModel::placeText(const QString& textId, qreal columnX, qreal columnY, qreal width,
+                                  qreal height) {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    if (!found || m_canvas.isNull()) {
+        return;
+    }
+    const QRectF where = m_canvas->sheetRect(sheetOfPage(found->first));
+    core::TextBox box = found->second;
+    const core::Point at{
+        .x = static_cast<float>(columnX - where.x()),
+        .y = static_cast<float>(columnY - where.y()),
+    };
+    const auto wide = static_cast<float>(width);
+    const auto tall = static_cast<float>(height);
+    if (at == box.at && qFuzzyCompare(wide + 1.0F, box.width + 1.0F)
+        && qFuzzyCompare(tall + 1.0F, box.height + 1.0F)) {
+        return;
+    }
+    box.at = at;
+    box.width = wide;
+    box.height = tall;
+    changeText(found->first, std::move(box));
+}
+
+void NotebookViewModel::styleText(const QString& textId, const QVariantMap& style) {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    if (!found) {
+        return;
+    }
+    core::TextBox box = found->second;
+    const core::TextStyle face = styleOfMap(style);
+    if (face == box.style) {
+        return;
+    }
+    box.style = face;
+    changeText(found->first, std::move(box));
+}
+
+void NotebookViewModel::removeText(const QString& textId) {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    if (!found || !m_storage) {
+        return;
+    }
+    if (m_draft && QString::fromStdString(m_draft->box.id.toString()) == textId) {
+        m_draft.reset();
+        if (textId == m_pickedText) {
+            setPickedText({});
+        }
+        publishTexts();
+        return;
+    }
+    const auto page = m_pages.find(found->first);
+    if (page == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    if (textId == m_pickedText) {
+        setPickedText({});
+    }
+    forgetThumbnail(found->first);
+    runCommand(
+        std::make_unique<core::RemoveTextCommand>(page->second.get(), storage, found->second.id));
+    publishTexts();
+}
+
+QVariantMap NotebookViewModel::styleOfText(const QString& textId) const {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    return found ? mapOfStyle(found->second.style) : QVariantMap{};
+}
+
+void NotebookViewModel::convertSelectionToText(QVariantMap style) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    std::vector<core::Uuid> picked = m_canvas->selection();
+    std::vector<core::Stroke> written;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            written.push_back(placed.stroke);
+        }
+    }
+    if (written.empty()) {
+        return;
+    }
+
+    const core::Uuid pageId = m_currentPage;
+    m_reader.readSoon(std::move(written), [this, style = std::move(style),
+                                           picked = std::move(picked),
+                                           pageId](core::Result<std::vector<core::InkWord>> words) {
+        if (!words) {
+            reportError(QString::fromStdString(words.error().message));
+            return;
+        }
+        const std::optional<core::TextBlock> block = core::textOf(*words);
+        if (!block) {
+            reportError(tr("Nothing there could be read as words"));
+            return;
+        }
+        const auto found = m_pages.find(pageId);
+        if (found == m_pages.end() || !m_storage) {
+            return;
+        }
+
+        core::TextStyle face = styleOfMap(style);
+        // Type of about the size of the hand that wrote it, so the page reads as it did.
+        face.size = block->size;
+        core::Page* const on = found->second.get();
+        core::TextBox box = core::normalized(core::TextBox{
+            .id = m_ids.next(),
+            .at = core::Point{.x = block->area.left, .y = block->area.top},
+            .width = block->width,
+            .height = block->area.height(),
+            .text = block->text,
+            .style = face,
+        });
+
+        std::vector<std::unique_ptr<core::ICommand>> steps;
+        steps.push_back(std::make_unique<core::EraseStrokesCommand>(on, &*m_storage, picked));
+        steps.push_back(std::make_unique<core::AddTextCommand>(
+            on, &*m_storage, core::PlacedText{.ordinal = on->nextTextOrdinal(), .box = box}));
+        forgetThumbnail(pageId);
+        m_canvas->clearSelection();
+        runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+        publishTexts();
+        setPickedText(QString::fromStdString(box.id.toString()));
+    });
 }
 
 }

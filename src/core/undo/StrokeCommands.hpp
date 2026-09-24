@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/undo/UndoStack.hpp"
 
 #include <optional>
@@ -39,6 +40,7 @@ private:
     Page* m_page;
     StorageThread* m_storage;
     std::vector<PlacedStroke> m_removed;
+    std::vector<PlacedText> m_removedTexts;
 };
 
 class MoveStrokesCommand final : public ICommand {

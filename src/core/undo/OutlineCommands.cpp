@@ -56,9 +56,10 @@ std::optional<Uuid> AddPageCommand::pageToShow() const {
 
 DuplicatePageCommand::DuplicatePageCommand(Outline* outline, StorageThread* storage,
                                            PagePlace place, PageInfo page,
-                                           std::vector<PlacedStroke> strokes) noexcept
+                                           std::vector<PlacedStroke> strokes,
+                                           std::vector<PlacedText> texts) noexcept
     : m_outline{outline}, m_storage{storage}, m_place{place}, m_page{std::move(page)},
-      m_strokes{std::move(strokes)} {}
+      m_strokes{std::move(strokes)}, m_texts{std::move(texts)} {}
 
 Result<void> DuplicatePageCommand::apply() {
     if (const Result<void> inserted = m_outline->insertPage(m_place, m_page); !inserted) {
@@ -72,6 +73,12 @@ Result<void> DuplicatePageCommand::apply() {
     for (const PlacedStroke& placed : m_strokes) {
         m_storage->insertStroke(m_page.id, placed);
     }
+    for (const PlacedText& text : m_texts) {
+        PlacedText placed = text;
+        m_storage->submit([pageId = m_page.id, placed = std::move(placed)](NotebookStore& store) {
+            return store.insertText(pageId, placed);
+        });
+    }
     return {};
 }
 
@@ -80,8 +87,12 @@ Result<void> DuplicatePageCommand::revert() {
         return std::unexpected{removed.error()};
     }
     m_storage->removeStrokesOfPage(m_page.id);
-    m_storage->submit(
-        [pageId = m_page.id](NotebookStore& store) { return store.trashPage(pageId); });
+    m_storage->submit([pageId = m_page.id](NotebookStore& store) {
+        if (const Result<std::size_t> gone = store.removeTextsOfPage(pageId); !gone) {
+            return Result<void>{std::unexpected{gone.error()}};
+        }
+        return store.trashPage(pageId);
+    });
     return {};
 }
 

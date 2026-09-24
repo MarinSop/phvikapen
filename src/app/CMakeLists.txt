@@ -31,6 +31,15 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     minus
     square
     circle
+    text
+    bold
+    italic
+    underline
+    strikethrough
+    align-left
+    align-middle
+    align-right
+    align-justify
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -57,6 +66,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/PageDefaults.cpp
         cpp/PageDefaults.hpp
         cpp/SettingsViewModel.cpp
+        cpp/TextModels.cpp
+        cpp/TextModels.hpp
         cpp/Shortcuts.cpp
         cpp/Shortcuts.hpp
         cpp/SettingsViewModel.hpp
@@ -101,6 +112,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ShortcutField.qml
         qml/components/SizeFields.qml
         qml/components/ThemeCard.qml
+        qml/components/TextBox.qml
+        qml/components/TextLayer.qml
         qml/components/ToolPalette.qml
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml

@@ -6,8 +6,11 @@
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeSelection.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/TextBox.hpp"
+#include "core/storage/NotebookStore.hpp"
 #include "core/storage/StorageThread.hpp"
 
+#include <cstddef>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -53,11 +56,23 @@ ClearPageCommand::ClearPageCommand(Page* page, StorageThread* storage) noexcept
 
 Result<void> ClearPageCommand::apply() {
     m_removed = m_page->takeAll();
+    m_removedTexts = m_page->takeAllTexts();
     m_storage->removeStrokesOfPage(m_page->id());
+    m_storage->submit([pageId = m_page->id()](NotebookStore& store) {
+        return store.removeTextsOfPage(pageId).transform([](std::size_t) {});
+    });
     return {};
 }
 
 Result<void> ClearPageCommand::revert() {
+    for (PlacedText& placed : std::exchange(m_removedTexts, {})) {
+        if (const Result<void> inserted = m_page->insertText(placed); !inserted) {
+            return inserted;
+        }
+        m_storage->submit([pageId = m_page->id(), placed](NotebookStore& store) {
+            return store.insertText(pageId, placed);
+        });
+    }
     return restoreStrokes(*m_page, *m_storage, std::exchange(m_removed, {}));
 }
 

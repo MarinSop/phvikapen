@@ -50,6 +50,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool selecting READ selecting WRITE setSelecting NOTIFY selectingChanged FINAL)
     Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
     Q_PROPERTY(bool picking READ picking WRITE setPicking NOTIFY pickingChanged FINAL)
+    Q_PROPERTY(bool typing READ typing WRITE setTyping NOTIFY typingChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal corner READ corner WRITE setCorner NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
@@ -164,6 +165,11 @@ public:
 
     void setPicking(bool picking) override;
 
+    // While text is being placed or typed, what is above the paper takes the pen and the mouse.
+    [[nodiscard]] bool typing() const noexcept { return m_typing; }
+
+    void setTyping(bool typing);
+
     [[nodiscard]] int selectedCount() const noexcept { return static_cast<int>(m_selected.size()); }
 
     [[nodiscard]] const std::vector<core::Uuid>& selection() const noexcept { return m_selected; }
@@ -239,6 +245,7 @@ signals:
     void selectingChanged();
     void panningChanged();
     void pickingChanged();
+    void typingChanged();
     void deskColorChanged();
     void shapeChanged();
     void smoothingChanged();
@@ -380,6 +387,7 @@ private:
     bool m_selecting{false};
     bool m_panning{false};
     bool m_picking{false};
+    bool m_typing{false};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

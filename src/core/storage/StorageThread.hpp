@@ -6,6 +6,7 @@
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/storage/NotebookStore.hpp"
 
 #include <condition_variable>
@@ -20,10 +21,16 @@
 
 namespace phvikapen::core {
 
+// Everything a page carries, as it comes back from the file.
+struct LoadedPage {
+    std::vector<PlacedStroke> strokes;
+    std::vector<PlacedText> texts;
+};
+
 class StorageThread {
 public:
     using ErrorHandler = std::function<void(const Error&)>;
-    using PageHandler = std::function<void(Result<std::vector<PlacedStroke>>)>;
+    using PageHandler = std::function<void(Result<LoadedPage>)>;
     using OutlineHandler = std::function<void(Result<NotebookOutline>)>;
     using AssetHandler = std::function<void(Result<Asset>)>;
     using TrashHandler = std::function<void(Result<std::vector<TrashedItem>>)>;

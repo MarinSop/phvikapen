@@ -6,6 +6,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/undo/UndoStack.hpp"
 
 #include <cstddef>
@@ -37,7 +38,7 @@ private:
 class DuplicatePageCommand final : public ICommand {
 public:
     DuplicatePageCommand(Outline* outline, StorageThread* storage, PagePlace place, PageInfo page,
-                         std::vector<PlacedStroke> strokes) noexcept;
+                         std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts) noexcept;
 
     Result<void> apply() override;
     Result<void> revert() override;
@@ -49,6 +50,7 @@ private:
     PagePlace m_place;
     PageInfo m_page;
     std::vector<PlacedStroke> m_strokes;
+    std::vector<PlacedText> m_texts;
 };
 
 class DeletePageCommand final : public ICommand {

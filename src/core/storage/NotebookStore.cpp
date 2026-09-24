@@ -923,9 +923,8 @@ Result<std::vector<FoundWord>> NotebookStore::findWords(std::string_view text) c
     }
     hits->insert(hits->end(), std::make_move_iterator(typed->begin()),
                  std::make_move_iterator(typed->end()));
-    std::ranges::stable_sort(*hits, {}, [](const Hit& hit) {
-        return std::pair{hit.section, hit.page};
-    });
+    std::ranges::stable_sort(*hits, {},
+                             [](const Hit& hit) { return std::pair{hit.section, hit.page}; });
 
     std::vector<FoundWord> found;
     found.reserve(hits->size());

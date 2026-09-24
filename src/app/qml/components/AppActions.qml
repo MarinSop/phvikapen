@@ -70,7 +70,15 @@ Item {
 
         onTriggered: root.tools.currentTool = ToolViewModel.ColourPicker
     }
-    readonly property list<Action> toolActions: [root.selectTool, root.handTool, root.penTool, root.highlighterTool, root.shapeTool, root.eraserTool, root.colourTool]
+    readonly property Action textTool: Action {
+        checked: root.tools.currentTool === ToolViewModel.Text
+        icon.source: Icons.text
+        shortcut: root.keysFor("textTool", "T")
+        text: qsTr("Text")
+
+        onTriggered: root.tools.currentTool = ToolViewModel.Text
+    }
+    readonly property list<Action> toolActions: [root.selectTool, root.handTool, root.penTool, root.highlighterTool, root.shapeTool, root.eraserTool, root.textTool, root.colourTool]
     readonly property Action undo: Action {
         enabled: root.notebook !== null && root.notebook.canUndo
         icon.source: Icons.undo
@@ -101,6 +109,13 @@ Item {
         text: qsTr("Copy as Text")
 
         onTriggered: root.notebook.copySelectionAsText()
+    }
+    readonly property Action convertToText: Action {
+        enabled: root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting
+        shortcut: root.keysFor("convertToText", "Ctrl+Shift+R")
+        text: qsTr("Convert to Text")
+
+        onTriggered: root.notebook.convertSelectionToText(root.tools.textStyle)
     }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes

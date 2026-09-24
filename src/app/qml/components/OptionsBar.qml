@@ -17,12 +17,22 @@ ToolBar {
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool picks: root.tools.currentTool === ToolViewModel.Selection
     readonly property list<int> shapes: [ToolViewModel.Line, ToolViewModel.Rectangle, ToolViewModel.Ellipse]
+    readonly property var families: Qt.fontFamilies()
+    readonly property string pickedText: root.notebook === null ? "" : root.notebook.pickedText
+    readonly property bool types: root.tools.currentTool === ToolViewModel.Text || root.pickedText !== ""
 
     function applyColour(wanted) {
         if (root.canvas !== null && root.canvas.selectedCount > 0) {
             root.notebook.recolourSelection(wanted);
         } else {
             root.tools.strokeColor = wanted;
+        }
+    }
+
+    // What the bar shows belongs to the box being worked on, where there is one.
+    function applyText() {
+        if (root.notebook !== null && root.pickedText !== "") {
+            root.notebook.styleText(root.pickedText, root.tools.textStyle);
         }
     }
 
@@ -158,6 +168,122 @@ ToolBar {
             }
         }
 
+        ComboBox {
+            Layout.leftMargin: 4
+            Layout.maximumWidth: 180
+            currentIndex: Math.max(0, root.families.indexOf(root.tools.textFont === "" ? AppInfo.plainFont : root.tools.textFont))
+            model: root.families
+            objectName: "fontField"
+            visible: root.types
+
+            onActivated: index => {
+                root.tools.textFont = root.families[index];
+                root.applyText();
+            }
+        }
+
+        Label {
+            color: palette.placeholderText
+            text: qsTr("Size")
+            visible: root.types
+        }
+
+        NumberField {
+            maximum: 144
+            minimum: 6
+            number: root.tools.textSize
+            objectName: "textSizeField"
+            step: 1
+            visible: root.types
+
+            onNumberEdited: value => {
+                root.tools.textSize = value;
+                root.applyText();
+            }
+        }
+
+        ToolButton {
+            leftPadding: 32
+            objectName: "textColorButton"
+            text: qsTr("Color")
+            visible: root.types
+
+            onClicked: {
+                textColourDialog.selectedColor = root.tools.textColor;
+                textColourDialog.open();
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.leftMargin: 6
+                anchors.verticalCenter: parent.verticalCenter
+                color: Theme.line
+                height: 24
+                radius: height / 2
+                width: 24
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    color: root.tools.textColor
+                    height: 14
+                    radius: height / 2
+                    width: 14
+                }
+            }
+        }
+
+        Repeater {
+            model: root.types ? 4 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: [root.tools.textBold, root.tools.textItalic, root.tools.textUnderline, root.tools.textStruckOut][index]
+                icon.source: [Icons.bold, Icons.italic, Icons.underline, Icons.strikethrough][index]
+                label: [qsTr("Bold"), qsTr("Italic"), qsTr("Underline"), qsTr("Strikethrough")][index]
+                objectName: ["boldButton", "italicButton", "underlineButton", "strikeButton"][index]
+
+                onClicked: {
+                    if (index === 0) {
+                        root.tools.textBold = !root.tools.textBold;
+                    } else if (index === 1) {
+                        root.tools.textItalic = !root.tools.textItalic;
+                    } else if (index === 2) {
+                        root.tools.textUnderline = !root.tools.textUnderline;
+                    } else {
+                        root.tools.textStruckOut = !root.tools.textStruckOut;
+                    }
+                    root.applyText();
+                }
+            }
+        }
+
+        Repeater {
+            model: root.types ? 4 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: root.tools.textAlign === index
+                icon.source: [Icons.alignLeft, Icons.alignCenter, Icons.alignRight, Icons.alignJustify][index]
+                label: [qsTr("Align left"), qsTr("Center"), qsTr("Align right"), qsTr("Justify")][index]
+                objectName: ["alignLeftButton", "alignCenterButton", "alignRightButton", "alignJustifyButton"][index]
+
+                onClicked: {
+                    root.tools.textAlign = index;
+                    root.applyText();
+                }
+            }
+        }
+
+        QuickButton {
+            action: root.actions.convertToText
+            label: qsTr("To text")
+            objectName: "convertToTextButton"
+            shortcutText: AppInfo.shortcutText(root.actions.convertToText.shortcut)
+            visible: root.picks
+        }
+
         ToolSeparator {
             visible: root.tools.currentTool === ToolViewModel.Shape
         }
@@ -237,6 +363,28 @@ ToolBar {
             objectName: "redoButton"
             shortcutText: AppInfo.shortcutText(root.actions.redo.shortcut)
         }
+    }
+
+    ColorDialog {
+        id: textColourDialog
+
+        objectName: "textColourDialog"
+        options: ColorDialog.ShowAlphaChannel
+
+        onAccepted: {
+            root.tools.textColor = textColourDialog.selectedColor;
+            root.applyText();
+        }
+    }
+
+    Connections {
+        function onPickedTextChanged() {
+            if (root.pickedText !== "") {
+                root.tools.useTextStyle(root.notebook.styleOfText(root.pickedText));
+            }
+        }
+
+        target: root.notebook
     }
 
     ColorDialog {

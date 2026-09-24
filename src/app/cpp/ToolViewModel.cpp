@@ -1,10 +1,14 @@
 #include "app/cpp/ToolViewModel.hpp"
 
+#include "app/cpp/TextModels.hpp"
+#include "core/model/TextBox.hpp"
+
 #include <QColor>
 #include <QSettings>
 #include <QString>
 #include <QVariant>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <algorithm>
 #include <array>
@@ -18,6 +22,14 @@ constexpr auto kPenSetting = "tools/pen";
 constexpr auto kEraserSetting = "tools/eraser";
 constexpr auto kShapeSetting = "tools/shape";
 constexpr auto kCornerSetting = "tools/corner";
+constexpr auto kTextFontSetting = "tools/text/font";
+constexpr auto kTextSizeSetting = "tools/text/size";
+constexpr auto kTextColorSetting = "tools/text/color";
+constexpr auto kTextAlignSetting = "tools/text/align";
+constexpr auto kTextBoldSetting = "tools/text/bold";
+constexpr auto kTextItalicSetting = "tools/text/italic";
+constexpr auto kTextUnderlineSetting = "tools/text/underline";
+constexpr auto kTextStruckSetting = "tools/text/struck";
 constexpr auto kColorPrefix = "tools/color/";
 constexpr auto kWidthPrefix = "tools/width/";
 constexpr auto kHighlighterKey = "highlighter";
@@ -165,6 +177,118 @@ void ToolViewModel::usePickedColour(const QColor& colour) {
     remember();
 }
 
+QString ToolViewModel::textFont() const {
+    return QString::fromStdString(m_text.font);
+}
+
+void ToolViewModel::setTextFont(const QString& font) {
+    const std::string wanted = font.toStdString();
+    if (wanted == m_text.font) {
+        return;
+    }
+    m_text.font = wanted;
+    emit textChanged();
+    remember();
+}
+
+qreal ToolViewModel::textSize() const {
+    return m_text.size;
+}
+
+void ToolViewModel::setTextSize(qreal size) {
+    const auto wanted =
+        static_cast<float>(std::clamp(size, static_cast<qreal>(core::TextStyle::kSmallestSize),
+                                      static_cast<qreal>(core::TextStyle::kLargestSize)));
+    if (qFuzzyCompare(wanted, m_text.size)) {
+        return;
+    }
+    m_text.size = wanted;
+    emit textChanged();
+    remember();
+}
+
+QColor ToolViewModel::textColor() const {
+    return QColor::fromRgb(m_text.color.red, m_text.color.green, m_text.color.blue,
+                           m_text.color.alpha);
+}
+
+void ToolViewModel::setTextColor(const QColor& color) {
+    if (!color.isValid() || color == textColor()) {
+        return;
+    }
+    m_text.color = core::Color{
+        .red = static_cast<std::uint8_t>(color.red()),
+        .green = static_cast<std::uint8_t>(color.green()),
+        .blue = static_cast<std::uint8_t>(color.blue()),
+        .alpha = static_cast<std::uint8_t>(color.alpha()),
+    };
+    emit textChanged();
+    remember();
+}
+
+int ToolViewModel::textAlign() const {
+    return static_cast<int>(m_text.align);
+}
+
+void ToolViewModel::setTextAlign(int align) {
+    if (align < 0 || align > static_cast<int>(core::TextAlign::Justify) || align == textAlign()) {
+        return;
+    }
+    m_text.align = static_cast<core::TextAlign>(align);
+    emit textChanged();
+    remember();
+}
+
+void ToolViewModel::setTextBold(bool bold) {
+    if (bold == m_text.bold) {
+        return;
+    }
+    m_text.bold = bold;
+    emit textChanged();
+    remember();
+}
+
+void ToolViewModel::setTextItalic(bool italic) {
+    if (italic == m_text.italic) {
+        return;
+    }
+    m_text.italic = italic;
+    emit textChanged();
+    remember();
+}
+
+void ToolViewModel::setTextUnderline(bool underline) {
+    if (underline == m_text.underline) {
+        return;
+    }
+    m_text.underline = underline;
+    emit textChanged();
+    remember();
+}
+
+void ToolViewModel::setTextStruckOut(bool struckOut) {
+    if (struckOut == m_text.struckOut) {
+        return;
+    }
+    m_text.struckOut = struckOut;
+    emit textChanged();
+    remember();
+}
+
+QVariantMap ToolViewModel::textStyle() const {
+    return mapOfStyle(m_text);
+}
+
+void ToolViewModel::useTextStyle(const QVariantMap& style) {
+    const core::TextStyle wanted = styleOfMap(style);
+    if (wanted == m_text) {
+        return;
+    }
+    m_text = wanted;
+    emit textChanged();
+    remember();
+}
+
 QVariantList ToolViewModel::penColors() const {
     QVariantList colors;
     colors.reserve(static_cast<qsizetype>(m_pens.size()));
@@ -234,6 +358,14 @@ void ToolViewModel::remember() const {
     settings.setValue(QString{kColorPrefix} + kHighlighterKey,
                       m_highlighter.color.name(QColor::HexArgb));
     settings.setValue(QString{kWidthPrefix} + kHighlighterKey, m_highlighter.width);
+    settings.setValue(kTextFontSetting, textFont());
+    settings.setValue(kTextSizeSetting, textSize());
+    settings.setValue(kTextColorSetting, textColor().name(QColor::HexArgb));
+    settings.setValue(kTextAlignSetting, textAlign());
+    settings.setValue(kTextBoldSetting, m_text.bold);
+    settings.setValue(kTextItalicSetting, m_text.italic);
+    settings.setValue(kTextUnderlineSetting, m_text.underline);
+    settings.setValue(kTextStruckSetting, m_text.struckOut);
 }
 
 void ToolViewModel::restore() {
@@ -253,7 +385,7 @@ void ToolViewModel::restore() {
     readNib(m_highlighter, kHighlighterKey);
 
     const int tool = settings.value(kToolSetting, static_cast<int>(m_currentTool)).toInt();
-    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Shape)) {
+    if (tool >= static_cast<int>(Tool::Pen) && tool <= static_cast<int>(Tool::Text)) {
         m_currentTool = static_cast<Tool>(tool);
     }
     const int shape = settings.value(kShapeSetting, static_cast<int>(m_shape)).toInt();
@@ -265,10 +397,30 @@ void ToolViewModel::restore() {
     m_eraserRadius = std::clamp(settings.value(kEraserSetting, m_eraserRadius).toDouble(),
                                 kMinimumEraser, kMaximumEraser);
 
+    m_text.font = settings.value(kTextFontSetting, textFont()).toString().toStdString();
+    m_text.size =
+        static_cast<float>(std::clamp(settings.value(kTextSizeSetting, textSize()).toDouble(),
+                                      static_cast<qreal>(core::TextStyle::kSmallestSize),
+                                      static_cast<qreal>(core::TextStyle::kLargestSize)));
+    if (const QColor colour{
+            settings.value(kTextColorSetting, textColor().name(QColor::HexArgb)).toString()};
+        colour.isValid()) {
+        setTextColor(colour);
+    }
+    const int align = settings.value(kTextAlignSetting, textAlign()).toInt();
+    if (align >= 0 && align <= static_cast<int>(core::TextAlign::Justify)) {
+        m_text.align = static_cast<core::TextAlign>(align);
+    }
+    m_text.bold = settings.value(kTextBoldSetting, m_text.bold).toBool();
+    m_text.italic = settings.value(kTextItalicSetting, m_text.italic).toBool();
+    m_text.underline = settings.value(kTextUnderlineSetting, m_text.underline).toBool();
+    m_text.struckOut = settings.value(kTextStruckSetting, m_text.struckOut).toBool();
+
     emit currentToolChanged();
     emit shapeChanged();
     emit penChanged();
     emit toolChanged();
+    emit textChanged();
     emit eraserChanged();
 }
 

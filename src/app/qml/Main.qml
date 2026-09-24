@@ -245,7 +245,16 @@ ApplicationWindow {
             smoothing: settings.smoothing
             strokeColor: toolState.strokeColor
             strokeWidth: toolState.strokeWidth
+            typing: toolState.currentTool === ToolViewModel.Text
             visible: root.notebook !== null
+
+            TextLayer {
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+                tools: toolState
+                visible: root.notebook !== null
+            }
 
             // How wide the line, or the eraser, will be right here on the page.
             Rectangle {

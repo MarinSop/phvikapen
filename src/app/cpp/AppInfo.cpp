@@ -2,6 +2,8 @@
 
 #include "core/version.hpp"
 
+#include <QFont>
+#include <QGuiApplication>
 #include <QKeySequence>
 #include <QString>
 #include <QUrl>
@@ -23,6 +25,10 @@ AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} 
 
 QString AppInfo::keyName(int key) {
     return QKeySequence{key}.toString(QKeySequence::PortableText);
+}
+
+QString AppInfo::plainFont() {
+    return QGuiApplication::font().family();
 }
 
 QUrl AppInfo::fileUrl(const QString& path) {

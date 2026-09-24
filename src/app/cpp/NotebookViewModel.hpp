@@ -2,6 +2,7 @@
 
 #include "app/cpp/HandwritingReader.hpp"
 #include "app/cpp/OutlineModels.hpp"
+#include "app/cpp/TextModels.hpp"
 #include "core/Error.hpp"
 #include "core/geometry/Distance.hpp"
 #include "core/geometry/Rect.hpp"
@@ -16,6 +17,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "core/storage/StorageThread.hpp"
 #include "core/undo/UndoStack.hpp"
 #include "platform/ink/IInkBackend.hpp"
@@ -26,11 +28,13 @@
 #include <QColor>
 #include <QImage>
 #include <QObject>
+#include <QPointF>
 #include <QPointer>
 #include <QQmlParserStatus>
 #include <QString>
 #include <QTimer>
 #include <QUrl>
+#include <QVariantMap>
 #include <QtQmlIntegration>
 
 #include <cstddef>
@@ -42,6 +46,7 @@
 #include <set>
 #include <span>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace phvikapen::app {
@@ -99,6 +104,10 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(bool exporting READ exporting NOTIFY exportingChanged FINAL)
     Q_PROPERTY(bool continuous READ continuous WRITE setContinuous NOTIFY continuousChanged FINAL)
     Q_PROPERTY(phvikapen::app::TrashListModel* trash READ trash CONSTANT FINAL)
+    Q_PROPERTY(phvikapen::app::TextListModel* texts READ texts CONSTANT FINAL)
+    Q_PROPERTY(
+        QString pickedText READ pickedText WRITE setPickedText NOTIFY pickedTextChanged FINAL)
+    Q_PROPERTY(QVariantMap pickedBox READ pickedBox NOTIFY pickedBoxChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -238,6 +247,36 @@ public:
 
     [[nodiscard]] TrashListModel* trash() { return &m_trashModel; }
 
+    [[nodiscard]] TextListModel* texts() { return &m_textsModel; }
+
+    // Which box of text the reader is working on, or nothing when none is.
+    [[nodiscard]] QString pickedText() const { return m_pickedText; }
+
+    void setPickedText(const QString& textId);
+
+    // Everything the window needs to type in the box that is picked: where it stands in the
+    // column of sheets, how wide it runs, what it says and the face it wears.
+    [[nodiscard]] QVariantMap pickedBox() const;
+
+    // Put an empty box where the reader tapped, in the coordinates of the column of sheets.
+    Q_INVOKABLE void addTextAt(qreal columnX, qreal columnY, const QVariantMap& style);
+
+    // What a box says once the reader stops typing; a box left empty is dropped.
+    Q_INVOKABLE void finishText(const QString& textId, const QString& text, qreal height);
+
+    // Where a box stands and how much room it takes, after it was dragged or pulled wider.
+    Q_INVOKABLE void placeText(const QString& textId, qreal columnX, qreal columnY, qreal width,
+                               qreal height);
+
+    Q_INVOKABLE void styleText(const QString& textId, const QVariantMap& style);
+
+    Q_INVOKABLE void removeText(const QString& textId);
+
+    Q_INVOKABLE [[nodiscard]] QVariantMap styleOfText(const QString& textId) const;
+
+    // Read what is picked and put it on the page as text, taking the handwriting away.
+    Q_INVOKABLE void convertSelectionToText(QVariantMap style);
+
     Q_INVOKABLE void deleteSelection();
     Q_INVOKABLE void copySelection();
 
@@ -264,6 +303,9 @@ signals:
     void readingChanged();
     void found(const QVariantList& words);
     void copiedAsText(const QString& text);
+    void pickedTextChanged();
+    void pickedBoxChanged();
+    void textAdded(const QString& textId);
     void startPageChanged();
     void canvasChanged();
     void loadedChanged();
@@ -324,12 +366,14 @@ private:
     void openNotebook();
     void showLoadedOutline(std::uint64_t opening, core::Result<core::NotebookOutline> outline);
     void showLoadedPage(std::uint64_t opening, const core::Uuid& pageId,
-                        core::Result<std::vector<core::PlacedStroke>> strokes);
-    void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes);
+                        core::Result<core::LoadedPage> loaded);
+    void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes,
+                  std::span<const core::PlacedText> texts);
 
     struct ThumbnailWork {
         core::PageInfo page;
         std::vector<core::PlacedStroke> strokes;
+        std::vector<core::PlacedText> texts;
         QImage media;
     };
 
@@ -368,6 +412,30 @@ private:
     void dropStartingPage();
     void markEdited();
     void publishFound(std::vector<core::FoundWord> hits);
+
+    // A place on a page, found from a point in the column of sheets.
+    struct TextPlace {
+        core::Uuid page;
+        core::Point at;
+        int sheet{};
+    };
+
+    // A box that was only just put down: it becomes part of the page, and of what can be undone,
+    // once something is typed in it.
+    struct Draft {
+        core::Uuid page;
+        core::TextBox box;
+    };
+
+    [[nodiscard]] std::optional<TextPlace> placeInColumn(QPointF column) const;
+    void settleDraft();
+    [[nodiscard]] int sheetOfPage(const core::Uuid& pageId) const;
+    [[nodiscard]] int sheetCount() const;
+    // The page a box of text belongs to, and the box itself.
+    [[nodiscard]] std::optional<std::pair<core::Uuid, core::TextBox>>
+    textById(const QString& textId) const;
+    void changeText(const core::Uuid& pageId, core::TextBox box);
+    void publishTexts();
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
@@ -436,6 +504,9 @@ private:
     std::vector<core::Stroke> m_clipboard;
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
+    TextListModel m_textsModel;
+    std::optional<Draft> m_draft;
+    QString m_pickedText;
     OutlineListModel m_sectionsModel;
     OutlineListModel m_pagesModel;
     QPointer<platform::ink::QtInkItem> m_canvas;

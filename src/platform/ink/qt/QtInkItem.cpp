@@ -527,6 +527,17 @@ void QtInkItem::setPicking(bool picking) {
     emit pickingChanged();
 }
 
+void QtInkItem::setTyping(bool typing) {
+    if (typing == m_typing) {
+        return;
+    }
+    m_typing = typing;
+    if (m_typing) {
+        cancelStroke();
+    }
+    emit typingChanged();
+}
+
 void QtInkItem::setPanning(bool panning) {
     if (panning == m_panning) {
         return;
@@ -1030,6 +1041,9 @@ void QtInkItem::observeWindow(QQuickWindow* window) {
 }
 
 bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
+    if (m_typing && !isTracking()) {
+        return false;
+    }
     const QPointF position = mapFromScene(event.scenePosition());
     const InkSample sample = onPage(
         makeSample(position, event.pressure(), event.xTilt(), event.yTilt(), event.timestamp()));
@@ -1064,6 +1078,9 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
+    if (m_typing) {
+        return;
+    }
     forceActiveFocus();
     // What is drawn belongs to the sheet it was started on. The view stays where it is: a stroke
     // may run from one sheet onto the next, and it stays with the one it began on.

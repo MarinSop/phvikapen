@@ -71,6 +71,10 @@ std::vector<PlacedStroke> Page::takeAll() noexcept {
     return std::exchange(m_strokes, {});
 }
 
+std::vector<PlacedText> Page::takeAllTexts() noexcept {
+    return std::exchange(m_texts, {});
+}
+
 std::int64_t Page::nextTextOrdinal() const noexcept {
     return m_texts.empty() ? 0 : m_texts.back().ordinal + 1;
 }

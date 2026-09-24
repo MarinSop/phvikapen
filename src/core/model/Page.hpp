@@ -35,6 +35,8 @@ public:
 
     [[nodiscard]] std::vector<PlacedStroke> takeAll() noexcept;
 
+    [[nodiscard]] std::vector<PlacedText> takeAllTexts() noexcept;
+
     [[nodiscard]] std::vector<Uuid> strokesTouchedBy(const EraserSweep& sweep) const;
 
     [[nodiscard]] std::span<const PlacedText> texts() const noexcept { return m_texts; }

@@ -121,6 +121,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.convertToText
+            objectName: "convertToTextItem"
+        }
+
+        MenuCommand {
             action: root.actions.paste
         }
 

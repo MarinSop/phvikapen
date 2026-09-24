@@ -69,7 +69,17 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(makeError(ErrorCode::IoFailure, "the notebook is not open"));
             return;
         }
-        onLoaded(m_store->strokesOfPage(pageId));
+        Result<std::vector<PlacedStroke>> strokes = m_store->strokesOfPage(pageId);
+        if (!strokes) {
+            onLoaded(std::unexpected{strokes.error()});
+            return;
+        }
+        Result<std::vector<PlacedText>> texts = m_store->textsOfPage(pageId);
+        if (!texts) {
+            onLoaded(std::unexpected{texts.error()});
+            return;
+        }
+        onLoaded(LoadedPage{.strokes = std::move(*strokes), .texts = std::move(*texts)});
     });
 }
 

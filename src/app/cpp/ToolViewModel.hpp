@@ -1,9 +1,13 @@
 #pragma once
 
+#include "core/model/TextBox.hpp"
+
 #include <QColor>
 #include <QObject>
 #include <QQmlParserStatus>
+#include <QString>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQmlIntegration>
 #include <QtTypes>
 
@@ -30,6 +34,17 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QVariantList palette READ palette CONSTANT FINAL)
     Q_PROPERTY(QVariantList penColors READ penColors NOTIFY toolChanged FINAL)
     Q_PROPERTY(QVariantList penWidths READ penWidths NOTIFY toolChanged FINAL)
+    Q_PROPERTY(QString textFont READ textFont WRITE setTextFont NOTIFY textChanged FINAL)
+    Q_PROPERTY(qreal textSize READ textSize WRITE setTextSize NOTIFY textChanged FINAL)
+    Q_PROPERTY(QColor textColor READ textColor WRITE setTextColor NOTIFY textChanged FINAL)
+    Q_PROPERTY(int textAlign READ textAlign WRITE setTextAlign NOTIFY textChanged FINAL)
+    Q_PROPERTY(bool textBold READ textBold WRITE setTextBold NOTIFY textChanged FINAL)
+    Q_PROPERTY(bool textItalic READ textItalic WRITE setTextItalic NOTIFY textChanged FINAL)
+    Q_PROPERTY(
+        bool textUnderline READ textUnderline WRITE setTextUnderline NOTIFY textChanged FINAL)
+    Q_PROPERTY(
+        bool textStruckOut READ textStruckOut WRITE setTextStruckOut NOTIFY textChanged FINAL)
+    Q_PROPERTY(QVariantMap textStyle READ textStyle NOTIFY textChanged FINAL)
 
 public:
     enum class Shape : quint8 {
@@ -48,6 +63,7 @@ public:
         Hand,
         ColourPicker,
         Shape,
+        Text,
     };
     Q_ENUM(Tool)
 
@@ -98,6 +114,36 @@ public:
     [[nodiscard]] QVariantList penColors() const;
     [[nodiscard]] QVariantList penWidths() const;
 
+    [[nodiscard]] QString textFont() const;
+    void setTextFont(const QString& font);
+    [[nodiscard]] qreal textSize() const;
+    void setTextSize(qreal size);
+    [[nodiscard]] QColor textColor() const;
+    void setTextColor(const QColor& color);
+    [[nodiscard]] int textAlign() const;
+    void setTextAlign(int align);
+
+    [[nodiscard]] bool textBold() const { return m_text.bold; }
+
+    void setTextBold(bool bold);
+
+    [[nodiscard]] bool textItalic() const { return m_text.italic; }
+
+    void setTextItalic(bool italic);
+
+    [[nodiscard]] bool textUnderline() const { return m_text.underline; }
+
+    void setTextUnderline(bool underline);
+
+    [[nodiscard]] bool textStruckOut() const { return m_text.struckOut; }
+
+    void setTextStruckOut(bool struckOut);
+
+    [[nodiscard]] QVariantMap textStyle() const;
+
+    // The face a box that is picked wears becomes the face the bar shows and the next box takes.
+    Q_INVOKABLE void useTextStyle(const QVariantMap& style);
+
     // The colour taken off the page belongs to every pen from then on, and the tool that was in
     // hand before the picker comes back.
     Q_INVOKABLE void usePickedColour(const QColor& colour);
@@ -110,6 +156,7 @@ signals:
     void shapeChanged();
     void penChanged();
     void toolChanged();
+    void textChanged();
     void eraserChanged();
 
 private:
@@ -129,6 +176,7 @@ private:
     Nib m_highlighter;
     Tool m_currentTool{Tool::Pen};
     Tool m_beforePicking{Tool::Pen};
+    core::TextStyle m_text;
     Shape m_shape{Shape::Rectangle};
     qreal m_eraserRadius{kDefaultEraser};
     qreal m_corner{0.0};

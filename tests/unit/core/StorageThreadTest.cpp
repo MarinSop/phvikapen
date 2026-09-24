@@ -102,19 +102,19 @@ TEST(StorageThreadTest, LoadsAPageInDrawingOrder) {
     }
     ErrorLog log;
     StorageThread storage{notebook.path(), log.handler()};
-    std::optional<Result<std::vector<PlacedStroke>>> loaded;
+    std::optional<Result<LoadedPage>> loaded;
 
-    storage.loadPage(
-        page, [&](Result<std::vector<PlacedStroke>> strokes) { loaded = std::move(strokes); });
+    storage.loadPage(page, [&](Result<LoadedPage> contents) { loaded = std::move(contents); });
     storage.waitUntilIdle();
 
     ASSERT_TRUE(loaded.has_value());
     ASSERT_TRUE(loaded->has_value()) << loaded->error().message;
-    ASSERT_EQ((*loaded)->size(), 2U);
-    EXPECT_EQ((*loaded)->front().ordinal, 1);
-    EXPECT_EQ((*loaded)->front().stroke.id(), early.id());
-    EXPECT_EQ((*loaded)->back().ordinal, 4);
-    EXPECT_EQ((*loaded)->back().stroke.id(), late.id());
+    ASSERT_EQ((*loaded)->strokes.size(), 2U);
+    EXPECT_EQ((*loaded)->strokes.front().ordinal, 1);
+    EXPECT_EQ((*loaded)->strokes.front().stroke.id(), early.id());
+    EXPECT_EQ((*loaded)->strokes.back().ordinal, 4);
+    EXPECT_EQ((*loaded)->strokes.back().stroke.id(), late.id());
+    EXPECT_TRUE((*loaded)->texts.empty());
 }
 
 TEST(StorageThreadTest, LoadsTheOutlineAndCarriesOutSubmittedChanges) {
@@ -162,11 +162,10 @@ TEST(StorageThreadTest, ReportsANotebookItCannotOpen) {
     const Uuid page = ids.next();
     ErrorLog log;
     StorageThread storage{path, log.handler()};
-    std::optional<Result<std::vector<PlacedStroke>>> loaded;
+    std::optional<Result<LoadedPage>> loaded;
 
     storage.insertStroke(page, {.ordinal = 0, .stroke = makeStroke(ids, 0.0F)});
-    storage.loadPage(
-        page, [&](Result<std::vector<PlacedStroke>> strokes) { loaded = std::move(strokes); });
+    storage.loadPage(page, [&](Result<LoadedPage> contents) { loaded = std::move(contents); });
     storage.waitUntilIdle();
 
     ASSERT_EQ(log.errors().size(), 1U);

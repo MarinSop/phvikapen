@@ -130,8 +130,8 @@ TEST(NotebookTextsTest, FindsTypedTextWhateverTheAccents) {
     Result<NotebookStore> store = NotebookStore::open(notebook.path());
     ASSERT_TRUE(store.has_value()) << store.error().message;
     const Uuid page = firstPageOf(*store);
-    ASSERT_TRUE(store->insertText(
-        page, {.ordinal = 0, .box = boxSaying(ids, "Putška u Čehoslovačkoj")}));
+    ASSERT_TRUE(
+        store->insertText(page, {.ordinal = 0, .box = boxSaying(ids, "Putška u Čehoslovačkoj")}));
 
     const Result<std::vector<FoundWord>> found = store->findWords("cehoslovackoj");
 
