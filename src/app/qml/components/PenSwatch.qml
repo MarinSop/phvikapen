@@ -8,8 +8,8 @@ AbstractButton {
     property color color: "black"
     property real penWidth: 2
 
-    implicitHeight: 34
-    implicitWidth: 34
+    implicitHeight: Theme.quickTap
+    implicitWidth: Theme.quickTap
 
     background: Rectangle {
         color: root.hovered ? Theme.base : "transparent"
@@ -20,9 +20,9 @@ AbstractButton {
             anchors.centerIn: parent
             // The pen in hand carries the accent behind its mark.
             color: root.checked ? Theme.accent : Theme.line
-            height: 24
+            height: Theme.quickTap - Theme.gap - 4
             radius: 6
-            width: 24
+            width: Theme.quickTap - Theme.gap - 4
 
             Rectangle {
                 anchors.centerIn: parent

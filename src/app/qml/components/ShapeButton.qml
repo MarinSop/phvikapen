@@ -14,10 +14,10 @@ ToolButton {
     ToolTip.visible: root.hovered
     display: AbstractButton.IconOnly
     icon.color: root.active ? Theme.accentText : palette.buttonText
-    icon.height: 24
-    icon.width: 24
-    implicitHeight: 36
-    implicitWidth: 36
+    icon.height: Theme.glyph
+    icon.width: Theme.glyph
+    implicitHeight: Theme.quickTap
+    implicitWidth: Theme.quickTap
 
     background: Rectangle {
         color: root.hovered ? Theme.base : "transparent"
@@ -26,9 +26,9 @@ ToolButton {
         Rectangle {
             anchors.centerIn: parent
             color: root.active ? Theme.accent : Theme.line
-            height: 26
+            height: Theme.quickTap - Theme.gap
             radius: 6
-            width: 26
+            width: Theme.quickTap - Theme.gap
         }
     }
 }

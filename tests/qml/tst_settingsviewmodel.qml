@@ -78,10 +78,33 @@ TestCase {
 
         verify(settings.shortcutList.count > 10);
         compare(settings.shortcuts["undo"], undefined);
-        const row = settings.shortcutList.index(0, 0);
+        const at = settings.shortcutList.ids().indexOf("undo");
+        verify(at >= 0);
+        const row = settings.shortcutList.index(at, 0);
         compare(settings.shortcutList.data(row, Qt.UserRole + 1), "undo");
         compare(settings.shortcutList.data(row, Qt.UserRole + 3), "Ctrl+Z");
         compare(settings.shortcutList.data(row, Qt.UserRole + 4), false);
+        compare(settings.shortcutList.data(row, Qt.UserRole + 5), "Edit");
+    }
+
+    function test_f2_everyCommandComesWithKeysOfItsOwn() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        for (const id of settings.shortcutList.ids()) {
+            const keys = settings.defaultKeys(id);
+            verify(keys.length > 0, id + " comes with no keys");
+            compare(settings.conflictWith(id, keys), "", keys + " is asked of more than one command");
+        }
+    }
+
+    function test_f3_whatACommandAnswersToIsWrittenSoItCanBeReadBack() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        for (const id of settings.shortcutList.ids()) {
+            const keys = settings.defaultKeys(id);
+            verify(!keys.includes("\u2318"), id + " is written the way it is shown, not the way it is read");
+            verify(!keys.includes("\u21e7"), id + " is written the way it is shown, not the way it is read");
+        }
     }
 
     function test_g_aKeyCanBeChangedAndPutBack() {

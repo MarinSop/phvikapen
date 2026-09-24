@@ -113,6 +113,12 @@ ApplicationWindow {
         value: settings.theme
     }
 
+    Binding {
+        property: "scale"
+        target: Theme
+        value: settings.uiScale
+    }
+
     ToolViewModel {
         id: toolState
     }
@@ -234,11 +240,13 @@ ApplicationWindow {
             SplitView.fillWidth: true
             enabled: root.notebook !== null && root.notebook.loaded
             deskColor: Theme.desk
+            eraseMode: toolState.eraserMode
             eraserRadius: toolState.eraserRadius
             erasing: toolState.currentTool === ToolViewModel.Eraser
+            holdForMenu: settings.holdForMenu
             panning: toolState.currentTool === ToolViewModel.Hand
             picking: toolState.currentTool === ToolViewModel.ColourPicker
-            pressureSensitive: toolState.pressureSensitive
+            pressureSensitive: settings.usePressure && toolState.pressureSensitive
             selecting: toolState.currentTool === ToolViewModel.Selection
             corner: toolState.corner
             shape: toolState.currentTool === ToolViewModel.Shape ? toolState.shape : ToolViewModel.Freehand
@@ -247,6 +255,20 @@ ApplicationWindow {
             strokeWidth: toolState.strokeWidth
             typing: toolState.currentTool === ToolViewModel.Text
             visible: root.notebook !== null
+            zoomStep: settings.zoomStep
+
+            onMenuWanted: at => {
+                if (root.notebook !== null) {
+                    contextMenu.openAt(canvas.mapToItem(mainSplit, at.x, at.y));
+                }
+            }
+
+            SelectionLayer {
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+                tools: toolState
+            }
 
             TextLayer {
                 anchors.fill: parent
@@ -256,13 +278,16 @@ ApplicationWindow {
                 visible: root.notebook !== null
             }
 
-            // How wide the line, or the eraser, will be right here on the page.
+            // How wide the line, or the eraser, will be right here on the page. An eraser set to
+            // take whole lines reaches far less far, and says so by showing that smaller reach.
             Rectangle {
-                readonly property real sizeOnPage: toolState.currentTool === ToolViewModel.Eraser ? toolState.eraserRadius * 2 : toolState.strokeWidth
+                readonly property bool wholeLines: toolState.currentTool === ToolViewModel.Eraser && toolState.eraserMode === ToolViewModel.WholeStroke
+                readonly property real eraserReach: wholeLines ? Math.max(toolState.eraserRadius * 0.25, 1) : toolState.eraserRadius
+                readonly property real sizeOnPage: toolState.currentTool === ToolViewModel.Eraser ? eraserReach * 2 : toolState.strokeWidth
 
                 border.color: Theme.text
                 border.width: 1
-                color: "transparent"
+                color: wholeLines ? Theme.accentSoft : "transparent"
                 height: width
                 opacity: 0.7
                 radius: width / 2
@@ -289,6 +314,19 @@ ApplicationWindow {
             actions: appActions
             visible: settings.showPagePanel && root.notebook !== null
         }
+    }
+
+    ColourLens {
+        anchors.fill: mainSplit
+        canvas: canvas
+        tools: toolState
+    }
+
+    ContextMenu {
+        id: contextMenu
+
+        actions: appActions
+        parent: mainSplit
     }
 
     MessageBar {
@@ -367,6 +405,7 @@ ApplicationWindow {
         id: settingsDialog
 
         settings: settings
+        tools: toolState
         updates: updates
     }
 

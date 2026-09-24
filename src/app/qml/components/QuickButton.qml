@@ -15,10 +15,10 @@ ToolButton {
     display: AbstractButton.IconOnly
     icon.color: root.enabled ? palette.buttonText : palette.placeholderText
     bottomPadding: 0
-    icon.height: 24
-    icon.width: 24
-    implicitHeight: 34
-    implicitWidth: 34
+    icon.height: Theme.glyph
+    icon.width: Theme.glyph
+    implicitHeight: Theme.quickTap
+    implicitWidth: Theme.quickTap
     leftPadding: 0
     rightPadding: 0
     topPadding: 0

@@ -40,6 +40,12 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     align-middle
     align-right
     align-justify
+    rotate-left
+    rotate-right
+    cut
+    duplicate
+    select-multiple
+    minus-circle
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -87,6 +93,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
         qml/components/ColorField.qml
+        qml/components/ColourLens.qml
+        qml/components/ContextMenu.qml
         qml/components/ConfirmDialog.qml
         qml/components/ArrowButton.qml
         qml/components/DropLine.qml
@@ -107,6 +115,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/SettingsDialog.qml
+        qml/components/SelectionLayer.qml
         qml/components/SettingsPage.qml
         qml/components/ShapeButton.qml
         qml/components/ShortcutField.qml

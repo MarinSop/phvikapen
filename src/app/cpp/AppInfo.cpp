@@ -5,6 +5,7 @@
 #include <QFont>
 #include <QGuiApplication>
 #include <QKeySequence>
+#include <QObject>
 #include <QString>
 #include <QUrl>
 #include <QVariant>
@@ -14,6 +15,11 @@
 namespace phvikapen::app {
 namespace {
 
+[[nodiscard]] bool typingInto(const QObject* holder) {
+    return holder != nullptr
+           && (holder->inherits("QQuickTextInput") || holder->inherits("QQuickTextEdit"));
+}
+
 [[nodiscard]] QString versionString() {
     constexpr std::string_view kText = core::version::kString;
     return QString::fromLatin1(kText.data(), static_cast<qsizetype>(kText.size()));
@@ -21,10 +27,18 @@ namespace {
 
 }
 
-AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} {}
+AppInfo::AppInfo(QObject* parent) : QObject(parent), m_version{versionString()} {
+    if (QGuiApplication* const application = qGuiApp; application != nullptr) {
+        connect(application, &QGuiApplication::focusObjectChanged, this, &AppInfo::typingChanged);
+    }
+}
 
 QString AppInfo::keyName(int key) {
     return QKeySequence{key}.toString(QKeySequence::PortableText);
+}
+
+bool AppInfo::typing() {
+    return typingInto(QGuiApplication::focusObject());
 }
 
 QString AppInfo::plainFont() {

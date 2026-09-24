@@ -20,6 +20,7 @@ namespace {
 constexpr auto kToolSetting = "tools/tool";
 constexpr auto kPenSetting = "tools/pen";
 constexpr auto kEraserSetting = "tools/eraser";
+constexpr auto kEraserModeSetting = "tools/eraserMode";
 constexpr auto kShapeSetting = "tools/shape";
 constexpr auto kCornerSetting = "tools/corner";
 constexpr auto kTextFontSetting = "tools/text/font";
@@ -149,6 +150,15 @@ void ToolViewModel::setEraserRadius(qreal radius) {
         return;
     }
     m_eraserRadius = wanted;
+    emit eraserChanged();
+    remember();
+}
+
+void ToolViewModel::setEraserMode(Erase mode) {
+    if (mode == m_eraserMode) {
+        return;
+    }
+    m_eraserMode = mode;
     emit eraserChanged();
     remember();
 }
@@ -348,6 +358,7 @@ void ToolViewModel::remember() const {
     settings.setValue(kToolSetting, static_cast<int>(m_currentTool));
     settings.setValue(kPenSetting, m_pen);
     settings.setValue(kEraserSetting, m_eraserRadius);
+    settings.setValue(kEraserModeSetting, static_cast<int>(m_eraserMode));
     settings.setValue(kShapeSetting, static_cast<int>(m_shape));
     settings.setValue(kCornerSetting, m_corner);
     for (int index = 0; index < penCount(); ++index) {
@@ -396,6 +407,11 @@ void ToolViewModel::restore() {
     m_pen = std::clamp(settings.value(kPenSetting, m_pen).toInt(), 0, penCount() - 1);
     m_eraserRadius = std::clamp(settings.value(kEraserSetting, m_eraserRadius).toDouble(),
                                 kMinimumEraser, kMaximumEraser);
+    const int erase = settings.value(kEraserModeSetting, static_cast<int>(m_eraserMode)).toInt();
+    if (erase >= static_cast<int>(Erase::Touched)
+        && erase <= static_cast<int>(Erase::WholeStroke)) {
+        m_eraserMode = static_cast<Erase>(erase);
+    }
 
     m_text.font = settings.value(kTextFontSetting, textFont()).toString().toStdString();
     m_text.size =

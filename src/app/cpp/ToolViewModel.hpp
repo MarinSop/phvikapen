@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/ink/StrokeEraser.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <QColor>
@@ -31,6 +32,7 @@ class ToolViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(bool pressureSensitive READ pressureSensitive NOTIFY toolChanged FINAL)
     Q_PROPERTY(
         qreal eraserRadius READ eraserRadius WRITE setEraserRadius NOTIFY eraserChanged FINAL)
+    Q_PROPERTY(Erase eraserMode READ eraserMode WRITE setEraserMode NOTIFY eraserChanged FINAL)
     Q_PROPERTY(QVariantList palette READ palette CONSTANT FINAL)
     Q_PROPERTY(QVariantList penColors READ penColors NOTIFY toolChanged FINAL)
     Q_PROPERTY(QVariantList penWidths READ penWidths NOTIFY toolChanged FINAL)
@@ -54,6 +56,14 @@ public:
         Ellipse,
     };
     Q_ENUM(Shape)
+
+    // What the eraser takes. Named here rather than as a plain switch, so that another way of
+    // rubbing out can be added without every caller having to be found again.
+    enum class Erase : quint8 {
+        Touched,
+        WholeStroke,
+    };
+    Q_ENUM(Erase)
 
     enum class Tool : quint8 {
         Pen,
@@ -108,6 +118,10 @@ public:
     [[nodiscard]] qreal eraserRadius() const { return m_eraserRadius; }
 
     void setEraserRadius(qreal radius);
+
+    [[nodiscard]] Erase eraserMode() const { return m_eraserMode; }
+
+    void setEraserMode(Erase mode);
 
     [[nodiscard]] static QVariantList palette();
 
@@ -179,6 +193,7 @@ private:
     core::TextStyle m_text;
     Shape m_shape{Shape::Rectangle};
     qreal m_eraserRadius{kDefaultEraser};
+    Erase m_eraserMode{Erase::Touched};
     qreal m_corner{0.0};
     int m_pen{0};
     bool m_completed{false};

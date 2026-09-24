@@ -48,6 +48,99 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_everythingOnAPageIsPickedUpAtOnce() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        draw(notebook, 60, 110);
+        compare(notebook.strokeCount, 2);
+
+        notebook.canvas.selectEverything();
+
+        compare(notebook.canvas.selectedCount, 2);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_whatIsPickedIsCopiedBesideItselfWithoutTouchingTheClipboard() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        notebook.canvas.selectEverything();
+
+        notebook.duplicateSelection();
+
+        compare(notebook.strokeCount, 2);
+        verify(!notebook.hasCopiedStrokes);
+
+        notebook.undo();
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_cuttingTakesWhatIsPickedAndKeepsIt() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        notebook.canvas.selectEverything();
+
+        notebook.cutSelection();
+
+        compare(notebook.strokeCount, 0);
+        verify(notebook.hasCopiedStrokes);
+
+        notebook.pasteStrokes();
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_turningWhatIsPickedIsOneChangeThatCanBeUndone() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 60, 60);
+        notebook.canvas.selectEverything();
+        const before = notebook.selectionArea();
+        verify(before.width > 0);
+
+        notebook.turnSelection(90);
+
+        const turned = notebook.selectionArea();
+        verify(Math.abs(turned.width - before.height) < 2);
+        verify(Math.abs(turned.height - before.width) < 2);
+
+        notebook.undo();
+
+        const back = notebook.selectionArea();
+        verify(Math.abs(back.width - before.width) < 0.01);
+        verify(Math.abs(back.height - before.height) < 0.01);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_sizingWhatIsPickedShowsBeforeItIsKept() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 60, 60);
+        notebook.canvas.selectEverything();
+        const before = notebook.selectionArea();
+        const change = {
+            "pivotX": before.x,
+            "pivotY": before.y,
+            "wide": 2,
+            "tall": 2
+        };
+
+        notebook.showTransform(change);
+
+        compare(notebook.strokeCount, 1);
+        verify(!notebook.canRedo);
+
+        notebook.applyTransform(change);
+
+        const larger = notebook.selectionArea();
+        verify(larger.width > before.width * 1.5);
+
+        notebook.undo();
+
+        verify(Math.abs(notebook.selectionArea().width - before.width) < 0.01);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_whetherThisMachineReadsHandwritingIsSaidPlainly() {
         const notebook = openNotebook(newNotebookPath());
 

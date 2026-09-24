@@ -17,6 +17,7 @@ ToolBar {
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool picks: root.tools.currentTool === ToolViewModel.Selection
     readonly property list<int> shapes: [ToolViewModel.Line, ToolViewModel.Rectangle, ToolViewModel.Ellipse]
+    readonly property list<int> eraserModes: [ToolViewModel.Touched, ToolViewModel.WholeStroke]
     readonly property var families: Qt.fontFamilies()
     readonly property string pickedText: root.notebook === null ? "" : root.notebook.pickedText
     readonly property bool types: root.tools.currentTool === ToolViewModel.Text || root.pickedText !== ""
@@ -165,6 +166,22 @@ ToolBar {
                 } else {
                     root.tools.strokeWidth = value;
                 }
+            }
+        }
+
+        // What the eraser takes: the part it is rubbed over, or the whole line at a touch.
+        Repeater {
+            model: root.erases ? 2 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: root.tools.eraserMode === root.eraserModes[index]
+                icon.source: [Icons.eraser, Icons.eraseWhole][index]
+                label: [qsTr("Rub out what it touches"), qsTr("Take the whole line")][index]
+                objectName: ["erasePartButton", "eraseWholeButton"][index]
+
+                onClicked: root.tools.eraserMode = root.eraserModes[index]
             }
         }
 
@@ -326,6 +343,30 @@ ToolBar {
             label: qsTr("Copy")
             objectName: "copySelectionButton"
             shortcutText: AppInfo.shortcutText(root.actions.copy.shortcut)
+            visible: root.picks
+        }
+
+        QuickButton {
+            action: root.actions.duplicate
+            label: qsTr("Duplicate")
+            objectName: "duplicateButton"
+            shortcutText: AppInfo.shortcutText(root.actions.duplicate.shortcut)
+            visible: root.picks
+        }
+
+        QuickButton {
+            action: root.actions.rotateLeft
+            label: qsTr("Turn left")
+            objectName: "turnLeftButton"
+            shortcutText: AppInfo.shortcutText(root.actions.rotateLeft.shortcut)
+            visible: root.picks
+        }
+
+        QuickButton {
+            action: root.actions.rotateRight
+            label: qsTr("Turn right")
+            objectName: "turnRightButton"
+            shortcutText: AppInfo.shortcutText(root.actions.rotateRight.shortcut)
             visible: root.picks
         }
 

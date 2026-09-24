@@ -15,6 +15,18 @@ QtObject {
     }
 
     property int mode: Theme.Brand
+    // How large the controls are drawn. A hand holding a pen needs a larger mark to hit than a
+    // mouse pointer does, so every button, bar and grip is measured from here rather than from a
+    // number written where it is used.
+    property real scale: 1
+    readonly property int tap: Math.round(42 * root.scale)
+    readonly property int quickTap: Math.round(34 * root.scale)
+    readonly property int smallTap: Math.round(28 * root.scale)
+    readonly property int glyph: Math.round(22 * root.scale)
+    readonly property int grip: Math.round(18 * root.scale)
+    readonly property int gap: Math.round(6 * root.scale)
+    readonly property int menuWidth: Math.round(260 * root.scale)
+    readonly property int rowHeight: Math.round(32 * root.scale)
     readonly property var brandColours: ({
             "window": "#12102e",
             "surface": "#191640",

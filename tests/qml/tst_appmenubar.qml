@@ -11,7 +11,7 @@ TestCase {
             titles.push(menuBar.menuAt(i).title.replace("&", ""));
         }
 
-        compare(titles, ["File", "Edit", "View", "Insert", "Help"]);
+        compare(titles, ["File", "Edit", "Tools", "View", "Insert", "Help"]);
     }
 
     function test_b_commandsCarryTheirShortcut() {
@@ -19,6 +19,29 @@ TestCase {
         verify(AppInfo.shortcutText(actions.copy.shortcut).length > 0);
         verify(AppInfo.shortcutText(actions.importDocument.shortcut).endsWith("I"));
         compare(AppInfo.shortcutText(actions.selectTool.shortcut), "V");
+    }
+
+    function test_b2_everyCommandKeepsItsOwnKeys() {
+        const seen = {};
+        for (const id of settings.shortcutList.ids()) {
+            const keys = actions.keysFor(id);
+            verify(keys.length > 0, id + " answers to nothing");
+            verify(seen[keys] === undefined, keys + " is asked of both " + seen[keys] + " and " + id);
+            seen[keys] = id;
+        }
+    }
+
+    function test_b3_theKeysAreWrittenTheWayTheyAreReadBack() {
+        // What is shown beside a command is written for the platform and cannot be read back, so
+        // what a command answers to is never taken from there.
+        verify(!actions.keysFor("undo").startsWith("\u2318"));
+        compare(actions.keysFor("undo"), "Ctrl+Z");
+        compare(actions.keysFor("textTool"), "T");
+    }
+
+    function test_b4_lettersStandAsideWhileWordsAreTyped() {
+        compare(actions.pageKeys("textTool"), "T");
+        verify(actions.keysFor("save").length > 0);
     }
 
     function test_c_commandsThatNeedANotebookStayOff() {

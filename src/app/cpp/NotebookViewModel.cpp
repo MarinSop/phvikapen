@@ -34,6 +34,8 @@
 #include <QImage>
 #include <QMetaObject>
 #include <QPainter>
+#include <QRectF>
+#include <QSizeF>
 #include <QStandardPaths>
 #include <QString>
 #include <QTimer>
@@ -789,8 +791,8 @@ void NotebookViewModel::Sink::strokeCompleted(const core::Stroke& stroke, int sh
 void NotebookViewModel::Sink::strokeCancelled() {}
 
 void NotebookViewModel::Sink::eraserMoved(const core::InkSample& from, const core::InkSample& to,
-                                          float radius, int sheet) {
-    m_owner->erase(from, to, radius, sheet);
+                                          float radius, core::EraseMode mode, int sheet) {
+    m_owner->erase(from, to, radius, mode, sheet);
 }
 
 void NotebookViewModel::Sink::selectionDrawn(std::span<const core::Point> shape) {
@@ -879,8 +881,32 @@ void NotebookViewModel::pickFromMedia(const core::InkSample& at) {
     }
 }
 
+// Every stroke the sweep reached is set aside to be worked on. A whole line leaves nothing
+// behind, so it is gone from the sheet at a touch; a line rubbed in part keeps what the sweeps
+// have not reached yet. Says whether the sheet now looks different.
+bool NotebookViewModel::noteTouched(const core::Page& page, const core::EraserSweep& sweep,
+                                    bool whole) {
+    bool changed = false;
+    for (const core::Uuid& strokeId : page.strokesTouchedBy(sweep)) {
+        if (m_erasePieces.contains(strokeId)) {
+            continue;
+        }
+        const auto found =
+            std::ranges::find(page.strokes(), strokeId,
+                              [](const core::PlacedStroke& placed) { return placed.stroke.id(); });
+        if (found == page.strokes().end()) {
+            continue;
+        }
+        m_erasePieces.emplace(strokeId, whole ? std::vector<core::Stroke>{}
+                                              : std::vector<core::Stroke>{found->stroke});
+        m_erasing.push_back(strokeId);
+        changed = changed || whole;
+    }
+    return changed;
+}
+
 void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample& to, float radius,
-                              int sheet) {
+                              core::EraseMode mode, int sheet) {
     const core::Uuid on = pageOfSheet(sheet);
     const auto kept = m_pages.find(on);
     const core::Page* const page = kept == m_pages.end() ? nullptr : kept->second.get();
@@ -889,29 +915,21 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
     }
     // A sweep stays on the page it started on, even where the eraser runs past its edge.
     m_erasedPage = on;
+    const bool whole = mode == core::EraseMode::WholeStroke;
     const core::EraserSweep sweep{
         .from = {.x = from.x, .y = from.y},
         .to = {.x = to.x, .y = to.y},
-        .radius = radius,
+        .radius = core::reachOf(radius, mode),
     };
     m_sweeps.push_back(sweep);
 
-    bool changed = false;
-    for (const core::Uuid& strokeId : page->strokesTouchedBy(sweep)) {
-        if (!m_erasePieces.contains(strokeId)) {
-            const core::PlacedStroke* found = nullptr;
-            for (const core::PlacedStroke& placed : page->strokes()) {
-                if (placed.stroke.id() == strokeId) {
-                    found = &placed;
-                    break;
-                }
-            }
-            if (found == nullptr) {
-                continue;
-            }
-            m_erasePieces.emplace(strokeId, std::vector<core::Stroke>{found->stroke});
-            m_erasing.push_back(strokeId);
+    bool changed = noteTouched(*page, sweep, whole);
+
+    if (whole) {
+        if (changed) {
+            refreshCanvas();
         }
+        return;
     }
 
     const std::span<const core::EraserSweep> latest{&m_sweeps.back(), 1};
@@ -966,6 +984,8 @@ void NotebookViewModel::undo() {
     m_erasing.clear();
     m_erasePieces.clear();
     m_sweeps.clear();
+    m_preview.clear();
+    m_previewIds.clear();
     if (const core::ICommand* const next = m_history.nextUndo()) {
         const std::optional<core::Uuid> pageToShow = next->pageToShow();
         finishChange(m_history.undo(), pageToShow);
@@ -976,6 +996,8 @@ void NotebookViewModel::redo() {
     m_erasing.clear();
     m_erasePieces.clear();
     m_sweeps.clear();
+    m_preview.clear();
+    m_previewIds.clear();
     if (const core::ICommand* const next = m_history.nextRedo()) {
         const std::optional<core::Uuid> pageToShow = next->pageToShow();
         finishChange(m_history.redo(), pageToShow);
@@ -1947,6 +1969,20 @@ void NotebookViewModel::importDocument(const QUrl& fileUrl) {
     });
 }
 
+std::vector<core::Uuid> NotebookViewModel::setAside() const {
+    std::vector<core::Uuid> hidden = m_erasing;
+    hidden.insert(hidden.end(), m_previewIds.begin(), m_previewIds.end());
+    return hidden;
+}
+
+std::vector<core::Stroke> NotebookViewModel::standingIn() const {
+    std::vector<core::Stroke> shown = m_preview;
+    for (const auto& [strokeId, left] : m_erasePieces) {
+        shown.insert(shown.end(), left.begin(), left.end());
+    }
+    return shown;
+}
+
 void NotebookViewModel::refreshCanvas() {
     if (m_canvas.isNull()) {
         return;
@@ -1958,11 +1994,7 @@ void NotebookViewModel::refreshCanvas() {
     const core::PageInfo* const info = currentPageInfo();
     const core::PageStyle style = info == nullptr ? core::PageStyle{} : info->style;
     if (const core::Page* const page = currentPageData()) {
-        std::vector<core::Stroke> pieces;
-        for (const auto& [strokeId, left] : m_erasePieces) {
-            pieces.insert(pieces.end(), left.begin(), left.end());
-        }
-        m_canvas->showPage(*page, style, m_erasing, pieces);
+        m_canvas->showPage(*page, style, setAside(), standingIn());
     } else {
         const core::Page placeholder{m_currentPage};
         m_canvas->showPage(placeholder, style);
@@ -1995,11 +2027,7 @@ void NotebookViewModel::showColumn() {
         views.push_back(platform::ink::QtInkItem::PageView{.page = page, .style = info.style});
     }
 
-    std::vector<core::Stroke> pieces;
-    for (const auto& [strokeId, left] : m_erasePieces) {
-        pieces.insert(pieces.end(), left.begin(), left.end());
-    }
-    m_canvas->showColumn(views, currentPage(), m_erasing, pieces);
+    m_canvas->showColumn(views, currentPage(), setAside(), standingIn());
     publishTexts();
     wantNeighbours();
 }
@@ -2323,6 +2351,147 @@ void NotebookViewModel::copySelection() {
     emit clipboardChanged();
 }
 
+void NotebookViewModel::cutSelection() {
+    copySelection();
+    deleteSelection();
+}
+
+void NotebookViewModel::duplicateSelection() {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    const std::vector<core::Uuid>& picked = m_canvas->selection();
+    if (picked.empty()) {
+        return;
+    }
+    std::int64_t ordinal = page->nextOrdinal();
+    std::vector<core::PlacedStroke> copies;
+    std::vector<core::Uuid> ids;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) == picked.end()) {
+            continue;
+        }
+        const core::Stroke shifted = core::moved(placed.stroke, kPasteOffset, kPasteOffset);
+        core::Stroke fresh{m_ids.next(), shifted.style()};
+        for (const core::InkSample& sample : shifted.samples()) {
+            fresh.append(sample);
+        }
+        ids.push_back(fresh.id());
+        copies.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = std::move(fresh)});
+        ++ordinal;
+    }
+    if (copies.empty()) {
+        return;
+    }
+    runCommand(std::make_unique<core::AddStrokesCommand>(page, &*m_storage, std::move(copies)));
+    m_canvas->showSelection(std::move(ids));
+}
+
+std::vector<core::Stroke> NotebookViewModel::pickedStrokes() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull()) {
+        return {};
+    }
+    const std::vector<core::Uuid>& picked = m_canvas->selection();
+    std::vector<core::Stroke> taken;
+    taken.reserve(picked.size());
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            taken.push_back(placed.stroke);
+        }
+    }
+    return taken;
+}
+
+QRectF NotebookViewModel::selectionArea() const {
+    std::optional<core::Rect> bounds;
+    for (const core::Stroke& stroke : pickedStrokes()) {
+        if (const std::optional<core::Rect> box = stroke.boundingBox()) {
+            bounds = bounds ? bounds->united(*box) : *box;
+        }
+    }
+    if (!bounds) {
+        return {};
+    }
+    const QRectF where =
+        m_canvas.isNull() ? QRectF{} : m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    return QRectF{
+        QPointF{where.x() + static_cast<qreal>(bounds->left),
+                where.y() + static_cast<qreal>(bounds->top)},
+        QSizeF{static_cast<qreal>(bounds->width()), static_cast<qreal>(bounds->height())},
+    };
+}
+
+core::Transform NotebookViewModel::transformOf(const QVariantMap& change) const {
+    const QRectF where =
+        m_canvas.isNull() ? QRectF{} : m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    return core::normalized(core::Transform{
+        .pivot =
+            core::Point{
+                .x = static_cast<float>(change.value("pivotX").toReal() - where.x()),
+                .y = static_cast<float>(change.value("pivotY").toReal() - where.y()),
+            },
+        .dx = static_cast<float>(change.value("dx").toReal()),
+        .dy = static_cast<float>(change.value("dy").toReal()),
+        .wide = static_cast<float>(change.value("wide", 1.0).toReal()),
+        .tall = static_cast<float>(change.value("tall", 1.0).toReal()),
+        .turn = static_cast<float>(change.value("turn").toReal()),
+    });
+}
+
+void NotebookViewModel::showTransform(const QVariantMap& change) {
+    const std::vector<core::Stroke> picked = pickedStrokes();
+    if (picked.empty() || m_canvas.isNull()) {
+        return;
+    }
+    const core::Transform wanted = transformOf(change);
+    m_previewIds = m_canvas->selection();
+    m_preview = core::transformed(picked, wanted);
+    refreshCanvas();
+}
+
+void NotebookViewModel::dropTransform() {
+    if (m_preview.empty() && m_previewIds.empty()) {
+        return;
+    }
+    m_preview.clear();
+    m_previewIds.clear();
+    refreshCanvas();
+}
+
+void NotebookViewModel::applyTransform(const QVariantMap& change) {
+    core::Page* const page = currentPageData();
+    m_preview.clear();
+    m_previewIds.clear();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    std::vector<core::Uuid> picked = m_canvas->selection();
+    const core::Transform wanted = transformOf(change);
+    if (picked.empty() || core::leavesAsItWas(wanted)) {
+        refreshCanvas();
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    m_canvas->forgetStrokes(picked);
+    runCommand(std::make_unique<core::TransformStrokesCommand>(page, storage, picked, wanted));
+    m_canvas->showSelection(std::move(picked));
+}
+
+void NotebookViewModel::turnSelection(qreal degrees) {
+    const QRectF where = selectionArea();
+    if (where.isEmpty()) {
+        return;
+    }
+    applyTransform(QVariantMap{
+        {"pivotX", where.center().x()},
+        {"pivotY", where.center().y()},
+        {"turn", degrees},
+    });
+}
+
 void NotebookViewModel::copySelectionAsText() {
     const core::Page* const page = currentPageData();
     if (page == nullptr || m_canvas.isNull()) {
@@ -2602,7 +2771,22 @@ std::optional<NotebookViewModel::TextPlace> NotebookViewModel::placeInColumn(QPo
             .sheet = sheet,
         };
     }
-    return std::nullopt;
+    // Paper that runs on has no edge to fall inside of, and a tap beside a sheet is still meant
+    // for the page being read. Either way the box goes where the reader put it.
+    if (m_currentPage.isNil()) {
+        return std::nullopt;
+    }
+    const int sheet = sheetOfPage(m_currentPage);
+    const QRectF where = m_canvas->sheetRect(sheet);
+    return TextPlace{
+        .page = m_currentPage,
+        .at =
+            core::Point{
+                .x = static_cast<float>(column.x() - where.x()),
+                .y = static_cast<float>(column.y() - where.y()),
+            },
+        .sheet = sheet,
+    };
 }
 
 std::optional<std::pair<core::Uuid, core::TextBox>>
@@ -2742,12 +2926,15 @@ void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMa
     }
 
     const core::TextStyle face = styleOfMap(style);
-    const qreal room = m_canvas->sheetRect(place->sheet).width() - columnX
-                       + m_canvas->sheetRect(place->sheet).x() - kTextMargin;
+    const QRectF sheet = m_canvas->sheetRect(place->sheet);
+    // Paper without edges gives the box the width it would have anywhere else.
+    const qreal room = sheet.width() > 0.0 ? sheet.right() - columnX - kTextMargin : kNewTextWidth;
     core::TextBox box{
         .id = m_ids.next(),
         .at = place->at,
-        .width = static_cast<float>(std::max(std::min(room, kNewTextWidth), 0.0)),
+        .width = static_cast<float>(std::clamp(std::min(room, kNewTextWidth),
+                                               static_cast<qreal>(core::TextBox::kNarrowest),
+                                               kNewTextWidth)),
         .height = core::pageUnitsOfPoints(face.size) * face.lineHeight,
         .text = {},
         .style = face,

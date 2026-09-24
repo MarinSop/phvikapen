@@ -15,10 +15,10 @@ ToolButton {
     ToolTip.visible: root.hovered
     display: AbstractButton.IconOnly
     icon.color: !root.enabled ? palette.placeholderText : root.active ? Theme.text : palette.buttonText
-    icon.height: 22
-    icon.width: 22
-    implicitHeight: 42
-    implicitWidth: 42
+    icon.height: Theme.glyph
+    icon.width: Theme.glyph
+    implicitHeight: Theme.tap
+    implicitWidth: Theme.tap
 
     background: Rectangle {
         color: root.active ? Theme.base : root.hovered ? Theme.line : "transparent"
@@ -27,12 +27,12 @@ ToolButton {
 
     // The picked tool is marked by a bar as well as by colour.
     Rectangle {
-        height: parent.height - 12
+        height: parent.height - (Theme.gap * 2)
         radius: 1.5
         visible: root.active
         width: 3
         x: 0
-        y: 6
+        y: Theme.gap
 
         gradient: Gradient {
             GradientStop {

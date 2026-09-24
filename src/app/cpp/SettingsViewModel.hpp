@@ -37,6 +37,10 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(qreal marginAt READ marginAt WRITE setMarginAt NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(bool margin READ margin WRITE setMargin NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
+    Q_PROPERTY(bool usePressure READ usePressure WRITE setUsePressure NOTIFY drawingChanged FINAL)
+    Q_PROPERTY(qreal zoomStep READ zoomStep WRITE setZoomStep NOTIFY drawingChanged FINAL)
+    Q_PROPERTY(qreal uiScale READ uiScale WRITE setUiScale NOTIFY drawingChanged FINAL)
+    Q_PROPERTY(bool holdForMenu READ holdForMenu WRITE setHoldForMenu NOTIFY drawingChanged FINAL)
     Q_PROPERTY(
         int exportScope READ exportScope WRITE setExportScope NOTIFY exportScopeChanged FINAL)
     Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
@@ -101,10 +105,41 @@ public:
     void setLandscape(bool landscape);
 
     static constexpr qreal kDefaultSmoothing = 0.5;
+    static constexpr qreal kDefaultZoomStep = 1.25;
+    static constexpr qreal kGentlestZoomStep = 1.05;
+    static constexpr qreal kBoldestZoomStep = 2.0;
+    static constexpr qreal kDefaultUiScale = 1.0;
+    static constexpr qreal kSmallestUiScale = 0.85;
+    static constexpr qreal kLargestUiScale = 1.6;
 
     [[nodiscard]] qreal smoothing() const { return m_smoothing; }
 
     void setSmoothing(qreal smoothing);
+
+    // Whether how hard the pen is pressed changes how wide the line is.
+    [[nodiscard]] bool usePressure() const { return m_usePressure; }
+
+    void setUsePressure(bool used);
+
+    // How much closer one step of the zoom brings the page.
+    [[nodiscard]] qreal zoomStep() const { return m_zoomStep; }
+
+    void setZoomStep(qreal step);
+
+    // How large the buttons, bars and menus are drawn, for a hand holding a pen rather than a
+    // mouse.
+    [[nodiscard]] qreal uiScale() const { return m_uiScale; }
+
+    void setUiScale(qreal scale);
+
+    // Whether holding the pen still opens the menu of what can be done, as pressing and holding
+    // does elsewhere on the platform.
+    [[nodiscard]] bool holdForMenu() const { return m_holdForMenu; }
+
+    void setHoldForMenu(bool wanted);
+
+    // Everything on this page back to what it came with.
+    Q_INVOKABLE void resetDrawing();
 
     [[nodiscard]] int exportScope() const { return m_exportScope; }
 
@@ -155,6 +190,14 @@ public:
 
     [[nodiscard]] ShortcutListModel* shortcutList() { return &m_shortcutList; }
 
+    // The one place the keys of a command are decided: what the reader chose, or what it came
+    // with. Menus, the palette and the keyboard all ask here, so none of them can drift apart.
+    Q_INVOKABLE [[nodiscard]] QString keysFor(const QString& commandId) const;
+
+    // What a command answers to when nobody has changed it. Never changes while the application
+    // runs, so it is safe to ask for it from anywhere.
+    Q_INVOKABLE [[nodiscard]] static QString defaultKeys(const QString& commandId);
+
     Q_INVOKABLE bool changeShortcut(const QString& commandId, const QString& sequence);
     Q_INVOKABLE void resetShortcut(const QString& commandId);
     Q_INVOKABLE [[nodiscard]] QString conflictWith(const QString& commandId,
@@ -169,6 +212,7 @@ signals:
     void pageStyleChanged();
     void shortcutsChanged();
     void smoothingChanged();
+    void drawingChanged();
     void exportScopeChanged();
     void continuousPagesChanged();
     void panelsChanged();
@@ -180,6 +224,10 @@ private:
     core::PageStyle m_style;
     QVariantMap m_shortcuts;
     qreal m_smoothing{kDefaultSmoothing};
+    qreal m_zoomStep{kDefaultZoomStep};
+    qreal m_uiScale{kDefaultUiScale};
+    bool m_usePressure{true};
+    bool m_holdForMenu{true};
     int m_exportScope{0};
     int m_theme{0};
     bool m_continuousPages{true};

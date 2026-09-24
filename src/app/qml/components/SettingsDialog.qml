@@ -9,7 +9,9 @@ AppDialog {
     id: root
 
     required property SettingsViewModel settings
+    required property ToolViewModel tools
     required property UpdateViewModel updates
+    readonly property list<int> eraserModes: [ToolViewModel.Touched, ToolViewModel.WholeStroke]
 
     height: 540
     objectName: "settingsDialog"
@@ -96,6 +98,82 @@ AppDialog {
                     text: Theme.noteOf(root.settings.theme)
                     wrapMode: Text.WordWrap
                 }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    font.bold: true
+                    text: qsTr("How large the controls are")
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Buttons, bars and menus")
+                    }
+
+                    NumberField {
+                        hasSlider: true
+                        maximum: 160
+                        minimum: 85
+                        number: Math.round(root.settings.uiScale * 100)
+                        objectName: "uiScaleField"
+                        step: 5
+
+                        onNumberEdited: value => root.settings.uiScale = value / 100
+                    }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("Larger marks are easier to hit with the tip of a pen than with a mouse pointer.")
+                    wrapMode: Text.WordWrap
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("One step of the zoom")
+                    }
+
+                    NumberField {
+                        hasSlider: true
+                        maximum: 200
+                        minimum: 105
+                        number: Math.round(root.settings.zoomStep * 100)
+                        objectName: "zoomStepField"
+                        step: 5
+
+                        onNumberEdited: value => root.settings.zoomStep = value / 100
+                    }
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("How much closer one press of zoom in, or one notch of the wheel, brings the page.")
+                    wrapMode: Text.WordWrap
+                }
+
+                Button {
+                    objectName: "resetDrawingButton"
+                    text: qsTr("Back to what it came with")
+
+                    onClicked: root.settings.resetDrawing()
+                }
             }
 
             SettingsPage {
@@ -130,6 +208,70 @@ AppDialog {
                     Layout.fillWidth: true
                     color: palette.placeholderText
                     text: qsTr("0 keeps every wobble of the pen, 10 irons the line out.")
+                    wrapMode: Text.WordWrap
+                }
+
+                Switch {
+                    checked: root.settings.usePressure
+                    objectName: "pressureSwitch"
+                    text: qsTr("How hard the pen presses changes how wide the line is")
+
+                    onToggled: root.settings.usePressure = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("Off, every line is drawn at the width the pen is set to, whatever the hand does.")
+                    wrapMode: Text.WordWrap
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    font.bold: true
+                    text: qsTr("The eraser")
+                }
+
+                ComboBox {
+                    Layout.fillWidth: true
+                    currentIndex: root.tools.eraserMode === ToolViewModel.WholeStroke ? 1 : 0
+                    model: [qsTr("Rub out the part it is dragged over"), qsTr("Take the whole line at a touch")]
+                    objectName: "eraserModeBox"
+
+                    onActivated: index => root.tools.eraserMode = root.eraserModes[index]
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("Taking whole lines reaches only a quarter as far as the eraser is wide, so that a line beside the one meant is left alone.")
+                    wrapMode: Text.WordWrap
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                Label {
+                    font.bold: true
+                    text: qsTr("The pen and the pointer")
+                }
+
+                Switch {
+                    checked: root.settings.holdForMenu
+                    objectName: "holdForMenuSwitch"
+                    text: qsTr("Holding still opens the menu of what can be done")
+
+                    onToggled: root.settings.holdForMenu = checked
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("A right click always opens it, as does the button on the barrel of the pen.")
                     wrapMode: Text.WordWrap
                 }
 

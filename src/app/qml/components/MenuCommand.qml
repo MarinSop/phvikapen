@@ -7,7 +7,8 @@ MenuItem {
 
     readonly property string shortcutText: root.action === null ? "" : AppInfo.shortcutText(root.action.shortcut)
 
-    implicitWidth: Math.max(260, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(Theme.rowHeight, implicitContentHeight + topPadding + bottomPadding)
+    implicitWidth: Math.max(Theme.menuWidth, implicitContentWidth + leftPadding + rightPadding)
     indicator: null
 
     contentItem: Item {

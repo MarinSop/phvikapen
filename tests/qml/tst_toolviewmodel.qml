@@ -140,6 +140,17 @@ TestCase {
         later.shape = ToolViewModel.Rectangle;
     }
 
+    function test_z_whatTheEraserTakesIsRememberedForTheNextTime() {
+        const tools = testCase.newTools();
+        compare(tools.eraserMode, ToolViewModel.Touched);
+
+        tools.eraserMode = ToolViewModel.WholeStroke;
+
+        const later = testCase.newTools();
+        compare(later.eraserMode, ToolViewModel.WholeStroke);
+        later.eraserMode = ToolViewModel.Touched;
+    }
+
     name: "ToolViewModel"
 
     Component {

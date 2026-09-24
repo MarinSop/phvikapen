@@ -12,7 +12,9 @@
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeEraser.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/ink/StrokeTransform.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
@@ -31,6 +33,7 @@
 #include <QPointF>
 #include <QPointer>
 #include <QQmlParserStatus>
+#include <QRectF>
 #include <QString>
 #include <QTimer>
 #include <QUrl>
@@ -280,6 +283,24 @@ public:
     Q_INVOKABLE void deleteSelection();
     Q_INVOKABLE void copySelection();
 
+    // Copy and take away in one go, and copy beside itself without touching the clipboard.
+    Q_INVOKABLE void cutSelection();
+    Q_INVOKABLE void duplicateSelection();
+
+    // Where what is picked stands, in the coordinates of the column of sheets.
+    Q_INVOKABLE [[nodiscard]] QRectF selectionArea() const;
+
+    // Turn what is picked about the middle of it, by so many degrees clockwise.
+    Q_INVOKABLE void turnSelection(qreal degrees);
+
+    // Move, size and turn what is picked. The change is read from `pivotX`, `pivotY` (the point
+    // that stays still, in the coordinates of the column), `dx`, `dy`, `wide`, `tall` and `turn`.
+    // While the reader is still dragging, `show` puts it on the page without remembering it; when
+    // the drag ends, `apply` makes it a change that can be undone.
+    Q_INVOKABLE void showTransform(const QVariantMap& change);
+    Q_INVOKABLE void applyTransform(const QVariantMap& change);
+    Q_INVOKABLE void dropTransform();
+
     // Read what is picked and put it on the clipboard as text.
     Q_INVOKABLE void copySelectionAsText();
     Q_INVOKABLE void pasteStrokes();
@@ -340,7 +361,7 @@ private:
         void strokeCompleted(const core::Stroke& stroke, int sheet) override;
         void strokeCancelled() override;
         void eraserMoved(const core::InkSample& from, const core::InkSample& to, float radius,
-                         int sheet) override;
+                         core::EraseMode mode, int sheet) override;
         void eraseFinished() override;
         void selectionDrawn(std::span<const core::Point> shape) override;
         void selectionMoved(float dx, float dy) override;
@@ -402,7 +423,10 @@ private:
     void moveSelection(float dx, float dy);
     void pickColour(const core::InkSample& at, int sheet);
     void pickFromMedia(const core::InkSample& at);
-    void erase(const core::InkSample& from, const core::InkSample& to, float radius, int sheet);
+    [[nodiscard]] bool noteTouched(const core::Page& page, const core::EraserSweep& sweep,
+                                   bool whole);
+    void erase(const core::InkSample& from, const core::InkSample& to, float radius,
+               core::EraseMode mode, int sheet);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
@@ -427,6 +451,12 @@ private:
         core::TextBox box;
     };
 
+    [[nodiscard]] core::Transform transformOf(const QVariantMap& change) const;
+    [[nodiscard]] std::vector<core::Stroke> pickedStrokes() const;
+    // What the canvas must leave out, and what it must draw instead, while ink is being rubbed
+    // out or dragged about.
+    [[nodiscard]] std::vector<core::Uuid> setAside() const;
+    [[nodiscard]] std::vector<core::Stroke> standingIn() const;
     [[nodiscard]] std::optional<TextPlace> placeInColumn(QPointF column) const;
     void settleDraft();
     [[nodiscard]] int sheetOfPage(const core::Uuid& pageId) const;
@@ -505,6 +535,8 @@ private:
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
     TextListModel m_textsModel;
+    std::vector<core::Uuid> m_previewIds;
+    std::vector<core::Stroke> m_preview;
     std::optional<Draft> m_draft;
     QString m_pickedText;
     OutlineListModel m_sectionsModel;

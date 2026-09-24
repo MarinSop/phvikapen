@@ -112,6 +112,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.cut
+            objectName: "cutItem"
+        }
+
+        MenuCommand {
             action: root.actions.copy
         }
 
@@ -133,6 +138,34 @@ MenuBar {
             action: root.actions.remove
         }
 
+        MenuCommand {
+            action: root.actions.duplicate
+            objectName: "duplicateItem"
+        }
+
+        MenuCommand {
+            action: root.actions.selectAll
+            objectName: "selectAllItem"
+        }
+
+        MenuSeparator {
+        }
+
+        Menu {
+            objectName: "arrangeMenu"
+            title: qsTr("Arrange")
+
+            MenuCommand {
+                action: root.actions.rotateLeft
+                objectName: "rotateLeftItem"
+            }
+
+            MenuCommand {
+                action: root.actions.rotateRight
+                objectName: "rotateRightItem"
+            }
+        }
+
         MenuSeparator {
         }
 
@@ -151,6 +184,52 @@ MenuBar {
         MenuCommand {
             action: root.actions.showTrash
             objectName: "trashItem"
+        }
+    }
+
+    Menu {
+        objectName: "toolsMenu"
+        title: qsTr("&Tools")
+
+        MenuCommand {
+            action: root.actions.selectTool
+        }
+
+        MenuCommand {
+            action: root.actions.handTool
+        }
+
+        MenuCommand {
+            action: root.actions.penTool
+        }
+
+        MenuCommand {
+            action: root.actions.highlighterTool
+        }
+
+        MenuCommand {
+            action: root.actions.shapeTool
+        }
+
+        MenuCommand {
+            action: root.actions.eraserTool
+        }
+
+        MenuCommand {
+            action: root.actions.textTool
+            objectName: "textToolItem"
+        }
+
+        MenuCommand {
+            action: root.actions.colourTool
+        }
+
+        MenuSeparator {
+        }
+
+        MenuCommand {
+            action: root.actions.eraserMode
+            objectName: "eraserModeItem"
         }
     }
 

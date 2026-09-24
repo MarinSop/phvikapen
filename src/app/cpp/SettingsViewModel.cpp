@@ -24,6 +24,10 @@ constexpr auto kTestVersionsSetting = "updates/testVersions";
 constexpr auto kThemeSetting = "look/theme";
 constexpr auto kShortcutPrefix = "shortcuts/";
 constexpr auto kSmoothingSetting = "ink/smoothing";
+constexpr auto kPressureSetting = "ink/pressure";
+constexpr auto kZoomStepSetting = "view/zoomStep";
+constexpr auto kUiScaleSetting = "look/uiScale";
+constexpr auto kHoldMenuSetting = "input/holdForMenu";
 constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
 constexpr auto kPagePanelSetting = "view/pagePanel";
@@ -69,6 +73,12 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_sectionsHeight = std::clamp(settings.value(kSectionsHeightSetting, m_sectionsHeight).toInt(),
                                   kShortestList, kTallestList);
     m_showPagePanel = settings.value(kPagePanelSetting, m_showPagePanel).toBool();
+    m_usePressure = settings.value(kPressureSetting, m_usePressure).toBool();
+    m_holdForMenu = settings.value(kHoldMenuSetting, m_holdForMenu).toBool();
+    m_zoomStep = std::clamp(settings.value(kZoomStepSetting, m_zoomStep).toDouble(),
+                            kGentlestZoomStep, kBoldestZoomStep);
+    m_uiScale = std::clamp(settings.value(kUiScaleSetting, m_uiScale).toDouble(), kSmallestUiScale,
+                           kLargestUiScale);
     for (const Command& command : commands()) {
         const QString kept = settings.value(kShortcutPrefix + command.id).toString();
         if (!kept.isEmpty()) {
@@ -283,6 +293,56 @@ void SettingsViewModel::setSmoothing(qreal smoothing) {
     emit smoothingChanged();
 }
 
+void SettingsViewModel::setUsePressure(bool used) {
+    if (used == m_usePressure) {
+        return;
+    }
+    m_usePressure = used;
+    QSettings settings;
+    settings.setValue(kPressureSetting, m_usePressure);
+    emit drawingChanged();
+}
+
+void SettingsViewModel::setZoomStep(qreal step) {
+    const qreal wanted = std::clamp(step, kGentlestZoomStep, kBoldestZoomStep);
+    if (qFuzzyCompare(wanted, m_zoomStep)) {
+        return;
+    }
+    m_zoomStep = wanted;
+    QSettings settings;
+    settings.setValue(kZoomStepSetting, m_zoomStep);
+    emit drawingChanged();
+}
+
+void SettingsViewModel::setUiScale(qreal scale) {
+    const qreal wanted = std::clamp(scale, kSmallestUiScale, kLargestUiScale);
+    if (qFuzzyCompare(wanted, m_uiScale)) {
+        return;
+    }
+    m_uiScale = wanted;
+    QSettings settings;
+    settings.setValue(kUiScaleSetting, m_uiScale);
+    emit drawingChanged();
+}
+
+void SettingsViewModel::setHoldForMenu(bool wanted) {
+    if (wanted == m_holdForMenu) {
+        return;
+    }
+    m_holdForMenu = wanted;
+    QSettings settings;
+    settings.setValue(kHoldMenuSetting, m_holdForMenu);
+    emit drawingChanged();
+}
+
+void SettingsViewModel::resetDrawing() {
+    setSmoothing(kDefaultSmoothing);
+    setUsePressure(true);
+    setZoomStep(kDefaultZoomStep);
+    setUiScale(kDefaultUiScale);
+    setHoldForMenu(true);
+}
+
 void SettingsViewModel::setExportScope(int scope) {
     const int wanted = std::clamp(scope, 0, kExportScopes - 1);
     if (wanted == m_exportScope) {
@@ -396,6 +456,15 @@ void SettingsViewModel::setCustomHeight(qreal millimeters) {
     changeStyle(core::normalized(style));
 }
 
+QString SettingsViewModel::keysFor(const QString& commandId) const {
+    const QString kept = m_shortcuts.value(commandId).toString();
+    return kept.isEmpty() ? defaultKeysOf(commandId) : kept;
+}
+
+QString SettingsViewModel::defaultKeys(const QString& commandId) {
+    return defaultKeysOf(commandId);
+}
+
 QString SettingsViewModel::conflictWith(const QString& commandId, const QString& sequence) const {
     const QString wanted = keysOf(sequence);
     if (wanted.isEmpty()) {
@@ -405,7 +474,7 @@ QString SettingsViewModel::conflictWith(const QString& commandId, const QString&
         if (command.id == commandId) {
             continue;
         }
-        const QString theirs = keysOf(m_shortcuts.value(command.id, command.fallback).toString());
+        const QString theirs = keysOf(keysFor(command.id));
         if (theirs == wanted) {
             return command.name;
         }
