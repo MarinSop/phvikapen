@@ -845,6 +845,11 @@ void NotebookViewModel::pickColour(const core::InkSample& at, int sheet) {
     if (page == nullptr) {
         return;
     }
+    if (const core::TextBox* const box = page->textUnder(core::Point{.x = at.x, .y = at.y})) {
+        const core::Color& colour = box->style.color;
+        emit colourPicked(QColor::fromRgb(colour.red, colour.green, colour.blue, colour.alpha));
+        return;
+    }
     const std::span<const core::PlacedStroke> strokes = page->strokes();
     for (const core::PlacedStroke& placed : std::ranges::reverse_view(strokes)) {
         const core::EraserSweep spot{

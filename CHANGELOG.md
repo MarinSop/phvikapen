@@ -67,6 +67,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The frame around what is picked stood still while the drawing under it was turned or sized, and
+  sat in a different place from the one the grips belonged to. There is one frame now: it stands
+  where the canvas draws its own, and follows the ink through the whole drag, about the very point
+  the strokes are turned about. The grips are smaller, are drawn white with a colored edge, and
+  step aside while a drag is under way.
+- The color picker passes over typed text. It now takes the color of a box of words, which is what
+  is topmost where it was asked.
+- A box of typed text can be picked up with the pick tool and corrected, without first reaching for
+  the text tool.
+- A new box of text is plain every time. The face of the last box was remembered and given to the
+  next one, and kept between one run of the application and the next.
+- The menu under the pointer was as wide as the widest menu of the window, whatever it said. Every
+  line is now as wide as what it says.
 - The keys did nothing on macOS. What was written beside a command — `⌘Z` and the like — was handed
   back to the toolkit as the keys the command should answer to, and nothing can read that back, so
   undo, redo, copy, paste, save, close, zoom and turning the page answered to no key at all. What a

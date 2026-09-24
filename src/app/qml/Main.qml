@@ -253,7 +253,7 @@ ApplicationWindow {
             smoothing: settings.smoothing
             strokeColor: toolState.strokeColor
             strokeWidth: toolState.strokeWidth
-            typing: toolState.currentTool === ToolViewModel.Text
+            typing: toolState.currentTool === ToolViewModel.Text || (root.notebook !== null && root.notebook.pickedText !== "")
             visible: root.notebook !== null
             zoomStep: settings.zoomStep
 

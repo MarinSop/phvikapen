@@ -21,6 +21,10 @@ Item {
     readonly property real pageUnitsPerPoint: 96 / 72
     readonly property var picked: root.notebook === null ? ({}) : root.notebook.pickedBox
     readonly property bool placing: root.tools !== null && root.tools.currentTool === ToolViewModel.Text
+    // The pick tool takes hold of a box of words as well, so that one can be opened again and
+    // corrected without first reaching for the text tool.
+    readonly property bool picking: root.tools !== null && root.tools.currentTool === ToolViewModel.Selection
+    readonly property bool reachable: root.placing || root.picking
     readonly property string pickedId: root.picked.textId === undefined ? "" : root.picked.textId
     readonly property bool typing: root.pickedId !== ""
     readonly property real zoom: root.canvas === null ? 1 : root.canvas.zoom
@@ -46,12 +50,12 @@ Item {
 
     anchors.fill: parent
     // Only the text tool reaches the paper through this layer; every other tool draws below it.
-    enabled: (root.placing || root.typing) && root.notebook !== null && root.canvas !== null
+    enabled: (root.reachable || root.typing) && root.notebook !== null && root.canvas !== null
     objectName: "textLayer"
 
-    // Picking up another tool finishes the box that was being typed in.
-    onPlacingChanged: {
-        if (!root.placing && root.typing) {
+    // Picking up a tool that has no business with words finishes the box being typed in.
+    onReachableChanged: {
+        if (!root.reachable && root.typing) {
             root.leave();
         }
     }
@@ -71,6 +75,7 @@ Item {
     MouseArea {
         anchors.fill: parent
         enabled: root.placing || root.typing
+        objectName: "textPlacer"
 
         onPressed: mouse => {
             if (root.typing) {
@@ -78,6 +83,8 @@ Item {
                 return;
             }
             const at = root.columnPointOf(Qt.point(mouse.x, mouse.y));
+            // Every new box starts plain; the face of the last one stays with the last one.
+            root.tools.resetTextStyle();
             root.notebook.addTextAt(at.x, at.y, root.tools.textStyle);
         }
     }

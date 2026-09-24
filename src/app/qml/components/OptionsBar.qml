@@ -420,7 +420,9 @@ ToolBar {
 
     Connections {
         function onPickedTextChanged() {
-            if (root.pickedText !== "") {
+            if (root.pickedText === "") {
+                root.tools.resetTextStyle();
+            } else {
                 root.tools.useTextStyle(root.notebook.styleOfText(root.pickedText));
             }
         }

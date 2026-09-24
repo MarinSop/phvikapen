@@ -62,6 +62,9 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
+    Q_PROPERTY(qreal selectionMargin READ selectionMargin CONSTANT FINAL)
+    Q_PROPERTY(bool markSelection READ markSelection WRITE setMarkSelection NOTIFY
+                   markSelectionChanged FINAL)
     Q_PROPERTY(QRectF mediaArea READ mediaArea NOTIFY mediaChanged FINAL)
     Q_PROPERTY(QSize mediaSize READ mediaSize NOTIFY mediaChanged FINAL)
     Q_PROPERTY(int visibleSheetCount READ visibleSheetCount NOTIFY viewChanged FINAL)
@@ -197,6 +200,18 @@ public:
 
     [[nodiscard]] QRectF selectionRect() const;
 
+    // How far outside what is picked its frame is drawn, in the units of the page, so that
+    // whatever else draws a frame around it can stand in exactly the same place.
+    static constexpr qreal kSelectionEdge = 6.0;
+
+    [[nodiscard]] static qreal selectionMargin() { return kSelectionEdge; }
+
+    // Whether the canvas draws the frame around what is picked itself. It gives that up while
+    // something above it is showing the same thing being turned or sized.
+    [[nodiscard]] bool markSelection() const noexcept { return m_markSelection; }
+
+    void setMarkSelection(bool marked);
+
     Q_INVOKABLE void clearSelection();
 
     // Everything drawn on the sheet that is being read, picked up at once.
@@ -283,6 +298,7 @@ signals:
     // Where the reader asked what can be done, in this item's own coordinates.
     void menuWanted(const QPointF& at);
     void selectionChanged();
+    void markSelectionChanged();
     void mediaChanged();
     void pageWanted(int index);
     void eraserRadiusChanged();
@@ -431,6 +447,7 @@ private:
     bool m_panning{false};
     bool m_picking{false};
     bool m_typing{false};
+    bool m_markSelection{true};
     bool m_activeIsTranslucent{false};
     std::uint64_t m_generation{0};
     core::Viewport m_viewport;

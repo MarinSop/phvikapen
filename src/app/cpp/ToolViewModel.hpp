@@ -155,8 +155,11 @@ public:
 
     [[nodiscard]] QVariantMap textStyle() const;
 
-    // The face a box that is picked wears becomes the face the bar shows and the next box takes.
+    // The face a box that is picked wears becomes the face the bar shows.
     Q_INVOKABLE void useTextStyle(const QVariantMap& style);
+
+    // Back to the plain face, which is what every new box of text is given.
+    Q_INVOKABLE void resetTextStyle();
 
     // The colour taken off the page belongs to every pen from then on, and the tool that was in
     // hand before the picker comes back.

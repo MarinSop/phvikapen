@@ -384,7 +384,7 @@ constexpr core::Color kMarqueeFill{.red = 60, .green = 110, .blue = 220, .alpha 
 constexpr core::Color kSelectionColor{.red = 60, .green = 110, .blue = 220, .alpha = 200};
 constexpr core::Color kSelectionFill{.red = 60, .green = 110, .blue = 220, .alpha = 22};
 constexpr float kOutlinePixels = 1.5F;
-constexpr float kSelectionMargin = 6.0F;
+constexpr auto kSelectionMargin = static_cast<float>(QtInkItem::kSelectionEdge);
 
 void appendLine(std::vector<InkVertex>& into, core::Point from, core::Point to, float width,
                 const core::Color& color) {
@@ -451,7 +451,8 @@ void QtInkItem::rebuildBuffers() {
     const float outline = kOutlinePixels / std::max(m_viewport.scale(), 0.01F);
 
     if (!m_selected.empty()) {
-        if (const std::optional<core::Rect> bounds = selectionBounds()) {
+        if (const std::optional<core::Rect> bounds =
+                m_markSelection ? selectionBounds() : std::nullopt) {
             const core::Rect shown =
                 core::Rect{
                     .left = bounds->left + m_dragOffset.x,
@@ -789,6 +790,16 @@ void QtInkItem::setEraserRadius(qreal radius) {
     }
     m_eraserRadius = radius;
     emit eraserRadiusChanged();
+}
+
+void QtInkItem::setMarkSelection(bool marked) {
+    if (marked == m_markSelection) {
+        return;
+    }
+    m_markSelection = marked;
+    emit markSelectionChanged();
+    rebuildBuffers();
+    update();
 }
 
 void QtInkItem::setZoomStep(qreal step) {

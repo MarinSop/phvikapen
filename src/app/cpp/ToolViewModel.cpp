@@ -23,14 +23,6 @@ constexpr auto kEraserSetting = "tools/eraser";
 constexpr auto kEraserModeSetting = "tools/eraserMode";
 constexpr auto kShapeSetting = "tools/shape";
 constexpr auto kCornerSetting = "tools/corner";
-constexpr auto kTextFontSetting = "tools/text/font";
-constexpr auto kTextSizeSetting = "tools/text/size";
-constexpr auto kTextColorSetting = "tools/text/color";
-constexpr auto kTextAlignSetting = "tools/text/align";
-constexpr auto kTextBoldSetting = "tools/text/bold";
-constexpr auto kTextItalicSetting = "tools/text/italic";
-constexpr auto kTextUnderlineSetting = "tools/text/underline";
-constexpr auto kTextStruckSetting = "tools/text/struck";
 constexpr auto kColorPrefix = "tools/color/";
 constexpr auto kWidthPrefix = "tools/width/";
 constexpr auto kHighlighterKey = "highlighter";
@@ -289,6 +281,15 @@ QVariantMap ToolViewModel::textStyle() const {
     return mapOfStyle(m_text);
 }
 
+void ToolViewModel::resetTextStyle() {
+    const core::TextStyle plain;
+    if (plain == m_text) {
+        return;
+    }
+    m_text = plain;
+    emit textChanged();
+}
+
 void ToolViewModel::useTextStyle(const QVariantMap& style) {
     const core::TextStyle wanted = styleOfMap(style);
     if (wanted == m_text) {
@@ -369,14 +370,6 @@ void ToolViewModel::remember() const {
     settings.setValue(QString{kColorPrefix} + kHighlighterKey,
                       m_highlighter.color.name(QColor::HexArgb));
     settings.setValue(QString{kWidthPrefix} + kHighlighterKey, m_highlighter.width);
-    settings.setValue(kTextFontSetting, textFont());
-    settings.setValue(kTextSizeSetting, textSize());
-    settings.setValue(kTextColorSetting, textColor().name(QColor::HexArgb));
-    settings.setValue(kTextAlignSetting, textAlign());
-    settings.setValue(kTextBoldSetting, m_text.bold);
-    settings.setValue(kTextItalicSetting, m_text.italic);
-    settings.setValue(kTextUnderlineSetting, m_text.underline);
-    settings.setValue(kTextStruckSetting, m_text.struckOut);
 }
 
 void ToolViewModel::restore() {
@@ -412,25 +405,6 @@ void ToolViewModel::restore() {
         && erase <= static_cast<int>(Erase::WholeStroke)) {
         m_eraserMode = static_cast<Erase>(erase);
     }
-
-    m_text.font = settings.value(kTextFontSetting, textFont()).toString().toStdString();
-    m_text.size =
-        static_cast<float>(std::clamp(settings.value(kTextSizeSetting, textSize()).toDouble(),
-                                      static_cast<qreal>(core::TextStyle::kSmallestSize),
-                                      static_cast<qreal>(core::TextStyle::kLargestSize)));
-    if (const QColor colour{
-            settings.value(kTextColorSetting, textColor().name(QColor::HexArgb)).toString()};
-        colour.isValid()) {
-        setTextColor(colour);
-    }
-    const int align = settings.value(kTextAlignSetting, textAlign()).toInt();
-    if (align >= 0 && align <= static_cast<int>(core::TextAlign::Justify)) {
-        m_text.align = static_cast<core::TextAlign>(align);
-    }
-    m_text.bold = settings.value(kTextBoldSetting, m_text.bold).toBool();
-    m_text.italic = settings.value(kTextItalicSetting, m_text.italic).toBool();
-    m_text.underline = settings.value(kTextUnderlineSetting, m_text.underline).toBool();
-    m_text.struckOut = settings.value(kTextStruckSetting, m_text.struckOut).toBool();
 
     emit currentToolChanged();
     emit shapeChanged();

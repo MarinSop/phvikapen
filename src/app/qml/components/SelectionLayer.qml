@@ -3,9 +3,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import PhvikaPen.Ui
 
-// The frame around what is picked up, with the grips that size and turn it. Only the grips take
-// the pointer; everything inside the frame falls through to the canvas, which carries the
-// selection about as it always has.
+// The frame around what is picked up, with the grips that size and turn it. It stands exactly
+// where the canvas draws its own frame, and takes that drawing over while something is being
+// turned or sized, so that the frame follows the ink instead of standing still beside it. Only
+// the grips take the pointer; everything inside falls through to the canvas, which carries what
+// is picked about as it always has.
 Item {
     id: root
 
@@ -22,14 +24,19 @@ Item {
     property real turnedFrom: 0
     property bool working: false
     readonly property real quarter: 15
+    readonly property int gripSize: Math.round(9 * Theme.scale)
+    readonly property real margin: root.canvas === null ? 0 : root.canvas.selectionMargin
     readonly property point origin: root.canvas === null ? Qt.point(0, 0) : root.canvas.viewOrigin
     readonly property bool picking: root.tools !== null && root.tools.currentTool === ToolViewModel.Selection
     readonly property real zoom: root.canvas === null ? 1 : root.canvas.zoom
     readonly property bool shown: root.picking && root.notebook !== null && root.canvas !== null && root.canvas.selectedCount > 0 && root.area.width > 0 && root.area.height > 0
-    readonly property real boxLeft: (root.area.x - root.origin.x) * root.zoom
-    readonly property real boxTop: (root.area.y - root.origin.y) * root.zoom
-    readonly property real wide: root.area.width * root.zoom
-    readonly property real tall: root.area.height * root.zoom
+    readonly property real boxLeft: (root.area.x - root.margin - root.origin.x) * root.zoom
+    readonly property real boxTop: (root.area.y - root.margin - root.origin.y) * root.zoom
+    readonly property real wide: (root.area.width + (root.margin * 2)) * root.zoom
+    readonly property real tall: (root.area.height + (root.margin * 2)) * root.zoom
+    // The point that stays still, where it sits in this item.
+    readonly property real pivotX: (root.pivot.x - root.origin.x) * root.zoom
+    readonly property real pivotY: (root.pivot.y - root.origin.y) * root.zoom
 
     // What is being done, in the words the notebook reads it in.
     function change() {
@@ -68,6 +75,12 @@ Item {
         root.area = root.notebook === null ? Qt.rect(0, 0, 0, 0) : root.notebook.selectionArea();
     }
 
+    function show() {
+        if (root.working) {
+            root.notebook.showTransform(root.change());
+        }
+    }
+
     // Sizing keeps the corner opposite the grip exactly where it is.
     function sizeFrom(cornerX, cornerY) {
         root.pivot = Qt.point(cornerX, cornerY);
@@ -80,12 +93,6 @@ Item {
         root.working = true;
     }
 
-    function show() {
-        if (root.working) {
-            root.notebook.showTransform(root.change());
-        }
-    }
-
     objectName: "selectionLayer"
     visible: root.shown
 
@@ -93,6 +100,12 @@ Item {
         if (!root.picking) {
             root.letGo();
         }
+    }
+
+    Binding {
+        property: "markSelection"
+        target: root.canvas
+        value: !root.working
     }
 
     Connections {
@@ -122,25 +135,40 @@ Item {
         target: root.notebook
     }
 
-    Rectangle {
-        border.color: Theme.accent
-        border.width: 1
-        color: "transparent"
+    // The frame follows the ink through the whole drag: it is scaled and turned about the very
+    // point the strokes below it are scaled and turned about.
+    Item {
         height: root.tall
-        objectName: "selectionFrame"
-        opacity: 0.9
         width: root.wide
         x: root.boxLeft
         y: root.boxTop
 
-        transform: Rotation {
-            angle: root.liveTurn
-            origin.x: root.wide / 2
-            origin.y: root.tall / 2
+        transform: [
+            Scale {
+                origin.x: root.pivotX - root.boxLeft
+                origin.y: root.pivotY - root.boxTop
+                xScale: root.liveWide
+                yScale: root.liveTall
+            },
+            Rotation {
+                angle: root.liveTurn
+                origin.x: root.pivotX - root.boxLeft
+                origin.y: root.pivotY - root.boxTop
+            }
+        ]
+
+        Rectangle {
+            anchors.fill: parent
+            border.color: Theme.accent
+            border.width: 1
+            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.08)
+            objectName: "selectionFrame"
         }
     }
 
-    // Eight grips: the corners size both ways at once, the edges one way at a time.
+    // Eight grips: the corners size both ways at once, the edges one way at a time. They step
+    // aside while a drag is under way, so that nothing stands between the reader and the shape
+    // being made.
     Repeater {
         model: 8
 
@@ -153,13 +181,15 @@ Item {
             readonly property int pullX: [-1, 1, 1, -1, 0, 1, 0, -1][grip.index]
             readonly property int pullY: [-1, -1, 1, 1, -1, 0, 1, 0][grip.index]
 
+            antialiasing: true
             border.color: Theme.accent
             border.width: 1
-            color: Theme.surface
-            height: Theme.grip
+            color: Theme.accentText
+            height: root.gripSize
             objectName: "sizeGrip" + grip.index
-            radius: 3
-            width: Theme.grip
+            radius: 2
+            visible: !root.working
+            width: root.gripSize
             x: root.boxLeft + ((grip.pullX + 1) / 2 * root.wide) - (width / 2)
             y: root.boxTop + ((grip.pullY + 1) / 2 * root.tall) - (height / 2)
 
@@ -202,23 +232,24 @@ Item {
     // The knob above the frame turns what is picked. Held with Shift it stops every fifteen
     // degrees, the way a drawing program turns things.
     Rectangle {
-        id: knob
-
+        antialiasing: true
         border.color: Theme.accent
         border.width: 1
-        color: Theme.surface
-        height: Theme.grip
+        color: Theme.accentText
+        height: root.gripSize + 2
         objectName: "turnGrip"
         radius: height / 2
-        width: Theme.grip
+        visible: !root.working
+        width: root.gripSize + 2
         x: root.boxLeft + (root.wide / 2) - (width / 2)
-        y: root.boxTop - (Theme.grip * 2)
+        y: root.boxTop - (root.gripSize * 2)
 
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
             color: Theme.accent
-            height: Theme.grip
+            height: root.gripSize
+            opacity: 0.7
             width: 1
         }
 

@@ -8,11 +8,14 @@ MenuItem {
     readonly property string shortcutText: root.action === null ? "" : AppInfo.shortcutText(root.action.shortcut)
 
     implicitHeight: Math.max(Theme.rowHeight, implicitContentHeight + topPadding + bottomPadding)
-    implicitWidth: Math.max(Theme.menuWidth, implicitContentWidth + leftPadding + rightPadding)
+    implicitWidth: implicitContentWidth + leftPadding + rightPadding
     indicator: null
 
     contentItem: Item {
+        readonly property int tickRoom: root.checkable ? 18 : 0
+
         implicitHeight: label.implicitHeight
+        implicitWidth: tickRoom + label.implicitWidth + (keys.visible ? Theme.rowHeight + keys.implicitWidth : 0)
 
         Label {
             id: tick
@@ -36,6 +39,8 @@ MenuItem {
         }
 
         Label {
+            id: keys
+
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             color: palette.placeholderText
