@@ -48,6 +48,42 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_whetherThisMachineReadsHandwritingIsSaidPlainly() {
+        const notebook = openNotebook(newNotebookPath());
+
+        compare(typeof notebook.readsHandwriting, "boolean");
+        compare(notebook.readsHandwriting, Qt.platform.os === "windows");
+        compare(notebook.pagesToRead, 0);
+    }
+
+    function test_searchingForNothingFindsNothing() {
+        const notebook = openNotebook(newNotebookPath());
+        const results = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "found"
+        });
+
+        notebook.find("   ");
+
+        compare(results.count, 1);
+        compare(results.signalArguments[0][0].length, 0);
+    }
+
+    function test_whatWasNeverWrittenIsNeverFound() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        const results = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "found"
+        });
+
+        notebook.find("zzzqqq");
+
+        tryCompare(results, "count", 1);
+        compare(results.signalArguments[0][0].length, 0);
+        compare(notebook.errorMessage, "");
+    }
+
     function test_oneSweepOfTheEraserIsOneChange() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 40, 40);

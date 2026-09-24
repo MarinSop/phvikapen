@@ -1,5 +1,6 @@
 #include "app/cpp/NotebookViewModel.hpp"
 
+#include "app/cpp/HandwritingReader.hpp"
 #include "app/cpp/OutlineModels.hpp"
 #include "app/cpp/Thumbnails.hpp"
 #include "core/Error.hpp"
@@ -13,6 +14,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/text/InkWord.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
@@ -51,6 +53,8 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kDefaultNotebookName = "default.phvika";
+// More than a reader would ever look through at once.
+constexpr std::size_t kMostFound = 300;
 constexpr auto kKeptPrefix = "kept/";
 constexpr int kMaximumMediaPixels = 4096;
 constexpr qreal kMediaRedrawFactor = 1.4;
@@ -122,11 +126,21 @@ NotebookViewModel::NotebookViewModel(QObject* parent) : QObject(parent) {
     m_mediaTimer.setSingleShot(true);
     m_mediaTimer.setInterval(kMediaRedrawDelay);
     connect(&m_mediaTimer, &QTimer::timeout, this, &NotebookViewModel::redrawMedia);
+    connect(&m_reader, &HandwritingReader::pagesWaitingChanged, this, [this](int waiting) {
+        if (waiting == m_pagesToRead) {
+            return;
+        }
+        m_pagesToRead = waiting;
+        emit readingChanged();
+    });
+    connect(&m_reader, &HandwritingReader::failed, this, &NotebookViewModel::reportError);
 }
 
 NotebookViewModel::NotebookViewModel(QString path, QString startPage, QObject* parent)
-    : QObject(parent), m_notebookPath{std::move(path)}, m_startPage{std::move(startPage)},
-      m_completed{true} {
+    : NotebookViewModel(parent) {
+    m_notebookPath = std::move(path);
+    m_startPage = std::move(startPage);
+    m_completed = true;
     openNotebook();
 }
 
@@ -272,6 +286,7 @@ void NotebookViewModel::openNotebook() {
     }
 
     const std::filesystem::path path{file.toStdU16String()};
+    m_reader.open(path);
     m_storage.emplace(path, [this](const core::Error& error) {
         QMetaObject::invokeMethod(
             this, [this, message = QString::fromStdString(error.message)] { reportError(message); },
@@ -1216,6 +1231,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
     }
     forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
     markEdited();
+    m_reader.nudge();
     emit historyChanged();
 
     if (pageToShow && *pageToShow != m_currentPage && m_outline.page(*pageToShow) != nullptr) {
@@ -2144,6 +2160,59 @@ bool NotebookViewModel::writeTo(const QString& path) {
     }
     emit saved(path);
     return true;
+}
+
+bool NotebookViewModel::readsHandwriting() {
+    return HandwritingReader::availableHere();
+}
+
+void NotebookViewModel::find(const QString& text) {
+    if (!m_storage || text.trimmed().isEmpty()) {
+        emit found(QVariantList{});
+        return;
+    }
+    m_storage->submit(
+        [this, wanted = text.toStdString()](core::NotebookStore& store) -> core::Result<void> {
+            core::Result<std::vector<core::FoundWord>> hits = store.findWords(wanted);
+            if (!hits) {
+                return std::unexpected{hits.error()};
+            }
+            QMetaObject::invokeMethod(
+                this, [this, hits = std::move(*hits)] { showFound(hits); }, Qt::QueuedConnection);
+            return {};
+        });
+}
+
+void NotebookViewModel::showFound(const std::vector<core::FoundWord>& hits) {
+    QVariantList results;
+    results.reserve(static_cast<qsizetype>(std::min(hits.size(), kMostFound)));
+    for (const core::FoundWord& hit : hits) {
+        if (std::cmp_greater_equal(results.size(), kMostFound)) {
+            break;
+        }
+        const core::PageInfo* const page = m_outline.page(hit.pageId);
+        if (page == nullptr) {
+            continue;
+        }
+        QString section;
+        if (const std::optional<core::PagePlace> place = m_outline.placeOf(hit.pageId)) {
+            const std::optional<std::size_t> index = m_outline.sectionIndex(place->sectionId);
+            if (index) {
+                section = QString::fromStdString(m_outline.sections()[*index].title);
+            }
+        }
+        results.append(QVariantMap{
+            {QStringLiteral("pageId"), QString::fromStdString(hit.pageId.toString())},
+            {QStringLiteral("pageTitle"), QString::fromStdString(page->title)},
+            {QStringLiteral("sectionTitle"), section},
+            {QStringLiteral("text"), QString::fromStdString(hit.word.text)},
+            {QStringLiteral("left"), hit.word.box.left},
+            {QStringLiteral("top"), hit.word.box.top},
+            {QStringLiteral("right"), hit.word.box.right},
+            {QStringLiteral("bottom"), hit.word.box.bottom},
+        });
+    }
+    emit found(results);
 }
 
 void NotebookViewModel::markEdited() {

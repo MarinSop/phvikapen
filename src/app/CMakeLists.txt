@@ -46,6 +46,8 @@ qt_add_qml_module(phvikapen_ui
     SOURCES
         cpp/AppInfo.cpp
         cpp/AppInfo.hpp
+        cpp/HandwritingReader.cpp
+        cpp/HandwritingReader.hpp
         cpp/InkCanvasForeign.hpp
         cpp/NotebookViewModel.cpp
         cpp/NotebookViewModel.hpp

@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the words come back with the place they sit in and the strokes they were written with. The
   application can say which languages the machine reads, and where there is no reader, which is
   every machine that is not Windows, it says so instead.
+- A notebook reads its own handwriting in the background, one page at a time, on a thread of its
+  own: pages written on since they were last read are read again while the hand rests, and what is
+  found can be searched for from the notebook.
 
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/cpp/HandwritingReader.hpp"
 #include "app/cpp/OutlineModels.hpp"
 #include "core/Error.hpp"
 #include "core/geometry/Distance.hpp"
@@ -57,6 +58,8 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
                    canvasChanged FINAL)
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
+    Q_PROPERTY(bool readsHandwriting READ readsHandwriting CONSTANT FINAL)
+    Q_PROPERTY(int pagesToRead READ pagesToRead NOTIFY readingChanged FINAL)
     Q_PROPERTY(QString title READ title NOTIFY outlineChanged FINAL)
     Q_PROPERTY(QString keptAt READ keptAt NOTIFY keptAtChanged FINAL)
     Q_PROPERTY(bool edited READ edited NOTIFY editedChanged FINAL)
@@ -112,6 +115,13 @@ public:
     void componentComplete() override;
 
     [[nodiscard]] QString notebookPath() const { return m_notebookPath; }
+
+    [[nodiscard]] static bool readsHandwriting();
+
+    [[nodiscard]] int pagesToRead() const { return m_pagesToRead; }
+
+    // Every word of handwriting that holds what was typed, wherever it is in this notebook.
+    Q_INVOKABLE void find(const QString& text);
 
     void setNotebookPath(const QString& path);
 
@@ -245,6 +255,8 @@ public:
 
 signals:
     void notebookPathChanged();
+    void readingChanged();
+    void found(const QVariantList& words);
     void startPageChanged();
     void canvasChanged();
     void loadedChanged();
@@ -348,6 +360,7 @@ private:
     void publishOutline();
     void dropStartingPage();
     void markEdited();
+    void showFound(const std::vector<core::FoundWord>& hits);
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
@@ -406,6 +419,8 @@ private:
     core::Uuid m_startingPage;
     core::Uuid m_erasedPage;
     QString m_keptAt;
+    HandwritingReader m_reader{this};
+    int m_pagesToRead{0};
     bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;
     std::map<core::Uuid, int> m_thumbnails;
