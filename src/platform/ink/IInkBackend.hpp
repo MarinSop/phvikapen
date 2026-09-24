@@ -3,6 +3,7 @@
 #include "core/geometry/Distance.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeEraser.hpp"
 
 #include <span>
 #include <string_view>
@@ -26,7 +27,7 @@ public:
     virtual void strokeCancelled() = 0;
 
     virtual void eraserMoved(const core::InkSample& from, const core::InkSample& to, float radius,
-                             int sheet) = 0;
+                             core::EraseMode mode, int sheet) = 0;
 
     virtual void eraseFinished() = 0;
 

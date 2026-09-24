@@ -30,12 +30,17 @@ using core::InkSample;
 using core::InkVertex;
 
 constexpr std::chrono::microseconds::rep kMicrosecondsPerMillisecond = 1000;
-constexpr float kZoomStep = 1.25F;
 constexpr auto kLiveRedraw = std::chrono::milliseconds{12};
 constexpr std::size_t kSmallestLiveStroke = 4;
 constexpr float kDegreesPerWheelNotch = 120.0F;
 constexpr float kWheelPixelsPerDegree = 0.5F;
 constexpr float kSheetGap = 24.0F;
+// How long the pen or the pointer must be held still before the menu of what can be done opens,
+// and how far it may wander in that time.
+constexpr auto kHoldForMenu = std::chrono::milliseconds{650};
+constexpr qreal kHoldSlack = 10.0;
+// Two sheets never stand this close, so anything nearer belongs to the same one.
+constexpr float kSameSheet = 0.5F;
 constexpr std::size_t kMostSheetsDrawn = 16;
 // How far down the window the page that is being read is taken from.
 constexpr float kReadingLine = 0.3F;
@@ -79,9 +84,12 @@ constexpr int kInkSamples = 4;
 
 QtInkItem::QtInkItem(QQuickItem* parent) : QQuickRhiItem(parent) {
     setSampleCount(kInkSamples);
-    setAcceptedMouseButtons(Qt::LeftButton);
+    setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton);
     setAcceptTouchEvents(true);
     setAcceptHoverEvents(true);
+    m_holdTimer.setSingleShot(true);
+    m_holdTimer.setInterval(kHoldForMenu);
+    connect(&m_holdTimer, &QTimer::timeout, this, &QtInkItem::askForMenu);
     connect(this, &QQuickItem::windowChanged, this, &QtInkItem::observeWindow);
 }
 
@@ -476,6 +484,18 @@ void QtInkItem::showSelection(std::vector<core::Uuid> strokeIds) {
     rebuildBuffers();
 }
 
+void QtInkItem::selectEverything() {
+    const float top = currentTop();
+    std::vector<core::Uuid> everything;
+    everything.reserve(m_meshes.size());
+    for (const StrokeMesh& mesh : m_meshes) {
+        if (std::abs(mesh.top - top) < kSameSheet) {
+            everything.push_back(mesh.id);
+        }
+    }
+    showSelection(std::move(everything));
+}
+
 void QtInkItem::forgetStrokes(std::span<const core::Uuid> strokeIds) {
     std::erase_if(m_meshes, [&strokeIds](const StrokeMesh& mesh) {
         return std::ranges::find(strokeIds, mesh.id) != strokeIds.end();
@@ -771,6 +791,27 @@ void QtInkItem::setEraserRadius(qreal radius) {
     emit eraserRadiusChanged();
 }
 
+void QtInkItem::setZoomStep(qreal step) {
+    const qreal wanted = std::clamp(step, kGentlestZoomStep, kBoldestZoomStep);
+    if (qFuzzyCompare(wanted, m_zoomStep)) {
+        return;
+    }
+    m_zoomStep = wanted;
+    emit zoomStepChanged();
+}
+
+void QtInkItem::setEraseMode(int mode) {
+    const auto wanted = mode == static_cast<int>(core::EraseMode::WholeStroke)
+                            ? core::EraseMode::WholeStroke
+                            : core::EraseMode::Touched;
+    if (wanted == m_eraseMode) {
+        return;
+    }
+    finishErase();
+    m_eraseMode = wanted;
+    emit eraseModeChanged();
+}
+
 void QtInkItem::setPressureSensitive(bool sensitive) {
     if (sensitive == m_pressureSensitive) {
         return;
@@ -820,13 +861,13 @@ void QtInkItem::followScrolling() {
 
 void QtInkItem::zoomIn() {
     core::Viewport viewport = m_viewport;
-    viewport.zoomAround(toPoint(boundingRect().center()), kZoomStep);
+    viewport.zoomAround(toPoint(boundingRect().center()), static_cast<float>(m_zoomStep));
     changeView(viewport);
 }
 
 void QtInkItem::zoomOut() {
     core::Viewport viewport = m_viewport;
-    viewport.zoomAround(toPoint(boundingRect().center()), 1.0F / kZoomStep);
+    viewport.zoomAround(toPoint(boundingRect().center()), 1.0F / static_cast<float>(m_zoomStep));
     changeView(viewport);
 }
 
@@ -870,7 +911,7 @@ void QtInkItem::wheelEvent(QWheelEvent* event) {
     if (event->modifiers().testFlag(Qt::ControlModifier)) {
         const float notches = static_cast<float>(angle.y()) / kDegreesPerWheelNotch;
         const QPointF position = event->position();
-        viewport.zoomAround(toPoint(position), std::pow(kZoomStep, notches));
+        viewport.zoomAround(toPoint(position), std::pow(static_cast<float>(m_zoomStep), notches));
     } else {
         QPointF delta = event->pixelDelta().isNull() ? QPointF{angle} * kWheelPixelsPerDegree
                                                      : QPointF{event->pixelDelta()};
@@ -985,19 +1026,38 @@ void QtInkItem::hoverLeaveEvent(QHoverEvent* event) {
 
 void QtInkItem::mousePressEvent(QMouseEvent* event) {
     noteKeys(event->modifiers());
+    if (event->button() == Qt::RightButton) {
+        forgetHold();
+        emit menuWanted(event->position());
+        event->accept();
+        return;
+    }
     press(onPage(makeSample(*event)), false);
+    watchForHold(event->position());
     event->accept();
 }
 
 void QtInkItem::mouseMoveEvent(QMouseEvent* event) {
     noteKeys(event->modifiers());
     showPointerAt(event->position(), true);
+    if (QLineF{m_holdAt, event->position()}.length() > kHoldSlack) {
+        forgetHold();
+    }
+    if (m_menuOpened) {
+        event->accept();
+        return;
+    }
     move(onPage(makeSample(*event)));
     event->accept();
 }
 
 void QtInkItem::mouseReleaseEvent(QMouseEvent* event) {
     noteKeys(event->modifiers());
+    forgetHold();
+    if (std::exchange(m_menuOpened, false)) {
+        event->accept();
+        return;
+    }
     release(onPage(makeSample(*event)));
     event->accept();
 }
@@ -1018,6 +1078,7 @@ void QtInkItem::noteKeys(Qt::KeyboardModifiers modifiers) {
 }
 
 void QtInkItem::mouseUngrabEvent() {
+    forgetHold();
     cancelStroke();
     finishErase();
 }
@@ -1055,15 +1116,32 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
         if (!isVisible() || !isEnabled() || !contains(position)) {
             return false;
         }
+        // The button on the barrel of the pen asks what can be done here, as it does elsewhere.
+        if (event.button() == Qt::RightButton) {
+            forgetHold();
+            emit menuWanted(position);
+            break;
+        }
         press(sample, event.pointerType() == QPointingDevice::PointerType::Eraser);
+        watchForHold(position);
         break;
     case QEvent::TabletMove:
+        if (QLineF{m_holdAt, position}.length() > kHoldSlack) {
+            forgetHold();
+        }
+        if (m_menuOpened) {
+            break;
+        }
         if (!isTracking()) {
             return false;
         }
         move(sample);
         break;
     case QEvent::TabletRelease:
+        forgetHold();
+        if (std::exchange(m_menuOpened, false)) {
+            break;
+        }
         if (!isTracking()) {
             return false;
         }
@@ -1075,6 +1153,39 @@ bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
 
     event.accept();
     return true;
+}
+
+void QtInkItem::watchForHold(const QPointF& at) {
+    m_menuOpened = false;
+    m_holdAt = at;
+    if (m_holdForMenu) {
+        m_holdTimer.start();
+    }
+}
+
+void QtInkItem::forgetHold() {
+    m_holdTimer.stop();
+}
+
+// What was being drawn while the pen was held is thrown away: the reader asked for the menu, not
+// for a mark.
+void QtInkItem::askForMenu() {
+    cancelStroke();
+    finishErase();
+    m_marquee.reset();
+    m_dragFrom.reset();
+    m_panFrom.reset();
+    m_menuOpened = true;
+    emit menuWanted(m_holdAt);
+}
+
+void QtInkItem::setHoldForMenu(bool wanted) {
+    if (wanted == m_holdForMenu) {
+        return;
+    }
+    m_holdForMenu = wanted;
+    forgetHold();
+    emit holdForMenuChanged();
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {
@@ -1164,7 +1275,8 @@ void QtInkItem::beginErase(const InkSample& sample) {
     m_eraserPosition = sample;
     if (m_sink != nullptr) {
         const InkSample local = onSheet(sample);
-        m_sink->eraserMoved(local, local, static_cast<float>(m_eraserRadius), m_workSheet);
+        m_sink->eraserMoved(local, local, static_cast<float>(m_eraserRadius), m_eraseMode,
+                            m_workSheet);
     }
 }
 
@@ -1175,7 +1287,7 @@ void QtInkItem::moveEraser(const InkSample& sample) {
     const InkSample from = std::exchange(*m_eraserPosition, sample);
     if (m_sink != nullptr) {
         m_sink->eraserMoved(onSheet(from), onSheet(sample), static_cast<float>(m_eraserRadius),
-                            m_workSheet);
+                            m_eraseMode, m_workSheet);
     }
 }
 

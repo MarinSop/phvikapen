@@ -5,6 +5,7 @@
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeEraser.hpp"
 #include "core/ink/StrokeMesh.hpp"
 #include "core/ink/StrokeShapes.hpp"
 #include "core/ink/StrokeSteadier.hpp"
@@ -20,6 +21,7 @@
 #include <QQuickWindow>
 #include <QRectF>
 #include <QSize>
+#include <QTimer>
 
 #include <chrono>
 #include <cstddef>
@@ -51,6 +53,10 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(bool panning READ panning WRITE setPanning NOTIFY panningChanged FINAL)
     Q_PROPERTY(bool picking READ picking WRITE setPicking NOTIFY pickingChanged FINAL)
     Q_PROPERTY(bool typing READ typing WRITE setTyping NOTIFY typingChanged FINAL)
+    Q_PROPERTY(int eraseMode READ eraseMode WRITE setEraseMode NOTIFY eraseModeChanged FINAL)
+    Q_PROPERTY(qreal zoomStep READ zoomStep WRITE setZoomStep NOTIFY zoomStepChanged FINAL)
+    Q_PROPERTY(
+        bool holdForMenu READ holdForMenu WRITE setHoldForMenu NOTIFY holdForMenuChanged FINAL)
     Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal corner READ corner WRITE setCorner NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
@@ -135,6 +141,21 @@ public:
 
     void forgetStrokes(std::span<const core::Uuid> strokeIds);
 
+    static constexpr qreal kDefaultZoomStep = 1.25;
+    static constexpr qreal kGentlestZoomStep = 1.05;
+    static constexpr qreal kBoldestZoomStep = 2.0;
+
+    // How much closer one step of the zoom brings the page.
+    [[nodiscard]] qreal zoomStep() const noexcept { return m_zoomStep; }
+
+    void setZoomStep(qreal step);
+
+    // Whether holding the pen or the pointer still opens the menu of what can be done here, the
+    // way pressing and holding does elsewhere on the platform.
+    [[nodiscard]] bool holdForMenu() const noexcept { return m_holdForMenu; }
+
+    void setHoldForMenu(bool wanted);
+
     static constexpr qreal kDefaultSmoothing = 0.5;
 
     [[nodiscard]] qreal smoothing() const noexcept { return m_smoothing; }
@@ -177,6 +198,9 @@ public:
     [[nodiscard]] QRectF selectionRect() const;
 
     Q_INVOKABLE void clearSelection();
+
+    // Everything drawn on the sheet that is being read, picked up at once.
+    Q_INVOKABLE void selectEverything();
 
     void showMedia(std::span<const MediaPiece> pieces);
     void clearMedia();
@@ -223,6 +247,11 @@ public:
 
     void setEraserRadius(qreal radius);
 
+    // Whether the eraser takes the part of a line it is rubbed over or the whole line at a touch.
+    [[nodiscard]] int eraseMode() const noexcept { return static_cast<int>(m_eraseMode); }
+
+    void setEraseMode(int mode);
+
     [[nodiscard]] bool pressureSensitive() const noexcept { return m_pressureSensitive; }
 
     void setPressureSensitive(bool sensitive);
@@ -249,10 +278,15 @@ signals:
     void deskColorChanged();
     void shapeChanged();
     void smoothingChanged();
+    void zoomStepChanged();
+    void holdForMenuChanged();
+    // Where the reader asked what can be done, in this item's own coordinates.
+    void menuWanted(const QPointF& at);
     void selectionChanged();
     void mediaChanged();
     void pageWanted(int index);
     void eraserRadiusChanged();
+    void eraseModeChanged();
     void pointerChanged();
     void pressureSensitiveChanged();
     void viewChanged();
@@ -285,6 +319,9 @@ private:
     void changeView(const core::Viewport& viewport);
 
     void press(const core::InkSample& sample, bool eraserTip);
+    void watchForHold(const QPointF& at);
+    void forgetHold();
+    void askForMenu();
     void move(const core::InkSample& sample);
     void release(const core::InkSample& sample);
     [[nodiscard]] bool isTracking() const noexcept;
@@ -306,6 +343,7 @@ private:
     std::optional<core::StrokeSteadier> m_steadier;
     std::optional<core::InkSample> m_eraserPosition;
     bool m_erasing{false};
+    core::EraseMode m_eraseMode{core::EraseMode::Touched};
     bool m_pressureSensitive{true};
     qreal m_eraserRadius{kDefaultEraserRadius};
     std::size_t m_activeStrokeFirstVertex{0};
@@ -382,6 +420,11 @@ private:
     core::Shape m_shape{core::Shape::Freehand};
     qreal m_corner{0.0};
     qreal m_smoothing{kDefaultSmoothing};
+    qreal m_zoomStep{kDefaultZoomStep};
+    bool m_holdForMenu{true};
+    bool m_menuOpened{false};
+    QPointF m_holdAt;
+    QTimer m_holdTimer;
     core::ShapeKeys m_shapeKeys;
     std::optional<core::Point> m_panFrom;
     bool m_selecting{false};
