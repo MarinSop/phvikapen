@@ -56,6 +56,11 @@ namespace {
         Command{.id = "clearPage", .name = QObject::tr("Clear page"), .fallback = "Ctrl+Shift+Del"},
         Command{.id = "find", .name = QObject::tr("Find in handwriting"), .fallback = "Ctrl+F"},
         Command{
+            .id = "copyAsText",
+            .name = QObject::tr("Copy as text"),
+            .fallback = "Ctrl+Shift+C",
+        },
+        Command{
             .id = "trash",
             .name = QObject::tr("Deleted pages"),
             .fallback = "Ctrl+Shift+T",

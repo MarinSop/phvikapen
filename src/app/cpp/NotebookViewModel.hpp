@@ -240,6 +240,9 @@ public:
 
     Q_INVOKABLE void deleteSelection();
     Q_INVOKABLE void copySelection();
+
+    // Read what is picked and put it on the clipboard as text.
+    Q_INVOKABLE void copySelectionAsText();
     Q_INVOKABLE void pasteStrokes();
     Q_INVOKABLE void recolourSelection(const QColor& color);
 
@@ -260,6 +263,7 @@ signals:
     void notebookPathChanged();
     void readingChanged();
     void found(const QVariantList& words);
+    void copiedAsText(const QString& text);
     void startPageChanged();
     void canvasChanged();
     void loadedChanged();

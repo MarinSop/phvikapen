@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Find in Handwriting, from the Edit menu or Ctrl+F: type what was written, and every place it was
   written in this notebook is listed with the page it is on; choosing one opens that page. Where the
   machine cannot read handwriting, the window says so rather than finding nothing quietly.
+- Copy as Text, from the Edit menu: what is picked with the loop is read and put on the clipboard as
+  words, ready to be pasted anywhere else.
 
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.

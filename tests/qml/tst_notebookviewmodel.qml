@@ -280,6 +280,29 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_pickedWritingIsCopiedAsTextOnlyWhereItCanBeRead() {
+        const notebook = openNotebook(newNotebookPath());
+        const canvas = notebook.canvas;
+        draw(notebook, 120, 120);
+        canvas.selecting = true;
+        marquee(canvas, 100, 100, 200, 200);
+        compare(canvas.selectedCount, 1);
+        const copies = createTemporaryObject(signalSpyComponent, testCase, {
+            target: notebook,
+            signalName: "copiedAsText"
+        });
+
+        notebook.copySelectionAsText();
+
+        if (notebook.readsHandwriting) {
+            tryVerify(() => copies.count === 1 || notebook.errorMessage !== "");
+        } else {
+            tryVerify(() => notebook.errorMessage !== "");
+            compare(copies.count, 0);
+        }
+        canvas.selecting = false;
+    }
+
     function test_whatIsPickedCanBeMovedAndPutBack() {
         const notebook = openNotebook(newNotebookPath());
         const canvas = notebook.canvas;

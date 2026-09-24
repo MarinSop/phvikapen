@@ -95,6 +95,13 @@ Item {
 
         onTriggered: root.notebook.copySelection()
     }
+    readonly property Action copyAsText: Action {
+        enabled: root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting
+        shortcut: root.keysFor("copyAsText", "Ctrl+Shift+C")
+        text: qsTr("Copy as Text")
+
+        onTriggered: root.notebook.copySelectionAsText()
+    }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
         icon.source: Icons.paste

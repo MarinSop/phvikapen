@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <stop_token>
@@ -77,6 +78,40 @@ void HandwritingReader::nudge() {
         m_asked = true;
     }
     m_wanted.notify_all();
+}
+
+void HandwritingReader::readSoon(std::vector<core::Stroke> strokes, WordsHandler done) {
+    if (!m_thread.joinable()) {
+        done(core::makeError(core::ErrorCode::Unsupported, "this machine cannot read handwriting"));
+        return;
+    }
+    {
+        const std::scoped_lock held{m_mutex};
+        m_soon.push_back(Asked{.strokes = std::move(strokes), .done = std::move(done)});
+        m_asked = true;
+    }
+    m_wanted.notify_all();
+}
+
+void HandwritingReader::readWhatWasAsked(platform::text::IHandwriting& reader) {
+    while (true) {
+        Asked asked;
+        {
+            const std::scoped_lock held{m_mutex};
+            if (m_soon.empty()) {
+                return;
+            }
+            asked = std::move(m_soon.front());
+            m_soon.erase(m_soon.begin());
+        }
+        core::Result<std::vector<core::InkWord>> words = reader.read(asked.strokes);
+        QMetaObject::invokeMethod(
+            this,
+            [done = std::move(asked.done), words = std::move(words)] mutable {
+                done(std::move(words));
+            },
+            Qt::QueuedConnection);
+    }
 }
 
 void HandwritingReader::report(const core::Error& error) {
@@ -155,6 +190,7 @@ void HandwritingReader::run(const std::stop_token& stopToken) {
             return;
         }
         while (waitForWork(stopToken)) {
+            readWhatWasAsked(*reader);
             core::Result<core::NotebookStore> store = core::NotebookStore::open(m_path);
             if (!store) {
                 report(store.error());

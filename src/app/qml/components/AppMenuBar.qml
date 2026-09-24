@@ -116,6 +116,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.copyAsText
+            objectName: "copyAsTextItem"
+        }
+
+        MenuCommand {
             action: root.actions.paste
         }
 

@@ -22,10 +22,12 @@
 #include "platform/render/PaperLook.hpp"
 #include "platform/render/PdfExporter.hpp"
 
+#include <QClipboard>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QImage>
 #include <QMetaObject>
 #include <QPainter>
@@ -2297,6 +2299,42 @@ void NotebookViewModel::copySelection() {
     }
     m_clipboard = std::move(copies);
     emit clipboardChanged();
+}
+
+void NotebookViewModel::copySelectionAsText() {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull()) {
+        return;
+    }
+    const std::vector<core::Uuid>& picked = m_canvas->selection();
+    std::vector<core::Stroke> written;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            written.push_back(placed.stroke);
+        }
+    }
+    if (written.empty()) {
+        return;
+    }
+    m_reader.readSoon(std::move(written), [this](core::Result<std::vector<core::InkWord>> words) {
+        if (!words) {
+            reportError(QString::fromStdString(words.error().message));
+            return;
+        }
+        QString text;
+        for (const core::InkWord& word : *words) {
+            if (!text.isEmpty()) {
+                text.append(QLatin1Char{' '});
+            }
+            text.append(QString::fromStdString(word.text));
+        }
+        if (text.isEmpty()) {
+            reportError(tr("Nothing there could be read as words"));
+            return;
+        }
+        QGuiApplication::clipboard()->setText(text);
+        emit copiedAsText(text);
+    });
 }
 
 void NotebookViewModel::pasteStrokes() {
