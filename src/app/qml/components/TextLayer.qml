@@ -14,8 +14,18 @@ Item {
     // Which box the editor holds the words of, so that leaving one box for another puts what was
     // typed where it belongs.
     property string editingId: ""
-    readonly property real grip: 18
-    readonly property real onPage: Math.max(editor.implicitHeight, editor.font.pixelSize)
+    // What the reader is doing to the box right now, before it is written down: how far it has
+    // been carried, in pixels of the window, and how much wider and taller, in units of the page.
+    property real liveX: 0
+    property real liveY: 0
+    property real liveWide: 0
+    property real liveTall: 0
+    readonly property int gripSize: Math.round(9 * Theme.scale)
+    readonly property real narrowest: 24
+    readonly property real heldHeight: root.typing ? root.picked.boxHeight : 0
+    // A box is as tall as what is typed in it, or as tall as it was pulled, whichever is more.
+    readonly property real onPage: Math.max(editor.implicitHeight, editor.font.pixelSize, root.heldHeight + root.liveTall)
+    readonly property real onPageWide: Math.max(root.narrowest, (root.typing ? root.picked.boxWidth : 0) + root.liveWide)
     readonly property point origin: root.canvas === null ? Qt.point(0, 0) : root.canvas.viewOrigin
     // A point of type, in the units a page is measured in.
     readonly property real pageUnitsPerPoint: 96 / 72
@@ -42,10 +52,26 @@ Item {
 
     function leave() {
         root.commit();
+        root.liveX = 0;
+        root.liveY = 0;
+        root.liveWide = 0;
+        root.liveTall = 0;
         root.editingId = "";
         if (root.notebook !== null) {
             root.notebook.pickedText = "";
         }
+    }
+
+    // Where the box has been carried and pulled to becomes where it is.
+    function settle() {
+        if (!root.typing) {
+            return;
+        }
+        root.notebook.placeText(root.picked.textId, root.picked.columnX + (root.liveX / root.zoom), root.picked.columnY + (root.liveY / root.zoom), root.onPageWide, root.onPage);
+        root.liveX = 0;
+        root.liveY = 0;
+        root.liveWide = 0;
+        root.liveTall = 0;
     }
 
     anchors.fill: parent
@@ -104,13 +130,13 @@ Item {
 
         height: root.onPage * root.zoom
         visible: root.typing
-        width: (root.typing ? root.picked.boxWidth : 0) * root.zoom
-        x: root.typing ? (root.picked.columnX - root.origin.x) * root.zoom : 0
-        y: root.typing ? (root.picked.columnY - root.origin.y) * root.zoom : 0
+        width: root.onPageWide * root.zoom
+        x: (root.typing ? (root.picked.columnX - root.origin.x) * root.zoom : 0) + root.liveX
+        y: (root.typing ? (root.picked.columnY - root.origin.y) * root.zoom : 0) + root.liveY
 
         Item {
             height: root.onPage
-            width: root.typing ? root.picked.boxWidth : 0
+            width: root.onPageWide
 
             transform: Scale {
                 xScale: root.zoom
@@ -130,7 +156,7 @@ Item {
                 horizontalAlignment: [TextEdit.AlignLeft, TextEdit.AlignHCenter, TextEdit.AlignRight, TextEdit.AlignJustify][root.typing ? root.picked.align : 0]
                 objectName: "textEditor"
                 selectByMouse: true
-                width: root.typing ? root.picked.boxWidth : 0
+                width: root.onPageWide
                 wrapMode: TextEdit.Wrap
 
                 Keys.onEscapePressed: root.leave()
@@ -143,24 +169,30 @@ Item {
             border.color: Theme.accent
             border.width: 1
             color: "transparent"
-            opacity: 0.8
+            objectName: "textFrame"
         }
 
-        // The bar above the box carries it about.
+        // The knob above the box carries it about, and follows the pointer as it goes.
         Rectangle {
-            id: bar
-
-            property real lastX: 0
-            property real lastY: 0
-
-            anchors.bottom: parent.top
-            anchors.bottomMargin: 4
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: Theme.accent
-            height: root.grip
+            antialiasing: true
+            border.color: Theme.accent
+            border.width: 1
+            color: Theme.accentText
+            height: root.gripSize + 2
             objectName: "textMoveBar"
-            radius: 4
-            width: Math.max(root.grip * 2, Math.min(parent.width, 64))
+            radius: height / 2
+            width: root.gripSize + 2
+            x: (parent.width / 2) - (width / 2)
+            y: -(root.gripSize * 2) - 2
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.bottom
+                color: Theme.accent
+                height: root.gripSize
+                opacity: 0.7
+                width: 1
+            }
 
             DragHandler {
                 id: moveDrag
@@ -168,78 +200,85 @@ Item {
                 target: null
 
                 onActiveChanged: {
-                    if (moveDrag.active || !root.typing) {
-                        return;
+                    if (!moveDrag.active) {
+                        root.settle();
                     }
-                    root.notebook.placeText(root.picked.textId, root.picked.columnX + (bar.lastX / root.zoom), root.picked.columnY + (bar.lastY / root.zoom), root.picked.boxWidth, root.onPage);
                 }
                 onTranslationChanged: {
-                    if (moveDrag.active) {
-                        bar.lastX = moveDrag.activeTranslation.x;
-                        bar.lastY = moveDrag.activeTranslation.y;
+                    if (moveDrag.active && root.typing) {
+                        root.liveX = moveDrag.activeTranslation.x;
+                        root.liveY = moveDrag.activeTranslation.y;
                     }
                 }
             }
         }
 
-        // The grip on the right edge says how wide the writing may run.
-        Rectangle {
-            id: handle
+        // Three grips, as the frame around picked ink has: one for how wide the writing may run,
+        // one for how tall the box stands, and one for both at once.
+        Repeater {
+            model: 3
 
-            property real wanted: 0
+            Rectangle {
+                id: grip
 
-            anchors.left: parent.right
-            anchors.leftMargin: 2
-            anchors.verticalCenter: parent.verticalCenter
-            color: Theme.accent
-            height: root.grip
-            objectName: "textWidthHandle"
-            radius: 3
-            width: 8
+                required property int index
+                readonly property bool pullsWide: grip.index !== 1
+                readonly property bool pullsTall: grip.index !== 0
 
-            DragHandler {
-                id: wideDrag
+                antialiasing: true
+                border.color: Theme.accent
+                border.width: 1
+                color: Theme.accentText
+                height: root.gripSize
+                objectName: ["textWidthHandle", "textHeightHandle", "textCornerHandle"][grip.index]
+                radius: 2
+                width: root.gripSize
+                x: (grip.pullsWide ? slot.width : slot.width / 2) - (width / 2)
+                y: (grip.pullsTall ? slot.height : slot.height / 2) - (height / 2)
 
-                target: null
-                xAxis.enabled: true
-                yAxis.enabled: false
+                DragHandler {
+                    id: sizeDrag
 
-                onActiveChanged: {
-                    if (wideDrag.active && root.typing) {
-                        handle.wanted = root.picked.boxWidth;
+                    target: null
+
+                    onActiveChanged: {
+                        if (!sizeDrag.active) {
+                            root.settle();
+                        }
                     }
-                }
-                onTranslationChanged: {
-                    if (wideDrag.active && root.typing) {
-                        root.notebook.placeText(root.picked.textId, root.picked.columnX, root.picked.columnY, handle.wanted + (wideDrag.activeTranslation.x / root.zoom), root.onPage);
+                    onTranslationChanged: {
+                        if (!sizeDrag.active || !root.typing) {
+                            return;
+                        }
+                        root.liveWide = grip.pullsWide ? sizeDrag.activeTranslation.x / root.zoom : 0;
+                        root.liveTall = grip.pullsTall ? sizeDrag.activeTranslation.y / root.zoom : 0;
                     }
                 }
             }
         }
 
+        // Taking the box away, beside the knob that carries it.
         Rectangle {
-            anchors.bottom: parent.top
-            anchors.bottomMargin: 4
-            anchors.right: parent.right
-            border.color: Theme.line
+            antialiasing: true
+            border.color: Theme.accent
             border.width: 1
-            color: Theme.surface
-            height: root.grip
+            color: Theme.accentText
+            height: root.gripSize + 2
             objectName: "textRemove"
-            radius: 4
-            width: root.grip
+            radius: height / 2
+            width: root.gripSize + 2
+            x: parent.width + 6
+            y: -(root.gripSize * 2) - 2
 
-            Image {
+            Text {
                 anchors.centerIn: parent
-                height: 12
-                source: Icons.close
-                width: 12
+                color: Theme.accent
+                font.pixelSize: Math.round(parent.height * 0.62)
+                text: "\u2715"
             }
 
-            MouseArea {
-                anchors.fill: parent
-
-                onClicked: root.notebook.removeText(root.picked.textId)
+            TapHandler {
+                onTapped: root.notebook.removeText(root.picked.textId)
             }
         }
     }

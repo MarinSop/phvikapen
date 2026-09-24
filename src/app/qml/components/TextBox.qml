@@ -29,7 +29,7 @@ Item {
     readonly property real pageUnitsPerPoint: 96 / 72
     readonly property bool picked: root.notebook !== null && root.notebook.pickedText === root.textId
 
-    height: Math.max(label.implicitHeight, label.font.pixelSize) * root.zoom
+    height: Math.max(label.implicitHeight, label.font.pixelSize, root.boxHeight) * root.zoom
     visible: !root.picked
     width: root.boxWidth * root.zoom
     x: (root.columnX - root.origin.x) * root.zoom

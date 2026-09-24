@@ -164,6 +164,53 @@ TestCase {
         notebook.pickedText = "";
     }
 
+    function test_aNewBoxWearsThePlainFaceWhateverTheLastOneWore() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        tools.textBold = true;
+        tools.textSize = 33;
+        const at = placeOnPage(notebook, 40, 60);
+        const onScreen = Qt.point((at.x - notebook.canvas.viewOrigin.x) * notebook.canvas.zoom, (at.y - notebook.canvas.viewOrigin.y) * notebook.canvas.zoom);
+
+        mouseClick(layer, onScreen.x, onScreen.y);
+
+        const rows = boxes(notebook);
+        compare(rows.count, 1);
+        compare(rows.itemAt(0).bold, false);
+        compare(rows.itemAt(0).size, 14);
+        notebook.pickedText = "";
+    }
+
+    function test_aBoxIsCarriedAndPulledAsOneChange() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        tools.currentTool = ToolViewModel.Text;
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: notebook.canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        const at = placeOnPage(notebook, 40, 60);
+        notebook.addTextAt(at.x, at.y, tools.textStyle);
+        notebook.finishText(notebook.pickedText, "Words", 30);
+        const rows = boxes(notebook);
+        const textId = rows.itemAt(0).textId;
+        notebook.pickedText = textId;
+
+        // Pulled taller than the words need, the box keeps the height it was given.
+        notebook.placeText(textId, at.x, at.y, 200, 90);
+
+        compare(rows.itemAt(0).boxWidth, 200);
+        compare(rows.itemAt(0).boxHeight, 90);
+        notebook.pickedText = "";
+    }
+
     function test_typingInTheEditorPutsTheWordsOnThePage() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);
@@ -345,6 +392,7 @@ TestCase {
         Repeater {
             delegate: Item {
                 required property bool bold
+                required property real boxHeight
                 required property real boxWidth
                 required property color color
                 required property real columnX

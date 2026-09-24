@@ -72,6 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where the canvas draws its own, and follows the ink through the whole drag, about the very point
   the strokes are turned about. The grips are smaller, are drawn white with a colored edge, and
   step aside while a drag is under way.
+- A box of text being typed in is now marked the way picked ink is: a thin frame with small white
+  grips. The dark square beside it, which said nothing about what it did, is gone; taking the box
+  away is a round mark with a cross on it, beside the knob that carries the box.
+- A box of text can be pulled taller as well as wider, by a grip below it and one at its corner,
+  and keeps the height it was given even where the words need less. Carrying a box by the knob
+  above it now moves the box and the words with the pointer instead of only when it is let go, and
+  carrying or pulling a box is one change rather than one for every step of the drag.
 - The color picker passes over typed text. It now takes the color of a box of words, which is what
   is topmost where it was asked.
 - A box of typed text can be picked up with the pick tool and corrected, without first reaching for
