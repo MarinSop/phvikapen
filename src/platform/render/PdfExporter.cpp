@@ -162,10 +162,15 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
         if (!strokes) {
             return std::unexpected{strokes.error()};
         }
+        const core::Result<std::vector<core::PlacedText>> texts = store->textsOfPage(info.id);
+        if (!texts) {
+            return std::unexpected{texts.error()};
+        }
 
         const PageContents contents{
             .style = info.style,
             .strokes = *strokes,
+            .texts = *texts,
             .media = nullptr,
         };
         const core::Rect area = areaFor(contents, options.scope);
@@ -173,6 +178,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
         const PageContents page{
             .style = info.style,
             .strokes = *strokes,
+            .texts = *texts,
             .media = picture.isNull() ? nullptr : &picture,
         };
 

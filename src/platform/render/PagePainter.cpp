@@ -6,19 +6,27 @@
 #include "core/ink/StrokeOutline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "platform/render/PaperLook.hpp"
 
+#include <QAbstractTextDocumentLayout>
 #include <QColor>
+#include <QFont>
 #include <QImage>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
 #include <QPen>
 #include <QPointF>
 #include <QRectF>
+#include <QString>
+#include <QTextDocument>
+#include <QTextOption>
 
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace phvikapen::platform::render {
@@ -115,6 +123,61 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
     }
 }
 
+[[nodiscard]] QFont fontOf(const core::TextStyle& style) {
+    QFont font;
+    if (!style.font.empty()) {
+        font.setFamily(QString::fromStdString(style.font));
+    }
+    font.setPixelSize(
+        std::max(1, static_cast<int>(std::lround(core::pageUnitsOfPoints(style.size)))));
+    font.setBold(style.bold);
+    font.setItalic(style.italic);
+    font.setUnderline(style.underline);
+    font.setStrikeOut(style.struckOut);
+    return font;
+}
+
+[[nodiscard]] Qt::Alignment alignmentOf(core::TextAlign align) {
+    switch (align) {
+    case core::TextAlign::Center:
+        return Qt::AlignHCenter;
+    case core::TextAlign::Right:
+        return Qt::AlignRight;
+    case core::TextAlign::Justify:
+        return Qt::AlignJustify;
+    case core::TextAlign::Left:
+    default:
+        return Qt::AlignLeft;
+    }
+}
+
+// Type is laid out the same way the window lays it out: the same font, the same width to run in
+// and no margin of its own, so that what is printed is what was seen.
+void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
+    for (const core::PlacedText& placed : texts) {
+        const core::TextBox& box = placed.box;
+        if (box.text.empty()) {
+            continue;
+        }
+        QTextDocument document;
+        document.setDocumentMargin(0.0);
+        document.setDefaultFont(fontOf(box.style));
+        QTextOption option;
+        option.setAlignment(alignmentOf(box.style.align));
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        document.setDefaultTextOption(option);
+        document.setPlainText(QString::fromStdString(box.text));
+        document.setTextWidth(box.width);
+
+        painter.save();
+        painter.translate(box.at.x, box.at.y);
+        QAbstractTextDocumentLayout::PaintContext context;
+        context.palette.setColor(QPalette::Text, toColor(box.style.color));
+        document.documentLayout()->draw(&painter, context);
+        painter.restore();
+    }
+}
+
 void paintStrokes(QPainter& painter, std::span<const core::PlacedStroke> strokes) {
     painter.setPen(Qt::NoPen);
     for (const core::PlacedStroke& placed : strokes) {
@@ -170,6 +233,7 @@ void paintPage(QPainter& painter, const PageContents& page, const core::Rect& ar
     }
 
     paintStrokes(painter, page.strokes);
+    paintTexts(painter, page.texts);
     painter.restore();
 }
 

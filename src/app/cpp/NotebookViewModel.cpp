@@ -1292,6 +1292,8 @@ void NotebookViewModel::wantThumbnail(int index) {
     if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
         const std::span<const core::PlacedStroke> strokes = cached->second->strokes();
         work->strokes.assign(strokes.begin(), strokes.end());
+        const std::span<const core::PlacedText> texts = cached->second->texts();
+        work->texts.assign(texts.begin(), texts.end());
         gatherThumbnail(work);
         return;
     }
@@ -1384,6 +1386,7 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
     const platform::render::PageContents contents{
         .style = work.page.style,
         .strokes = work.strokes,
+        .texts = work.texts,
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);

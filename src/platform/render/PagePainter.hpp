@@ -3,6 +3,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 
 #include <span>
 
@@ -14,6 +15,7 @@ namespace phvikapen::platform::render {
 struct PageContents {
     core::PageStyle style{};
     std::span<const core::PlacedStroke> strokes;
+    std::span<const core::PlacedText> texts;
     const QImage* media{nullptr};
 };
 

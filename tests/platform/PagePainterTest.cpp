@@ -6,6 +6,7 @@
 #include "core/ink/Stroke.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/TextBox.hpp"
 #include "platform/render/PaperLook.hpp"
 
 #include <gtest/gtest.h>
@@ -62,6 +63,7 @@ TEST(PagePainterTest, AFixedPageIsAsLargeAsItsPaper) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::A5},
         .strokes = kNoStrokes,
+        .texts = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -79,6 +81,7 @@ TEST(PagePainterTest, AnInfinitePageIsAsLargeAsWhatWasWrittenOnIt) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::Infinite},
         .strokes = strokes,
+        .texts = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -93,6 +96,7 @@ TEST(PagePainterTest, AnEmptyInfinitePageFallsBackToASheetOfPaper) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::Infinite},
         .strokes = kNoStrokes,
+        .texts = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -108,6 +112,7 @@ TEST(PagePainterTest, TheSheetIsWhiteAndTheInkIsWhereItWasWritten) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = strokes,
+        .texts = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -121,6 +126,7 @@ TEST(PagePainterTest, RuledPaperGetsItsLinesAndItsMargin) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Lined},
         .strokes = kNoStrokes,
+        .texts = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
@@ -134,12 +140,61 @@ TEST(PagePainterTest, BlankPaperStaysBlank) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = kNoStrokes,
+        .texts = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
 
     EXPECT_FALSE(
         hasColorNear(sheet, QColor::fromRgbF(kRuleColor[0], kRuleColor[1], kRuleColor[2])));
+}
+
+[[nodiscard]] core::PlacedText typed(const char* what, float x, float y, core::Color color) {
+    return core::PlacedText{
+        .ordinal = 0,
+        .box =
+            core::TextBox{
+                .id = core::Uuid{},
+                .at = core::Point{.x = x, .y = y},
+                .width = 160.0F,
+                .height = 40.0F,
+                .text = what,
+                .style =
+                    core::TextStyle{
+                        .font = {},
+                        .size = 24.0F,
+                        .color = color,
+                    },
+            },
+    };
+}
+
+TEST(PagePainterTest, TypedTextIsPrintedWhereItSits) {
+    const std::vector<core::PlacedText> texts{
+        typed("Hello", 20.0F, 20.0F, core::Color{.red = 220, .green = 20, .blue = 40}),
+    };
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = texts,
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    EXPECT_TRUE(hasColorNear(sheet, QColor{220, 20, 40}));
+    EXPECT_FALSE(hasColorNear(sheet.copy(0, 120, 200, 80), QColor{220, 20, 40}));
+}
+
+TEST(PagePainterTest, APageWithoutTypedTextPrintsNone) {
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = {},
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    EXPECT_FALSE(hasColorNear(sheet, QColor{220, 20, 40}));
 }
 
 TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
@@ -151,6 +206,7 @@ TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
     const PageContents page{
         .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
         .strokes = strokes,
+        .texts = {},
         .media = &media,
     };
 
