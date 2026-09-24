@@ -148,6 +148,16 @@ into a real problem earlier.
 - **Accessibility.** The tools have shortcuts now, but the focus order through the sidebar has not
   been checked, nothing has been tested with a screen reader, and the shortcuts cannot be changed.
 
+## Reading handwriting
+
+- **A found word is not pointed at.** Choosing what was found opens the page it is on, but nothing
+  shows where on the page the word sits, although the place is kept with it.
+- **The language is whatever the machine has.** The reader Windows carries reads the languages whose
+  handwriting is installed; the application neither says which those are nor offers to install one.
+- **Nothing is read on macOS**, so the searching can only be tried on the target device.
+- **Words are read, not text.** A page holds strokes; there is no typed text on a page yet, so what
+  is read can be copied out but not put back onto the paper.
+
 ## Verification that needs the target device or a real run
 
 - **The Windows build of everything since the skeleton.** Sections, pages, the viewport, the
@@ -156,3 +166,5 @@ into a real problem earlier.
   and the reach of the smoothing was chosen on simulated strokes.
 - **Golden image tests.** Stroke appearance is checked by unit tests on the geometry, not by
   comparing rendered images against recordings from the real pen.
+- **Reading handwriting.** Everything but the reader itself is tested on the development machine;
+  what Windows makes of real handwriting, in Croatian or any other language, has never been seen.
