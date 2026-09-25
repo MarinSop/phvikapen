@@ -358,6 +358,46 @@ public:
 
     Q_INVOKABLE void alignCell(const QString& tableId, int row, int column, int align);
 
+    // Every box of a stretch of the table changed at once: how its words line up across the box
+    // and down it, the colour behind it and the colour of its words, whether it is bold or
+    // slanted, everything of its own let go of, and what is typed in it rubbed out.
+    Q_INVOKABLE void alignCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn, int align);
+
+    Q_INVOKABLE void riseCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                               int toColumn, int rise);
+
+    Q_INVOKABLE void fillCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                               int toColumn, const QColor& fill);
+
+    Q_INVOKABLE void inkCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                              int toColumn, const QColor& ink);
+
+    Q_INVOKABLE void weighCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn, bool bold);
+
+    Q_INVOKABLE void slantCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn, bool italic);
+
+    Q_INVOKABLE void plainCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn);
+
+    Q_INVOKABLE void emptyCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn);
+
+    // A row or a column put down again just after itself, with everything its boxes say and are
+    // shown in.
+    Q_INVOKABLE void duplicateRow(const QString& tableId, int at);
+
+    Q_INVOKABLE void duplicateColumn(const QString& tableId, int at);
+
+    // The colour and thickness of the rules a whole table is drawn with.
+    Q_INVOKABLE void ruleTable(const QString& tableId, const QColor& rule, qreal width);
+
+    // How the box at a place is shown, for the bar of options to show back what is already set.
+    Q_INVOKABLE [[nodiscard]] QVariantMap cellLook(const QString& tableId, int row,
+                                                   int column) const;
+
     // Every box of a stretch of the table joined into one, and a joined box let go of again.
     Q_INVOKABLE void mergeCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
                                 int toColumn);
@@ -584,6 +624,10 @@ private:
     tableById(const QString& tableId) const;
     void changeTable(const core::Uuid& pageId, core::Table table);
     // A table with one row or column more or less, put down as one change.
+    void changeRange(const QString& tableId, int fromRow, int fromColumn, int toRow, int toColumn,
+                     const std::function<core::Result<core::Table>(core::Table, core::CellAt,
+                                                                   core::CellAt)>& change);
+
     void reshapeTable(const QString& tableId,
                       const std::function<core::Result<core::Table>(core::Table)>& reshaped);
     void publishTables();

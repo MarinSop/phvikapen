@@ -3739,6 +3739,146 @@ void NotebookViewModel::alignCell(const QString& tableId, int row, int column, i
     changeTable(found->first, std::move(*aligned));
 }
 
+void NotebookViewModel::changeRange(
+    const QString& tableId, int fromRow, int fromColumn, int toRow, int toColumn,
+    const std::function<core::Result<core::Table>(core::Table, core::CellAt, core::CellAt)>&
+        change) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> wanted =
+        change(found->second, core::CellAt{.row = fromRow, .column = fromColumn},
+               core::CellAt{.row = toRow, .column = toColumn});
+    if (!wanted) {
+        reportError(QString::fromStdString(wanted.error().message));
+        return;
+    }
+    if (*wanted == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(*wanted));
+}
+
+void NotebookViewModel::alignCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn, int align) {
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [align](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeAligned(std::move(table), from, to, alignOf(align));
+                });
+}
+
+void NotebookViewModel::riseCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                  int toColumn, int rise) {
+    const auto wanted = rise >= 0 && rise <= static_cast<int>(core::CellRise::Bottom)
+                            ? static_cast<core::CellRise>(rise)
+                            : core::CellRise::Top;
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [wanted](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeRisen(std::move(table), from, to, wanted);
+                });
+}
+
+void NotebookViewModel::fillCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                  int toColumn, const QColor& fill) {
+    const core::Color wanted = fill.isValid() ? asColor(fill) : core::kNoColor;
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [wanted](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeFilled(std::move(table), from, to, wanted);
+                });
+}
+
+void NotebookViewModel::inkCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                 int toColumn, const QColor& ink) {
+    const core::Color wanted = ink.isValid() ? asColor(ink) : core::kNoColor;
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [wanted](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeInked(std::move(table), from, to, wanted);
+                });
+}
+
+void NotebookViewModel::weighCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn, bool bold) {
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [bold](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeWeighted(std::move(table), from, to, bold);
+                });
+}
+
+void NotebookViewModel::slantCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn, bool italic) {
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [italic](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeSlanted(std::move(table), from, to, italic);
+                });
+}
+
+void NotebookViewModel::plainCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn) {
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangePlain(std::move(table), from, to);
+                });
+}
+
+void NotebookViewModel::emptyCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn) {
+    changeRange(tableId, fromRow, fromColumn, toRow, toColumn,
+                [](core::Table table, core::CellAt from, core::CellAt to) {
+                    return core::withRangeEmptied(std::move(table), from, to);
+                });
+}
+
+void NotebookViewModel::duplicateRow(const QString& tableId, int at) {
+    reshapeTable(tableId,
+                 [at](core::Table table) { return core::withRowDuplicated(std::move(table), at); });
+}
+
+void NotebookViewModel::duplicateColumn(const QString& tableId, int at) {
+    reshapeTable(tableId, [at](core::Table table) {
+        return core::withColumnDuplicated(std::move(table), at);
+    });
+}
+
+void NotebookViewModel::ruleTable(const QString& tableId, const QColor& rule, qreal width) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Table wanted = found->second;
+    if (rule.isValid()) {
+        wanted.rule = asColor(rule);
+    }
+    if (width > 0.0) {
+        wanted.ruleWidth = static_cast<float>(width);
+    }
+    wanted = core::normalized(std::move(wanted));
+    if (wanted == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(wanted));
+}
+
+QVariantMap NotebookViewModel::cellLook(const QString& tableId, int row, int column) const {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return {};
+    }
+    const core::TableCell* const cell =
+        core::cellAt(found->second, core::CellAt{.row = row, .column = column});
+    if (cell == nullptr) {
+        return {};
+    }
+    return QVariantMap{
+        {"align", static_cast<int>(cell->align)},
+        {"rise", static_cast<int>(cell->rise)},
+        {"fill", asQColor(cell->fill)},
+        {"ink", asQColor(cell->ink)},
+        {"bold", cell->bold},
+        {"italic", cell->italic},
+    };
+}
+
 void NotebookViewModel::mergeCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
                                    int toColumn) {
     const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);

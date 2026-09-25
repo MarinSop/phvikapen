@@ -227,6 +227,22 @@ void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
     }
 }
 
+// What stands behind the boxes that were given a colour of their own, which is what a heading row
+// is made of. It goes down before the ruling, so that the rules are drawn over it rather than half
+// covered by the box beside them.
+void paintTableFills(QPainter& painter, const core::Table& table) {
+    for (int row = 0; row < core::rowsOf(table); ++row) {
+        for (int column = 0; column < core::columnsOf(table); ++column) {
+            const core::CellAt at{.row = row, .column = column};
+            const core::TableCell* const cell = core::cellAt(table, at);
+            if (cell == nullptr || core::isCovered(*cell) || !core::isShown(cell->fill)) {
+                continue;
+            }
+            painter.fillRect(toRect(core::areaOfCell(table, at)), toColor(cell->fill));
+        }
+    }
+}
+
 // Every box is ruled round on its own rather than the whole grid being drawn line by line, so that
 // a box reaching over others has no ruling running through the middle of it.
 void paintTableRuling(QPainter& painter, const core::Table& table) {
@@ -246,16 +262,48 @@ void paintTableRuling(QPainter& painter, const core::Table& table) {
 
 // What is typed in a box runs within that box and no further, so that too many words are cut off
 // at the ruling rather than written over what stands beside them.
+// The face a box is shown in: what the whole table is shown in, with whatever the box asks of its
+// own put on top of it.
+[[nodiscard]] core::TextStyle faceOfCell(const core::Table& table, const core::TableCell& cell) {
+    core::TextStyle set = table.style;
+    set.bold = set.bold || cell.bold;
+    set.italic = set.italic || cell.italic;
+    if (core::isShown(cell.ink)) {
+        set.color = cell.ink;
+    }
+    return set;
+}
+
+constexpr double kHalfway = 0.5;
+
+// How far down its room what is typed in a box begins, so that it may stand at the top, at the
+// middle or at the foot.
+[[nodiscard]] double riseOf(core::CellRise rise, double room, double tall) {
+    const double spare = std::max(room - tall, 0.0);
+    switch (rise) {
+    case core::CellRise::Middle:
+        return spare * kHalfway;
+    case core::CellRise::Bottom:
+        return spare;
+    case core::CellRise::Top:
+    default:
+        return 0.0;
+    }
+}
+
 void paintCell(QPainter& painter, const core::Table& table, const core::TableCell& cell,
                const core::Rect& box) {
     const float room = std::max(box.width() - (2.0F * kCellPadding), 1.0F);
+    const core::TextStyle face = faceOfCell(table, cell);
     QTextDocument document;
-    layOutWords(document, table.style, cell.align, cell.text, room);
+    layOutWords(document, face, cell.align, cell.text, room);
 
     painter.save();
     painter.setClipRect(toRect(box));
-    painter.translate(box.left + kCellPadding, box.top + kCellPadding);
-    drawWords(painter, document, table.style.color);
+    const double down = riseOf(cell.rise, static_cast<double>(box.height()) - (2.0 * kCellPadding),
+                               document.size().height());
+    painter.translate(box.left + kCellPadding, box.top + kCellPadding + down);
+    drawWords(painter, document, face.color);
     painter.restore();
 }
 
@@ -264,6 +312,7 @@ void paintCell(QPainter& painter, const core::Table& table, const core::TableCel
 void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables) {
     for (const core::PlacedTable& placed : tables) {
         const core::Table& table = placed.table;
+        paintTableFills(painter, table);
         paintTableRuling(painter, table);
         for (int row = 0; row < core::rowsOf(table); ++row) {
             for (int column = 0; column < core::columnsOf(table); ++column) {

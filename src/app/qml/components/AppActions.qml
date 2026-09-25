@@ -33,9 +33,19 @@ Item {
     property int stretchToColumn: -1
     property int stretchToRow: -1
     readonly property bool hasStretch: root.hasTable && root.stretchFromRow >= 0 && (root.stretchFromRow !== root.stretchToRow || root.stretchFromColumn !== root.stretchToColumn)
+    // The boxes a table command reaches: the stretch that is marked out, or the one box being
+    // worked in where nothing is marked. Every command reads these, so one box and many behave
+    // alike and nothing has to know which of the two it was given.
+    readonly property int reachFromColumn: root.hasStretch ? Math.min(root.stretchFromColumn, root.stretchToColumn) : root.columnInHand
+    readonly property int reachFromRow: root.hasStretch ? Math.min(root.stretchFromRow, root.stretchToRow) : root.rowInHand
+    readonly property int reachToColumn: root.hasStretch ? Math.max(root.stretchFromColumn, root.stretchToColumn) : root.columnInHand
+    readonly property int reachToRow: root.hasStretch ? Math.max(root.stretchFromRow, root.stretchToRow) : root.rowInHand
     // While words are being typed the keyboard belongs to whoever is typing them: a command with
     // a plain letter for a key, and the ones an editor owns itself, stand aside.
     readonly property bool typing: AppInfo.typing
+    // How the first box of what is reached is shown, so that bold and slant turn off again when
+    // they are already on.
+    readonly property var lookInHand: root.hasTable ? root.notebook.cellLook(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn) : ({})
     readonly property Action selectTool: Action {
         checked: root.tools.currentTool === ToolViewModel.Selection
         icon.source: Icons.select
@@ -162,6 +172,7 @@ Item {
     }
     readonly property Action copyAsText: Action {
         enabled: root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting
+        icon.source: Icons.toText
         shortcut: root.pageKeys("copyAsText")
         text: qsTr("Copy as Text")
 
@@ -169,6 +180,7 @@ Item {
     }
     readonly property Action convertToText: Action {
         enabled: root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting
+        icon.source: Icons.toText
         shortcut: root.pageKeys("convertToText")
         text: qsTr("Convert to Text")
 
@@ -176,8 +188,9 @@ Item {
     }
     readonly property Action solve: Action {
         enabled: root.hasTextBox || (root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting)
+        icon.source: Icons.solve
         shortcut: root.pageKeys("solve")
-        text: qsTr("Work Out")
+        text: qsTr("Solve")
 
         onTriggered: root.notebook.solveSelection(root.tools.textStyle)
     }
@@ -238,7 +251,7 @@ Item {
         enabled: root.hasStretch
         text: qsTr("Merge Boxes")
 
-        onTriggered: root.notebook.mergeCells(root.notebook.pickedTable, root.stretchFromRow, root.stretchFromColumn, root.stretchToRow, root.stretchToColumn)
+        onTriggered: root.notebook.mergeCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn)
     }
     readonly property Action splitCell: Action {
         enabled: root.hasTable
@@ -258,21 +271,77 @@ Item {
         icon.source: Icons.alignLeft
         text: qsTr("Align Left")
 
-        onTriggered: root.alignTheBoxInHand(0)
+        onTriggered: root.alignTheBoxesInHand(0)
     }
     readonly property Action alignCellCentre: Action {
         enabled: root.hasTable
         icon.source: Icons.alignCenter
         text: qsTr("Center")
 
-        onTriggered: root.alignTheBoxInHand(1)
+        onTriggered: root.alignTheBoxesInHand(1)
     }
     readonly property Action alignCellRight: Action {
         enabled: root.hasTable
         icon.source: Icons.alignRight
         text: qsTr("Align Right")
 
-        onTriggered: root.alignTheBoxInHand(2)
+        onTriggered: root.alignTheBoxesInHand(2)
+    }
+    readonly property Action boldCells: Action {
+        enabled: root.hasTable
+        icon.source: Icons.bold
+        text: qsTr("Bold Boxes")
+
+        onTriggered: root.notebook.weighCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, !root.lookInHand.bold)
+    }
+    readonly property Action italicCells: Action {
+        enabled: root.hasTable
+        icon.source: Icons.italic
+        text: qsTr("Slant Boxes")
+
+        onTriggered: root.notebook.slantCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, !root.lookInHand.italic)
+    }
+    // Where the words of a box sit between its top and its foot.
+    readonly property Action sitAtTop: Action {
+        enabled: root.hasTable
+        icon.source: Icons.sitAtTop
+        text: qsTr("Sit at Top")
+
+        onTriggered: root.raiseTheBoxesInHand(0)
+    }
+    readonly property Action sitAtMiddle: Action {
+        enabled: root.hasTable
+        icon.source: Icons.sitAtMiddle
+        text: qsTr("Sit at Middle")
+
+        onTriggered: root.raiseTheBoxesInHand(1)
+    }
+    readonly property Action sitAtFoot: Action {
+        enabled: root.hasTable
+        icon.source: Icons.sitAtFoot
+        text: qsTr("Sit at Foot")
+
+        onTriggered: root.raiseTheBoxesInHand(2)
+    }
+    readonly property Action clearCellLook: Action {
+        enabled: root.hasTable
+        text: qsTr("Clear Formatting")
+
+        onTriggered: root.notebook.plainCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn)
+    }
+    readonly property Action duplicateRow: Action {
+        enabled: root.hasTable
+        icon.source: Icons.duplicate
+        text: qsTr("Duplicate Row")
+
+        onTriggered: root.notebook.duplicateRow(root.notebook.pickedTable, root.reachFromRow)
+    }
+    readonly property Action duplicateColumn: Action {
+        enabled: root.hasTable
+        icon.source: Icons.duplicate
+        text: qsTr("Duplicate Column")
+
+        onTriggered: root.notebook.duplicateColumn(root.notebook.pickedTable, root.reachFromColumn)
     }
     readonly property Action removeColumn: Action {
         enabled: root.hasTable
@@ -534,13 +603,33 @@ Item {
         }
     }
 
-    function alignTheBoxInHand(align) {
+    function alignTheBoxesInHand(align) {
         if (root.hasTable) {
-            root.notebook.alignCell(root.notebook.pickedTable, root.rowInHand, root.columnInHand, align);
+            root.notebook.alignCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, align);
         }
     }
 
-    // One key removes whatever is picked up, whether that is ink or a box of words.
+    function fillTheBoxesInHand(colour) {
+        if (root.hasTable) {
+            root.notebook.fillCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, colour);
+        }
+    }
+
+    function inkTheBoxesInHand(colour) {
+        if (root.hasTable) {
+            root.notebook.inkCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, colour);
+        }
+    }
+
+    function raiseTheBoxesInHand(rise) {
+        if (root.hasTable) {
+            root.notebook.riseCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn, rise);
+        }
+    }
+
+    // One key removes whatever is picked up, whether that is ink, a box of words, a picture or a
+    // table. Where a stretch of a table is marked out, it is what is typed in those boxes that
+    // goes rather than the table itself, which is what a reader marking them out is asking for.
     function deleteWhatIsPicked() {
         if (root.hasSelection) {
             root.notebook.deleteSelection();
@@ -548,6 +637,8 @@ Item {
             root.notebook.removeText(root.notebook.pickedText);
         } else if (root.hasPicture) {
             root.notebook.removePicture(root.notebook.pickedPicture);
+        } else if (root.hasStretch) {
+            root.notebook.emptyCells(root.notebook.pickedTable, root.reachFromRow, root.reachFromColumn, root.reachToRow, root.reachToColumn);
         } else if (root.hasTable) {
             root.notebook.removeTable(root.notebook.pickedTable);
         }
@@ -568,7 +659,7 @@ Item {
 
     // The key a Mac keyboard sends for Delete, beside the one the command came with.
     Shortcut {
-        enabled: !root.typing && (root.hasSelection || root.hasTextBox || root.hasPicture)
+        enabled: !root.typing && (root.hasSelection || root.hasTextBox || root.hasPicture || root.hasTable)
         sequences: ["Backspace"]
 
         onActivated: root.deleteWhatIsPicked()

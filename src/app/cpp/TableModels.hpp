@@ -30,6 +30,11 @@ struct TableItem {
     QVariantList aligns;
     QVariantList acrosses;
     QVariantList downs;
+    QVariantList fills;
+    QVariantList inks;
+    QVariantList bolds;
+    QVariantList italics;
+    QVariantList rises;
     QVariantMap style;
     QColor rule;
     qreal columnX{};
@@ -61,6 +66,11 @@ public:
     static constexpr int kSheetRole = Qt::UserRole + 12;
     static constexpr int kAcrossesRole = Qt::UserRole + 13;
     static constexpr int kDownsRole = Qt::UserRole + 14;
+    static constexpr int kFillsRole = Qt::UserRole + 15;
+    static constexpr int kInksRole = Qt::UserRole + 16;
+    static constexpr int kBoldsRole = Qt::UserRole + 17;
+    static constexpr int kItalicsRole = Qt::UserRole + 18;
+    static constexpr int kRisesRole = Qt::UserRole + 19;
 
     explicit TableListModel(QObject* parent = nullptr);
 

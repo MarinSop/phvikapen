@@ -201,11 +201,23 @@ constexpr std::string_view kSchemaVersion11 = R"sql(
     ALTER TABLE page_texts ADD COLUMN formula INTEGER NOT NULL DEFAULT 0;
 )sql";
 
+// What one box of a table is shown in, over and above what the whole table is shown in: a colour
+// behind it, a colour for its words, bold, slanted, and where it stands between top and foot. Every
+// box written down before this is shown the way its table is, which is what nothing at all means.
+constexpr std::string_view kSchemaVersion12 = R"sql(
+    ALTER TABLE page_table_cells ADD COLUMN fill INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE page_table_cells ADD COLUMN ink INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE page_table_cells ADD COLUMN face INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE page_table_cells ADD COLUMN rise INTEGER NOT NULL DEFAULT 0;
+)sql";
+
 constexpr std::array kMigrations{
-    std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4},   std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
-    std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9}, std::pair{10, kSchemaVersion10},
-    std::pair{11, kSchemaVersion11},
+    std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2},
+    std::pair{3, kSchemaVersion3},   std::pair{4, kSchemaVersion4},
+    std::pair{6, kSchemaVersion6},   std::pair{7, kSchemaVersion7},
+    std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9},
+    std::pair{10, kSchemaVersion10}, std::pair{11, kSchemaVersion11},
+    std::pair{12, kSchemaVersion12},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -360,6 +372,22 @@ enum class TextColumn : std::uint8_t {
                                 | (style.underline ? kUnderlineMark : 0U)
                                 | (style.struckOut ? kStruckMark : 0U);
     return static_cast<std::int64_t>(marks);
+}
+
+// Whether a box is bold and whether it is slanted, kept as one number beside the rest.
+constexpr unsigned int kCellBoldMark = 1U << 0U;
+constexpr unsigned int kCellItalicMark = 1U << 1U;
+
+// Where what a box is shown in stands in the row it is read back from.
+constexpr int kCellFillColumn = 5;
+constexpr int kCellInkColumn = 6;
+constexpr int kCellFaceColumn = 7;
+constexpr int kCellRiseColumn = 8;
+
+[[nodiscard]] CellRise toRise(std::int64_t value) noexcept {
+    return value >= 0 && value <= static_cast<std::int64_t>(CellRise::Bottom)
+               ? static_cast<CellRise>(value)
+               : CellRise::Top;
 }
 
 [[nodiscard]] TextAlign toAlign(std::int64_t value) noexcept {
@@ -828,14 +856,15 @@ enum class TableWordColumn : std::uint8_t {
 // that is covered by another is not written down either: which boxes are covered follows from how
 // far the others reach, and is worked out again when the table is read.
 [[nodiscard]] bool worthKeeping(const TableCell& cell) noexcept {
-    return !cell.text.empty() || cell.align != TextAlign::Left || cell.across > 1 || cell.down > 1;
+    return !cell.text.empty() || !isPlain(cell) || cell.across > 1 || cell.down > 1;
 }
 
 [[nodiscard]] Result<void> writeCells(sqlite3* database, const Table& table) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         database,
-        "INSERT INTO page_table_cells (table_id, ordinal, text, folded, align, across, down) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?);");
+        "INSERT INTO page_table_cells (table_id, ordinal, text, folded, align, across, down, "
+        "                              fill, ink, face, rise) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -855,6 +884,12 @@ enum class TableWordColumn : std::uint8_t {
             statement->bindInteger(5, static_cast<std::int64_t>(cell.align)),
             statement->bindInteger(6, cell.across),
             statement->bindInteger(7, cell.down),
+            statement->bindInteger(8, static_cast<std::int64_t>(packed(cell.fill))),
+            statement->bindInteger(9, static_cast<std::int64_t>(packed(cell.ink))),
+            statement->bindInteger(
+                10, static_cast<std::int64_t>((cell.bold ? kCellBoldMark : 0U)
+                                              | (cell.italic ? kCellItalicMark : 0U))),
+            statement->bindInteger(11, static_cast<std::int64_t>(cell.rise)),
         });
         if (!bound) {
             return bound;
@@ -880,8 +915,8 @@ enum class TableWordColumn : std::uint8_t {
 
 [[nodiscard]] Result<void> readCells(sqlite3* database, Table& table) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        database, "SELECT ordinal, text, align, across, down FROM page_table_cells "
-                  "WHERE table_id = ? ORDER BY ordinal;");
+        database, "SELECT ordinal, text, align, across, down, fill, ink, face, rise "
+                  "FROM page_table_cells WHERE table_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -901,11 +936,17 @@ enum class TableWordColumn : std::uint8_t {
         if (where >= table.cells.size()) {
             continue;
         }
+        const auto face = static_cast<unsigned int>(statement->integer(kCellFaceColumn));
         table.cells[where] = TableCell{
             .text = statement->text(1),
             .align = toAlign(statement->integer(2)),
             .across = static_cast<int>(statement->integer(3)),
             .down = static_cast<int>(statement->integer(4)),
+            .fill = unpacked(static_cast<std::uint32_t>(statement->integer(kCellFillColumn))),
+            .ink = unpacked(static_cast<std::uint32_t>(statement->integer(kCellInkColumn))),
+            .bold = (face & kCellBoldMark) != 0U,
+            .italic = (face & kCellItalicMark) != 0U,
+            .rise = toRise(statement->integer(kCellRiseColumn)),
         };
     }
 }

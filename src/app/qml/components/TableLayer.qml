@@ -3,10 +3,11 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import PhvikaPen.Ui
 
-// Every table on the paper, drawn over the ink, and the frame around the one that is picked up. A
-// tap takes hold of the table and opens the box it landed in; dragging across marks a stretch of
-// boxes, which can then be joined into one. A tap that lands on no table is let through, so that
-// picking ink with the loop still works.
+// Every table on the paper, drawn over the ink, and what is shown around the one that is picked up.
+// A tap takes hold of the table and opens the box it landed in; dragging across marks a stretch of
+// boxes, and the strips down the side and along the top mark a whole row or a whole column. The
+// knob above the top left corner carries the table about, and taken on its own marks the whole of
+// it. A tap that lands on no table is let through, so that picking ink with the loop still works.
 Item {
     id: root
 
@@ -43,17 +44,21 @@ Item {
     readonly property int firstRow: Math.min(root.fromRow, root.toRow)
     readonly property real grabRoom: Math.round(9 * Theme.scale)
     readonly property int gripSize: Math.round(9 * Theme.scale)
-    readonly property var heights: root.pulledHeights.length > 0 ? root.pulledHeights : root.keptHeights
+    // The strips that mark a whole row or a whole column, which stand outside the table.
+    readonly property real handRoom: Math.round(10 * Theme.scale)
+    readonly property var heights: root.pulledHeights.length > 0 ? root.pulledHeights : root.scaledTo(root.keptHeights, root.liveTall)
     readonly property bool holding: root.pickedId !== "" && root.picked.tableId !== undefined
     readonly property var keptHeights: root.holding ? root.picked.heights : []
     readonly property var keptWidths: root.holding ? root.picked.widths : []
     readonly property int lastColumn: Math.max(root.fromColumn, root.toColumn)
     readonly property int lastRow: Math.max(root.fromRow, root.toRow)
-    // Whether more than one box is marked out, which is what joining them asks for.
-    readonly property bool marking: root.fromRow >= 0 && (root.fromRow !== root.toRow || root.fromColumn !== root.toColumn)
+    // Whether anything at all is marked out, and whether more than one box is, which is what
+    // joining them asks for.
+    readonly property bool marked: root.fromRow >= 0 && root.fromColumn >= 0
+    readonly property bool marking: root.marked && (root.fromRow !== root.toRow || root.fromColumn !== root.toColumn)
     readonly property real narrowest: 16
-    readonly property real onPageTall: Math.max(8, root.spanOf(root.heights) + root.liveTall)
-    readonly property real onPageWide: Math.max(8, root.spanOf(root.widths) + root.liveWide)
+    readonly property real onPageTall: Math.max(8, root.spanOf(root.heights))
+    readonly property real onPageWide: Math.max(8, root.spanOf(root.widths))
     readonly property point origin: root.canvas === null ? Qt.point(0, 0) : root.canvas.viewOrigin
     // A point of type, in the units a page is measured in.
     readonly property real pageUnitsPerPoint: 96 / 72
@@ -62,7 +67,7 @@ Item {
     readonly property bool picking: root.tools !== null && root.tools.currentTool === ToolViewModel.Selection
     readonly property real shortest: 14
     readonly property bool typing: root.editingRow >= 0 && root.editingColumn >= 0
-    readonly property var widths: root.pulledWidths.length > 0 ? root.pulledWidths : root.keptWidths
+    readonly property var widths: root.pulledWidths.length > 0 ? root.pulledWidths : root.scaledTo(root.keptWidths, root.liveWide)
     readonly property real zoom: root.canvas === null ? 1 : root.canvas.zoom
 
     // What is in the editor becomes what its box says, but only for the table the editor was
@@ -120,11 +125,43 @@ Item {
         return -1;
     }
 
+    // The whole table marked out, which is what the knob above its corner asks for on its own.
+    function markAll() {
+        if (!root.holding) {
+            return;
+        }
+        root.leave();
+        root.markFrom(0, 0);
+        root.toRow = Math.max(0, root.heights.length - 1);
+        root.toColumn = Math.max(0, root.columns - 1);
+    }
+
+    // One whole column marked out, from its first box to its last.
+    function markColumn(column) {
+        if (!root.holding) {
+            return;
+        }
+        root.leave();
+        root.markFrom(0, column);
+        root.toRow = Math.max(0, root.heights.length - 1);
+        root.toColumn = column;
+    }
+
     function markFrom(row, column) {
         root.fromRow = row;
         root.fromColumn = column;
         root.toRow = row;
         root.toColumn = column;
+    }
+
+    function markRow(row) {
+        if (!root.holding) {
+            return;
+        }
+        root.leave();
+        root.markFrom(row, 0);
+        root.toRow = row;
+        root.toColumn = Math.max(0, root.columns - 1);
     }
 
     // Dragging across the boxes marks a stretch of them; while more than one is marked there is
@@ -206,6 +243,22 @@ Item {
     function reachOf(measures, index) {
         const said = measures[index];
         return said === undefined ? 1 : said;
+    }
+
+    // The same measures stretched so that they cover so much more room than they did, every one
+    // taking the same share of the change. This is what a corner of the table being dragged shows
+    // before anything is written down.
+    function scaledTo(kept, extra) {
+        const span = root.spanOf(kept);
+        if (extra === 0 || span <= 0 || span + extra <= 0) {
+            return kept;
+        }
+        const share = (span + extra) / span;
+        const put = [];
+        for (let step = 0; step < kept.length; ++step) {
+            put.push(kept[step] * share);
+        }
+        return put;
     }
 
     // Where the table has been carried and pulled to becomes where it stands.
@@ -316,9 +369,15 @@ Item {
         TableBox {
             id: drawn
 
-            hiddenCell: drawn.tableId === root.pickedId ? root.editingCell : -1
-            liveHeights: drawn.tableId === root.pickedId ? root.pulledHeights : []
-            liveWidths: drawn.tableId === root.pickedId ? root.pulledWidths : []
+            readonly property bool inHand: drawn.tableId === root.pickedId
+
+            hiddenCell: drawn.inHand ? root.editingCell : -1
+            // The table itself follows the pointer while it is being carried or sized, so that
+            // where it will stand is seen rather than guessed at from a frame.
+            liveHeights: drawn.inHand ? root.heights : []
+            liveWidths: drawn.inHand ? root.widths : []
+            liveX: drawn.inHand ? root.liveX : 0
+            liveY: drawn.inHand ? root.liveY : 0
             origin: root.origin
             zoom: root.zoom
         }
@@ -353,13 +412,19 @@ Item {
                 root.leave();
                 root.notebook.pickedTable = found;
             }
-            // One tap both takes hold of the table and opens the box it landed in, the way every
-            // other application behaves.
+            // Holding shift stretches what is already marked to the box under the pointer, the
+            // way every other application behaves.
+            if ((mouse.modifiers & Qt.ShiftModifier) !== 0 && root.marked) {
+                root.leave();
+                root.markTo(found, at);
+                return;
+            }
+            // One tap both takes hold of the table and opens the box it landed in.
             root.openCellAt(found, at);
         }
     }
 
-    // The stretch of boxes marked out, tinted so that what will be joined can be seen.
+    // The stretch of boxes marked out, tinted so that what is picked can be seen.
     Rectangle {
         readonly property int lastReachAcross: Math.max(1, root.reachOf(root.acrosses, (root.lastRow * Math.max(1, root.columns)) + root.lastColumn))
         readonly property int lastReachDown: Math.max(1, root.reachOf(root.downs, (root.lastRow * Math.max(1, root.columns)) + root.lastColumn))
@@ -371,6 +436,20 @@ Item {
         width: (root.edgeBefore(root.widths, root.lastColumn + lastReachAcross) - root.edgeBefore(root.widths, root.firstColumn)) * root.zoom
         x: root.boxLeft + (root.edgeBefore(root.widths, root.firstColumn) * root.zoom)
         y: root.boxTop + (root.edgeBefore(root.heights, root.firstRow) * root.zoom)
+    }
+
+    // The one box being worked in, ringed so that it is never in doubt which box a command will
+    // reach. A stretch of boxes is tinted instead, so only one of the two is ever shown.
+    Rectangle {
+        border.color: Theme.accent
+        border.width: 2
+        color: "transparent"
+        height: root.typing ? root.downRoomOf(root.editingRow, root.editingColumn) * root.zoom : 0
+        objectName: "tableCellRing"
+        visible: root.picking && root.typing && !root.marking
+        width: root.typing ? root.widthRoomOf(root.editingRow, root.editingColumn) * root.zoom : 0
+        x: root.boxLeft + (root.edgeBefore(root.widths, root.editingColumn) * root.zoom)
+        y: root.boxTop + (root.edgeBefore(root.heights, root.editingRow) * root.zoom)
     }
 
     Rectangle {
@@ -410,11 +489,13 @@ Item {
             TextEdit {
                 id: editor
 
+                readonly property var look: root.holding && root.typing ? root.notebook.cellLook(root.pickedId, root.editingRow, root.editingColumn) : ({})
+
                 clip: true
-                color: root.holding ? root.picked.style.color : Theme.text
-                font.bold: root.holding && root.picked.style.bold
+                color: editor.look.ink !== undefined && editor.look.ink.a > 0 ? editor.look.ink : (root.holding ? root.picked.style.color : Theme.text)
+                font.bold: root.holding && (root.picked.style.bold || editor.look.bold === true)
                 font.family: !root.holding || root.picked.style.font === "" ? AppInfo.plainFont : root.picked.style.font
-                font.italic: root.holding && root.picked.style.italic
+                font.italic: root.holding && (root.picked.style.italic || editor.look.italic === true)
                 font.pixelSize: Math.max(1, (root.holding ? root.picked.style.size : 12) * root.pageUnitsPerPoint)
                 font.strikeout: root.holding && root.picked.style.struckOut
                 font.underline: root.holding && root.picked.style.underline
@@ -426,6 +507,8 @@ Item {
                 wrapMode: TextEdit.Wrap
 
                 Keys.onBacktabPressed: root.stepOn(-1)
+                // Stepping out of the box leaves the table itself picked up, so that the next
+                // press of the delete key reaches the table rather than what is typed in it.
                 Keys.onEscapePressed: root.leave()
                 // Leaving a box writes it down, so that walking a table with the keyboard keeps up
                 // with what was typed.
@@ -434,20 +517,92 @@ Item {
         }
     }
 
-    // The knob at the top left carries the table about, so that dragging inside it is free to mark
-    // out boxes, the way every other application behaves.
+    // The strip down the left of each row marks the whole of it, the way the numbers down the side
+    // of a spreadsheet do.
+    Repeater {
+        model: root.holding ? root.heights.length : 0
+
+        Rectangle {
+            id: rowHand
+
+            required property int index
+
+            color: rowTap.containsMouse || (root.marking && root.firstRow <= rowHand.index && root.lastRow >= rowHand.index) ? Theme.accent : Theme.accentSoft
+            height: (root.reachOf(root.heights, rowHand.index) * root.zoom) - 1
+            objectName: "tableRowHand" + rowHand.index
+            radius: 2
+            visible: root.picking && root.holding
+            width: root.handRoom
+            x: root.boxLeft - root.handRoom - 2
+            y: root.boxTop + (root.edgeBefore(root.heights, rowHand.index) * root.zoom)
+
+            MouseArea {
+                id: rowTap
+
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                hoverEnabled: true
+
+                onClicked: root.markRow(rowHand.index)
+            }
+        }
+    }
+
+    // The strip above each column marks the whole of it.
+    Repeater {
+        model: root.holding ? root.columns : 0
+
+        Rectangle {
+            id: columnHand
+
+            required property int index
+
+            color: columnTap.containsMouse || (root.marking && root.firstColumn <= columnHand.index && root.lastColumn >= columnHand.index) ? Theme.accent : Theme.accentSoft
+            height: root.handRoom
+            objectName: "tableColumnHand" + columnHand.index
+            radius: 2
+            visible: root.picking && root.holding
+            width: (root.reachOf(root.widths, columnHand.index) * root.zoom) - 1
+            x: root.boxLeft + (root.edgeBefore(root.widths, columnHand.index) * root.zoom)
+            y: root.boxTop - root.handRoom - 2
+
+            MouseArea {
+                id: columnTap
+
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                hoverEnabled: true
+
+                onClicked: root.markColumn(columnHand.index)
+            }
+        }
+    }
+
+    // The knob above the corner carries the table about. Taken on its own it marks the whole of
+    // the table, which is what the same knob does in every other application.
     Rectangle {
         antialiasing: true
         border.color: Theme.accent
         border.width: 1
-        color: Theme.accentText
-        height: root.gripSize + 4
+        color: moveHover.hovered || moveDrag.active ? Theme.accent : Theme.accentText
+        height: root.gripSize + 6
         objectName: "tableMoveGrip"
-        radius: height / 2
+        radius: 3
         visible: root.picking && root.holding
-        width: root.gripSize + 4
-        x: root.boxLeft - (width / 2)
-        y: root.boxTop - (height / 2)
+        width: root.gripSize + 6
+        // Clear of the grip that sizes the table, which stands on the corner itself.
+        x: root.boxLeft - width - root.gripSize
+        y: root.boxTop - height - root.gripSize
+
+        HoverHandler {
+            id: moveHover
+
+            cursorShape: Qt.SizeAllCursor
+        }
+
+        TapHandler {
+            onTapped: root.markAll()
+        }
 
         DragHandler {
             id: moveDrag
@@ -469,7 +624,8 @@ Item {
     }
 
     // The rules between the columns can be pulled about, so that one column may be wider than the
-    // rest, and likewise the rules between the rows.
+    // rest, and likewise the rules between the rows. The rule under the pointer is drawn in, so
+    // that what will move is seen before it is taken hold of.
     Repeater {
         model: Math.max(0, root.columns - 1)
 
@@ -479,7 +635,7 @@ Item {
             required property int index
             readonly property int at: downRule.index + 1
 
-            color: pullDown.active ? Theme.accent : "transparent"
+            color: pullDown.active ? Theme.accent : (downHover.hovered ? Theme.accentSoft : "transparent")
             height: root.onPageTall * root.zoom
             objectName: "tableColumnRule" + downRule.index
             visible: root.picking && root.holding
@@ -488,6 +644,8 @@ Item {
             y: root.boxTop
 
             HoverHandler {
+                id: downHover
+
                 cursorShape: Qt.SplitHCursor
             }
 
@@ -520,7 +678,7 @@ Item {
             required property int index
             readonly property int at: acrossRule.index + 1
 
-            color: pullAcross.active ? Theme.accent : "transparent"
+            color: pullAcross.active ? Theme.accent : (acrossHover.hovered ? Theme.accentSoft : "transparent")
             height: root.grabRoom
             objectName: "tableRowRule" + acrossRule.index
             visible: root.picking && root.holding
@@ -529,6 +687,8 @@ Item {
             y: root.boxTop + (root.edgeBefore(root.heights, acrossRule.at) * root.zoom) - (height / 2)
 
             HoverHandler {
+                id: acrossHover
+
                 cursorShape: Qt.SplitVCursor
             }
 
@@ -566,7 +726,7 @@ Item {
             antialiasing: true
             border.color: Theme.accent
             border.width: 1
-            color: Theme.accentText
+            color: sizeDrag.active ? Theme.accent : Theme.accentText
             height: root.gripSize
             objectName: "tableGrip" + grip.index
             radius: 2
@@ -574,6 +734,10 @@ Item {
             width: root.gripSize
             x: root.boxLeft + ((grip.pullX + 1) / 2 * root.onPageWide * root.zoom) - (width / 2)
             y: root.boxTop + ((grip.pullY + 1) / 2 * root.onPageTall * root.zoom) - (height / 2)
+
+            HoverHandler {
+                cursorShape: grip.pullX === grip.pullY ? Qt.SizeFDiagCursor : Qt.SizeBDiagCursor
+            }
 
             DragHandler {
                 id: sizeDrag

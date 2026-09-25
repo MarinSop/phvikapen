@@ -109,6 +109,24 @@ void mendSpans(Table& table) {
     }
 }
 
+// Every box of the rectangle two boxes stand at the corners of, changed one at a time.
+template <typename Change>
+[[nodiscard]] Result<Table> overEachOf(Table table, CellAt from, CellAt to, Change change) {
+    if (!holds(table, from) || !holds(table, to)) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such box");
+    }
+    const int firstRow = std::min(from.row, to.row);
+    const int lastRow = std::max(from.row, to.row);
+    const int firstColumn = std::min(from.column, to.column);
+    const int lastColumn = std::max(from.column, to.column);
+    for (int row = firstRow; row <= lastRow; ++row) {
+        for (int column = firstColumn; column <= lastColumn; ++column) {
+            change(table.cells[indexOf(table, CellAt{.row = row, .column = column})]);
+        }
+    }
+    return table;
+}
+
 void spreadOver(std::vector<float>& measures, float want, float smallest) noexcept {
     const float have = sumOf(measures);
     if (have <= 0.0F || !std::isfinite(want) || want <= 0.0F) {
@@ -319,11 +337,86 @@ Result<Table> withCellWritten(Table table, CellAt cell, std::string words) {
 }
 
 Result<Table> withCellAligned(Table table, CellAt cell, TextAlign align) {
-    if (!holds(table, cell)) {
-        return makeError(ErrorCode::InvalidArgument, "the table has no such box");
+    return withRangeAligned(std::move(table), cell, cell, align);
+}
+
+Result<Table> withRangeAligned(Table table, CellAt from, CellAt to, TextAlign align) {
+    return overEachOf(std::move(table), from, to, [align](TableCell& cell) { cell.align = align; });
+}
+
+Result<Table> withRangeRisen(Table table, CellAt from, CellAt to, CellRise rise) {
+    return overEachOf(std::move(table), from, to, [rise](TableCell& cell) { cell.rise = rise; });
+}
+
+Result<Table> withRangeFilled(Table table, CellAt from, CellAt to, Color fill) {
+    return overEachOf(std::move(table), from, to, [fill](TableCell& cell) { cell.fill = fill; });
+}
+
+Result<Table> withRangeInked(Table table, CellAt from, CellAt to, Color ink) {
+    return overEachOf(std::move(table), from, to, [ink](TableCell& cell) { cell.ink = ink; });
+}
+
+Result<Table> withRangeWeighted(Table table, CellAt from, CellAt to, bool bold) {
+    return overEachOf(std::move(table), from, to, [bold](TableCell& cell) { cell.bold = bold; });
+}
+
+Result<Table> withRangeSlanted(Table table, CellAt from, CellAt to, bool italic) {
+    return overEachOf(std::move(table), from, to,
+                      [italic](TableCell& cell) { cell.italic = italic; });
+}
+
+Result<Table> withRangePlain(Table table, CellAt from, CellAt to) {
+    return overEachOf(std::move(table), from, to, [](TableCell& cell) {
+        cell.align = TextAlign::Left;
+        cell.fill = kNoColor;
+        cell.ink = kNoColor;
+        cell.bold = false;
+        cell.italic = false;
+        cell.rise = CellRise::Top;
+    });
+}
+
+Result<Table> withRangeEmptied(Table table, CellAt from, CellAt to) {
+    return overEachOf(std::move(table), from, to, [](TableCell& cell) { cell.text.clear(); });
+}
+
+Result<Table> withRowDuplicated(Table table, int at) {
+    const int rows = rowsOf(table);
+    if (at < 0 || at >= rows) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such row");
     }
-    table.cells[indexOf(table, cell)].align = align;
-    return table;
+    const std::size_t columns = table.columns.size();
+    Result<Table> grown = withRowAdded(std::move(table), at + 1);
+    if (!grown) {
+        return grown;
+    }
+    Table made = std::move(*grown);
+    const auto from = static_cast<std::size_t>(at) * columns;
+    for (std::size_t step = 0; step < columns; ++step) {
+        made.cells[from + columns + step] = made.cells[from + step];
+    }
+    made.rows[static_cast<std::size_t>(at) + 1] = made.rows[static_cast<std::size_t>(at)];
+    return normalized(std::move(made));
+}
+
+Result<Table> withColumnDuplicated(Table table, int at) {
+    const int columns = columnsOf(table);
+    if (at < 0 || at >= columns) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such column");
+    }
+    Result<Table> grown = withColumnAdded(std::move(table), at + 1);
+    if (!grown) {
+        return grown;
+    }
+    Table made = std::move(*grown);
+    const std::size_t wide = made.columns.size();
+    for (int row = 0; row < rowsOf(made); ++row) {
+        const std::size_t here =
+            (static_cast<std::size_t>(row) * wide) + static_cast<std::size_t>(at);
+        made.cells[here + 1] = made.cells[here];
+    }
+    made.columns[static_cast<std::size_t>(at) + 1] = made.columns[static_cast<std::size_t>(at)];
+    return normalized(std::move(made));
 }
 
 Table spreadAs(Table table, std::vector<float> columns, std::vector<float> rows) {

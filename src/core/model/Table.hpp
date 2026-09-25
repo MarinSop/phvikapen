@@ -14,19 +14,50 @@
 
 namespace phvikapen::core {
 
+// How what is typed in a box sits between the top of the box and its foot.
+enum class CellRise : std::uint8_t {
+    Top,
+    Middle,
+    Bottom,
+};
+
+// No colour at all, which is what a box says when it is to be shown the way the whole table is:
+// nothing behind it, and its words in the table's own colour.
+inline constexpr Color kNoColor{.red = 0, .green = 0, .blue = 0, .alpha = 0};
+
+[[nodiscard]] constexpr bool isShown(Color color) noexcept {
+    return color.alpha > 0;
+}
+
 // One box of a table. What is typed into it belongs to the table; what is written into it with a
 // pen belongs to the page and stays where it was written.
 //
 // A box may reach across several columns and down several rows, and the boxes it swallows are left
 // reaching nothing at all: they are covered, and have neither room nor words of their own.
+//
+// A box may also be shown differently from the rest of the table: filled with a colour behind it,
+// its words in a colour of their own, bold, slanted, and standing at the top of its room, at the
+// middle or at its foot. What it says nothing about, the table says for it, so that a table is one
+// thing unless a reader asks for a heading to stand out.
 struct TableCell {
     std::string text;
     TextAlign align{TextAlign::Left};
     int across{1};
     int down{1};
+    Color fill{kNoColor};
+    Color ink{kNoColor};
+    bool bold{};
+    bool italic{};
+    CellRise rise{CellRise::Top};
 
     friend bool operator==(const TableCell&, const TableCell&) = default;
 };
+
+// Whether a box is shown just as the whole table is, which is what every box starts out as.
+[[nodiscard]] constexpr bool isPlain(const TableCell& cell) noexcept {
+    return !isShown(cell.fill) && !isShown(cell.ink) && !cell.bold && !cell.italic
+           && cell.rise == CellRise::Top && cell.align == TextAlign::Left;
+}
 
 [[nodiscard]] constexpr bool isCovered(const TableCell& cell) noexcept {
     return cell.across < 1 || cell.down < 1;
@@ -125,6 +156,33 @@ struct PlacedTable {
 [[nodiscard]] Result<Table> withCellWritten(Table table, CellAt cell, std::string words);
 
 [[nodiscard]] Result<Table> withCellAligned(Table table, CellAt cell, TextAlign align);
+
+// Every box of a stretch of the table changed at once, which is what a reader who has marked out a
+// row, a column or a corner of the table is asking for. The stretch is the rectangle the two boxes
+// stand at the corners of, whichever way round they are given.
+[[nodiscard]] Result<Table> withRangeAligned(Table table, CellAt from, CellAt to, TextAlign align);
+
+[[nodiscard]] Result<Table> withRangeRisen(Table table, CellAt from, CellAt to, CellRise rise);
+
+[[nodiscard]] Result<Table> withRangeFilled(Table table, CellAt from, CellAt to, Color fill);
+
+[[nodiscard]] Result<Table> withRangeInked(Table table, CellAt from, CellAt to, Color ink);
+
+[[nodiscard]] Result<Table> withRangeWeighted(Table table, CellAt from, CellAt to, bool bold);
+
+[[nodiscard]] Result<Table> withRangeSlanted(Table table, CellAt from, CellAt to, bool italic);
+
+// Every box of a stretch left saying what it said, and shown the way the whole table is.
+[[nodiscard]] Result<Table> withRangePlain(Table table, CellAt from, CellAt to);
+
+// Every box of a stretch emptied of what was typed in it, and left looking as it did.
+[[nodiscard]] Result<Table> withRangeEmptied(Table table, CellAt from, CellAt to);
+
+// A row or a column put down again just after itself, with everything the boxes say and everything
+// they are shown in.
+[[nodiscard]] Result<Table> withRowDuplicated(Table table, int at);
+
+[[nodiscard]] Result<Table> withColumnDuplicated(Table table, int at);
 
 // Every box of a stretch of the table joined into one, which is the box at its top left. What each
 // said is kept, one after another, in reading order. A stretch that cuts through a box already

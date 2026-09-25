@@ -42,6 +42,155 @@ TestCase {
         });
     }
 
+    function test_theKnobThatCarriesATableStandsClearOfTheGripThatSizesIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        tryCompare(layer, "holding", true);
+
+        const knob = findChild(layer, "tableMoveGrip");
+        const grip = findChild(layer, "tableGrip0");
+
+        verify(knob !== null);
+        verify(grip !== null);
+        // Two controls on the same spot mean the one drawn last takes every press, and the table
+        // could never be carried at all.
+        const apart = knob.x + knob.width <= grip.x || grip.x + grip.width <= knob.x || knob.y + knob.height <= grip.y || grip.y + grip.height <= knob.y;
+        verify(apart, "the knob and the corner grip stand on the same spot");
+    }
+
+    function test_aTableBeingCarriedFollowsThePointerBeforeItIsSetDown() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        tryCompare(layer, "holding", true);
+        const drawn = findChild(layer, "tableBox");
+        verify(drawn !== null);
+        const before = drawn.x;
+
+        layer.liveX = 40;
+
+        compare(drawn.x, before + 40);
+    }
+
+    function test_theStripDownTheSideMarksAWholeRow() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(3, 2);
+        tryCompare(layer, "holding", true);
+
+        layer.markRow(1);
+
+        verify(layer.marking);
+        compare(layer.firstRow, 1);
+        compare(layer.lastRow, 1);
+        compare(layer.firstColumn, 0);
+        compare(layer.lastColumn, 1);
+    }
+
+    function test_theStripAboveMarksAWholeColumn() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(3, 2);
+        tryCompare(layer, "holding", true);
+
+        layer.markColumn(1);
+
+        verify(layer.marking);
+        compare(layer.firstColumn, 1);
+        compare(layer.lastColumn, 1);
+        compare(layer.firstRow, 0);
+        compare(layer.lastRow, 2);
+    }
+
+    function test_theKnobOnItsOwnMarksTheWholeTable() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(3, 2);
+        tryCompare(layer, "holding", true);
+
+        layer.markAll();
+
+        verify(layer.marking);
+        compare(layer.firstRow, 0);
+        compare(layer.firstColumn, 0);
+        compare(layer.lastRow, 2);
+        compare(layer.lastColumn, 1);
+    }
+
+    function test_aStretchOfBoxesIsGivenAColourAndAFaceOfItsOwn() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+
+        notebook.fillCells(tableId, 0, 0, 0, 1, "#ffcc00");
+        notebook.weighCells(tableId, 0, 0, 0, 1, true);
+        notebook.riseCells(tableId, 1, 0, 1, 1, 1);
+
+        const rows = tables(notebook);
+        compare(rows.count, 1);
+        const shown = rows.itemAt(0);
+        compare(shown.bolds[0], true);
+        compare(shown.bolds[1], true);
+        compare(shown.bolds[2], false);
+        compare(shown.fills[0].toString(), "#ffcc00");
+        verify(!shown.fills[3].valid || shown.fills[3].a === 0);
+        compare(shown.rises[2], 1);
+        compare(shown.rises[0], 0);
+    }
+
+    function test_whatABoxIsShownInIsAskedForWhenTheBarNeedsIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.weighCells(tableId, 0, 0, 0, 0, true);
+
+        const look = notebook.cellLook(tableId, 0, 0);
+
+        compare(look.bold, true);
+        compare(look.italic, false);
+        compare(look.align, 0);
+        compare(notebook.cellLook(tableId, 9, 9).bold, undefined);
+    }
+
+    function test_rubbingOutAStretchLeavesTheBoxesLookingAsTheyDid() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.writeCell(tableId, 0, 0, "Monday");
+        notebook.weighCells(tableId, 0, 0, 0, 0, true);
+
+        notebook.emptyCells(tableId, 0, 0, 0, 1);
+
+        compare(notebook.wordsOfCell(tableId, 0, 0), "");
+        compare(notebook.cellLook(tableId, 0, 0).bold, true);
+    }
+
+    function test_aRowPutDownAgainBringsItsWordsWithIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.writeCell(tableId, 0, 1, "Monday");
+
+        notebook.duplicateRow(tableId, 0);
+
+        compare(notebook.pickedTableBox.heights.length, 3);
+        compare(notebook.wordsOfCell(tableId, 1, 1), "Monday");
+    }
+
     function test_aTableRuledOnThePageIsDrawnWithItsBoxes() {
         const notebook = openNotebook(newNotebookPath());
 
@@ -407,7 +556,10 @@ TestCase {
 
         Repeater {
             delegate: Item {
+                required property var bolds
+                required property var fills
                 required property var heights
+                required property var rises
                 required property string tableId
                 required property var widths
                 required property var words

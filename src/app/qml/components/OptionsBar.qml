@@ -16,6 +16,13 @@ ToolBar {
     readonly property bool erases: root.tools.currentTool === ToolViewModel.Eraser
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool picks: root.tools.currentTool === ToolViewModel.Selection
+    // A table in hand has a bar of its own. What is offered for ink picked with the loop stands
+    // aside while it does, so that the bar is never two things at once.
+    readonly property bool tables: root.actions.hasTable
+    readonly property bool picksInk: root.picks && !root.tables
+    // What the box in hand is already shown in, so the bar shows back what is set.
+    readonly property color cellFill: root.actions.lookInHand.fill === undefined ? "transparent" : root.actions.lookInHand.fill
+    readonly property color cellInk: root.actions.lookInHand.ink === undefined ? "transparent" : root.actions.lookInHand.ink
     readonly property list<int> shapes: [ToolViewModel.Line, ToolViewModel.Rectangle, ToolViewModel.Ellipse]
     readonly property list<int> eraserModes: [ToolViewModel.Touched, ToolViewModel.WholeStroke]
     readonly property var families: Qt.fontFamilies()
@@ -298,15 +305,180 @@ ToolBar {
             label: qsTr("To text")
             objectName: "convertToTextButton"
             shortcutText: AppInfo.shortcutText(root.actions.convertToText.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
             action: root.actions.solve
-            label: qsTr("Work out")
+            label: qsTr("Solve")
             objectName: "solveButton"
             shortcutText: AppInfo.shortcutText(root.actions.solve.shortcut)
-            visible: root.picks || root.types
+            visible: root.picksInk || root.types
+        }
+
+        ToolSeparator {
+            visible: root.tables
+        }
+
+        Repeater {
+            model: root.tables ? 2 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: [root.actions.lookInHand.bold === true, root.actions.lookInHand.italic === true][index]
+                icon.source: [Icons.bold, Icons.italic][index]
+                label: [qsTr("Bold"), qsTr("Italic")][index]
+                objectName: ["cellBoldButton", "cellItalicButton"][index]
+
+                onClicked: (index === 0 ? root.actions.boldCells : root.actions.italicCells).trigger()
+            }
+        }
+
+        Repeater {
+            model: root.tables ? 3 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: root.actions.lookInHand.align === index
+                icon.source: [Icons.alignLeft, Icons.alignCenter, Icons.alignRight][index]
+                label: [qsTr("Align left"), qsTr("Center"), qsTr("Align right")][index]
+                objectName: ["cellAlignLeftButton", "cellAlignCenterButton", "cellAlignRightButton"][index]
+
+                onClicked: root.actions.alignTheBoxesInHand(index)
+            }
+        }
+
+        Repeater {
+            model: root.tables ? 3 : 0
+
+            ShapeButton {
+                required property int index
+
+                active: root.actions.lookInHand.rise === index
+                icon.source: [Icons.sitAtTop, Icons.sitAtMiddle, Icons.sitAtFoot][index]
+                label: [qsTr("Sit at top"), qsTr("Sit at middle"), qsTr("Sit at foot")][index]
+                objectName: ["cellTopButton", "cellMiddleButton", "cellFootButton"][index]
+
+                onClicked: root.actions.raiseTheBoxesInHand(index)
+            }
+        }
+
+        ColourTap {
+            colour: root.cellFill
+            icon.source: Icons.cellColour
+            label: qsTr("Colour behind the boxes")
+            objectName: "cellFillButton"
+            visible: root.tables
+
+            onClicked: {
+                cellFillDialog.selectedColor = root.cellFill.valid && root.cellFill.a > 0 ? root.cellFill : Theme.surface;
+                cellFillDialog.open();
+            }
+        }
+
+        ColourTap {
+            colour: root.cellInk
+            icon.source: Icons.inkColour
+            label: qsTr("Colour of the words")
+            objectName: "cellInkButton"
+            visible: root.tables
+
+            onClicked: {
+                cellInkDialog.selectedColor = root.cellInk.valid && root.cellInk.a > 0 ? root.cellInk : Theme.text;
+                cellInkDialog.open();
+            }
+        }
+
+        Label {
+            color: palette.placeholderText
+            text: qsTr("Rules")
+            visible: root.tables
+        }
+
+        NumberField {
+            maximum: 8
+            minimum: 1
+            number: root.notebook === null || !root.tables ? 1 : Math.round(root.notebook.pickedTableBox.ruleWidth)
+            objectName: "ruleWidthField"
+            step: 1
+            visible: root.tables
+
+            onNumberEdited: value => root.notebook.ruleTable(root.actions.notebook.pickedTable, null, value)
+        }
+
+        QuickButton {
+            action: root.actions.mergeCells
+            label: qsTr("Merge boxes")
+            objectName: "mergeCellsButton"
+            visible: root.tables
+        }
+
+        QuickButton {
+            action: root.actions.splitCell
+            label: qsTr("Split box")
+            objectName: "splitCellButton"
+            visible: root.tables
+        }
+
+        ToolButton {
+            objectName: "tableMenuButton"
+            text: qsTr("Table")
+            visible: root.tables
+
+            onClicked: tableMenu.popup()
+
+            Menu {
+                id: tableMenu
+
+                objectName: "tableMenu"
+
+                MenuCommand {
+                    action: root.actions.addRowAbove
+                }
+
+                MenuCommand {
+                    action: root.actions.addRowBelow
+                }
+
+                MenuCommand {
+                    action: root.actions.addColumnBefore
+                }
+
+                MenuCommand {
+                    action: root.actions.addColumnAfter
+                }
+
+                MenuLine {
+                }
+
+                MenuCommand {
+                    action: root.actions.duplicateRow
+                }
+
+                MenuCommand {
+                    action: root.actions.duplicateColumn
+                }
+
+                MenuLine {
+                }
+
+                MenuCommand {
+                    action: root.actions.removeRow
+                }
+
+                MenuCommand {
+                    action: root.actions.removeColumn
+                }
+
+                MenuLine {
+                }
+
+                MenuCommand {
+                    action: root.actions.clearCellLook
+                }
+            }
         }
 
         ToolSeparator {
@@ -351,7 +523,7 @@ ToolBar {
             label: qsTr("Copy")
             objectName: "copySelectionButton"
             shortcutText: AppInfo.shortcutText(root.actions.copy.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
@@ -359,7 +531,7 @@ ToolBar {
             label: qsTr("Duplicate")
             objectName: "duplicateButton"
             shortcutText: AppInfo.shortcutText(root.actions.duplicate.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
@@ -367,7 +539,7 @@ ToolBar {
             label: qsTr("Turn left")
             objectName: "turnLeftButton"
             shortcutText: AppInfo.shortcutText(root.actions.rotateLeft.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
@@ -375,7 +547,7 @@ ToolBar {
             label: qsTr("Turn right")
             objectName: "turnRightButton"
             shortcutText: AppInfo.shortcutText(root.actions.rotateRight.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
@@ -383,7 +555,7 @@ ToolBar {
             label: qsTr("Paste")
             objectName: "pasteButton"
             shortcutText: AppInfo.shortcutText(root.actions.paste.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         QuickButton {
@@ -391,7 +563,7 @@ ToolBar {
             label: qsTr("Delete")
             objectName: "deleteSelectionButton"
             shortcutText: AppInfo.shortcutText(root.actions.remove.shortcut)
-            visible: root.picks
+            visible: root.picksInk
         }
 
         Item {
@@ -445,5 +617,23 @@ ToolBar {
         options: ColorDialog.ShowAlphaChannel
 
         onAccepted: root.applyColour(colourDialog.selectedColor)
+    }
+
+    ColorDialog {
+        id: cellFillDialog
+
+        objectName: "cellFillDialog"
+        options: ColorDialog.ShowAlphaChannel
+
+        onAccepted: root.actions.fillTheBoxesInHand(cellFillDialog.selectedColor)
+    }
+
+    ColorDialog {
+        id: cellInkDialog
+
+        objectName: "cellInkDialog"
+        options: ColorDialog.ShowAlphaChannel
+
+        onAccepted: root.actions.inkTheBoxesInHand(cellInkDialog.selectedColor)
     }
 }

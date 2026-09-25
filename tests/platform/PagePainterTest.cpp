@@ -364,6 +364,68 @@ TEST(PagePainterTest, WordsTypedIntoABoxAreDrawnInThatBoxAndNoOther) {
     EXPECT_FALSE(hasColorIn(sheet, QColor(0, 0, 0), blank.inflated(-2.0F)));
 }
 
+TEST(PagePainterTest, ABoxGivenAColourIsFilledWithItAndTheRestAreLeftClear) {
+    std::array tables{ruled(core::Color{.red = 255}, "")};
+    const core::Color amber{.red = 255, .green = 200, .blue = 0, .alpha = core::Color::kOpaque};
+    tables.front().table =
+        core::withRangeFilled(tables.front().table, core::CellAt{.row = 0, .column = 0},
+                              core::CellAt{.row = 0, .column = 1}, amber)
+            .value();
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = {},
+        .pictures = {},
+        .tables = tables,
+    };
+
+    const QImage sheet = paint(page, area);
+
+    const core::Table& table = tables.front().table;
+    const core::Rect filled = core::areaOfCell(table, core::CellAt{.row = 0, .column = 0});
+    const core::Rect clear = core::areaOfCell(table, core::CellAt{.row = 1, .column = 0});
+    EXPECT_TRUE(hasColorIn(sheet, QColor(255, 200, 0), filled.inflated(-4.0F)));
+    EXPECT_FALSE(hasColorIn(sheet, QColor(255, 200, 0), clear.inflated(-4.0F)));
+    // The ruling is drawn over what fills a box rather than under it.
+    EXPECT_TRUE(hasColorIn(sheet, QColor(255, 0, 0), core::areaOf(table)));
+}
+
+TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnThere) {
+    std::array tables{ruled(core::Color{.red = 255}, "IIII")};
+    tables.front().table =
+        core::withRangeRisen(tables.front().table, core::CellAt{.row = 0, .column = 1},
+                             core::CellAt{.row = 0, .column = 1}, core::CellRise::Bottom)
+            .value();
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = {},
+        .pictures = {},
+        .tables = tables,
+    };
+
+    const QImage sheet = paint(page, area);
+
+    const core::Rect box =
+        core::areaOfCell(tables.front().table, core::CellAt{.row = 0, .column = 1});
+    const core::Rect upper{
+        .left = box.left + 4.0F,
+        .top = box.top + 4.0F,
+        .right = box.right - 4.0F,
+        .bottom = box.top + (box.height() / 2.0F),
+    };
+    const core::Rect lower{
+        .left = box.left + 4.0F,
+        .top = box.top + (box.height() / 2.0F),
+        .right = box.right - 4.0F,
+        .bottom = box.bottom - 4.0F,
+    };
+    EXPECT_TRUE(hasColorIn(sheet, QColor(0, 0, 0), lower));
+    EXPECT_FALSE(hasColorIn(sheet, QColor(0, 0, 0), upper));
+}
+
 TEST(PagePainterTest, AJoinedBoxIsNeverRuledThroughTheMiddle) {
     std::array tables{ruled(core::Color{.red = 255}, "")};
     tables.front().table =

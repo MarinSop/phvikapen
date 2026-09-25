@@ -195,6 +195,41 @@ TEST(NotebookTablesTest, KeepsHowFarEachBoxReachesOverTheOthers) {
     EXPECT_TRUE(isCovered(*cellAt(kept->front().table, CellAt{.row = 0, .column = 1})));
 }
 
+TEST(NotebookTablesTest, KeepsHowEachBoxIsShown) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = firstPageOf(*store);
+    const Color grey{.red = 230, .green = 230, .blue = 230, .alpha = Color::kOpaque};
+    const Color red{.red = 200, .green = 0, .blue = 0, .alpha = Color::kOpaque};
+    Table table = tableAt(ids, 10.0F, 20.0F);
+    table = withRangeFilled(std::move(table), CellAt{.row = 0, .column = 0},
+                            CellAt{.row = 0, .column = 1}, grey)
+                .value();
+    table = withRangeWeighted(std::move(table), CellAt{.row = 0, .column = 0},
+                              CellAt{.row = 0, .column = 1}, true)
+                .value();
+    table = withRangeInked(std::move(table), CellAt{.row = 1, .column = 0},
+                           CellAt{.row = 1, .column = 0}, red)
+                .value();
+    table = withRangeRisen(std::move(table), CellAt{.row = 1, .column = 0},
+                           CellAt{.row = 1, .column = 0}, CellRise::Middle)
+                .value();
+    ASSERT_TRUE(store->insertTable(page, PlacedTable{.ordinal = 0, .table = table}));
+
+    const Result<std::vector<PlacedTable>> kept = store->tablesOfPage(page);
+
+    ASSERT_TRUE(kept.has_value()) << kept.error().message;
+    ASSERT_EQ(kept->size(), 1U);
+    EXPECT_EQ(kept->front().table, table);
+    const TableCell* const heading = cellAt(kept->front().table, CellAt{.row = 0, .column = 1});
+    ASSERT_NE(heading, nullptr);
+    EXPECT_EQ(heading->fill, grey);
+    EXPECT_TRUE(heading->bold);
+    EXPECT_EQ(cellAt(kept->front().table, CellAt{.row = 1, .column = 0})->rise, CellRise::Middle);
+}
+
 TEST(NotebookTablesTest, FindsWordsOfAJoinedBoxAcrossTheWholeOfIt) {
     const TemporaryNotebook notebook;
     Uuid7Generator ids;

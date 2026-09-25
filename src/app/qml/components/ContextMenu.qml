@@ -156,6 +156,21 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.boldCells
+        objectName: "contextBoldCells"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.italicCells
+        visible: root.onTable
+    }
+
+    MenuLine {
+        visible: root.onTable
+    }
+
+    MenuCommand {
         action: root.actions.alignCellLeft
         objectName: "contextAlignCellLeft"
         visible: root.onTable
@@ -168,6 +183,28 @@ Menu {
 
     MenuCommand {
         action: root.actions.alignCellRight
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.sitAtTop
+        objectName: "contextSitAtTop"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.sitAtMiddle
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.sitAtFoot
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.clearCellLook
+        objectName: "contextClearCellLook"
         visible: root.onTable
     }
 
@@ -193,6 +230,17 @@ Menu {
 
     MenuCommand {
         action: root.actions.addColumnAfter
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.duplicateRow
+        objectName: "contextDuplicateRow"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.duplicateColumn
         visible: root.onTable
     }
 

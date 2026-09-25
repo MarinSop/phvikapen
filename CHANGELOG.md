@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A table is worked the way a spreadsheet is worked. One box is taken by tapping it and a stretch by
+  dragging across them or holding shift; the strip down the side marks a whole row, the strip along
+  the top a whole column, and the knob above the corner the whole table. What is marked out is
+  tinted, and the one box being typed in is ringed, so what a command will reach is never in doubt.
+- Boxes of a table can be shown differently from the rest of it: a colour behind them, a colour for
+  their words, bold, slanted, lined up left, centre or right, and standing at the top of their room,
+  at the middle or at the foot. Whatever is marked out is changed at once, which is what a heading
+  row is made of. A row or a column can be put down again just as it was, and everything a box was
+  given can be let go of again. All of it is kept with the notebook, printed and shown in the small
+  picture of the page.
 - The words a page of handwriting was read into are kept in the notebook, beside the strokes they
   were written with, and searched without case, punctuation or the marks over letters: a search for
   `cehoslovacka` finds `Čehoslovačka`, and several words are found where they follow one another.
@@ -128,6 +138,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A table could not be carried about: the knob that carries it stood on the very same spot as the
+  grip that sizes it, so every attempt to move a table sized it instead. The knob now stands clear
+  above the corner, the table itself follows the pointer while it is being carried or sized rather
+  than a frame standing in for it, and the knob taken on its own marks the whole table.
+- The delete key left a table where it was. Taking hold of a table opens the box the tap landed in,
+  and while anything is being typed the keyboard belongs to whoever is typing, so the key was given
+  up. Stepping out of a box with Escape now leaves the table itself in hand, and the key that a Mac
+  keyboard sends for delete reaches a table as well. Where a stretch of boxes is marked out, the
+  key empties those boxes instead of taking the table away.
 - A line drawn slowly, and a diagonal one above all, came out wavy. A pen reports where it is to
   the nearest pixel, so a hand moving slowly leaves a staircase rather than a line, and the evening
   out reached barely a pixel either way: far too little to lose it. It now reaches as far as the

@@ -46,6 +46,23 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     duplicate
     select-multiple
     minus-circle
+    math
+    font
+    table
+    color-fill
+    font-color
+    border-all
+    objects-vertical-top
+    objects-vertical-center
+    objects-vertical-bottom
+    layer
+    layer-plus
+    layer-minus
+    show
+    hide
+    lock
+    lock-open
+    grid-alt
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -95,6 +112,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/AppMenuBar.qml
         qml/components/AppStatusBar.qml
         qml/components/ColorField.qml
+        qml/components/ColourTap.qml
         qml/components/ColourLens.qml
         qml/components/ContextMenu.qml
         qml/components/ConfirmDialog.qml

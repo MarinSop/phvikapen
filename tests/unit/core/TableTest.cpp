@@ -345,5 +345,139 @@ TEST(TableTest, GivesEveryBoxOfTheGridAPlace) {
     EXPECT_EQ(put.cells.size(), 4U);
 }
 
+TEST(TableTest, ABoxStartsOutShownTheWayTheWholeTableIs) {
+    const Table table = threeByTwo();
+
+    EXPECT_TRUE(isPlain(table.cells.front()));
+    EXPECT_FALSE(isShown(kNoColor));
+    EXPECT_TRUE(isShown(Color{.red = 10, .green = 20, .blue = 30, .alpha = Color::kOpaque}));
+}
+
+TEST(TableTest, AStretchOfBoxesIsFilledAtOnce) {
+    const Color blue{.red = 0, .green = 90, .blue = 200, .alpha = Color::kOpaque};
+
+    const Result<Table> filled = withRangeFilled(threeByTwo(), CellAt{.row = 0, .column = 0},
+                                                 CellAt{.row = 1, .column = 1}, blue);
+
+    ASSERT_TRUE(filled.has_value());
+    for (int row = 0; row < 2; ++row) {
+        for (int column = 0; column < 2; ++column) {
+            EXPECT_EQ(cellAt(*filled, CellAt{.row = row, .column = column})->fill, blue);
+        }
+    }
+    EXPECT_FALSE(isShown(cellAt(*filled, CellAt{.row = 2, .column = 0})->fill));
+}
+
+TEST(TableTest, AStretchIsTheSameWhicheverCornerItIsGivenFrom) {
+    const Result<Table> forwards = withRangeWeighted(threeByTwo(), CellAt{.row = 0, .column = 0},
+                                                     CellAt{.row = 2, .column = 1}, true);
+    const Result<Table> backwards = withRangeWeighted(threeByTwo(), CellAt{.row = 2, .column = 1},
+                                                      CellAt{.row = 0, .column = 0}, true);
+
+    ASSERT_TRUE(forwards.has_value());
+    ASSERT_TRUE(backwards.has_value());
+    EXPECT_EQ(*forwards, *backwards);
+    EXPECT_TRUE(cellAt(*forwards, CellAt{.row = 1, .column = 1})->bold);
+}
+
+TEST(TableTest, WordsAndTheColourOfThemAreToldApart) {
+    const Color red{.red = 220, .green = 0, .blue = 0, .alpha = Color::kOpaque};
+    Result<Table> table = withCellWritten(threeByTwo(), CellAt{.row = 1, .column = 0}, "Total");
+    ASSERT_TRUE(table.has_value());
+
+    table = withRangeInked(std::move(*table), CellAt{.row = 1, .column = 0},
+                           CellAt{.row = 1, .column = 0}, red);
+    ASSERT_TRUE(table.has_value());
+    table = withRangeSlanted(std::move(*table), CellAt{.row = 1, .column = 0},
+                             CellAt{.row = 1, .column = 0}, true);
+    ASSERT_TRUE(table.has_value());
+    table = withRangeRisen(std::move(*table), CellAt{.row = 1, .column = 0},
+                           CellAt{.row = 1, .column = 0}, CellRise::Bottom);
+    ASSERT_TRUE(table.has_value());
+
+    const TableCell* const cell = cellAt(*table, CellAt{.row = 1, .column = 0});
+    ASSERT_NE(cell, nullptr);
+    EXPECT_EQ(cell->text, "Total");
+    EXPECT_EQ(cell->ink, red);
+    EXPECT_TRUE(cell->italic);
+    EXPECT_EQ(cell->rise, CellRise::Bottom);
+    EXPECT_FALSE(isPlain(*cell));
+}
+
+TEST(TableTest, ClearingHowABoxIsShownLeavesWhatItSays) {
+    Result<Table> table = withCellWritten(threeByTwo(), CellAt{.row = 0, .column = 1}, "Week");
+    ASSERT_TRUE(table.has_value());
+    table = withRangeWeighted(std::move(*table), CellAt{.row = 0, .column = 0},
+                              CellAt{.row = 0, .column = 1}, true);
+    ASSERT_TRUE(table.has_value());
+
+    const Result<Table> plain = withRangePlain(std::move(*table), CellAt{.row = 0, .column = 0},
+                                               CellAt{.row = 0, .column = 1});
+
+    ASSERT_TRUE(plain.has_value());
+    const TableCell* const cell = cellAt(*plain, CellAt{.row = 0, .column = 1});
+    ASSERT_NE(cell, nullptr);
+    EXPECT_EQ(cell->text, "Week");
+    EXPECT_TRUE(isPlain(*cell));
+}
+
+TEST(TableTest, EmptyingAStretchLeavesItLookingAsItDid) {
+    Result<Table> table = withCellWritten(threeByTwo(), CellAt{.row = 0, .column = 0}, "Week");
+    ASSERT_TRUE(table.has_value());
+    table = withRangeWeighted(std::move(*table), CellAt{.row = 0, .column = 0},
+                              CellAt{.row = 0, .column = 0}, true);
+    ASSERT_TRUE(table.has_value());
+
+    const Result<Table> emptied = withRangeEmptied(std::move(*table), CellAt{.row = 0, .column = 0},
+                                                   CellAt{.row = 0, .column = 1});
+
+    ASSERT_TRUE(emptied.has_value());
+    const TableCell* const cell = cellAt(*emptied, CellAt{.row = 0, .column = 0});
+    ASSERT_NE(cell, nullptr);
+    EXPECT_TRUE(cell->text.empty());
+    EXPECT_TRUE(cell->bold);
+}
+
+TEST(TableTest, AStretchReachingPastTheTableIsRefused) {
+    EXPECT_FALSE(withRangeFilled(threeByTwo(), CellAt{.row = 0, .column = 0},
+                                 CellAt{.row = 9, .column = 0}, kNoColor)
+                     .has_value());
+    EXPECT_FALSE(
+        withRangePlain(threeByTwo(), CellAt{.row = -1, .column = 0}, CellAt{.row = 0, .column = 0})
+            .has_value());
+}
+
+TEST(TableTest, ARowPutDownAgainSaysAndLooksTheSame) {
+    Result<Table> table = withCellWritten(threeByTwo(), CellAt{.row = 1, .column = 1}, "Nine");
+    ASSERT_TRUE(table.has_value());
+    table = withRangeWeighted(std::move(*table), CellAt{.row = 1, .column = 0},
+                              CellAt{.row = 1, .column = 1}, true);
+    ASSERT_TRUE(table.has_value());
+
+    const Result<Table> twice = withRowDuplicated(std::move(*table), 1);
+
+    ASSERT_TRUE(twice.has_value());
+    EXPECT_EQ(rowsOf(*twice), 4);
+    EXPECT_FLOAT_EQ(twice->rows[2], twice->rows[1]);
+    const TableCell* const copy = cellAt(*twice, CellAt{.row = 2, .column = 1});
+    ASSERT_NE(copy, nullptr);
+    EXPECT_EQ(copy->text, "Nine");
+    EXPECT_TRUE(copy->bold);
+}
+
+TEST(TableTest, AColumnPutDownAgainSaysAndLooksTheSame) {
+    Result<Table> table = withCellWritten(threeByTwo(), CellAt{.row = 2, .column = 0}, "Sum");
+    ASSERT_TRUE(table.has_value());
+
+    const Result<Table> twice = withColumnDuplicated(std::move(*table), 0);
+
+    ASSERT_TRUE(twice.has_value());
+    EXPECT_EQ(columnsOf(*twice), 3);
+    EXPECT_FLOAT_EQ(twice->columns[1], twice->columns[0]);
+    EXPECT_EQ(cellAt(*twice, CellAt{.row = 2, .column = 1})->text, "Sum");
+    EXPECT_FALSE(withRowDuplicated(threeByTwo(), 9).has_value());
+    EXPECT_FALSE(withColumnDuplicated(threeByTwo(), -1).has_value());
+}
+
 }
 }

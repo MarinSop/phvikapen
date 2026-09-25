@@ -19,6 +19,17 @@
 
 namespace phvikapen::app {
 
+namespace {
+
+// A colour the window can use. A box that asks for no colour of its own hands back one that is not
+// there at all, so that the window shows it the way it shows the rest of the table.
+[[nodiscard]] QColor paintOf(core::Color color) {
+    return core::isShown(color) ? QColor::fromRgb(color.red, color.green, color.blue, color.alpha)
+                                : QColor{};
+}
+
+}
+
 TableListModel::TableListModel(QObject* parent) : QAbstractListModel(parent) {}
 
 int TableListModel::rowCount(const QModelIndex& parent) const {
@@ -48,6 +59,16 @@ QVariant TableListModel::data(const QModelIndex& index, int role) const {
         return item.acrosses;
     case kDownsRole:
         return item.downs;
+    case kFillsRole:
+        return item.fills;
+    case kInksRole:
+        return item.inks;
+    case kBoldsRole:
+        return item.bolds;
+    case kItalicsRole:
+        return item.italics;
+    case kRisesRole:
+        return item.rises;
     case kStyleRole:
         return item.style;
     case kRuleRole:
@@ -71,7 +92,9 @@ QHash<int, QByteArray> TableListModel::roleNames() const {
         {kHeightsRole, "heights"},   {kWordsRole, "words"},         {kAlignsRole, "aligns"},
         {kStyleRole, "style"},       {kRuleRole, "rule"},           {kColumnXRole, "columnX"},
         {kColumnYRole, "columnY"},   {kRuleWidthRole, "ruleWidth"}, {kSheetRole, "sheet"},
-        {kAcrossesRole, "acrosses"}, {kDownsRole, "downs"},
+        {kAcrossesRole, "acrosses"}, {kDownsRole, "downs"},         {kFillsRole, "fills"},
+        {kInksRole, "inks"},         {kBoldsRole, "bolds"},         {kItalicsRole, "italics"},
+        {kRisesRole, "rises"},
     };
 }
 
@@ -125,15 +148,31 @@ TableItem itemOfTable(const core::Table& table, const TablePlace& place) {
     QVariantList aligns;
     QVariantList acrosses;
     QVariantList downs;
-    words.reserve(static_cast<qsizetype>(table.cells.size()));
-    aligns.reserve(static_cast<qsizetype>(table.cells.size()));
-    acrosses.reserve(static_cast<qsizetype>(table.cells.size()));
-    downs.reserve(static_cast<qsizetype>(table.cells.size()));
+    QVariantList fills;
+    QVariantList inks;
+    QVariantList bolds;
+    QVariantList italics;
+    QVariantList rises;
+    const auto room = static_cast<qsizetype>(table.cells.size());
+    words.reserve(room);
+    aligns.reserve(room);
+    acrosses.reserve(room);
+    downs.reserve(room);
+    fills.reserve(room);
+    inks.reserve(room);
+    bolds.reserve(room);
+    italics.reserve(room);
+    rises.reserve(room);
     for (const core::TableCell& cell : table.cells) {
         words.append(QString::fromStdString(cell.text));
         aligns.append(static_cast<int>(cell.align));
         acrosses.append(cell.across);
         downs.append(cell.down);
+        fills.append(paintOf(cell.fill));
+        inks.append(paintOf(cell.ink));
+        bolds.append(cell.bold);
+        italics.append(cell.italic);
+        rises.append(static_cast<int>(cell.rise));
     }
     const core::Color rule = table.rule;
     return TableItem{
@@ -145,6 +184,11 @@ TableItem itemOfTable(const core::Table& table, const TablePlace& place) {
         .aligns = std::move(aligns),
         .acrosses = std::move(acrosses),
         .downs = std::move(downs),
+        .fills = std::move(fills),
+        .inks = std::move(inks),
+        .bolds = std::move(bolds),
+        .italics = std::move(italics),
+        .rises = std::move(rises),
         .style = mapOfStyle(table.style),
         .rule = QColor::fromRgb(rule.red, rule.green, rule.blue, rule.alpha),
         .columnX = place.columnX,
@@ -160,7 +204,9 @@ QVariantMap mapOfItem(const TableItem& item) {
         {"heights", item.heights},     {"words", item.words},     {"aligns", item.aligns},
         {"acrosses", item.acrosses},   {"downs", item.downs},     {"style", item.style},
         {"rule", item.rule},           {"columnX", item.columnX}, {"columnY", item.columnY},
-        {"ruleWidth", item.ruleWidth}, {"sheet", item.sheet},
+        {"ruleWidth", item.ruleWidth}, {"sheet", item.sheet},     {"fills", item.fills},
+        {"inks", item.inks},           {"bolds", item.bolds},     {"italics", item.italics},
+        {"rises", item.rises},
     };
 }
 
