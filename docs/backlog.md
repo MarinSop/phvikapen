@@ -189,10 +189,24 @@ written so that all of them can share it. They are listed in the order they are 
   picture is done where the window waits for it rather than on a thread of its own.
 - **Cropping a picture.** A picture keeps the whole of what it was given. Cropping would be a
   rectangle kept beside the rest, and can be added without moving anything already kept.
-- **A face of its own for one box of a table.** Boxes are joined, split, lined up and pulled about,
-  but every box of a table wears the same face. A heading in bold across the top is the common ask,
-  and the face is kept with the table, so a face per box would be a column added beside the words
-  rather than a change of shape.
+- **A size of its own for one box of a table.** A box can be given a colour behind it, a colour for
+  its words, bold, slant and where it sits between top and foot, but the size of the type and the
+  family belong to the whole table. A size per box is another column beside the rest, in the same
+  shape as the ones already there.
+- **Ruling a table box by box.** The colour and thickness of the rules belong to the whole table.
+  Ruling one box differently from its neighbours, and a rule that is dashed rather than solid, both
+  need the ruling to be kept per box and drawn per edge instead of per box outline. What the window
+  draws a rule with cannot dash a rectangle, so this needs a shape rather than a rectangle.
+- **A table under the ink, on the glass.** Layers order what is printed exactly, layer by layer.
+  On the glass the ink is drawn by the canvas and a table by the window over it, so a table cannot
+  be shown underneath ink however the layers are ordered. Removing that means drawing ink, pictures,
+  tables and type through one renderer.
+- **Ink on a locked layer can still be picked with the loop.** What answers a tap is decided by the
+  page for pictures, tables and boxes of type; ink is picked by the canvas, which is handed strokes
+  without being told which layer they stand on. Hiding a layer does hide its ink.
+- **More than one layer chosen at a time**, and a small picture of what stands on each beside its
+  name. The panel names a layer, says how much is on it and which one is in hand; a picture of it
+  would be drawn the way the small picture of a page already is.
 - **Mathematics that is not written on one line.** A sum written across is read, worked out and
   answered. A fraction written as one number over another, a power written small and raised, a root
   drawn over what it covers and anything else arranged in two dimensions are not read, because the
