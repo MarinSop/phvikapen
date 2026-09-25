@@ -90,6 +90,8 @@ constexpr qreal kHalfway = 0.5;
 constexpr float kAnswerGap = 10.0F;
 constexpr float kLetterWidth = 0.62F;
 constexpr std::size_t kRoomAroundAnswer = 2;
+// How far in from the edge of the sheet a sum that is typed is put down.
+constexpr qreal kEquationInset = 60.0;
 
 // The chain from what was read to what it comes to: put right, read into a structure, worked out.
 [[nodiscard]] core::Result<double> workedOut(const std::string& written) {
@@ -3366,6 +3368,18 @@ core::TextBox NotebookViewModel::answerBeside(const core::TextBlock& asked,
         .text = said,
         .style = std::move(face),
     });
+}
+
+void NotebookViewModel::addEquation(const QVariantMap& style) {
+    if (m_canvas.isNull()) {
+        return;
+    }
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    const core::Rect visible = m_canvas->visibleOnPage();
+    addTextAt(sheet.x() + kEquationInset,
+              sheet.y() + static_cast<qreal>(visible.top)
+                  + (static_cast<qreal>(visible.height()) * kHalfway),
+              style);
 }
 
 void NotebookViewModel::solveSelection(QVariantMap style) {

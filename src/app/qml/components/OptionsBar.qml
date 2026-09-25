@@ -301,6 +301,14 @@ ToolBar {
             visible: root.picks
         }
 
+        QuickButton {
+            action: root.actions.solve
+            label: qsTr("Work out")
+            objectName: "solveButton"
+            shortcutText: AppInfo.shortcutText(root.actions.solve.shortcut)
+            visible: root.picks || root.types
+        }
+
         ToolSeparator {
             visible: root.tools.currentTool === ToolViewModel.Shape
         }

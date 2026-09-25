@@ -303,6 +303,9 @@ public:
     // handwriting stays where it is.
     Q_INVOKABLE void solveSelection(QVariantMap style);
 
+    // A box of type put where the reader is looking, ready for a sum to be typed into it.
+    Q_INVOKABLE void addEquation(const QVariantMap& style);
+
     // Put a picture from a file on the page being read, as large as it fits.
     Q_INVOKABLE void addPicture(const QUrl& fileUrl);
 

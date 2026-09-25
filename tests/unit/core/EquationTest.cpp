@@ -88,6 +88,19 @@ TEST(ReadingTest, ARootIsReadAndWorkedOut) {
     EXPECT_EQ(answered("√(4*4)"), "4");
 }
 
+TEST(ReadingTest, ARootCanBeTypedByItsName) {
+    EXPECT_EQ(answered("sqrt(16)"), "4");
+    EXPECT_EQ(answered("sqrt 25 + 1"), "6");
+    EXPECT_EQ(answered("2 sqrt(9)"), "6");
+}
+
+TEST(ReadingTest, ANameThatMeansNothingIsSaidBack) {
+    const Result<Equation> read = equationOf("2 + fish");
+
+    ASSERT_FALSE(read.has_value());
+    EXPECT_NE(read.error().message.find("fish"), std::string::npos);
+}
+
 TEST(ReadingTest, ANumberStandingAgainstABracketMeansMultiplication) {
     EXPECT_EQ(answered("2(3+4)"), "14");
     EXPECT_EQ(answered("(1+1)(2+2)"), "8");

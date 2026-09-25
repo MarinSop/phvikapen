@@ -351,6 +351,24 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aSumIsPutOnThePageReadyToBeTypedInto() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+
+        notebook.addEquation(tools.textStyle);
+
+        const textId = notebook.pickedText;
+        verify(textId !== "", "nothing was put down to type a sum into");
+        compare(notebook.wordsOf(textId), "");
+
+        notebook.finishText(textId, "sqrt(81) * 2", 24);
+        notebook.pickedText = textId;
+        notebook.solveSelection(tools.textStyle);
+
+        compare(notebook.errorMessage, "");
+        compare(notebook.wordsOf(textId), "sqrt(81) * 2 = 18");
+    }
+
     function test_aSumThatIsTypedIsWorkedOutInPlace() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);

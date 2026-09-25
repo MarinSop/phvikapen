@@ -269,6 +269,12 @@ namespace {
             .keys = "Ctrl+Shift+G",
         },
         Command{
+            .id = "insertEquation",
+            .name = QObject::tr("Sum on the page"),
+            .group = CommandGroup::Insert,
+            .keys = "Ctrl+Shift+E",
+        },
+        Command{
             .id = "import",
             .name = QObject::tr("Import a PDF or picture"),
             .group = CommandGroup::Insert,

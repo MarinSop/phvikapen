@@ -100,6 +100,26 @@ struct Token {
     return Token{.mark = Mark::Number, .number = value};
 }
 
+[[nodiscard]] bool isLetter(char letter) noexcept {
+    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z');
+}
+
+// Names that stand for a sign no keyboard carries, so that a square root can be typed.
+constexpr std::string_view kRootName = "sqrt";
+
+[[nodiscard]] Result<Mark> nameAt(std::string_view written, std::size_t& at) {
+    const std::size_t from = at;
+    while (at < written.size() && isLetter(written[at])) {
+        ++at;
+    }
+    const std::string_view name = written.substr(from, at - from);
+    if (name == kRootName) {
+        return Mark::RootSign;
+    }
+    return makeError(ErrorCode::InvalidArgument,
+                     "there is a " + std::string{name} + " where arithmetic should be");
+}
+
 [[nodiscard]] Result<Mark> signAt(char letter) {
     switch (letter) {
     case '+':
@@ -141,6 +161,14 @@ struct Token {
                 return std::unexpected{number.error()};
             }
             tokens.push_back(*number);
+            continue;
+        }
+        if (isLetter(written[at])) {
+            Result<Mark> name = nameAt(written, at);
+            if (!name) {
+                return std::unexpected{name.error()};
+            }
+            tokens.push_back(Token{.mark = *name, .number = 0.0});
             continue;
         }
         Result<Mark> sign = signAt(written[at]);

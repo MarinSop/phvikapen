@@ -106,7 +106,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by hand with the loop and the answer is written beside it, at about the size of the hand that
   wrote it, with the handwriting left where it is. A sum that is typed is worked out in the box it
   was typed in, and that works on every machine, where reading handwriting needs one that can. One
-  step of undo takes the answer back.
+  step of undo takes the answer back. A square root can be typed by its name, so `sqrt(16)` reads
+  the same as one drawn over what it covers.
+- Equation, from the Insert menu or on Ctrl+Shift+E, puts a box down where the reader is looking
+  with the caret already in it, so a sum can be typed straight away without reaching for the text
+  tool. Work out sits on the bar above the window as well as in the menus.
 
 ### Fixed
 

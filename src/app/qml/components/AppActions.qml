@@ -197,6 +197,13 @@ Item {
 
         onTriggered: root.notebook.addTable(root.plainTableRows, root.plainTableColumns)
     }
+    readonly property Action insertEquation: Action {
+        enabled: root.hasNotebook
+        shortcut: root.keysFor("insertEquation")
+        text: qsTr("Equation")
+
+        onTriggered: root.notebook.addEquation(root.tools.textStyle)
+    }
     readonly property Action addRowAbove: Action {
         enabled: root.hasTable
         text: qsTr("Insert Row Above")

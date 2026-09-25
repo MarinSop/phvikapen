@@ -324,6 +324,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.insertEquation
+            objectName: "insertEquationItem"
+        }
+
+        MenuCommand {
             action: root.actions.importDocument
             objectName: "importItem"
         }
