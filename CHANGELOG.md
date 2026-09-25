@@ -167,6 +167,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   threaded through every reported position.
 - A picture could be taken hold of once and never again: the layer that reaches the paper hid
   itself as soon as the picture was let go, so no later tap could find one.
+- A box of a table that was given no colour of its own was filled in solid black. A colour the
+  window cannot read is shown as black, and that is what a box saying nothing handed over; it now
+  hands over a colour with nothing in it.
 - The menu that opens under the pointer kept room for every line it was not showing, which left it
   with a tall band of nothing. A line that is not shown now takes up no room, neither down the menu
   nor across it, and the room between one line and the next is no longer kept for the lines that

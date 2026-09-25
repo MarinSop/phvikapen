@@ -676,6 +676,10 @@ private:
     // The layers of the page being read, and the layer anything new is put on.
     [[nodiscard]] std::vector<core::Layer> layersHere() const;
 
+    // The layers a page is opened with: the ones written down, or one named in the language the
+    // reader is being spoken to, because a page written before there were layers has none.
+    [[nodiscard]] std::vector<core::Layer> layersOrOne(std::vector<core::Layer> layers);
+
     [[nodiscard]] core::Uuid layerForNewThings() const;
 
     [[nodiscard]] core::Uuid layerForNewThings(const core::Page& page) const;

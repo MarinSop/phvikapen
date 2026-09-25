@@ -9,7 +9,7 @@ ToolButton {
 
     required property color colour
     required property string label
-    readonly property bool unset: !root.colour.valid || root.colour.a === 0
+    readonly property bool unset: root.colour.a === 0
 
     ToolTip.delay: 600
     ToolTip.text: root.label

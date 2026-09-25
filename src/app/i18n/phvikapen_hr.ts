@@ -1952,6 +1952,14 @@
         <translation>Ništa se tu nije moglo pročitati</translation>
     </message>
     <message>
+        <source>Layer 1</source>
+        <translation>Sloj 1</translation>
+    </message>
+    <message>
+        <source>Layer %1</source>
+        <translation>Sloj %1</translation>
+    </message>
+    <message>
         <source>A page keeps at least one layer.</source>
         <translation>Stranica zadržava najmanje jedan sloj.</translation>
     </message>

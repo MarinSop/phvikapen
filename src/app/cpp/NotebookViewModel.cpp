@@ -428,7 +428,7 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
         m_pages.emplace(pageId, std::make_unique<core::Page>(
                                     pageId, std::move(loaded->strokes), std::move(loaded->texts),
                                     std::move(loaded->pictures), std::move(loaded->tables),
-                                    std::move(loaded->layers)));
+                                    layersOrOne(std::move(loaded->layers))));
     }
     if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
         wantPicturesFor(*opened->second);
@@ -2257,7 +2257,7 @@ void NotebookViewModel::wantNeighbours() {
                                      std::make_unique<core::Page>(
                                          page, std::move(loaded->strokes), std::move(loaded->texts),
                                          std::move(loaded->pictures), std::move(loaded->tables),
-                                         std::move(loaded->layers)))
+                                         layersOrOne(std::move(loaded->layers))))
                             .first;
                     wantPicturesFor(*opened->second);
                     refreshCanvas();
@@ -3974,11 +3974,16 @@ QVariantMap NotebookViewModel::cellLook(const QString& tableId, int row, int col
     if (cell == nullptr) {
         return {};
     }
+    // A colour a box says nothing about goes out with nothing in it rather than as no colour at
+    // all, because a colour the window cannot read is shown as black.
+    const auto shown = [](core::Color color) {
+        return core::isShown(color) ? asQColor(color) : QColor::fromRgb(0, 0, 0, 0);
+    };
     return QVariantMap{
         {"align", static_cast<int>(cell->align)},
         {"rise", static_cast<int>(cell->rise)},
-        {"fill", asQColor(cell->fill)},
-        {"ink", asQColor(cell->ink)},
+        {"fill", shown(cell->fill)},
+        {"ink", shown(cell->ink)},
         {"bold", cell->bold},
         {"italic", cell->italic},
     };
@@ -4093,6 +4098,20 @@ namespace {
 
 }
 
+std::vector<core::Layer> NotebookViewModel::layersOrOne(std::vector<core::Layer> layers) {
+    if (!layers.empty()) {
+        return layers;
+    }
+    return {
+        core::Layer{
+            .id = m_ids.next(),
+            .name = tr("Layer 1").toStdString(),
+            .shown = true,
+            .locked = false,
+        },
+    };
+}
+
 std::vector<core::Layer> NotebookViewModel::layersHere() const {
     const core::Page* const page = currentPageData();
     if (page == nullptr) {
@@ -4157,7 +4176,7 @@ void NotebookViewModel::addLayer() {
     const std::size_t above = core::placeOfLayer(wanted, layerNamed(wanted, m_activeLayer));
     core::Layer made{
         .id = m_ids.next(),
-        .name = core::freeName(wanted, "Layer " + std::to_string(wanted.size() + 1)),
+        .name = core::freeName(wanted, tr("Layer %1").arg(wanted.size() + 1).toStdString()),
         .shown = true,
         .locked = false,
     };

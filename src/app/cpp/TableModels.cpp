@@ -21,11 +21,12 @@ namespace phvikapen::app {
 
 namespace {
 
-// A colour the window can use. A box that asks for no colour of its own hands back one that is not
-// there at all, so that the window shows it the way it shows the rest of the table.
+// A colour the window can use. A box that asks for no colour of its own hands back one with nothing
+// in it rather than no colour at all: a colour the window cannot read is shown as black, and a box
+// that said nothing would be filled in with it.
 [[nodiscard]] QColor paintOf(core::Color color) {
     return core::isShown(color) ? QColor::fromRgb(color.red, color.green, color.blue, color.alpha)
-                                : QColor{};
+                                : QColor::fromRgb(0, 0, 0, 0);
 }
 
 }

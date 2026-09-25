@@ -141,9 +141,24 @@ TestCase {
         compare(shown.bolds[1], true);
         compare(shown.bolds[2], false);
         compare(shown.fills[0].toString(), "#ffcc00");
-        verify(!shown.fills[3].valid || shown.fills[3].a === 0);
+        // A box that asked for no colour must say so with nothing in it: a colour the window
+        // cannot read is shown as black, and the box would be filled in with it.
+        compare(shown.fills[3].a, 0);
+        compare(shown.inks[0].a, 0);
         compare(shown.rises[2], 1);
         compare(shown.rises[0], 0);
+    }
+
+    function test_aBoxWithNoColourOfItsOwnSaysSoWithNothingInIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+
+        const look = notebook.cellLook(notebook.pickedTable, 0, 0);
+
+        compare(look.fill.a, 0);
+        compare(look.ink.a, 0);
     }
 
     function test_whatABoxIsShownInIsAskedForWhenTheBarNeedsIt() {
@@ -558,6 +573,7 @@ TestCase {
             delegate: Item {
                 required property var bolds
                 required property var fills
+                required property var inks
                 required property var heights
                 required property var rises
                 required property string tableId

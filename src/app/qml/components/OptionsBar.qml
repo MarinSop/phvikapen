@@ -378,7 +378,7 @@ ToolBar {
             visible: root.tables
 
             onClicked: {
-                cellFillDialog.selectedColor = root.cellFill.valid && root.cellFill.a > 0 ? root.cellFill : Theme.surface;
+                cellFillDialog.selectedColor = root.cellFill.a > 0 ? root.cellFill : Theme.surface;
                 cellFillDialog.open();
             }
         }
@@ -391,7 +391,7 @@ ToolBar {
             visible: root.tables
 
             onClicked: {
-                cellInkDialog.selectedColor = root.cellInk.valid && root.cellInk.a > 0 ? root.cellInk : Theme.text;
+                cellInkDialog.selectedColor = root.cellInk.a > 0 ? root.cellInk : Theme.text;
                 cellInkDialog.open();
             }
         }
