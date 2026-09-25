@@ -76,18 +76,18 @@ TestCase {
     }
 
     function test_e_thePanelsCanBeTurnedOff() {
-        const sections = findChild(menuBar, "sectionsListItem");
-        const pages = findChild(menuBar, "pagesListItem");
+        const sections = findChild(menuBar, "sectionsPanelItem");
+        const pages = findChild(menuBar, "pagesPanelItem");
         verify(sections !== null);
         verify(pages !== null);
+        verify(workspace.isOpen("sections"));
 
         sections.action.trigger();
-        compare(settings.showSections, false);
+        verify(!workspace.isOpen("sections"));
         pages.action.trigger();
-        compare(settings.showPages, false);
+        verify(!workspace.isOpen("pages"));
 
-        settings.showSections = true;
-        settings.showPages = true;
+        workspace.resetWorkspace();
     }
 
     function test_x1_aLineOfAMenuThatIsNotShownTakesUpNoRoom() {

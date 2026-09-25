@@ -358,12 +358,21 @@ Item {
 
         onTriggered: root.workspace.togglePanel(Panels.layers)
     }
-    readonly property Action showContentsPanel: Action {
+    readonly property Action showSectionsPanel: Action {
         checkable: true
-        checked: root.isPanelOpen(Panels.contents)
-        text: qsTr("Contents")
+        checked: root.isPanelOpen(Panels.sections)
+        shortcut: root.settings.keysFor("sectionsList")
+        text: qsTr("Sections")
 
-        onTriggered: root.workspace.togglePanel(Panels.contents)
+        onTriggered: root.workspace.togglePanel(Panels.sections)
+    }
+    readonly property Action showPagesPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.pages)
+        shortcut: root.settings.keysFor("pagesList")
+        text: qsTr("Pages")
+
+        onTriggered: root.workspace.togglePanel(Panels.pages)
     }
     readonly property Action showPageSetupPanel: Action {
         checkable: true
@@ -631,22 +640,6 @@ Item {
         text: qsTr("Pages One Below the Other")
 
         onTriggered: root.settings.continuousPages = !root.settings.continuousPages
-    }
-    readonly property Action sectionsList: Action {
-        checkable: true
-        checked: root.settings.showSections
-        shortcut: root.keysFor("sectionsList")
-        text: qsTr("Sections")
-
-        onTriggered: root.settings.showSections = !root.settings.showSections
-    }
-    readonly property Action pagesList: Action {
-        checkable: true
-        checked: root.settings.showPages
-        shortcut: root.keysFor("pagesList")
-        text: qsTr("Pages")
-
-        onTriggered: root.settings.showPages = !root.settings.showPages
     }
     readonly property Action quit: Action {
         shortcut: StandardKey.Quit

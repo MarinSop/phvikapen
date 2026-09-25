@@ -32,13 +32,8 @@ constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
 constexpr auto kThemeChosenSetting = "look/chosen";
 constexpr auto kReopenSetting = "session/reopen";
-constexpr auto kSectionsSetting = "view/sections";
-constexpr auto kPagesSetting = "view/pages";
 constexpr auto kLanguageSetting = "look/language";
 constexpr auto kReduceMotionSetting = "look/reduceMotion";
-constexpr auto kSectionsHeightSetting = "view/sectionsHeight";
-constexpr int kShortestList = 60;
-constexpr int kTallestList = 800;
 constexpr int kExportScopes = 3;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
@@ -64,12 +59,8 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_continuousPages = settings.value(kContinuousPagesSetting, m_continuousPages).toBool();
     m_themeChosen = settings.value(kThemeChosenSetting, m_themeChosen).toBool();
     m_reopenNotebooks = settings.value(kReopenSetting, m_reopenNotebooks).toBool();
-    m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
-    m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
     m_language = settings.value(kLanguageSetting, m_language).toString();
     m_reduceMotion = settings.value(kReduceMotionSetting, m_reduceMotion).toBool();
-    m_sectionsHeight = std::clamp(settings.value(kSectionsHeightSetting, m_sectionsHeight).toInt(),
-                                  kShortestList, kTallestList);
     m_usePressure = settings.value(kPressureSetting, m_usePressure).toBool();
     m_holdForMenu = settings.value(kHoldMenuSetting, m_holdForMenu).toBool();
     m_zoomStep = std::clamp(settings.value(kZoomStepSetting, m_zoomStep).toDouble(),
@@ -381,26 +372,6 @@ void SettingsViewModel::setThemeChosen(bool chosen) {
     emit themeChanged();
 }
 
-void SettingsViewModel::setShowSections(bool shown) {
-    if (shown == m_showSections) {
-        return;
-    }
-    m_showSections = shown;
-    QSettings settings;
-    settings.setValue(kSectionsSetting, m_showSections);
-    emit panelsChanged();
-}
-
-void SettingsViewModel::setShowPages(bool shown) {
-    if (shown == m_showPages) {
-        return;
-    }
-    m_showPages = shown;
-    QSettings settings;
-    settings.setValue(kPagesSetting, m_showPages);
-    emit panelsChanged();
-}
-
 void SettingsViewModel::setLanguage(const QString& tag) {
     if (tag == m_language) {
         return;
@@ -419,17 +390,6 @@ void SettingsViewModel::setReduceMotion(bool reduce) {
     QSettings settings;
     settings.setValue(kReduceMotionSetting, m_reduceMotion);
     emit reduceMotionChanged();
-}
-
-void SettingsViewModel::setSectionsHeight(int height) {
-    const int wanted = std::clamp(height, kShortestList, kTallestList);
-    if (wanted == m_sectionsHeight) {
-        return;
-    }
-    m_sectionsHeight = wanted;
-    QSettings settings;
-    settings.setValue(kSectionsHeightSetting, m_sectionsHeight);
-    emit panelsChanged();
 }
 
 qreal SettingsViewModel::customWidth() const {

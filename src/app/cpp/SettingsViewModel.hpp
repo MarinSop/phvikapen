@@ -48,13 +48,9 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(bool themeChosen READ themeChosen WRITE setThemeChosen NOTIFY themeChanged FINAL)
     Q_PROPERTY(bool reopenNotebooks READ reopenNotebooks WRITE setReopenNotebooks NOTIFY
                    panelsChanged FINAL)
-    Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
-    Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged FINAL)
     Q_PROPERTY(
         bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY reduceMotionChanged FINAL)
-    Q_PROPERTY(
-        int sectionsHeight READ sectionsHeight WRITE setSectionsHeight NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
         qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
@@ -149,8 +145,6 @@ public:
 
     void setContinuousPages(bool continuous);
 
-    static constexpr int kDefaultSectionsHeight = 150;
-
     // Whether the notebooks that were open come back the next time, or the reader starts fresh.
     [[nodiscard]] bool reopenNotebooks() const { return m_reopenNotebooks; }
 
@@ -160,14 +154,6 @@ public:
 
     void setThemeChosen(bool chosen);
 
-    [[nodiscard]] bool showSections() const { return m_showSections; }
-
-    void setShowSections(bool shown);
-
-    [[nodiscard]] bool showPages() const { return m_showPages; }
-
-    void setShowPages(bool shown);
-
     // The language the reader asked for, or nothing at all to follow the machine.
     [[nodiscard]] QString language() const { return m_language; }
 
@@ -176,10 +162,6 @@ public:
     [[nodiscard]] bool reduceMotion() const { return m_reduceMotion; }
 
     void setReduceMotion(bool reduce);
-
-    [[nodiscard]] int sectionsHeight() const { return m_sectionsHeight; }
-
-    void setSectionsHeight(int height);
 
     [[nodiscard]] qreal customWidth() const;
     void setCustomWidth(qreal millimeters);
@@ -236,11 +218,8 @@ private:
     bool m_continuousPages{true};
     bool m_themeChosen{false};
     bool m_reopenNotebooks{false};
-    bool m_showSections{true};
-    bool m_showPages{true};
     QString m_language;
     bool m_reduceMotion{false};
-    int m_sectionsHeight{kDefaultSectionsHeight};
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};

@@ -144,22 +144,6 @@ TestCase {
         later.exportScope = 0;
     }
 
-    function test_j_theShapeOfThePanelsIsRemembered() {
-        const settings = createTemporaryObject(settingsComponent, testCase);
-        verify(settings.showSections);
-        verify(settings.showPages);
-
-        settings.showSections = false;
-        settings.sectionsHeight = 210;
-
-        const later = createTemporaryObject(settingsComponent, testCase);
-        verify(!later.showSections);
-        compare(later.sectionsHeight, 210);
-
-        later.showSections = true;
-        later.sectionsHeight = 150;
-    }
-
     function test_k_theLanguageIsRememberedForTheNextTime() {
         const settings = createTemporaryObject(settingsComponent, testCase);
 

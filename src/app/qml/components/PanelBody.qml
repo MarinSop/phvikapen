@@ -10,12 +10,20 @@ Loader {
     required property string panelId
 
     asynchronous: false
-    sourceComponent: root.panelId === Panels.layers ? layersBody : root.panelId === Panels.pageSetup ? pageSetupBody : contentsBody
+    sourceComponent: root.panelId === Panels.layers ? layersBody : root.panelId === Panels.pageSetup ? pageSetupBody : root.panelId === Panels.sections ? sectionsBody : pagesBody
 
     Component {
-        id: contentsBody
+        id: pagesBody
 
         PagesPanel {
+            actions: root.actions
+        }
+    }
+
+    Component {
+        id: sectionsBody
+
+        SectionsPanel {
             actions: root.actions
         }
     }

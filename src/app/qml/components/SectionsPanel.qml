@@ -14,21 +14,15 @@ Pane {
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
     property int renaming: -1
 
-    function askToDelete(index, title) {
-        deleteDialog.index = index;
-        deleteDialog.itemTitle = title;
-        deleteDialog.open();
-    }
-
     function rename(index, title) {
         if (root.renaming === index) {
             root.renaming = -1;
-            root.notebook.renamePage(index, title.trim());
+            root.notebook.renameSection(index, title.trim());
         }
     }
 
     background: null
-    objectName: "pagesPanel"
+    objectName: "sectionsPanel"
     padding: Theme.gap
 
     TapHandler {
@@ -36,7 +30,7 @@ Pane {
     }
 
     Connections {
-        function onPageAdded(index) {
+        function onSectionAdded(index) {
             root.renaming = index;
         }
 
@@ -56,22 +50,22 @@ Pane {
 
             QuickButton {
                 Layout.rightMargin: 4
-                action: root.actions.addPage
+                action: root.actions.addSection
                 display: AbstractButton.IconOnly
                 icon.source: Icons.plus
-                label: qsTr("New page")
-                objectName: "addPageButton"
+                label: qsTr("New section")
+                objectName: "addSectionButton"
             }
         }
 
         ListView {
-            id: pageList
+            id: sectionList
 
             Layout.fillHeight: true
             Layout.fillWidth: true
             clip: true
-            model: root.ready ? root.notebook.pages : null
-            objectName: "pageList"
+            model: root.ready ? root.notebook.sections : null
+            objectName: "sectionList"
 
             displaced: Transition {
                 NumberAnimation {
@@ -91,21 +85,12 @@ Pane {
                 id: row
 
                 required property int index
-                readonly property bool panelReady: root.ready
                 readonly property bool renaming: root.renaming === row.index
-                required property string thumbnail
                 required property string title
 
-                function askForThumbnail() {
-                    if (root.ready && row.thumbnail === "") {
-                        root.notebook.wantThumbnail(row.index);
-                    }
-                }
-
-                height: 64
-                highlighted: root.ready && row.index === root.notebook.currentPage
+                highlighted: root.ready && row.index === root.notebook.currentSection
                 rightPadding: 4
-                width: pageList.width
+                width: sectionList.width
                 z: carry.active ? 2 : 1
 
                 background: Rectangle {
@@ -113,23 +98,7 @@ Pane {
                     radius: 6
                 }
                 contentItem: RowLayout {
-                    spacing: 8
-
-                    Rectangle {
-                        Layout.preferredHeight: 56
-                        Layout.preferredWidth: 44
-                        border.color: palette.mid
-                        border.width: 1
-                        color: "white"
-
-                        Image {
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            cache: false
-                            fillMode: Image.PreserveAspectFit
-                            source: row.thumbnail
-                        }
-                    }
+                    spacing: 4
 
                     Label {
                         Layout.fillHeight: true
@@ -144,7 +113,7 @@ Pane {
                         id: name
 
                         Layout.fillWidth: true
-                        objectName: "pageNameField"
+                        objectName: "sectionNameField"
                         text: row.title
                         visible: row.renaming
 
@@ -163,57 +132,35 @@ Pane {
                     }
 
                     QuickButton {
-                        icon.source: Icons.settings
-                        label: qsTr("Page setup")
-                        objectName: "pageOptionsButton"
-                        opacity: row.hovered || row.highlighted ? 1 : 0
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.quick
-                                easing.type: Theme.ease
-                            }
-                        }
-
-                        onClicked: {
-                            root.notebook.currentPage = row.index;
-                            root.actions.workspace.showPanel(Panels.pageSetup);
-                        }
-                    }
-
-                    QuickButton {
-                        enabled: root.ready && root.notebook.pageCount > 1
+                        enabled: root.ready && root.notebook.sectionCount > 1
                         icon.source: Icons.close
-                        label: qsTr("Delete page")
-                        objectName: "deletePageButton"
+                        label: qsTr("Delete section")
+                        objectName: "deleteSectionButton"
                         opacity: row.hovered || row.highlighted ? 1 : 0
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.quick
-                                easing.type: Theme.ease
-                            }
-                        }
 
                         onClicked: root.askToDelete(row.index, row.title)
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Theme.quick
+                                easing.type: Theme.ease
+                            }
+                        }
                     }
                 }
 
-                Component.onCompleted: row.askForThumbnail()
-                onClicked: root.notebook.currentPage = row.index
-                onPanelReadyChanged: row.askForThumbnail()
+                onClicked: root.notebook.currentSection = row.index
                 onPressAndHold: rowMenu.popup()
-                onThumbnailChanged: row.askForThumbnail()
 
                 ReorderHandler {
                     id: carry
 
                     index: row.index
-                    list: pageList
+                    list: sectionList
                     row: row
 
                     onLandingChanged: root.landing = carry.landing
-                    onMoved: (from, to) => root.notebook.movePage(from, to)
+                    onMoved: (from, to) => root.notebook.moveSection(from, to)
                 }
 
                 TapHandler {
@@ -232,28 +179,21 @@ Pane {
                     }
 
                     MenuItem {
-                        objectName: "duplicatePageItem"
-                        text: qsTr("Duplicate")
-
-                        onTriggered: root.notebook.duplicatePage(row.index)
-                    }
-
-                    MenuItem {
                         enabled: row.index > 0
                         text: qsTr("Move up")
 
-                        onTriggered: root.notebook.movePage(row.index, row.index - 1)
+                        onTriggered: root.notebook.moveSection(row.index, row.index - 1)
                     }
 
                     MenuItem {
-                        enabled: root.ready && row.index + 1 < root.notebook.pageCount
+                        enabled: root.ready && row.index + 1 < root.notebook.sectionCount
                         text: qsTr("Move down")
 
-                        onTriggered: root.notebook.movePage(row.index, row.index + 1)
+                        onTriggered: root.notebook.moveSection(row.index, row.index + 1)
                     }
 
                     MenuItem {
-                        enabled: root.ready && root.notebook.pageCount > 1
+                        enabled: root.ready && root.notebook.sectionCount > 1
                         text: qsTr("Delete…")
 
                         onTriggered: root.askToDelete(row.index, row.title)
@@ -262,7 +202,7 @@ Pane {
             }
 
             DropLine {
-                list: pageList
+                list: sectionList
                 place: root.landing
             }
         }
@@ -270,9 +210,15 @@ Pane {
 
     EmptyPanelNote {
         anchors.centerIn: parent
-        text: qsTr("Open a notebook to see its pages.")
+        text: qsTr("Open a notebook to see its sections.")
         visible: !root.ready
         width: parent.width - (Theme.gap * 4)
+    }
+
+    function askToDelete(index, title) {
+        deleteDialog.index = index;
+        deleteDialog.itemTitle = title;
+        deleteDialog.open();
     }
 
     ConfirmDialog {
@@ -281,10 +227,10 @@ Pane {
         property int index: 0
         property string itemTitle: ""
 
-        objectName: "deleteDialog"
-        question: qsTr("Move “%1” to the deleted pages?").arg(deleteDialog.itemTitle)
-        title: qsTr("Delete page")
+        objectName: "deleteSectionDialog"
+        question: qsTr("Move “%1” and every page in it to the deleted pages?").arg(deleteDialog.itemTitle)
+        title: qsTr("Delete section")
 
-        onAccepted: root.notebook.deletePage(deleteDialog.index)
+        onAccepted: root.notebook.deleteSection(deleteDialog.index)
     }
 }

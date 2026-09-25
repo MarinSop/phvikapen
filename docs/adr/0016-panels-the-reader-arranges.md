@@ -20,25 +20,32 @@ stood in a panel of its own, so the same settings were written twice and shown t
 ## Decision
 
 **The layout of the window is a thing in its own right, kept apart from what a notebook holds.**
-It is a small model of four docks — left, right, top and bottom — each holding groups, each group
-holding panels and knowing which of them is in front. It is written beside the other settings, not
-into the notebook, and it never enters the undo history: undoing a stroke must not move a panel.
+It is a tree. A branch is a split that runs across or down; a leaf is either a group of panels, one
+of them in front, or the sheet itself, of which there is exactly one. The window has no fixed sides
+and no fixed number of places: a panel goes wherever the tree can be cut. It is written beside the
+other settings, not into the notebook, and it never enters the undo history: undoing a stroke must
+not move a panel.
 
 **A panel is named by an identifier and nothing else.** The model knows the identifiers; the window
 knows what each one is called and what it shows. That keeps the names translatable, because a name
 is read where it is shown rather than kept in a table that was filled once.
 
-**Adding a panel is two lines.** One names it in the model, with the side it starts on and whether
-it is open to begin with; one says what it shows. Everything else — the header, the tab, dragging,
-docking, stacking, resizing, closing, restoring and remembering — is already there and does not
-know which panels exist.
+**Adding a panel is two lines.** One names it in the model, with whether it is open to begin with;
+one says what it shows. The sections and the pages are two panels rather than one, because there
+was no reason for them to be joined once anything could be put anywhere. Everything else — the
+header, the tab, dragging, docking, stacking, resizing, closing, restoring and remembering — is
+already there and does not know which panels exist.
 
-**A panel is carried by its header, and what would happen is shown before it happens.** While a
-panel is being carried, the edges of the window offer themselves, every group offers itself as a
-tab strip, and a target for putting the panel away comes down from the top. Each of them says
-whether the pointer is over it; the one with the strongest claim wins, so a group inside an edge
-takes the drop rather than the edge behind it. The claim is settled afresh for every position of
-the pointer, so the order the parts answer in does not change the answer.
+**A panel is carried by its header, and the line where it would land is drawn before it lands.**
+Whatever the pointer is over answers for itself, and there are three answers. Near an edge of it,
+the panel is put on that side and the line is drawn along that edge. Over its tabs, the panel joins
+them and the line is the caret between two tabs. Anywhere else in it, the panel is put underneath
+and the line is drawn across the middle. The sheet answers the same way as a panel, so a panel can
+be put against the sheet, and against the tool palette by way of the leaf beside it.
+
+The one with the strongest claim wins, and the claim is settled afresh for every position of the
+pointer, so the order the parts answer in does not change the answer. A target for putting the
+panel away comes down from the top and outranks them all.
 
 **A panel that is put away is not forgotten.** Where it stood is remembered, and opening it again
 from the View menu puts it back there, in the group it was in if that group is still standing.
@@ -60,7 +67,12 @@ switch that sets them all to nothing for a reader who asked for less movement.
   it is written, and nothing has to be taught about it.
 - Panel layout is not undoable. That is deliberate: it is how the window is arranged, not what the
   document says.
-- A dock with several tabs in a narrow window shows the tabs elided and scrolls to the one in
+- A group with several tabs in a narrow window shows the tabs elided and scrolls to the one in
   front. That is the cost of letting any panel stand anywhere.
+- Taking a panel out of the tree can fold a split away, and every path below it then means
+  something else. A drop therefore holds on to what stands at the place rather than to its path,
+  and looks the place up again once the panel has been taken out.
+- The sheet takes whatever room the panels leave. Every other leaf keeps the size it was given, so
+  making the window wider makes the sheet wider and leaves the panels alone.
 - The motion switch is the reader's own. The system's own preference for less movement is not read,
   because the toolkit does not report it on every machine the application runs on.

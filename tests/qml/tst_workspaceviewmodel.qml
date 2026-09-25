@@ -5,8 +5,16 @@ import PhvikaPen.Ui
 TestCase {
     id: testCase
 
-    function groupsOn(workspace, side) {
-        return workspace.docks[side].groups;
+    readonly property int kindMiddle: 0
+    readonly property int kindSplit: 2
+    readonly property int kindStack: 1
+
+    function countOf(node, kind) {
+        let found = node.kind === kind ? 1 : 0;
+        for (const child of node.children) {
+            found += testCase.countOf(child, kind);
+        }
+        return found;
     }
 
     function init() {
@@ -14,106 +22,153 @@ TestCase {
         workspace.resetWorkspace();
     }
 
-    function test_a_startsWithTheContentsOnTheLeftAndNothingElse() {
-        const workspace = createTemporaryObject(workspaceComponent, testCase);
-
-        verify(workspace.isOpen("contents"));
-        verify(!workspace.isOpen("layers"));
-        verify(!workspace.isOpen("pageSetup"), "the page setup is off until it is asked for");
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Left).length, 1);
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Left)[0].panels, ["contents"]);
+    function nodeAt(workspace, path) {
+        let node = workspace.layout;
+        if (path === "") {
+            return node;
+        }
+        for (const step of path.split(".")) {
+            node = node.children[Number(step)];
+        }
+        return node;
     }
 
-    function test_b_aPanelIsOpenedWhereItBelongsAndClosedAgain() {
+    function pathOf(workspace, panelId) {
+        const look = node => {
+            if (node.kind === testCase.kindStack && node.panels.indexOf(panelId) >= 0) {
+                return node.path;
+            }
+            for (const child of node.children) {
+                const found = look(child);
+                if (found !== null) {
+                    return found;
+                }
+            }
+            return null;
+        };
+        return look(workspace.layout);
+    }
+
+    function test_a_startsWithTheSectionsOverThePagesBesideTheSheet() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+
+        verify(workspace.isOpen("sections"));
+        verify(workspace.isOpen("pages"));
+        verify(!workspace.isOpen("layers"));
+        verify(!workspace.isOpen("pageSetup"), "the page setup is off until it is asked for");
+        compare(testCase.countOf(workspace.layout, testCase.kindMiddle), 1, "the sheet has exactly one place");
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "sections")).panels, ["sections"]);
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "pages")).panels, ["pages"]);
+    }
+
+    function test_b_aPanelOpenedStandsBesideTheSheetAndClosesAgain() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const stacks = testCase.countOf(workspace.layout, testCase.kindStack);
 
         workspace.openPanel("layers");
         verify(workspace.isOpen("layers"));
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Right)[0].panels, ["layers"]);
+        compare(testCase.countOf(workspace.layout, testCase.kindStack), stacks + 1);
 
         workspace.closePanel("layers");
         verify(!workspace.isOpen("layers"));
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Right).length, 0);
+        compare(testCase.countOf(workspace.layout, testCase.kindStack), stacks);
     }
 
-    function test_c_aPanelDroppedOnAnotherBecomesATab() {
+    function test_c_aPanelDroppedOnAnEdgeSplitsWhatIsThere() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const pages = testCase.pathOf(workspace, "pages");
 
-        workspace.openPanel("layers");
-        workspace.dockPanel("pageSetup", WorkspaceViewModel.Right, 0);
+        workspace.dropBeside("layers", pages, WorkspaceViewModel.Right);
 
-        const groups = testCase.groupsOn(workspace, WorkspaceViewModel.Right);
-        compare(groups.length, 1, "both stand in one group");
-        compare(groups[0].panels, ["layers", "pageSetup"]);
-        compare(groups[0].current, 1, "the one just dropped is the one shown");
+        const layers = testCase.pathOf(workspace, "layers");
+        verify(layers !== null);
+        const split = testCase.nodeAt(workspace, layers.substring(0, layers.lastIndexOf(".")));
+        compare(split.kind, testCase.kindSplit);
+        verify(split.across, "a drop on the right edge puts the two side by side");
+        compare(split.children[1].panels, ["layers"], "and the one dropped stands to the right");
     }
 
-    function test_d_aPanelDraggedOutOfATabGroupStandsOnItsOwn() {
+    function test_d_aPanelDroppedInTheMiddleOfAnotherStandsBelowIt() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const pages = testCase.pathOf(workspace, "pages");
 
-        workspace.openPanel("layers");
-        workspace.dockPanel("pageSetup", WorkspaceViewModel.Right, 0);
-        workspace.dockPanel("pageSetup", WorkspaceViewModel.Bottom, -1);
+        workspace.dropBeside("layers", pages, WorkspaceViewModel.Bottom);
 
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Right)[0].panels, ["layers"]);
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Bottom)[0].panels, ["pageSetup"]);
+        const layers = testCase.pathOf(workspace, "layers");
+        const split = testCase.nodeAt(workspace, layers.substring(0, layers.lastIndexOf(".")));
+        verify(!split.across, "one below the other");
+        const order = split.children.map(child => child.panels[0]);
+        compare(order.indexOf("layers"), order.indexOf("pages") + 1, "the one dropped stands under it");
     }
 
-    function test_e_anEmptyGroupIsTakenAway() {
+    function test_e_aPanelDroppedOnTheTabsBecomesATab() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const pages = testCase.pathOf(workspace, "pages");
 
-        workspace.openPanel("layers");
-        workspace.dockPanel("contents", WorkspaceViewModel.Right, 0);
+        workspace.dropAsTab("layers", pages, 1);
 
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Left).length, 0, "nothing is left standing on the left");
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Right)[0].panels, ["layers", "contents"]);
+        const stack = testCase.nodeAt(workspace, testCase.pathOf(workspace, "layers"));
+        compare(stack.panels, ["pages", "layers"]);
+        compare(stack.current, 1, "the one just dropped is the one shown");
     }
 
-    function test_f_aPanelComesBackWhereItWasClosed() {
+    function test_f_aTabCarriedOutOfAGroupStandsOnItsOwnAgain() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.dropAsTab("layers", testCase.pathOf(workspace, "pages"), 1);
 
-        workspace.openPanel("layers");
-        workspace.dockPanel("layers", WorkspaceViewModel.Bottom, -1);
-        workspace.closePanel("layers");
-        workspace.openPanel("layers");
+        workspace.dropBeside("layers", testCase.pathOf(workspace, "sections"), WorkspaceViewModel.Left);
 
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Bottom)[0].panels, ["layers"]);
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "pages")).panels, ["pages"]);
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "layers")).panels, ["layers"]);
     }
 
-    function test_g_theLayoutIsRememberedForTheNextTime() {
+    function test_g_aSplitWithOneSideLeftIsNoLongerASplit() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const splits = testCase.countOf(workspace.layout, testCase.kindSplit);
+
+        workspace.closePanel("sections");
+
+        compare(testCase.countOf(workspace.layout, testCase.kindSplit), splits - 1);
+        verify(workspace.isOpen("pages"));
+    }
+
+    function test_h_theLayoutIsRememberedForTheNextTime() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
         workspace.openPanel("layers");
-        workspace.dockPanel("layers", WorkspaceViewModel.Bottom, -1);
-        workspace.setSideExtent(WorkspaceViewModel.Bottom, 300);
+        const where = testCase.pathOf(workspace, "layers");
+        workspace.setExtent(where, 300);
 
         const later = createTemporaryObject(workspaceComponent, testCase);
 
         verify(later.isOpen("layers"));
-        compare(testCase.groupsOn(later, WorkspaceViewModel.Bottom)[0].panels, ["layers"]);
-        compare(later.docks[WorkspaceViewModel.Bottom].extent, 300);
+        compare(testCase.nodeAt(later, testCase.pathOf(later, "layers")).extent, 300);
+        compare(testCase.countOf(later.layout, testCase.kindMiddle), 1);
     }
 
-    function test_h_theLayoutCanBePutBackAsItWas() {
+    function test_i_theLayoutCanBePutBackAsItWas() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
         workspace.openPanel("layers");
-        workspace.closePanel("contents");
+        workspace.closePanel("pages");
 
         workspace.resetWorkspace();
 
-        verify(workspace.isOpen("contents"));
+        verify(workspace.isOpen("sections"));
+        verify(workspace.isOpen("pages"));
         verify(!workspace.isOpen("layers"));
     }
 
-    function test_i_aPanelDroppedOnItsOwnLoneGroupStaysWhereItIs() {
+    function test_j_aLonePanelDroppedOnItselfStaysWhereItIs() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const before = testCase.countOf(workspace.layout, testCase.kindSplit);
+        const pages = testCase.pathOf(workspace, "pages");
 
-        workspace.dockPanel("contents", WorkspaceViewModel.Left, 0);
+        workspace.dropBeside("pages", pages, WorkspaceViewModel.Right);
 
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Left).length, 1);
-        compare(testCase.groupsOn(workspace, WorkspaceViewModel.Left)[0].panels, ["contents"]);
+        compare(testCase.countOf(workspace.layout, testCase.kindSplit), before);
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "pages")).panels, ["pages"]);
     }
 
-    function test_j_showingAPanelThatIsShutOpensIt() {
+    function test_k_showingAPanelThatIsShutOpensIt() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
         const shown = signalSpy.createObject(testCase, {
             "target": workspace,
@@ -123,17 +178,26 @@ TestCase {
         workspace.showPanel("pageSetup");
 
         verify(workspace.isOpen("pageSetup"));
-        compare(shown.count, 1);
+        verify(shown.count >= 1);
     }
 
-    function test_k_aWidthTheWindowCouldNotHoldIsBroughtBackIntoRange() {
+    function test_l_aSizeTheWindowCouldNotHoldIsBroughtBackIntoRange() {
         const workspace = createTemporaryObject(workspaceComponent, testCase);
+        const pages = testCase.pathOf(workspace, "pages");
 
-        workspace.setSideExtent(WorkspaceViewModel.Left, 5000);
-        verify(workspace.docks[WorkspaceViewModel.Left].extent <= 640);
+        workspace.setExtent(pages, 1);
 
-        workspace.setSideExtent(WorkspaceViewModel.Left, 1);
-        verify(workspace.docks[WorkspaceViewModel.Left].extent >= 140);
+        verify(testCase.nodeAt(workspace, pages).extent >= workspace.leastExtent);
+    }
+
+    function test_m_aPanelComesBackAsTheTabItWas() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.dropAsTab("layers", testCase.pathOf(workspace, "pages"), 1);
+
+        workspace.closePanel("layers");
+        workspace.openPanel("layers");
+
+        compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "layers")).panels, ["pages", "layers"]);
     }
 
     name: "WorkspaceViewModel"

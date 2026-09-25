@@ -610,15 +610,32 @@ AppDialog {
                             case UpdateViewModel.Looking:
                                 return qsTr("Looking…");
                             case UpdateViewModel.Available:
+                                return qsTr("Version %1 is available").arg(root.updates.version);
+                            case UpdateViewModel.Getting:
+                                return qsTr("Getting version %1… %2%").arg(root.updates.version).arg(root.updates.howFarAlong);
+                            case UpdateViewModel.Ready:
                                 return qsTr("Version %1 is ready to install").arg(root.updates.version);
-                            case UpdateViewModel.Installing:
-                                return qsTr("Getting version %1…").arg(root.updates.version);
                             case UpdateViewModel.UpToDate:
                                 return qsTr("This is the newest version");
                             case UpdateViewModel.Unavailable:
                                 return qsTr("No updates from here");
                             default:
                                 return qsTr("Version %1").arg(AppInfo.version);
+                            }
+                        }
+                    }
+
+                    Button {
+                        highlighted: true
+                        objectName: "updateFromSettingsButton"
+                        text: root.updates.state === UpdateViewModel.Ready ? qsTr("Restart now") : qsTr("Update now")
+                        visible: root.updates.state === UpdateViewModel.Available || root.updates.state === UpdateViewModel.Ready
+
+                        onClicked: {
+                            if (root.updates.state === UpdateViewModel.Ready) {
+                                root.updates.restartNow();
+                            } else {
+                                root.updates.get();
                             }
                         }
                     }

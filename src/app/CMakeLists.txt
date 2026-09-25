@@ -145,9 +145,9 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PageSetupPanel.qml
         qml/components/PanelBody.qml
         qml/components/PanelCloseTarget.qml
-        qml/components/PanelDock.qml
+        qml/components/PanelArea.qml
         qml/components/PanelDragState.qml
-        qml/components/PanelDropZone.qml
+        qml/components/SectionsPanel.qml
         qml/components/PanelFrame.qml
         qml/components/PanelTab.qml
         qml/components/ReorderHandler.qml
@@ -169,6 +169,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ToolPaletteButton.qml
         qml/components/TrashDialog.qml
         qml/components/UpdateBar.qml
+        qml/components/UpdateDialog.qml
         qml/components/WelcomeDialog.qml
 )
 

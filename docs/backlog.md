@@ -129,9 +129,9 @@ into a real problem earlier.
   stack into tabs, but they never leave the window, so two panels cannot stand side by side on a
   second screen. That needs a window per floating group and a way of carrying a panel across the
   gap between windows.
-- **A tab group cannot be reordered by dragging one tab past another.** A panel is carried to
-  another group, or out of one, but the order of the tabs inside a group is the order they were
-  added in.
+- **A tab is carried by the whole group it is in.** Dragging a header carries the panel in front;
+  a tab behind it is brought forward first and then carried. Picking up a tab directly, and
+  dragging one tab past another inside the same group, are not there yet.
 - **The layers carry no small picture of what stands on them.** A line says its name, whether it is
   shown, whether it is locked and how much stands on it. A thumbnail means drawing the layer alone,
   which the painter can do for a page but not yet for one layer of it.

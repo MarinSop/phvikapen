@@ -16,7 +16,9 @@ Rectangle {
     }
 
     function reportAim() {
-        root.drag.report(root.drag.closeRank, root.drag.dragging && root.pointInside(root.drag.at) ? "close" : "", -1, -1);
+        if (root.drag.dragging && root.pointInside(root.drag.at)) {
+            root.drag.report(root.drag.closeRank, "close", "", -1, 0, Qt.rect(0, 0, 0, 0));
+        }
     }
 
     border.color: root.aimedAt ? Theme.accent : Theme.line

@@ -232,8 +232,13 @@ MenuBar {
             title: qsTr("Panels")
 
             MenuCommand {
-                action: root.actions.showContentsPanel
-                objectName: "contentsPanelItem"
+                action: root.actions.showSectionsPanel
+                objectName: "sectionsPanelItem"
+            }
+
+            MenuCommand {
+                action: root.actions.showPagesPanel
+                objectName: "pagesPanelItem"
             }
 
             MenuCommand {
@@ -252,21 +257,6 @@ MenuBar {
             MenuCommand {
                 action: root.actions.resetPanels
                 objectName: "resetPanelsItem"
-            }
-        }
-
-        Menu {
-            objectName: "contentsMenu"
-            title: qsTr("Contents Panel Shows")
-
-            MenuCommand {
-                action: root.actions.sectionsList
-                objectName: "sectionsListItem"
-            }
-
-            MenuCommand {
-                action: root.actions.pagesList
-                objectName: "pagesListItem"
             }
         }
     }

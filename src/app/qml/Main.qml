@@ -87,6 +87,8 @@ ApplicationWindow {
         UpdateBar {
             Layout.fillWidth: true
             updates: updates
+
+            onOpenWanted: updateDialog.open()
         }
     }
     menuBar: AppMenuBar {
@@ -167,6 +169,7 @@ ApplicationWindow {
             }
         }
         onRestartWanted: Qt.quit()
+        onUpdateFound: updateDialog.offer()
     }
 
     AppActions {
@@ -441,6 +444,12 @@ ApplicationWindow {
 
         settings: settings
         tools: toolState
+        updates: updates
+    }
+
+    UpdateDialog {
+        id: updateDialog
+
         updates: updates
     }
 

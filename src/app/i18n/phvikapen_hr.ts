@@ -199,10 +199,6 @@
         <translation>Slojevi</translation>
     </message>
     <message>
-        <source>Contents</source>
-        <translation>Sadržaj</translation>
-    </message>
-    <message>
         <source>Page Setup</source>
         <translation>Postavke stranice</translation>
     </message>
@@ -392,10 +388,6 @@
     <message>
         <source>Panels</source>
         <translation>Ploče</translation>
-    </message>
-    <message>
-        <source>Contents Panel Shows</source>
-        <translation>Ploča sadržaja prikazuje</translation>
     </message>
     <message>
         <source>&amp;Insert</source>
@@ -1200,18 +1192,6 @@
 <context>
     <name>PagesPanel</name>
     <message>
-        <source>Sections</source>
-        <translation>Odjeljci</translation>
-    </message>
-    <message>
-        <source>New section</source>
-        <translation>Novi odjeljak</translation>
-    </message>
-    <message>
-        <source>Delete section</source>
-        <translation>Izbriši odjeljak</translation>
-    </message>
-    <message>
         <source>Rename</source>
         <translation>Preimenuj</translation>
     </message>
@@ -1228,8 +1208,8 @@
         <translation>Izbriši…</translation>
     </message>
     <message>
-        <source>Pages</source>
-        <translation>Stranice</translation>
+        <source>Open a notebook to see its pages.</source>
+        <translation>Otvori bilježnicu da bi se vidjele njezine stranice.</translation>
     </message>
     <message>
         <source>New page</source>
@@ -1246,10 +1226,6 @@
     <message>
         <source>Duplicate</source>
         <translation>Udvostruči</translation>
-    </message>
-    <message>
-        <source>Move “%1” and every page in it to the deleted pages?</source>
-        <translation>Premjestiti „%1“ i svaku stranicu u njemu u izbrisane stranice?</translation>
     </message>
     <message>
         <source>Move “%1” to the deleted pages?</source>
@@ -1269,10 +1245,6 @@
         <source>Close this panel</source>
         <translation>Zatvori ovu ploču</translation>
     </message>
-    <message>
-        <source>Add as a tab</source>
-        <translation>Dodaj kao karticu</translation>
-    </message>
 </context>
 <context>
     <name>Panels</name>
@@ -1285,8 +1257,12 @@
         <translation>Postavke stranice</translation>
     </message>
     <message>
-        <source>Contents</source>
-        <translation>Sadržaj</translation>
+        <source>Sections</source>
+        <translation>Odjeljci</translation>
+    </message>
+    <message>
+        <source>Pages</source>
+        <translation>Stranice</translation>
     </message>
 </context>
 <context>
@@ -1318,6 +1294,41 @@
     <message>
         <source>Help</source>
         <translation>Pomoć</translation>
+    </message>
+</context>
+<context>
+    <name>SectionsPanel</name>
+    <message>
+        <source>New section</source>
+        <translation>Novi odjeljak</translation>
+    </message>
+    <message>
+        <source>Delete section</source>
+        <translation>Izbriši odjeljak</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Preimenuj</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>Pomakni gore</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>Pomakni dolje</translation>
+    </message>
+    <message>
+        <source>Delete…</source>
+        <translation>Izbriši…</translation>
+    </message>
+    <message>
+        <source>Open a notebook to see its sections.</source>
+        <translation>Otvori bilježnicu da bi se vidjeli njezini odjeljci.</translation>
+    </message>
+    <message>
+        <source>Move “%1” and every page in it to the deleted pages?</source>
+        <translation>Premjesti „%1” i svaku stranicu u njemu među izbrisane stranice?</translation>
     </message>
 </context>
 <context>
@@ -1579,12 +1590,16 @@
         <translation>Traženje…</translation>
     </message>
     <message>
-        <source>Version %1 is ready to install</source>
-        <translation>Verzija %1 je spremna za instalaciju</translation>
+        <source>Version %1 is available</source>
+        <translation>Verzija %1 je dostupna</translation>
     </message>
     <message>
-        <source>Getting version %1…</source>
-        <translation>Preuzimanje verzije %1…</translation>
+        <source>Getting version %1… %2%</source>
+        <translation>Preuzimanje verzije %1… %2 %</translation>
+    </message>
+    <message>
+        <source>Version %1 is ready to install</source>
+        <translation>Verzija %1 je spremna za instalaciju</translation>
     </message>
     <message>
         <source>This is the newest version</source>
@@ -1597,6 +1612,14 @@
     <message>
         <source>Version %1</source>
         <translation>Verzija %1</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>Pokreni ponovno</translation>
+    </message>
+    <message>
+        <source>Update now</source>
+        <translation>Ažuriraj sada</translation>
     </message>
     <message>
         <source>Look now</source>
@@ -1925,16 +1948,87 @@
 <context>
     <name>UpdateBar</name>
     <message>
-        <source>Getting version %1…</source>
-        <translation>Preuzimanje verzije %1…</translation>
-    </message>
-    <message>
         <source>Version %1 is ready to install</source>
         <translation>Verzija %1 je spremna za instalaciju</translation>
     </message>
     <message>
-        <source>Install and restart</source>
-        <translation>Instaliraj i ponovno pokreni</translation>
+        <source>Getting version %1… %2%</source>
+        <translation>Preuzimanje verzije %1… %2 %</translation>
+    </message>
+    <message>
+        <source>Version %1 is available</source>
+        <translation>Verzija %1 je dostupna</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>Pokreni ponovno</translation>
+    </message>
+    <message>
+        <source>Show</source>
+        <translation>Prikaži</translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation>Ažuriraj</translation>
+    </message>
+    <message>
+        <source>Put this aside</source>
+        <translation>Skloni ovo</translation>
+    </message>
+</context>
+<context>
+    <name>UpdateDialog</name>
+    <message>
+        <source>Ready to install</source>
+        <translation>Spremno za instalaciju</translation>
+    </message>
+    <message>
+        <source>Getting the update</source>
+        <translation>Preuzimanje ažuriranja</translation>
+    </message>
+    <message>
+        <source>An update is ready</source>
+        <translation>Ažuriranje je spremno</translation>
+    </message>
+    <message>
+        <source>Keep going in the background</source>
+        <translation>Nastavi u pozadini</translation>
+    </message>
+    <message>
+        <source>Not now</source>
+        <translation>Ne sada</translation>
+    </message>
+    <message>
+        <source>Restart now</source>
+        <translation>Pokreni ponovno</translation>
+    </message>
+    <message>
+        <source>Update now</source>
+        <translation>Ažuriraj sada</translation>
+    </message>
+    <message>
+        <source>Version %1 is on this machine. PhvikaPen has to start again to use it.</source>
+        <translation>Verzija %1 je na ovom računalu. PhvikaPen se mora ponovno pokrenuti da bi ju koristio.</translation>
+    </message>
+    <message>
+        <source>Getting version %1…</source>
+        <translation>Preuzimanje verzije %1…</translation>
+    </message>
+    <message>
+        <source>Version %1 is ready to install. Your work is not touched.</source>
+        <translation>Verzija %1 spremna je za instalaciju. Tvoj rad ostaje netaknut.</translation>
+    </message>
+    <message>
+        <source>%1%</source>
+        <translation>%1 %</translation>
+    </message>
+    <message>
+        <source>Do not ask about this version again</source>
+        <translation>Ne pitaj više za ovu verziju</translation>
+    </message>
+    <message>
+        <source>Closing this window leaves the update getting itself in the background.</source>
+        <translation>Zatvaranje ovog prozora ostavlja ažuriranje da se preuzima u pozadini.</translation>
     </message>
 </context>
 <context>
@@ -1946,25 +2040,6 @@
     <message>
         <source>Pick the look you would like. You can change it later in Settings.</source>
         <translation>Odaberite izgled koji želite. Kasnije ga možete promijeniti u Postavkama.</translation>
-    </message>
-</context>
-<context>
-    <name>WorkspaceView</name>
-    <message>
-        <source>Left</source>
-        <translation>Lijevo</translation>
-    </message>
-    <message>
-        <source>Right</source>
-        <translation>Desno</translation>
-    </message>
-    <message>
-        <source>Top</source>
-        <translation>Gore</translation>
-    </message>
-    <message>
-        <source>Bottom</source>
-        <translation>Dolje</translation>
     </message>
 </context>
 <context>
