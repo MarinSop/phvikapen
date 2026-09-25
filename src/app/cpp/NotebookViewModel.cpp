@@ -886,6 +886,10 @@ void NotebookViewModel::Sink::selectionMoved(float dx, float dy) {
     m_owner->moveSelection(dx, dy);
 }
 
+void NotebookViewModel::Sink::colourSeen(const core::Color& colour) {
+    m_owner->showPickedColour(colour);
+}
+
 void NotebookViewModel::Sink::eraseFinished() {
     m_owner->finishErasing();
 }
@@ -906,7 +910,7 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke, int sheet) {
     forgetThumbnail(on);
     const auto found = m_pages.find(on);
     core::Page* const page = found == m_pages.end() ? nullptr : found->second.get();
-    if (!m_loaded || page == nullptr || !m_storage) {
+    if (!m_loaded || page == nullptr || !canPutSomethingDown() || !m_storage) {
         refreshCanvas();
         return;
     }
@@ -926,6 +930,10 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke, int sheet) {
     publishLayers();
     markEdited();
     emit historyChanged();
+}
+
+void NotebookViewModel::showPickedColour(const core::Color& colour) {
+    emit colourPicked(QColor::fromRgb(colour.red, colour.green, colour.blue, colour.alpha));
 }
 
 void NotebookViewModel::pickColour(const core::InkSample& at, int sheet) {
@@ -2528,7 +2536,7 @@ void NotebookViewModel::cutSelection() {
 
 void NotebookViewModel::duplicateSelection() {
     core::Page* const page = currentPageData();
-    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
     }
     const std::vector<core::Uuid>& picked = m_canvas->selection();
@@ -2704,7 +2712,8 @@ void NotebookViewModel::copySelectionAsText() {
 
 void NotebookViewModel::pasteStrokes() {
     core::Page* const page = currentPageData();
-    if (page == nullptr || m_canvas.isNull() || !m_storage || m_clipboard.empty()) {
+    if (page == nullptr || m_canvas.isNull() || m_clipboard.empty() || !canPutSomethingDown()
+        || !m_storage) {
         return;
     }
 
@@ -3118,7 +3127,7 @@ void NotebookViewModel::settleDraft() {
 void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMap& style) {
     settleDraft();
     const std::optional<TextPlace> place = placeInColumn(QPointF{columnX, columnY});
-    if (!place || !m_storage || m_canvas.isNull()) {
+    if (!place || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         publishTexts();
         return;
     }
@@ -3584,7 +3593,7 @@ void NotebookViewModel::answerWhatWasAsked(const core::Uuid& pageId,
 
 void NotebookViewModel::addTable(int rows, int columns) {
     core::Page* const page = currentPageData();
-    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
     }
 
@@ -4156,8 +4165,58 @@ void NotebookViewModel::changeLayers(std::vector<core::Layer> wanted) {
     forgetThumbnail(page->id());
     runCommand(std::make_unique<core::ChangeLayersCommand>(found->second.get(), storage,
                                                            std::move(wanted)));
+    letGoOfWhatIsShut();
     publishLayers();
     refreshCanvas();
+}
+
+void NotebookViewModel::letGoOfWhatIsShut() {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return;
+    }
+    const auto shut = [page](const QString& thingId) {
+        return !thingId.isEmpty() && !page->isThingOpenToTheHand(thingNamed(*page, thingId));
+    };
+    if (shut(m_pickedTable)) {
+        setPickedTable({});
+    }
+    if (shut(m_pickedPicture)) {
+        setPickedPicture({});
+    }
+    if (shut(m_pickedText)) {
+        setPickedText({});
+    }
+    if (m_canvas.isNull()) {
+        return;
+    }
+    const std::vector<core::Uuid> picked = m_canvas->selection();
+    std::vector<core::Uuid> kept;
+    kept.reserve(picked.size());
+    for (const core::Uuid& strokeId : picked) {
+        if (page->isThingOpenToTheHand(strokeId)) {
+            kept.push_back(strokeId);
+        }
+    }
+    if (kept.size() != picked.size()) {
+        m_canvas->showSelection(std::move(kept));
+    }
+}
+
+bool NotebookViewModel::canPutSomethingDown() {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return true;
+    }
+    const std::span<const core::Layer> standing = page->layers();
+    const core::Layer* const chosen = core::layerOf(standing, layerNamed(standing, m_activeLayer));
+    if (chosen == nullptr || core::isOpenToTheHand(*chosen)) {
+        return true;
+    }
+    const QString name = QString::fromStdString(chosen->name);
+    reportError(chosen->shown ? tr("“%1” is locked. Unlock it, or work on another layer.").arg(name)
+                              : tr("“%1” is hidden. Show it, or work on another layer.").arg(name));
+    return false;
 }
 
 void NotebookViewModel::setActiveLayer(const QString& layerId) {
@@ -4412,18 +4471,65 @@ void NotebookViewModel::moveToLayer(const QString& thingId, const QString& layer
     refreshCanvas();
 }
 
+std::vector<core::Uuid> NotebookViewModel::whatIsInHand() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    std::vector<core::Uuid> held;
+    for (const QString& named : {m_pickedTable, m_pickedPicture, m_pickedText}) {
+        const core::Uuid thing = named.isEmpty() ? core::Uuid{} : thingNamed(*page, named);
+        if (!thing.isNil()) {
+            held.push_back(thing);
+        }
+    }
+    if (!m_canvas.isNull()) {
+        const std::vector<core::Uuid> picked = m_canvas->selection();
+        held.insert(held.end(), picked.begin(), picked.end());
+    }
+    return held;
+}
+
 void NotebookViewModel::movePickedToLayer(const QString& layerId) {
-    if (!m_pickedTable.isEmpty()) {
-        moveToLayer(m_pickedTable, layerId);
+    core::Page* const page = currentPageData();
+    if (page == nullptr || !m_storage) {
         return;
     }
-    if (!m_pickedPicture.isEmpty()) {
-        moveToLayer(m_pickedPicture, layerId);
+    const std::span<const core::Layer> standing = page->layers();
+    const core::Layer* const onto = core::layerOf(standing, layerNamed(standing, layerId));
+    if (onto == nullptr) {
         return;
     }
-    if (!m_pickedText.isEmpty()) {
-        moveToLayer(m_pickedText, layerId);
+    if (!core::isOpenToTheHand(*onto)) {
+        const QString name = QString::fromStdString(onto->name);
+        reportError(onto->shown ? tr("“%1” is locked and takes nothing.").arg(name)
+                                : tr("“%1” is hidden and takes nothing.").arg(name));
+        return;
     }
+    const std::vector<core::Uuid> held = whatIsInHand();
+    const auto found = m_pages.find(page->id());
+    if (held.empty() || found == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+
+    std::vector<std::unique_ptr<core::ICommand>> steps;
+    steps.reserve(held.size());
+    for (const core::Uuid& thing : held) {
+        const std::optional<core::Uuid> stood = page->layerOfThing(thing);
+        const core::Layer* const from = stood ? core::layerOf(standing, *stood) : nullptr;
+        if (from != nullptr && from->id != onto->id) {
+            steps.push_back(std::make_unique<core::MoveToLayerCommand>(found->second.get(), storage,
+                                                                       thing, onto->id));
+        }
+    }
+    if (steps.empty()) {
+        return;
+    }
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+    publishLayers();
+    refreshCanvas();
 }
 
 void NotebookViewModel::publishLayers() {
@@ -4482,7 +4588,7 @@ void NotebookViewModel::publishTables() {
 
 void NotebookViewModel::addPicture(const QUrl& fileUrl) {
     core::Page* const page = currentPageData();
-    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
     }
     const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
@@ -4544,7 +4650,7 @@ void NotebookViewModel::addPicture(const QUrl& fileUrl) {
 
 void NotebookViewModel::convertSelectionToText(QVariantMap style) {
     const core::Page* const page = currentPageData();
-    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
     }
     std::vector<core::Uuid> picked = m_canvas->selection();

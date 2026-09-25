@@ -538,6 +538,7 @@ private:
         void selectionDrawn(std::span<const core::Point> shape) override;
         void selectionMoved(float dx, float dy) override;
         void colourWanted(const core::InkSample& at, int sheet) override;
+        void colourSeen(const core::Color& colour) override;
 
     private:
         NotebookViewModel* m_owner;
@@ -606,6 +607,7 @@ private:
     void selectInside(std::span<const core::Point> polygon);
     void moveSelection(float dx, float dy);
     void pickColour(const core::InkSample& at, int sheet);
+    void showPickedColour(const core::Color& colour);
     void pickFromMedia(const core::InkSample& at);
     [[nodiscard]] bool noteTouched(const core::Page& page, const core::EraserSweep& sweep,
                                    bool whole);
@@ -685,6 +687,13 @@ private:
     [[nodiscard]] core::Uuid layerForNewThings(const core::Page& page) const;
 
     void changeLayers(std::vector<core::Layer> wanted);
+
+    void letGoOfWhatIsShut();
+
+    [[nodiscard]] std::vector<core::Uuid> whatIsInHand() const;
+
+    [[nodiscard]] bool canPutSomethingDown();
+
     // What was read as arithmetic, worked out and written beside the hand that asked it.
     void answerWhatWasAsked(const core::Uuid& pageId, std::span<const core::InkWord> words,
                             const QVariantMap& style);

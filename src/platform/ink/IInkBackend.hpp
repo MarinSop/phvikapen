@@ -4,6 +4,7 @@
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeEraser.hpp"
+#include "core/model/Color.hpp"
 
 #include <span>
 #include <string_view>
@@ -36,6 +37,8 @@ public:
     virtual void selectionMoved(float dx, float dy) = 0;
 
     virtual void colourWanted(const core::InkSample& at, int sheet) = 0;
+
+    virtual void colourSeen(const core::Color& colour) = 0;
 };
 
 class IInkBackend {

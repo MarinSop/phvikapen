@@ -63,10 +63,9 @@ page-wide ordering that every insertion has to renumber.
   boxes of type, and honoured in full in what is printed — but on the glass a table cannot be shown
   underneath ink. Removing that difference means drawing all four kinds through one renderer, which
   is a larger change than the layers themselves and is not taken on here.
-- Ink on a locked layer can still be picked with the loop. What answers a tap is decided by the
-  page for pictures, tables and boxes of type; ink is picked by the canvas, which is handed strokes
-  without being told which layer they stand on. Hiding a layer does hide its ink, because hidden
-  strokes are already something the canvas is told about.
-- The layer anything new is put on is the one chosen in the panel, and never a layer that is hidden
-  or locked: the topmost one that will take it is used instead, which is where a reader would have
-  put it by hand.
+- Whether a thing may be taken hold of is one question with one answer, asked of the page. Marking
+  out ink with the loop, rubbing ink out, and tapping a picture, a table or a box of type all ask
+  it, so no way of reaching for a thing goes round a layer that is hidden or locked. Hiding or
+  locking a layer also lets go of whatever on it was already in hand.
+- Nothing new is put on a layer that is hidden or locked. The reader is told why rather than having
+  the work put somewhere they did not choose.

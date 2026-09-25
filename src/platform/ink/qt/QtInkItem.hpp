@@ -347,6 +347,7 @@ private:
     void changeView(const core::Viewport& viewport);
 
     void press(const core::InkSample& sample, bool eraserTip);
+    void takeColourAt(const core::InkSample& sample, int sheet);
     void watchForHold(const QPointF& at);
     void forgetHold();
     void askForMenu();
