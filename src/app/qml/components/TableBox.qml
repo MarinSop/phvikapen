@@ -6,6 +6,9 @@ import PhvikaPen.Ui
 // One table as it stands on the paper: its ruling and what is typed in its boxes, laid out in the
 // units of the page and drawn at the zoom of the canvas. Nothing fills a box, so what is written
 // by hand inside one is seen through the table. The box being typed in is drawn by the layer.
+//
+// Every box is ruled round on its own rather than the whole grid being drawn line by line, so that
+// a box reaching over others has no ruling running through the middle of it.
 Item {
     id: root
 
@@ -17,6 +20,8 @@ Item {
     required property string tableId
     required property var widths
     required property var words
+    required property var acrosses
+    required property var downs
     // Which box the layer is typing in, so that it is not drawn twice.
     property int hiddenCell: -1
     // The measures while a rule is being pulled about, so that the ruling follows the pointer
@@ -44,6 +49,12 @@ Item {
         return edge;
     }
 
+    // How far a box reaches, counting one where the table has not said.
+    function reachOf(measures, index) {
+        const said = measures[index];
+        return said === undefined ? 1 : said;
+    }
+
     function spanOf(measures) {
         return root.edgeBefore(measures, measures.length);
     }
@@ -63,64 +74,57 @@ Item {
         }
 
         Repeater {
-            model: root.acrossNow.length + 1
-
-            Rectangle {
-                id: downLine
-
-                required property int index
-
-                color: root.rule
-                height: root.onPageTall
-                width: root.ruleWidth
-                x: root.edgeBefore(root.acrossNow, downLine.index) - (root.ruleWidth / 2)
-                y: 0
-            }
-        }
-
-        Repeater {
-            model: root.downNow.length + 1
-
-            Rectangle {
-                id: acrossLine
-
-                required property int index
-
-                color: root.rule
-                height: root.ruleWidth
-                width: root.onPageWide
-                x: 0
-                y: root.edgeBefore(root.downNow, acrossLine.index) - (root.ruleWidth / 2)
-            }
-        }
-
-        Repeater {
             model: root.words.length
 
-            Text {
-                id: label
+            Item {
+                id: cell
 
                 required property int index
-                readonly property int column: label.index % root.columns
-                readonly property int row: Math.floor(label.index / root.columns)
+                readonly property int across: root.reachOf(root.acrosses, cell.index)
+                readonly property real boxLeft: root.edgeBefore(root.acrossNow, cell.column)
+                readonly property real boxTop: root.edgeBefore(root.downNow, cell.row)
+                readonly property int column: cell.index % root.columns
+                readonly property bool covered: cell.across < 1 || cell.down < 1
+                readonly property int down: root.reachOf(root.downs, cell.index)
+                readonly property int row: Math.floor(cell.index / root.columns)
 
-                clip: true
-                color: root.style.color
-                font.bold: root.style.bold
-                font.family: root.style.font === "" ? AppInfo.plainFont : root.style.font
-                font.italic: root.style.italic
-                font.pixelSize: Math.max(1, root.style.size * root.pageUnitsPerPoint)
-                font.strikeout: root.style.struckOut
-                font.underline: root.style.underline
-                height: Math.max(1, root.downNow[label.row] - (2 * root.cellPadding))
-                horizontalAlignment: [Text.AlignLeft, Text.AlignHCenter, Text.AlignRight, Text.AlignJustify][root.aligns[label.index]]
-                objectName: "tableCell"
-                text: root.words[label.index]
-                visible: label.index !== root.hiddenCell
-                width: Math.max(1, root.acrossNow[label.column] - (2 * root.cellPadding))
-                wrapMode: Text.Wrap
-                x: root.edgeBefore(root.acrossNow, label.column) + root.cellPadding
-                y: root.edgeBefore(root.downNow, label.row) + root.cellPadding
+                height: root.edgeBefore(root.downNow, cell.row + Math.max(1, cell.down)) - cell.boxTop
+                visible: !cell.covered
+                width: root.edgeBefore(root.acrossNow, cell.column + Math.max(1, cell.across)) - cell.boxLeft
+                x: cell.boxLeft
+                y: cell.boxTop
+
+                // The rule is drawn about the edge of the box rather than inside it, so that two
+                // boxes side by side share one rule instead of each drawing its own.
+                Rectangle {
+                    border.color: root.rule
+                    border.width: root.ruleWidth
+                    color: "transparent"
+                    height: cell.height + root.ruleWidth
+                    width: cell.width + root.ruleWidth
+                    x: -root.ruleWidth / 2
+                    y: -root.ruleWidth / 2
+                }
+
+                Text {
+                    clip: true
+                    color: root.style.color
+                    font.bold: root.style.bold
+                    font.family: root.style.font === "" ? AppInfo.plainFont : root.style.font
+                    font.italic: root.style.italic
+                    font.pixelSize: Math.max(1, root.style.size * root.pageUnitsPerPoint)
+                    font.strikeout: root.style.struckOut
+                    font.underline: root.style.underline
+                    height: Math.max(1, cell.height - (2 * root.cellPadding))
+                    horizontalAlignment: [Text.AlignLeft, Text.AlignHCenter, Text.AlignRight, Text.AlignJustify][root.aligns[cell.index]]
+                    objectName: "tableCell"
+                    text: root.words[cell.index]
+                    visible: cell.index !== root.hiddenCell
+                    width: Math.max(1, cell.width - (2 * root.cellPadding))
+                    wrapMode: Text.Wrap
+                    x: root.cellPadding
+                    y: root.cellPadding
+                }
             }
         }
     }

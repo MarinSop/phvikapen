@@ -188,10 +188,17 @@ constexpr std::string_view kSchemaVersion9 = R"sql(
     CREATE INDEX page_table_cells_by_word ON page_table_cells (folded);
 )sql";
 
+// How far a box of a table reaches over the ones beside and below it. A box that reaches over
+// nothing says so by reaching one of each, which is what every box written down before this was.
+constexpr std::string_view kSchemaVersion10 = R"sql(
+    ALTER TABLE page_table_cells ADD COLUMN across INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE page_table_cells ADD COLUMN down INTEGER NOT NULL DEFAULT 1;
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
     std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
-    std::pair{8, kSchemaVersion8}, std::pair{9, kSchemaVersion9},
+    std::pair{8, kSchemaVersion8}, std::pair{9, kSchemaVersion9}, std::pair{10, kSchemaVersion10},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -707,6 +714,8 @@ enum class TableWordColumn : std::uint8_t {
     ColumnWidths,
     RowHeights,
     Cell,
+    Across,
+    Down,
     Section,
     Page,
 };
@@ -723,6 +732,7 @@ enum class TableWordColumn : std::uint8_t {
         database, "SELECT page_tables.page_id, page_table_cells.text, page_tables.left_edge, "
                   "       page_tables.top_edge, page_tables.column_widths, "
                   "       page_tables.row_heights, page_table_cells.ordinal, "
+                  "       page_table_cells.across, page_table_cells.down, "
                   "       sections.ordinal, pages.ordinal "
                   "FROM page_table_cells "
                   "JOIN page_tables ON page_tables.id = page_table_cells.table_id "
@@ -760,10 +770,23 @@ enum class TableWordColumn : std::uint8_t {
             continue;
         }
         const std::int64_t where = statement->integer(column(TableWordColumn::Cell));
-        const Rect box = areaOfCell(standing, CellAt{
-                                                  .row = static_cast<int>(where / wide),
-                                                  .column = static_cast<int>(where % wide),
-                                              });
+        const CellAt cell{
+            .row = static_cast<int>(where / wide),
+            .column = static_cast<int>(where % wide),
+        };
+        // The box is given the room it reaches over, so that words in a box joined with others are
+        // shown across the whole of it.
+        standing.cells.assign(standing.columns.size() * standing.rows.size(), TableCell{});
+        const auto here = (static_cast<std::size_t>(cell.row) * standing.columns.size())
+                          + static_cast<std::size_t>(cell.column);
+        if (here >= standing.cells.size()) {
+            continue;
+        }
+        standing.cells[here].across =
+            static_cast<int>(statement->integer(column(TableWordColumn::Across)));
+        standing.cells[here].down =
+            static_cast<int>(statement->integer(column(TableWordColumn::Down)));
+        const Rect box = areaOfCell(standing, cell);
         hits.push_back(Hit{
             .section = statement->integer(column(TableWordColumn::Section)),
             .page = statement->integer(column(TableWordColumn::Page)),
@@ -792,16 +815,24 @@ enum class TableWordColumn : std::uint8_t {
 
 // A box with nothing in it and nothing said about it is not written down, so that a wide table
 // with a few words in it costs the room of those words.
+// A box that says nothing, asks for nothing and reaches over nothing is not written down. One
+// that is covered by another is not written down either: which boxes are covered follows from how
+// far the others reach, and is worked out again when the table is read.
+[[nodiscard]] bool worthKeeping(const TableCell& cell) noexcept {
+    return !cell.text.empty() || cell.align != TextAlign::Left || cell.across > 1 || cell.down > 1;
+}
+
 [[nodiscard]] Result<void> writeCells(sqlite3* database, const Table& table) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        database, "INSERT INTO page_table_cells (table_id, ordinal, text, folded, align) "
-                  "VALUES (?, ?, ?, ?, ?);");
+        database,
+        "INSERT INTO page_table_cells (table_id, ordinal, text, folded, align, across, down) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
     for (std::size_t step = 0; step < table.cells.size(); ++step) {
         const TableCell& cell = table.cells[step];
-        if (cell == TableCell{}) {
+        if (!worthKeeping(cell)) {
             continue;
         }
         if (const Result<void> ready = statement->reset(); !ready) {
@@ -813,6 +844,8 @@ enum class TableWordColumn : std::uint8_t {
             statement->bindText(3, cell.text),
             statement->bindText(4, foldedRun(cell.text)),
             statement->bindInteger(5, static_cast<std::int64_t>(cell.align)),
+            statement->bindInteger(6, cell.across),
+            statement->bindInteger(7, cell.down),
         });
         if (!bound) {
             return bound;
@@ -838,8 +871,8 @@ enum class TableWordColumn : std::uint8_t {
 
 [[nodiscard]] Result<void> readCells(sqlite3* database, Table& table) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        database, "SELECT ordinal, text, align FROM page_table_cells WHERE table_id = ? "
-                  "ORDER BY ordinal;");
+        database, "SELECT ordinal, text, align, across, down FROM page_table_cells "
+                  "WHERE table_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -862,6 +895,8 @@ enum class TableWordColumn : std::uint8_t {
         table.cells[where] = TableCell{
             .text = statement->text(1),
             .align = toAlign(statement->integer(2)),
+            .across = static_cast<int>(statement->integer(3)),
+            .down = static_cast<int>(statement->integer(4)),
         };
     }
 }
@@ -1689,6 +1724,9 @@ Result<std::vector<PlacedTable>> NotebookStore::tablesOfPage(const Uuid& pageId)
         if (const Result<void> cells = readCells(m_database, placed.table); !cells) {
             return std::unexpected{cells.error()};
         }
+        // Which boxes are covered follows from how far the others reach, and is only known once
+        // every box has been read back.
+        placed.table = normalized(std::move(placed.table));
     }
     return tables;
 }

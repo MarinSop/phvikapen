@@ -123,6 +123,22 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.mergeCells
+        objectName: "contextMergeCells"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.splitCell
+        objectName: "contextSplitCell"
+        visible: root.onTable
+    }
+
+    MenuLine {
+        visible: root.onTable
+    }
+
+    MenuCommand {
         action: root.actions.alignCellLeft
         objectName: "contextAlignCellLeft"
         visible: root.onTable

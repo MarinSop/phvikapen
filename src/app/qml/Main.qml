@@ -302,6 +302,30 @@ ApplicationWindow {
                 value: Math.max(0, tableLayer.editingColumn)
             }
 
+            Binding {
+                property: "stretchFromRow"
+                target: appActions
+                value: tableLayer.fromRow
+            }
+
+            Binding {
+                property: "stretchFromColumn"
+                target: appActions
+                value: tableLayer.fromColumn
+            }
+
+            Binding {
+                property: "stretchToRow"
+                target: appActions
+                value: tableLayer.toRow
+            }
+
+            Binding {
+                property: "stretchToColumn"
+                target: appActions
+                value: tableLayer.toColumn
+            }
+
             TextLayer {
                 anchors.fill: parent
                 canvas: canvas

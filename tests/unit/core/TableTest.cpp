@@ -160,6 +160,122 @@ TEST(TableTest, RefusesARowOrAColumnThatIsNotThere) {
     EXPECT_FALSE(withCellWritten(table, CellAt{.row = 9, .column = 0}, "nowhere").has_value());
 }
 
+TEST(TableTest, ATableWithNoBoxesAnswersNothingRatherThanReachingPastItsOwn) {
+    Table half;
+    half.columns = {40.0F, 60.0F};
+    half.rows = {20.0F};
+
+    EXPECT_EQ(areaOfCell(half, CellAt{.row = 0, .column = 0}), Rect{});
+    EXPECT_EQ(cellAt(half, CellAt{.row = 0, .column = 0}), nullptr);
+    EXPECT_FALSE(ownerOf(half, CellAt{.row = 0, .column = 0}).has_value());
+    EXPECT_FALSE(cellUnder(half, Point{.x = 10.0F, .y = 10.0F}).has_value());
+}
+
+TEST(TableTest, AStretchOfBoxesIsJoinedIntoOne) {
+    Table table = threeByTwo();
+    table = withCellWritten(std::move(table), CellAt{.row = 0, .column = 0}, "Dan").value();
+    table = withCellWritten(std::move(table), CellAt{.row = 0, .column = 1}, "Sati").value();
+
+    const Result<Table> joined =
+        withMergedRange(table, CellAt{.row = 0, .column = 0}, CellAt{.row = 0, .column = 1});
+
+    ASSERT_TRUE(joined.has_value()) << joined.error().message;
+    const TableCell* const owner = cellAt(*joined, CellAt{.row = 0, .column = 0});
+    EXPECT_EQ(owner->across, 2);
+    EXPECT_EQ(owner->down, 1);
+    EXPECT_EQ(owner->text, "Dan Sati");
+    EXPECT_TRUE(isCovered(*cellAt(*joined, CellAt{.row = 0, .column = 1})));
+    EXPECT_FLOAT_EQ(areaOfCell(*joined, CellAt{.row = 0, .column = 0}).width(), 100.0F);
+    EXPECT_EQ(areaOfCell(*joined, CellAt{.row = 0, .column = 1}), Rect{});
+}
+
+TEST(TableTest, AStretchIsJoinedWhicheverCornerItIsGivenBy) {
+    const Table joined =
+        withMergedRange(threeByTwo(), CellAt{.row = 2, .column = 1}, CellAt{.row = 1, .column = 0})
+            .value();
+
+    const TableCell* const owner = cellAt(joined, CellAt{.row = 1, .column = 0});
+    EXPECT_EQ(owner->across, 2);
+    EXPECT_EQ(owner->down, 2);
+    EXPECT_TRUE(isCovered(*cellAt(joined, CellAt{.row = 2, .column = 1})));
+    EXPECT_FLOAT_EQ(areaOfCell(joined, CellAt{.row = 1, .column = 0}).width(), 100.0F);
+}
+
+TEST(TableTest, ATapOnACoveredPlaceFindsTheBoxThatSwallowedIt) {
+    const Table joined =
+        withMergedRange(threeByTwo(), CellAt{.row = 0, .column = 0}, CellAt{.row = 0, .column = 1})
+            .value();
+
+    const std::optional<CellAt> found = cellUnder(joined, Point{.x = 190.0F, .y = 55.0F});
+
+    ASSERT_TRUE(found.has_value());
+    EXPECT_EQ(found->row, 0);
+    EXPECT_EQ(found->column, 0);
+    EXPECT_EQ(ownerOf(joined, CellAt{.row = 0, .column = 1}), (CellAt{.row = 0, .column = 0}));
+}
+
+TEST(TableTest, AStretchThatCutsThroughAJoinedBoxTakesTheWholeOfIt) {
+    const Table joined =
+        withMergedRange(threeByTwo(), CellAt{.row = 0, .column = 0}, CellAt{.row = 0, .column = 1})
+            .value();
+
+    // Only the left half of the joined box is asked for, along with the box below it.
+    const Result<Table> again =
+        withMergedRange(joined, CellAt{.row = 0, .column = 0}, CellAt{.row = 1, .column = 0});
+
+    ASSERT_TRUE(again.has_value()) << again.error().message;
+    const TableCell* const owner = cellAt(*again, CellAt{.row = 0, .column = 0});
+    EXPECT_EQ(owner->across, 2);
+    EXPECT_EQ(owner->down, 2);
+}
+
+TEST(TableTest, OneBoxOnItsOwnIsNeverJoined) {
+    EXPECT_FALSE(
+        withMergedRange(threeByTwo(), CellAt{.row = 0, .column = 0}, CellAt{.row = 0, .column = 0})
+            .has_value());
+    EXPECT_FALSE(
+        withMergedRange(threeByTwo(), CellAt{.row = 9, .column = 0}, CellAt{.row = 0, .column = 0})
+            .has_value());
+}
+
+TEST(TableTest, AJoinedBoxCanBeLetGoOfAgain) {
+    Table table =
+        withMergedRange(threeByTwo(), CellAt{.row = 0, .column = 0}, CellAt{.row = 1, .column = 1})
+            .value();
+    table = withCellWritten(std::move(table), CellAt{.row = 0, .column = 0}, "Wide").value();
+
+    const Result<Table> apart = withCellSplit(table, CellAt{.row = 0, .column = 0});
+
+    ASSERT_TRUE(apart.has_value()) << apart.error().message;
+    EXPECT_EQ(cellAt(*apart, CellAt{.row = 0, .column = 0})->across, 1);
+    EXPECT_EQ(cellAt(*apart, CellAt{.row = 0, .column = 0})->down, 1);
+    EXPECT_EQ(cellAt(*apart, CellAt{.row = 0, .column = 0})->text, "Wide");
+    EXPECT_FALSE(isCovered(*cellAt(*apart, CellAt{.row = 1, .column = 1})));
+    EXPECT_FALSE(withCellSplit(*apart, CellAt{.row = 0, .column = 0}).has_value());
+}
+
+TEST(TableTest, WordsUnderABoxThatSwallowsThemAreNotLost) {
+    Table table = threeByTwo();
+    table = withCellWritten(std::move(table), CellAt{.row = 1, .column = 0}, "kept").value();
+    table.cells[static_cast<std::size_t>(0)].down = 3;
+
+    const Table mended = normalized(std::move(table));
+
+    EXPECT_EQ(cellAt(mended, CellAt{.row = 0, .column = 0})->text, "kept");
+    EXPECT_TRUE(isCovered(*cellAt(mended, CellAt{.row = 1, .column = 0})));
+}
+
+TEST(TableTest, ABoxNeverReachesPastTheTable) {
+    Table table = threeByTwo();
+    table.cells[static_cast<std::size_t>(1)].across = 40;
+    table.cells[static_cast<std::size_t>(1)].down = 40;
+
+    const Table mended = normalized(std::move(table));
+
+    EXPECT_EQ(cellAt(mended, CellAt{.row = 0, .column = 1})->across, 1);
+    EXPECT_EQ(cellAt(mended, CellAt{.row = 0, .column = 1})->down, 3);
+}
+
 TEST(TableTest, LinesTheWordsOfOneBoxUpOnTheirOwn) {
     const Table table = threeByTwo();
 

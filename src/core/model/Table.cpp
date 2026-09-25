@@ -5,19 +5,22 @@
 #include <cstddef>
 #include <iterator>
 #include <numeric>
+#include <string>
 #include <utility>
 
 namespace phvikapen::core {
 namespace {
 
-[[nodiscard]] bool holds(const Table& table, CellAt cell) noexcept {
-    return cell.row >= 0 && cell.column >= 0 && cell.row < rowsOf(table)
-           && cell.column < columnsOf(table);
-}
-
 [[nodiscard]] std::size_t indexOf(const Table& table, CellAt cell) noexcept {
     return (static_cast<std::size_t>(cell.row) * table.columns.size())
            + static_cast<std::size_t>(cell.column);
+}
+
+// A table whose boxes do not match its measures holds nothing at all, so that one half built is
+// asked no questions it cannot answer.
+[[nodiscard]] bool holds(const Table& table, CellAt cell) noexcept {
+    return cell.row >= 0 && cell.column >= 0 && cell.row < rowsOf(table)
+           && cell.column < columnsOf(table) && indexOf(table, cell) < table.cells.size();
 }
 
 [[nodiscard]] float sumOf(const std::vector<float>& measures) noexcept {
@@ -49,6 +52,60 @@ void clampMeasures(std::vector<float>& measures, float plain, float smallest) no
             measure = plain;
         }
         measure = std::max(measure, smallest);
+    }
+}
+
+void sayAsWell(std::string& said, std::string& more) {
+    if (more.empty()) {
+        return;
+    }
+    if (!said.empty()) {
+        said.push_back(' ');
+    }
+    said.append(more);
+    more.clear();
+}
+
+// Every place one box reaches over marked as covered, and whatever those places said handed to the
+// box that swallowed them, so that nothing is lost to a join.
+void coverUnder(Table& table, std::size_t here, CellAt at, std::vector<bool>& covered) {
+    const auto wide = static_cast<int>(table.columns.size());
+    const int across = table.cells[here].across;
+    const int down = table.cells[here].down;
+    for (int downTo = at.row; downTo < at.row + down; ++downTo) {
+        for (int acrossTo = at.column; acrossTo < at.column + across; ++acrossTo) {
+            const auto under = (static_cast<std::size_t>(downTo) * static_cast<std::size_t>(wide))
+                               + static_cast<std::size_t>(acrossTo);
+            if (under == here) {
+                continue;
+            }
+            covered[under] = true;
+            std::string taken = std::move(table.cells[under].text);
+            table.cells[under].text.clear();
+            sayAsWell(table.cells[here].text, taken);
+        }
+    }
+}
+
+// Every box put back in agreement with the rest: a box reaches no further than the table allows,
+// and the boxes it reaches over are covered.
+void mendSpans(Table& table) {
+    const auto wide = static_cast<int>(table.columns.size());
+    const auto tall = static_cast<int>(table.rows.size());
+    std::vector<bool> covered(table.cells.size(), false);
+    for (int row = 0; row < tall; ++row) {
+        for (int column = 0; column < wide; ++column) {
+            const auto here = (static_cast<std::size_t>(row) * static_cast<std::size_t>(wide))
+                              + static_cast<std::size_t>(column);
+            if (covered[here]) {
+                table.cells[here].across = 0;
+                table.cells[here].down = 0;
+                continue;
+            }
+            table.cells[here].across = std::clamp(table.cells[here].across, 1, wide - column);
+            table.cells[here].down = std::clamp(table.cells[here].down, 1, tall - row);
+            coverUnder(table, here, CellAt{.row = row, .column = column}, covered);
+        }
     }
 }
 
@@ -104,14 +161,42 @@ Rect areaOfCell(const Table& table, CellAt cell) noexcept {
     if (!holds(table, cell)) {
         return Rect{};
     }
+    const TableCell& said = table.cells[indexOf(table, cell)];
+    if (isCovered(said)) {
+        return Rect{};
+    }
     const float left = table.at.x + edgeBefore(table.columns, cell.column);
     const float top = table.at.y + edgeBefore(table.rows, cell.row);
+    const float right = table.at.x + edgeBefore(table.columns, cell.column + said.across);
+    const float bottom = table.at.y + edgeBefore(table.rows, cell.row + said.down);
     return Rect{
         .left = left,
         .top = top,
-        .right = left + table.columns[static_cast<std::size_t>(cell.column)],
-        .bottom = top + table.rows[static_cast<std::size_t>(cell.row)],
+        .right = right,
+        .bottom = bottom,
     };
+}
+
+std::optional<CellAt> ownerOf(const Table& table, CellAt cell) noexcept {
+    if (!holds(table, cell)) {
+        return std::nullopt;
+    }
+    if (!isCovered(table.cells[indexOf(table, cell)])) {
+        return cell;
+    }
+    for (int row = cell.row; row >= 0; --row) {
+        for (int column = cell.column; column >= 0; --column) {
+            const TableCell& said =
+                table.cells[indexOf(table, CellAt{.row = row, .column = column})];
+            if (isCovered(said)) {
+                continue;
+            }
+            if (cell.row < row + said.down && cell.column < column + said.across) {
+                return CellAt{.row = row, .column = column};
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 std::optional<CellAt> cellUnder(const Table& table, Point at) noexcept {
@@ -120,7 +205,7 @@ std::optional<CellAt> cellUnder(const Table& table, Point at) noexcept {
     if (!column || !row) {
         return std::nullopt;
     }
-    return CellAt{.row = *row, .column = *column};
+    return ownerOf(table, CellAt{.row = *row, .column = *column});
 }
 
 const TableCell* cellAt(const Table& table, CellAt cell) noexcept {
@@ -148,6 +233,7 @@ Table normalized(Table table) {
     clampMeasures(table.columns, Table::kDefaultColumnWidth, Table::kNarrowestColumn);
     clampMeasures(table.rows, Table::kDefaultRowHeight, Table::kShortestRow);
     table.cells.resize(table.columns.size() * table.rows.size());
+    mendSpans(table);
     table.style = normalized(std::move(table.style));
     if (!std::isfinite(table.ruleWidth)) {
         table.ruleWidth = Table::kDefaultRuleWidth;
@@ -246,6 +332,110 @@ Table spreadAs(Table table, std::vector<float> columns, std::vector<float> rows)
     }
     if (!rows.empty()) {
         table.rows = std::move(rows);
+    }
+    return normalized(std::move(table));
+}
+
+namespace {
+
+struct Stretch {
+    int fromRow{};
+    int fromColumn{};
+    int toRow{};
+    int toColumn{};
+};
+
+// The stretch widened until it holds the whole of every box that reaches into it, so that a box
+// already joined is never left cut in half.
+[[nodiscard]] Stretch widened(const Table& table, Stretch stretch) {
+    const int wide = columnsOf(table);
+    const int tall = rowsOf(table);
+    bool grew = true;
+    while (grew) {
+        grew = false;
+        for (int row = 0; row < tall; ++row) {
+            for (int column = 0; column < wide; ++column) {
+                const TableCell& said =
+                    table.cells[indexOf(table, CellAt{.row = row, .column = column})];
+                if (isCovered(said)) {
+                    continue;
+                }
+                const int lastRow = row + said.down - 1;
+                const int lastColumn = column + said.across - 1;
+                const bool touches = row <= stretch.toRow && lastRow >= stretch.fromRow
+                                     && column <= stretch.toColumn
+                                     && lastColumn >= stretch.fromColumn;
+                if (!touches) {
+                    continue;
+                }
+                const Stretch was = stretch;
+                stretch.fromRow = std::min(stretch.fromRow, row);
+                stretch.fromColumn = std::min(stretch.fromColumn, column);
+                stretch.toRow = std::max(stretch.toRow, lastRow);
+                stretch.toColumn = std::max(stretch.toColumn, lastColumn);
+                grew = grew || stretch.fromRow != was.fromRow
+                       || stretch.fromColumn != was.fromColumn || stretch.toRow != was.toRow
+                       || stretch.toColumn != was.toColumn;
+            }
+        }
+    }
+    return stretch;
+}
+
+}
+
+Result<Table> withMergedRange(Table table, CellAt from, CellAt to) {
+    if (!holds(table, from) || !holds(table, to)) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such box");
+    }
+    const Stretch stretch = widened(table, Stretch{
+                                               .fromRow = std::min(from.row, to.row),
+                                               .fromColumn = std::min(from.column, to.column),
+                                               .toRow = std::max(from.row, to.row),
+                                               .toColumn = std::max(from.column, to.column),
+                                           });
+    if (stretch.fromRow == stretch.toRow && stretch.fromColumn == stretch.toColumn) {
+        return makeError(ErrorCode::InvalidArgument, "one box on its own cannot be joined");
+    }
+
+    const CellAt head{.row = stretch.fromRow, .column = stretch.fromColumn};
+    std::string said;
+    for (int row = stretch.fromRow; row <= stretch.toRow; ++row) {
+        for (int column = stretch.fromColumn; column <= stretch.toColumn; ++column) {
+            sayAsWell(said, table.cells[indexOf(table, CellAt{.row = row, .column = column})].text);
+        }
+    }
+
+    TableCell& owner = table.cells[indexOf(table, head)];
+    owner.text = std::move(said);
+    owner.across = stretch.toColumn - stretch.fromColumn + 1;
+    owner.down = stretch.toRow - stretch.fromRow + 1;
+    return normalized(std::move(table));
+}
+
+Result<Table> withCellSplit(Table table, CellAt cell) {
+    if (!holds(table, cell)) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such box");
+    }
+    TableCell& owner = table.cells[indexOf(table, cell)];
+    if (isCovered(owner)) {
+        return makeError(ErrorCode::InvalidArgument, "a box that is covered cannot be let go of");
+    }
+    if (owner.across <= 1 && owner.down <= 1) {
+        return makeError(ErrorCode::InvalidArgument, "that box reaches over nothing");
+    }
+    const int across = owner.across;
+    const int down = owner.down;
+    owner.across = 1;
+    owner.down = 1;
+    for (int row = cell.row; row < cell.row + down; ++row) {
+        for (int column = cell.column; column < cell.column + across; ++column) {
+            if (row == cell.row && column == cell.column) {
+                continue;
+            }
+            table.cells[indexOf(table, CellAt{.row = row, .column = column})] =
+                TableCell{.text = {}, .align = TextAlign::Left, .across = 1, .down = 1};
+        }
     }
     return normalized(std::move(table));
 }

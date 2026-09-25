@@ -263,6 +263,107 @@ TestCase {
         compare(notebook.pickedTableBox.aligns[2], 0);
     }
 
+    function test_aStretchOfBoxesIsMarkedOutByDraggingAcrossThem() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        const atX = notebook.pickedTableBox.columnX + 4;
+        const atY = notebook.pickedTableBox.columnY + 4;
+        const wide = notebook.pickedTableBox.widths[0];
+        const tall = notebook.pickedTableBox.heights[0];
+
+        layer.openCellAt(tableId, Qt.point(atX, atY));
+
+        verify(!layer.marking, "one box on its own is not a stretch");
+
+        layer.markTo(tableId, Qt.point(atX + wide, atY + tall));
+
+        verify(layer.marking);
+        compare(layer.lastRow, 1);
+        compare(layer.lastColumn, 1);
+        // Nothing is typed into a stretch of boxes.
+        compare(layer.editingRow, -1);
+    }
+
+    function test_aStretchOfBoxesIsJoinedIntoOneAndLetGoOfAgain() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.writeCell(tableId, 0, 0, "left");
+        notebook.writeCell(tableId, 0, 1, "right");
+
+        notebook.mergeCells(tableId, 0, 0, 0, 1);
+
+        compare(notebook.errorMessage, "");
+        compare(notebook.pickedTableBox.acrosses[0], 2);
+        compare(notebook.pickedTableBox.downs[0], 1);
+        compare(notebook.pickedTableBox.acrosses[1], 0);
+        compare(notebook.wordsOfCell(tableId, 0, 0), "left right");
+
+        notebook.splitCell(tableId, 0, 0);
+
+        compare(notebook.pickedTableBox.acrosses[0], 1);
+        compare(notebook.pickedTableBox.acrosses[1], 1);
+        compare(notebook.wordsOfCell(tableId, 0, 0), "left right");
+
+        notebook.undo();
+
+        compare(notebook.pickedTableBox.acrosses[0], 2);
+        void layer;
+    }
+
+    function test_aTapOnAJoinedBoxFindsTheBoxThatSwallowedTheRest() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.mergeCells(tableId, 0, 0, 0, 1);
+        const atX = notebook.pickedTableBox.columnX + notebook.pickedTableBox.widths[0] + 4;
+        const atY = notebook.pickedTableBox.columnY + 4;
+
+        layer.openCellAt(tableId, Qt.point(atX, atY));
+
+        compare(layer.editingRow, 0);
+        compare(layer.editingColumn, 0);
+    }
+
+    function test_walkingATableWithTheKeyboardPassesOverWhatIsCovered() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 3);
+        const tableId = notebook.pickedTable;
+        notebook.mergeCells(tableId, 0, 0, 0, 1);
+
+        layer.openCell(tableId, 0, 0);
+        layer.stepOn(1);
+
+        // The box beside the joined one is covered, so the next along is the third column.
+        compare(layer.editingRow, 0);
+        compare(layer.editingColumn, 2);
+    }
+
+    function test_aJoinedBoxIsTypedIntoAcrossTheWholeOfIt() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        const one = notebook.pickedTableBox.widths[0];
+        const two = notebook.pickedTableBox.widths[1];
+
+        notebook.mergeCells(tableId, 0, 0, 0, 1);
+        layer.openCell(tableId, 0, 0);
+
+        fuzzyCompare(layer.widthRoomOf(0, 0), one + two, 0.01);
+        fuzzyCompare(layer.downRoomOf(0, 0), notebook.pickedTableBox.heights[0], 0.01);
+    }
+
     height: 300
     name: "TableLayer"
     visible: true

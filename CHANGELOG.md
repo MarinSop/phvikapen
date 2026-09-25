@@ -92,10 +92,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Shift+Tab walk from box to box, Escape lets go, and Delete takes the whole table away. The menu
   under the pointer adds and takes away rows and columns beside the box being typed in, and lines
   the words of one box up on their own, left, centred or right.
+- Boxes of a table can be joined into one. Drag across a stretch of them, and Merge Boxes from the
+  menu under the pointer makes them a single box reaching over the lot, with what each said kept one
+  after another; Split Box lets it go again. A stretch that cuts through a box already joined takes
+  in the whole of it, so no box is ever left cut in half. Walking a table with Tab passes over
+  whatever a joined box covers, and a table carries how far each box reaches from one opening of the
+  notebook to the next.
 - One tap on a table both takes hold of it and opens the box it landed in, so the words go straight
   in, and Tab from the last box adds a row and carries on. The rules between the columns and
   between the rows can be pulled about: what one column gains the next gives up, so the table stays
-  as wide as it was, and no column or row is ever pulled away to nothing.
+  as wide as it was, and no column or row is ever pulled away to nothing. The knob at the top left
+  carries the table about, so that dragging inside it is free to mark out boxes.
 - Arithmetic written on one line is read into a structure of its own and worked out: the four
   operations, powers, square roots, brackets, a sign in front of a number, and a number standing
   against a bracket meaning multiplication. What a reader of handwriting hands back is put right

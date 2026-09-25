@@ -3702,6 +3702,58 @@ void NotebookViewModel::alignCell(const QString& tableId, int row, int column, i
     changeTable(found->first, std::move(*aligned));
 }
 
+void NotebookViewModel::mergeCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                   int toColumn) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> joined =
+        core::withMergedRange(found->second, core::CellAt{.row = fromRow, .column = fromColumn},
+                              core::CellAt{.row = toRow, .column = toColumn});
+    if (!joined) {
+        reportError(QString::fromStdString(joined.error().message));
+        return;
+    }
+    changeTable(found->first, std::move(*joined));
+}
+
+void NotebookViewModel::splitCell(const QString& tableId, int row, int column) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> apart =
+        core::withCellSplit(found->second, core::CellAt{.row = row, .column = column});
+    if (!apart) {
+        reportError(QString::fromStdString(apart.error().message));
+        return;
+    }
+    changeTable(found->first, std::move(*apart));
+}
+
+QVariantMap NotebookViewModel::cellSpan(const QString& tableId, int row, int column) const {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return {};
+    }
+    const std::optional<core::CellAt> owner =
+        core::ownerOf(found->second, core::CellAt{.row = row, .column = column});
+    if (!owner) {
+        return {};
+    }
+    const core::TableCell* const cell = core::cellAt(found->second, *owner);
+    if (cell == nullptr) {
+        return {};
+    }
+    return QVariantMap{
+        {"row", owner->row},
+        {"column", owner->column},
+        {"across", cell->across},
+        {"down", cell->down},
+    };
+}
+
 void NotebookViewModel::publishTables() {
     std::vector<TableItem> items;
     if (!m_canvas.isNull()) {

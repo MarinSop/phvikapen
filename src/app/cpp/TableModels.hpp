@@ -28,6 +28,8 @@ struct TableItem {
     QVariantList heights;
     QVariantList words;
     QVariantList aligns;
+    QVariantList acrosses;
+    QVariantList downs;
     QVariantMap style;
     QColor rule;
     qreal columnX{};
@@ -57,6 +59,8 @@ public:
     static constexpr int kColumnYRole = Qt::UserRole + 10;
     static constexpr int kRuleWidthRole = Qt::UserRole + 11;
     static constexpr int kSheetRole = Qt::UserRole + 12;
+    static constexpr int kAcrossesRole = Qt::UserRole + 13;
+    static constexpr int kDownsRole = Qt::UserRole + 14;
 
     explicit TableListModel(QObject* parent = nullptr);
 

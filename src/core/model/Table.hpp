@@ -16,12 +16,21 @@ namespace phvikapen::core {
 
 // One box of a table. What is typed into it belongs to the table; what is written into it with a
 // pen belongs to the page and stays where it was written.
+//
+// A box may reach across several columns and down several rows, and the boxes it swallows are left
+// reaching nothing at all: they are covered, and have neither room nor words of their own.
 struct TableCell {
     std::string text;
     TextAlign align{TextAlign::Left};
+    int across{1};
+    int down{1};
 
     friend bool operator==(const TableCell&, const TableCell&) = default;
 };
+
+[[nodiscard]] constexpr bool isCovered(const TableCell& cell) noexcept {
+    return cell.across < 1 || cell.down < 1;
+}
 
 // Where a box sits in the grid, counted from the top left.
 struct CellAt {
@@ -86,11 +95,16 @@ struct PlacedTable {
 
 [[nodiscard]] Rect areaOf(const Table& table) noexcept;
 
-// The box a cell covers, in the units a page is measured in. A cell the table does not hold
-// covers nothing.
+// The room a box covers, in the units a page is measured in, taking in every column and row it
+// reaches. A box the table does not hold, or one that is covered by another, covers nothing.
 [[nodiscard]] Rect areaOfCell(const Table& table, CellAt cell) noexcept;
 
+// Which box a point falls in: the one that covers that place, which for a covered cell is the box
+// that swallowed it.
 [[nodiscard]] std::optional<CellAt> cellUnder(const Table& table, Point at) noexcept;
+
+// The box that covers a place, which is that place itself unless another box reaches over it.
+[[nodiscard]] std::optional<CellAt> ownerOf(const Table& table, CellAt cell) noexcept;
 
 [[nodiscard]] const TableCell* cellAt(const Table& table, CellAt cell) noexcept;
 
@@ -111,6 +125,16 @@ struct PlacedTable {
 [[nodiscard]] Result<Table> withCellWritten(Table table, CellAt cell, std::string words);
 
 [[nodiscard]] Result<Table> withCellAligned(Table table, CellAt cell, TextAlign align);
+
+// Every box of a stretch of the table joined into one, which is the box at its top left. What each
+// said is kept, one after another, in reading order. A stretch that cuts through a box already
+// reaching over others is widened until it holds the whole of it, so that no box is ever left cut
+// in half.
+[[nodiscard]] Result<Table> withMergedRange(Table table, CellAt from, CellAt to);
+
+// A box let go of everything it reached over. What it says stays with it, and the boxes it gave
+// back are empty.
+[[nodiscard]] Result<Table> withCellSplit(Table table, CellAt cell);
 
 // The same table drawn to a given size, every column and every row given the same share of the
 // change, so that a table dragged by its corner keeps its proportions.

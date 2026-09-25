@@ -358,6 +358,16 @@ public:
 
     Q_INVOKABLE void alignCell(const QString& tableId, int row, int column, int align);
 
+    // Every box of a stretch of the table joined into one, and a joined box let go of again.
+    Q_INVOKABLE void mergeCells(const QString& tableId, int fromRow, int fromColumn, int toRow,
+                                int toColumn);
+
+    Q_INVOKABLE void splitCell(const QString& tableId, int row, int column);
+
+    // How far the box at a place reaches over the ones beside and below it.
+    Q_INVOKABLE [[nodiscard]] QVariantMap cellSpan(const QString& tableId, int row,
+                                                   int column) const;
+
     // Where a picture stands, how large it is drawn and how far it is turned. The change is read
     // from `columnX`, `columnY`, `boxWidth`, `boxHeight` and `turn`.
     Q_INVOKABLE void placePicture(const QString& pictureId, const QVariantMap& where);

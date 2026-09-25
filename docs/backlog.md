@@ -189,11 +189,10 @@ written so that all of them can share it. They are listed in the order they are 
   picture is done where the window waits for it rather than on a thread of its own.
 - **Cropping a picture.** A picture keeps the whole of what it was given. Cropping would be a
   rectangle kept beside the rest, and can be added without moving anything already kept.
-- **Tables that are more than a plain grid.** A table is ruled, filled in, moved, sized, and has
-  rows and columns added and taken away, and the keyboard walks from box to box. What it cannot do
-  is join two boxes into one, wear a different face in one box than in another, or have one column
-  pulled wider than the rest: sizing gives every column and row the same share. Joining is the one
-  readers ask for first, and the shape that is written down leaves room for it.
+- **A face of its own for one box of a table.** Boxes are joined, split, lined up and pulled about,
+  but every box of a table wears the same face. A heading in bold across the top is the common ask,
+  and the face is kept with the table, so a face per box would be a column added beside the words
+  rather than a change of shape.
 - **Mathematics that is not written on one line.** A sum written across is read, worked out and
   answered. A fraction written as one number over another, a power written small and raised, a root
   drawn over what it covers and anything else arranged in two dimensions are not read, because the

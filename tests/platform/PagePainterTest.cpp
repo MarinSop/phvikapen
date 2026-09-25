@@ -364,6 +364,36 @@ TEST(PagePainterTest, WordsTypedIntoABoxAreDrawnInThatBoxAndNoOther) {
     EXPECT_FALSE(hasColorIn(sheet, QColor(0, 0, 0), blank.inflated(-2.0F)));
 }
 
+TEST(PagePainterTest, AJoinedBoxIsNeverRuledThroughTheMiddle) {
+    std::array tables{ruled(core::Color{.red = 255}, "")};
+    tables.front().table =
+        core::withMergedRange(tables.front().table, core::CellAt{.row = 0, .column = 0},
+                              core::CellAt{.row = 0, .column = 1})
+            .value();
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = {},
+        .pictures = {},
+        .tables = tables,
+    };
+
+    const QImage sheet = paint(page, area);
+
+    const core::Table& table = tables.front().table;
+    const core::Rect joined = core::areaOfCell(table, core::CellAt{.row = 0, .column = 0});
+    // The rule that stood between the two boxes is gone, but the one below the joined box stays.
+    const core::Rect wasBetween{
+        .left = joined.left + (joined.width() / 2) - 2.0F,
+        .top = joined.top + 4.0F,
+        .right = joined.left + (joined.width() / 2) + 2.0F,
+        .bottom = joined.bottom - 4.0F,
+    };
+    EXPECT_FALSE(hasColorIn(sheet, QColor(255, 0, 0), wasBetween));
+    EXPECT_TRUE(hasColorIn(sheet, QColor(255, 0, 0), joined));
+}
+
 TEST(PagePainterTest, HandwritingInsideABoxIsSeenThroughTheTable) {
     const std::array tables{ruled(core::Color{.red = 255}, "")};
     const std::vector<core::PlacedStroke> strokes{

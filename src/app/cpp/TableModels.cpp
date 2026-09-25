@@ -44,6 +44,10 @@ QVariant TableListModel::data(const QModelIndex& index, int role) const {
         return item.words;
     case kAlignsRole:
         return item.aligns;
+    case kAcrossesRole:
+        return item.acrosses;
+    case kDownsRole:
+        return item.downs;
     case kStyleRole:
         return item.style;
     case kRuleRole:
@@ -63,10 +67,11 @@ QVariant TableListModel::data(const QModelIndex& index, int role) const {
 
 QHash<int, QByteArray> TableListModel::roleNames() const {
     return {
-        {kTableIdRole, "tableId"}, {kPageIdRole, "pageId"},       {kWidthsRole, "widths"},
-        {kHeightsRole, "heights"}, {kWordsRole, "words"},         {kAlignsRole, "aligns"},
-        {kStyleRole, "style"},     {kRuleRole, "rule"},           {kColumnXRole, "columnX"},
-        {kColumnYRole, "columnY"}, {kRuleWidthRole, "ruleWidth"}, {kSheetRole, "sheet"},
+        {kTableIdRole, "tableId"},   {kPageIdRole, "pageId"},       {kWidthsRole, "widths"},
+        {kHeightsRole, "heights"},   {kWordsRole, "words"},         {kAlignsRole, "aligns"},
+        {kStyleRole, "style"},       {kRuleRole, "rule"},           {kColumnXRole, "columnX"},
+        {kColumnYRole, "columnY"},   {kRuleWidthRole, "ruleWidth"}, {kSheetRole, "sheet"},
+        {kAcrossesRole, "acrosses"}, {kDownsRole, "downs"},
     };
 }
 
@@ -118,11 +123,17 @@ TableItem itemOfTable(const core::Table& table, const TablePlace& place) {
     }
     QVariantList words;
     QVariantList aligns;
+    QVariantList acrosses;
+    QVariantList downs;
     words.reserve(static_cast<qsizetype>(table.cells.size()));
     aligns.reserve(static_cast<qsizetype>(table.cells.size()));
+    acrosses.reserve(static_cast<qsizetype>(table.cells.size()));
+    downs.reserve(static_cast<qsizetype>(table.cells.size()));
     for (const core::TableCell& cell : table.cells) {
         words.append(QString::fromStdString(cell.text));
         aligns.append(static_cast<int>(cell.align));
+        acrosses.append(cell.across);
+        downs.append(cell.down);
     }
     const core::Color rule = table.rule;
     return TableItem{
@@ -132,6 +143,8 @@ TableItem itemOfTable(const core::Table& table, const TablePlace& place) {
         .heights = std::move(heights),
         .words = std::move(words),
         .aligns = std::move(aligns),
+        .acrosses = std::move(acrosses),
+        .downs = std::move(downs),
         .style = mapOfStyle(table.style),
         .rule = QColor::fromRgb(rule.red, rule.green, rule.blue, rule.alpha),
         .columnX = place.columnX,
@@ -143,10 +156,11 @@ TableItem itemOfTable(const core::Table& table, const TablePlace& place) {
 
 QVariantMap mapOfItem(const TableItem& item) {
     return QVariantMap{
-        {"tableId", item.tableId}, {"pageId", item.pageId},       {"widths", item.widths},
-        {"heights", item.heights}, {"words", item.words},         {"aligns", item.aligns},
-        {"style", item.style},     {"rule", item.rule},           {"columnX", item.columnX},
-        {"columnY", item.columnY}, {"ruleWidth", item.ruleWidth}, {"sheet", item.sheet},
+        {"tableId", item.tableId},     {"pageId", item.pageId},   {"widths", item.widths},
+        {"heights", item.heights},     {"words", item.words},     {"aligns", item.aligns},
+        {"acrosses", item.acrosses},   {"downs", item.downs},     {"style", item.style},
+        {"rule", item.rule},           {"columnX", item.columnX}, {"columnY", item.columnY},
+        {"ruleWidth", item.ruleWidth}, {"sheet", item.sheet},
     };
 }
 

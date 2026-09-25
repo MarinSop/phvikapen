@@ -27,6 +27,12 @@ Item {
     // editor keeps this up to date, so that a row is added beside the box being typed in.
     property int rowInHand: 0
     property int columnInHand: 0
+    // The stretch of boxes marked out in the table in hand, which is what joining them asks for.
+    property int stretchFromColumn: -1
+    property int stretchFromRow: -1
+    property int stretchToColumn: -1
+    property int stretchToRow: -1
+    readonly property bool hasStretch: root.hasTable && root.stretchFromRow >= 0 && (root.stretchFromRow !== root.stretchToRow || root.stretchFromColumn !== root.stretchToColumn)
     // While words are being typed the keyboard belongs to whoever is typing them: a command with
     // a plain letter for a key, and the ones an editor owns itself, stand aside.
     readonly property bool typing: AppInfo.typing
@@ -227,6 +233,18 @@ Item {
         text: qsTr("Insert Column Right")
 
         onTriggered: root.notebook.addColumn(root.notebook.pickedTable, root.columnInHand + 1)
+    }
+    readonly property Action mergeCells: Action {
+        enabled: root.hasStretch
+        text: qsTr("Merge Boxes")
+
+        onTriggered: root.notebook.mergeCells(root.notebook.pickedTable, root.stretchFromRow, root.stretchFromColumn, root.stretchToRow, root.stretchToColumn)
+    }
+    readonly property Action splitCell: Action {
+        enabled: root.hasTable
+        text: qsTr("Split Box")
+
+        onTriggered: root.notebook.splitCell(root.notebook.pickedTable, root.rowInHand, root.columnInHand)
     }
     readonly property Action removeRow: Action {
         enabled: root.hasTable

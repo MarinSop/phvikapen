@@ -23,7 +23,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 9;
+inline constexpr int kNotebookSchemaVersion = 10;
 
 struct TrashedItem {
     Uuid id;

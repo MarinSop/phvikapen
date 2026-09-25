@@ -173,13 +173,54 @@ TEST(NotebookTablesTest, EmptyingTheTrashTakesTheTablesWithIt) {
     EXPECT_TRUE(store->findWords("Monday").value().empty());
 }
 
+TEST(NotebookTablesTest, KeepsHowFarEachBoxReachesOverTheOthers) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = firstPageOf(*store);
+    Table table = tableAt(ids, 10.0F, 20.0F);
+    table = withMergedRange(std::move(table), CellAt{.row = 0, .column = 0},
+                            CellAt{.row = 0, .column = 1})
+                .value();
+    ASSERT_TRUE(store->insertTable(page, PlacedTable{.ordinal = 0, .table = table}));
+
+    const Result<std::vector<PlacedTable>> kept = store->tablesOfPage(page);
+
+    ASSERT_TRUE(kept.has_value()) << kept.error().message;
+    ASSERT_EQ(kept->size(), 1U);
+    EXPECT_EQ(kept->front().table, table);
+    EXPECT_EQ(cellAt(kept->front().table, CellAt{.row = 0, .column = 0})->across, 2);
+    // Which boxes are covered is worked out again rather than written down.
+    EXPECT_TRUE(isCovered(*cellAt(kept->front().table, CellAt{.row = 0, .column = 1})));
+}
+
+TEST(NotebookTablesTest, FindsWordsOfAJoinedBoxAcrossTheWholeOfIt) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = firstPageOf(*store);
+    Table table = tableAt(ids, 10.0F, 20.0F);
+    table = withMergedRange(std::move(table), CellAt{.row = 0, .column = 0},
+                            CellAt{.row = 0, .column = 1})
+                .value();
+    ASSERT_TRUE(store->insertTable(page, PlacedTable{.ordinal = 0, .table = table}));
+
+    const Result<std::vector<FoundWord>> found = store->findWords("monday");
+
+    ASSERT_TRUE(found.has_value()) << found.error().message;
+    ASSERT_EQ(found->size(), 1U);
+    EXPECT_EQ(found->front().word.box, areaOfCell(table, CellAt{.row = 0, .column = 0}));
+}
+
 TEST(NotebookTablesTest, OpensANotebookAtTheVersionThatHoldsTables) {
     const TemporaryNotebook notebook;
     Result<NotebookStore> store = NotebookStore::open(notebook.path());
     ASSERT_TRUE(store.has_value()) << store.error().message;
 
     EXPECT_EQ(store->schemaVersion().value(), kNotebookSchemaVersion);
-    EXPECT_GE(kNotebookSchemaVersion, 9);
+    EXPECT_GE(kNotebookSchemaVersion, 10);
 }
 
 struct OpenNotebook {

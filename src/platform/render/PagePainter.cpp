@@ -190,22 +190,20 @@ void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
     }
 }
 
+// Every box is ruled round on its own rather than the whole grid being drawn line by line, so that
+// a box reaching over others has no ruling running through the middle of it.
 void paintTableRuling(QPainter& painter, const core::Table& table) {
-    const core::Rect area = core::areaOf(table);
     painter.setPen(QPen{toColor(table.rule), table.ruleWidth});
-
-    float down = area.left;
-    painter.drawLine(QPointF{down, area.top}, QPointF{down, area.bottom});
-    for (const float width : table.columns) {
-        down += width;
-        painter.drawLine(QPointF{down, area.top}, QPointF{down, area.bottom});
-    }
-
-    float across = area.top;
-    painter.drawLine(QPointF{area.left, across}, QPointF{area.right, across});
-    for (const float height : table.rows) {
-        across += height;
-        painter.drawLine(QPointF{area.left, across}, QPointF{area.right, across});
+    painter.setBrush(Qt::NoBrush);
+    for (int row = 0; row < core::rowsOf(table); ++row) {
+        for (int column = 0; column < core::columnsOf(table); ++column) {
+            const core::Rect box =
+                core::areaOfCell(table, core::CellAt{.row = row, .column = column});
+            if (box.width() <= 0.0F || box.height() <= 0.0F) {
+                continue;
+            }
+            painter.drawRect(toRect(box));
+        }
     }
 }
 
@@ -234,7 +232,7 @@ void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables) {
             for (int column = 0; column < core::columnsOf(table); ++column) {
                 const core::CellAt at{.row = row, .column = column};
                 const core::TableCell* const cell = core::cellAt(table, at);
-                if (cell != nullptr && !cell->text.empty()) {
+                if (cell != nullptr && !core::isCovered(*cell) && !cell->text.empty()) {
                     paintCell(painter, table, *cell, core::areaOfCell(table, at));
                 }
             }
