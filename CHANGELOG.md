@@ -70,7 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the same picture on ten pages costs the room of one, and putting one down, moving it, turning it
   and taking it away are all changes that can be undone. The canvas draws them over the document a
   page was made from and under everything written on it, turned as they were left, and so does
-  what is printed and the small picture of a page. Nothing puts a picture on a page yet.
+  what is printed and the small picture of a page.
+- A picture goes on the page from Insert ▸ Picture…, or on Ctrl+Shift+I, as wide as most of the
+  sheet and keeping the shape it came with. The pick tool takes hold of it: a frame appears with
+  four corner grips that size it in proportion and a knob above that turns it, in steps of fifteen
+  degrees while Shift is held, and inside the frame carries it about. Delete takes it away. Moving,
+  sizing and turning a picture is one change however long the drag, and every one of them can be
+  undone.
 
 ### Fixed
 

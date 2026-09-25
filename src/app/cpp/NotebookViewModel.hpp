@@ -111,6 +111,9 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         QString pickedText READ pickedText WRITE setPickedText NOTIFY pickedTextChanged FINAL)
     Q_PROPERTY(QVariantMap pickedBox READ pickedBox NOTIFY pickedBoxChanged FINAL)
+    Q_PROPERTY(QString pickedPicture READ pickedPicture WRITE setPickedPicture NOTIFY
+                   pickedPictureChanged FINAL)
+    Q_PROPERTY(QVariantMap pickedPictureBox READ pickedPictureBox NOTIFY pickedPictureChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -284,6 +287,23 @@ public:
     // Read what is picked and put it on the page as text, taking the handwriting away.
     Q_INVOKABLE void convertSelectionToText(QVariantMap style);
 
+    // Put a picture from a file on the page being read, as large as it fits.
+    Q_INVOKABLE void addPicture(const QUrl& fileUrl);
+
+    [[nodiscard]] QString pickedPicture() const { return m_pickedPicture; }
+
+    void setPickedPicture(const QString& pictureId);
+
+    [[nodiscard]] QVariantMap pickedPictureBox() const;
+
+    // Which picture stands under a point of the column of sheets, if any.
+    Q_INVOKABLE [[nodiscard]] QString pictureUnder(qreal columnX, qreal columnY) const;
+
+    // Where a picture stands, how large it is drawn and how far it is turned. The change is read
+    // from `columnX`, `columnY`, `boxWidth`, `boxHeight` and `turn`.
+    Q_INVOKABLE void placePicture(const QString& pictureId, const QVariantMap& where);
+    Q_INVOKABLE void removePicture(const QString& pictureId);
+
     Q_INVOKABLE void deleteSelection();
     Q_INVOKABLE void copySelection();
 
@@ -330,6 +350,7 @@ signals:
     void copiedAsText(const QString& text);
     void pickedTextChanged();
     void pickedBoxChanged();
+    void pickedPictureChanged();
     void textAdded(const QString& textId);
     void startPageChanged();
     void canvasChanged();
@@ -395,13 +416,22 @@ private:
     void copyPage(const core::PageInfo& original, std::span<const core::PlacedStroke> strokes,
                   std::span<const core::PlacedText> texts);
 
+    // A picture of a page being drawn away from the window, with what it is made of carried
+    // along rather than pointed at, so that nothing can move under it while it is drawn.
+    struct ThumbnailPicture {
+        core::Picture placed;
+        QImage picture;
+    };
+
     struct ThumbnailWork {
         core::PageInfo page;
         std::vector<core::PlacedStroke> strokes;
         std::vector<core::PlacedText> texts;
+        std::vector<ThumbnailPicture> pictures;
         QImage media;
     };
 
+    void takePictures(ThumbnailWork& work, std::span<const core::PlacedPicture> pictures) const;
     void gatherThumbnail(const std::shared_ptr<ThumbnailWork>& work);
     void thumbnailAsset(const std::shared_ptr<ThumbnailWork>& work, core::Asset asset);
     void thumbnailPage(const std::shared_ptr<ThumbnailWork>& work,
@@ -470,6 +500,14 @@ private:
     textById(const QString& textId) const;
     void changeText(const core::Uuid& pageId, core::TextBox box);
     void publishTexts();
+    // The page a picture stands on, and the picture itself.
+    [[nodiscard]] std::optional<std::pair<core::Uuid, core::Picture>>
+    pictureById(const QString& pictureId) const;
+    void changePicture(const core::Uuid& pageId, core::Picture picture);
+    // Asks for whatever a page's pictures are made of, and draws them once it is there.
+    void wantPicturesFor(const core::Page& page);
+    void usePictureAsset(core::Result<core::Asset> asset);
+    void publishPictures();
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
@@ -539,6 +577,9 @@ private:
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
     TextListModel m_textsModel;
+    std::map<core::ContentId, QImage> m_pictureImages;
+    std::set<core::ContentId> m_wantedPictures;
+    QString m_pickedPicture;
     std::vector<core::Uuid> m_previewIds;
     std::vector<core::Stroke> m_preview;
     std::optional<Draft> m_draft;

@@ -18,6 +18,7 @@ Item {
     readonly property bool hasNotebook: root.notebook !== null && root.notebook.loaded
     readonly property bool hasSelection: root.canvas !== null && root.canvas.selectedCount > 0
     readonly property bool hasTextBox: root.notebook !== null && root.notebook.pickedText !== ""
+    readonly property bool hasPicture: root.notebook !== null && root.notebook.pickedPicture !== ""
     // While words are being typed the keyboard belongs to whoever is typing them: a command with
     // a plain letter for a key, and the ones an editor owns itself, stand aside.
     readonly property bool typing: AppInfo.typing
@@ -167,8 +168,15 @@ Item {
 
         onTriggered: root.notebook.pasteStrokes()
     }
+    readonly property Action insertPicture: Action {
+        enabled: root.hasNotebook
+        shortcut: root.keysFor("insertPicture")
+        text: qsTr("Picture…")
+
+        onTriggered: root.pictureWanted()
+    }
     readonly property Action remove: Action {
-        enabled: root.hasSelection || root.hasTextBox
+        enabled: root.hasSelection || root.hasTextBox || root.hasPicture
         icon.source: Icons.trash
         shortcut: root.pageKeys("delete")
         text: qsTr("Delete")
@@ -407,6 +415,7 @@ Item {
     signal importWanted
     signal newNotebookWanted
     signal pageSetupWanted
+    signal pictureWanted
     signal settingsWanted
     signal findWanted
     signal trashWanted
@@ -426,6 +435,8 @@ Item {
             root.notebook.deleteSelection();
         } else if (root.hasTextBox) {
             root.notebook.removeText(root.notebook.pickedText);
+        } else if (root.hasPicture) {
+            root.notebook.removePicture(root.notebook.pickedPicture);
         }
     }
 
@@ -444,7 +455,7 @@ Item {
 
     // The key a Mac keyboard sends for Delete, beside the one the command came with.
     Shortcut {
-        enabled: !root.typing && (root.hasSelection || root.hasTextBox)
+        enabled: !root.typing && (root.hasSelection || root.hasTextBox || root.hasPicture)
         sequences: ["Backspace"]
 
         onActivated: root.deleteWhatIsPicked()

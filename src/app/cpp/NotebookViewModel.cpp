@@ -18,6 +18,7 @@
 #include "core/text/WrittenText.hpp"
 #include "core/undo/BundleCommand.hpp"
 #include "core/undo/OutlineCommands.hpp"
+#include "core/undo/PictureCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
 #include "core/undo/TextCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
@@ -69,6 +70,11 @@ constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
 constexpr float kPickRadius = 6.0F;
 constexpr qreal kTextMargin = 8.0;
+// How much of a sheet a picture takes up when it is first put down, and how large a picture is
+// kept for drawing, so that a photograph from a modern camera does not ask the graphics card for
+// more than it will give.
+constexpr qreal kPictureShare = 0.6;
+constexpr int kWidestPicture = 4096;
 constexpr qreal kNewTextWidth = core::TextBox::kDefaultWidth;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
@@ -382,7 +388,11 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
     }
     if (!m_pages.contains(pageId)) {
         m_pages.emplace(pageId, std::make_unique<core::Page>(pageId, std::move(loaded->strokes),
-                                                             std::move(loaded->texts)));
+                                                             std::move(loaded->texts),
+                                                             std::move(loaded->pictures)));
+    }
+    if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
+        wantPicturesFor(*opened->second);
     }
     if (pageId == m_currentPage) {
         setLoaded(true);
@@ -1314,6 +1324,7 @@ void NotebookViewModel::wantThumbnail(int index) {
         .page = pages[*at],
         .strokes = {},
         .texts = {},
+        .pictures = {},
         .media = {},
     });
     if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
@@ -1321,6 +1332,7 @@ void NotebookViewModel::wantThumbnail(int index) {
         work->strokes.assign(strokes.begin(), strokes.end());
         const std::span<const core::PlacedText> texts = cached->second->texts();
         work->texts.assign(texts.begin(), texts.end());
+        takePictures(*work, cached->second->pictures());
         gatherThumbnail(work);
         return;
     }
@@ -1336,10 +1348,27 @@ void NotebookViewModel::wantThumbnail(int index) {
                                     }
                                     work->strokes = std::move(loaded->strokes);
                                     work->texts = std::move(loaded->texts);
+                                    takePictures(*work, loaded->pictures);
                                     gatherThumbnail(work);
                                 },
                                 Qt::QueuedConnection);
                         });
+}
+
+// Only the pictures this notebook has already read are drawn into a small picture of the page.
+// One that arrives later throws that picture away, so the page is drawn again with it.
+void NotebookViewModel::takePictures(ThumbnailWork& work,
+                                     std::span<const core::PlacedPicture> pictures) const {
+    work.pictures.clear();
+    work.pictures.reserve(pictures.size());
+    for (const core::PlacedPicture& placed : pictures) {
+        const auto drawn = m_pictureImages.find(placed.picture.source);
+        if (drawn == m_pictureImages.end()) {
+            continue;
+        }
+        work.pictures.push_back(
+            ThumbnailPicture{.placed = placed.picture, .picture = drawn->second});
+    }
 }
 
 void NotebookViewModel::gatherThumbnail(const std::shared_ptr<ThumbnailWork>& work) {
@@ -1410,11 +1439,17 @@ void NotebookViewModel::thumbnailPage(const std::shared_ptr<ThumbnailWork>& work
 }
 
 void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
+    std::vector<platform::render::DrawnPicture> pictures;
+    pictures.reserve(work.pictures.size());
+    for (const ThumbnailPicture& drawn : work.pictures) {
+        pictures.push_back(
+            platform::render::DrawnPicture{.placed = drawn.placed, .picture = &drawn.picture});
+    }
     const platform::render::PageContents contents{
         .style = work.page.style,
         .strokes = work.strokes,
         .texts = work.texts,
-        .pictures = {},
+        .pictures = pictures,
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);
@@ -3052,6 +3087,260 @@ QVariantMap NotebookViewModel::styleOfText(const QString& textId) const {
 QString NotebookViewModel::wordsOf(const QString& textId) const {
     const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
     return found ? QString::fromStdString(found->second.text) : QString{};
+}
+
+std::optional<std::pair<core::Uuid, core::Picture>>
+NotebookViewModel::pictureById(const QString& pictureId) const {
+    for (const auto& [pageId, page] : m_pages) {
+        for (const core::PlacedPicture& placed : page->pictures()) {
+            if (QString::fromStdString(placed.picture.id.toString()) == pictureId) {
+                return std::pair{pageId, placed.picture};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+void NotebookViewModel::setPickedPicture(const QString& pictureId) {
+    if (pictureId == m_pickedPicture) {
+        return;
+    }
+    m_pickedPicture = pictureId;
+    emit pickedPictureChanged();
+}
+
+QVariantMap NotebookViewModel::pickedPictureBox() const {
+    const std::optional<std::pair<core::Uuid, core::Picture>> found = pictureById(m_pickedPicture);
+    if (!found) {
+        return {};
+    }
+    const core::Picture& picture = found->second;
+    const QRectF where =
+        m_canvas.isNull() ? QRectF{} : m_canvas->sheetRect(sheetOfPage(found->first));
+    return QVariantMap{
+        {"pictureId", m_pickedPicture},
+        {"columnX", where.x() + static_cast<qreal>(picture.at.x)},
+        {"columnY", where.y() + static_cast<qreal>(picture.at.y)},
+        {"boxWidth", static_cast<qreal>(picture.width)},
+        {"boxHeight", static_cast<qreal>(picture.height)},
+        {"turn", static_cast<qreal>(picture.turn)},
+    };
+}
+
+QString NotebookViewModel::pictureUnder(qreal columnX, qreal columnY) const {
+    if (m_canvas.isNull()) {
+        return {};
+    }
+    const int sheets = sheetCount();
+    for (int sheet = sheets - 1; sheet >= 0; --sheet) {
+        const QRectF where = m_canvas->sheetRect(sheet);
+        const auto found = m_pages.find(pageOfSheet(sheet));
+        if (found == m_pages.end()) {
+            continue;
+        }
+        const core::Point at{
+            .x = static_cast<float>(columnX - where.x()),
+            .y = static_cast<float>(columnY - where.y()),
+        };
+        if (const core::Picture* const picture = found->second->pictureUnder(at)) {
+            return QString::fromStdString(picture->id.toString());
+        }
+    }
+    return {};
+}
+
+void NotebookViewModel::changePicture(const core::Uuid& pageId, core::Picture picture) {
+    const auto found = m_pages.find(pageId);
+    if (found == m_pages.end() || !m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(pageId);
+    runCommand(std::make_unique<core::ChangePictureCommand>(found->second.get(), storage,
+                                                            core::normalized(picture)));
+    publishPictures();
+    emit pickedPictureChanged();
+}
+
+void NotebookViewModel::placePicture(const QString& pictureId, const QVariantMap& where) {
+    const std::optional<std::pair<core::Uuid, core::Picture>> found = pictureById(pictureId);
+    if (!found || m_canvas.isNull()) {
+        return;
+    }
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(found->first));
+    core::Picture picture = found->second;
+    const core::Picture wanted = core::normalized(core::Picture{
+        .id = picture.id,
+        .source = picture.source,
+        .at =
+            core::Point{
+                .x = static_cast<float>(where.value("columnX").toReal() - sheet.x()),
+                .y = static_cast<float>(where.value("columnY").toReal() - sheet.y()),
+            },
+        .width = static_cast<float>(where.value("boxWidth").toReal()),
+        .height = static_cast<float>(where.value("boxHeight").toReal()),
+        .turn = static_cast<float>(where.value("turn").toReal()),
+    });
+    if (wanted == picture) {
+        return;
+    }
+    changePicture(found->first, wanted);
+}
+
+void NotebookViewModel::removePicture(const QString& pictureId) {
+    const std::optional<std::pair<core::Uuid, core::Picture>> found = pictureById(pictureId);
+    if (!found || !m_storage) {
+        return;
+    }
+    const auto page = m_pages.find(found->first);
+    if (page == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    if (pictureId == m_pickedPicture) {
+        setPickedPicture({});
+    }
+    forgetThumbnail(found->first);
+    runCommand(std::make_unique<core::RemovePictureCommand>(page->second.get(), storage,
+                                                            found->second.id));
+    publishPictures();
+}
+
+void NotebookViewModel::wantPicturesFor(const core::Page& page) {
+    if (!m_storage) {
+        return;
+    }
+    for (const core::PlacedPicture& placed : page.pictures()) {
+        const core::ContentId source = placed.picture.source;
+        if (m_pictureImages.contains(source) || m_wantedPictures.contains(source)) {
+            continue;
+        }
+        m_wantedPictures.insert(source);
+        m_storage->loadAsset(source, [this](core::Result<core::Asset> asset) {
+            QMetaObject::invokeMethod(this, [this, asset = std::move(asset)] mutable {
+                usePictureAsset(std::move(asset));
+            });
+        });
+    }
+    publishPictures();
+}
+
+void NotebookViewModel::usePictureAsset(core::Result<core::Asset> asset) {
+    if (!asset) {
+        reportError(QString::fromStdString(asset.error().message));
+        return;
+    }
+    m_wantedPictures.erase(asset->id);
+    QImage picture;
+    if (!picture.loadFromData(toByteArray(asset->data))) {
+        reportError(tr("A picture on this page could not be read"));
+        return;
+    }
+    // Kept no larger than a graphics card will take, whatever the camera made of it.
+    if (picture.width() > kWidestPicture || picture.height() > kWidestPicture) {
+        picture = picture.scaled(kWidestPicture, kWidestPicture, Qt::KeepAspectRatio,
+                                 Qt::SmoothTransformation);
+    }
+    const core::ContentId source = asset->id;
+    m_pictureImages.insert_or_assign(source, std::move(picture));
+    for (const auto& [pageId, page] : m_pages) {
+        const bool shows =
+            std::ranges::any_of(page->pictures(), [&source](const core::PlacedPicture& placed) {
+                return placed.picture.source == source;
+            });
+        if (shows) {
+            forgetThumbnail(pageId);
+        }
+    }
+    publishPictures();
+}
+
+void NotebookViewModel::publishPictures() {
+    if (m_canvas.isNull()) {
+        return;
+    }
+    std::vector<platform::ink::QtInkItem::PicturePiece> pieces;
+    const int sheets = sheetCount();
+    for (int sheet = 0; sheet < sheets; ++sheet) {
+        const core::Uuid pageId = pageOfSheet(sheet);
+        const auto found = m_pages.find(pageId);
+        if (found == m_pages.end()) {
+            continue;
+        }
+        for (const core::PlacedPicture& placed : found->second->pictures()) {
+            const auto drawn = m_pictureImages.find(placed.picture.source);
+            if (drawn == m_pictureImages.end()) {
+                continue;
+            }
+            const core::Rect area = core::areaOf(placed.picture);
+            pieces.push_back(platform::ink::QtInkItem::PicturePiece{
+                .page = pageId,
+                .picture = drawn->second,
+                .area = QRectF{QPointF{area.left, area.top}, QSizeF{area.width(), area.height()}},
+                .turn = placed.picture.turn,
+            });
+        }
+    }
+    m_canvas->showPictures(pieces);
+}
+
+void NotebookViewModel::addPicture(const QUrl& fileUrl) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    const QString path = fileUrl.isLocalFile() ? fileUrl.toLocalFile() : fileUrl.toString();
+    QFile file{path};
+    if (!file.open(QIODevice::ReadOnly)) {
+        reportError(tr("Could not open %1").arg(QFileInfo{path}.fileName()));
+        return;
+    }
+    const QByteArray data = file.readAll();
+    QImage picture;
+    if (data.isEmpty() || !picture.loadFromData(data)) {
+        reportError(tr("%1 is not a picture").arg(QFileInfo{path}.fileName()));
+        return;
+    }
+
+    core::Asset asset{
+        .id = hashOf(data),
+        .kind = core::AssetKind::Image,
+        .name = QFileInfo{path}.fileName().toStdString(),
+        .data = toBytes(data),
+    };
+    const core::ContentId source = asset.id;
+    m_storage->submit([asset = std::move(asset)](core::NotebookStore& store) {
+        return store.insertAsset(asset);
+    });
+
+    // As wide as most of the sheet, or of what is on the screen where the paper runs on, keeping
+    // the shape the picture came with.
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    const core::Rect visible = m_canvas->visibleOnPage();
+    const qreal room = sheet.width() > 0.0 ? sheet.width() : static_cast<qreal>(visible.width());
+    const qreal wide = std::max(room * kPictureShare, static_cast<qreal>(core::Picture::kSmallest));
+    const qreal tall = wide * picture.height() / std::max(1, picture.width());
+    const core::Picture placed = core::normalized(core::Picture{
+        .id = m_ids.next(),
+        .source = source,
+        .at =
+            core::Point{
+                .x = static_cast<float>((room - wide) / 2.0),
+                .y = visible.top + ((visible.height() - static_cast<float>(tall)) / 2.0F),
+            },
+        .width = static_cast<float>(wide),
+        .height = static_cast<float>(tall),
+        .turn = 0.0F,
+    });
+
+    m_pictureImages.insert_or_assign(source, picture);
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::AddPictureCommand>(
+        page, storage,
+        core::PlacedPicture{.ordinal = page->nextPictureOrdinal(), .picture = placed}));
+    publishPictures();
+    setPickedPicture(QString::fromStdString(placed.id.toString()));
 }
 
 void NotebookViewModel::convertSelectionToText(QVariantMap style) {

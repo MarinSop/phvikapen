@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QCoreApplication>
+#include <QImage>
 #include <QObject>
 #include <QPageSize>
 #include <QPainter>
@@ -35,6 +36,8 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("temporaryDirectory"),
                                                   m_directory.path());
         engine->rootContext()->setContextProperty(QStringLiteral("samplePdf"), writeSamplePdf());
+        engine->rootContext()->setContextProperty(QStringLiteral("samplePicture"),
+                                                  writeSamplePicture());
     }
 
 private:
@@ -47,6 +50,14 @@ private:
         writer.newPage();
         painter.fillRect(QRect{0, 0, writer.width(), writer.height() / 4}, QColor{Qt::black});
         painter.end();
+        return path;
+    }
+
+    [[nodiscard]] QString writeSamplePicture() const {
+        const QString path = m_directory.filePath(QStringLiteral("sample.png"));
+        QImage picture{40, 20, QImage::Format_ARGB32};
+        picture.fill(QColor{Qt::red});
+        picture.save(path);
         return path;
     }
 

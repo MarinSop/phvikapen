@@ -309,6 +309,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.insertPicture
+            objectName: "insertPictureItem"
+        }
+
+        MenuCommand {
             action: root.actions.importDocument
             objectName: "importItem"
         }

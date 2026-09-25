@@ -182,6 +182,7 @@ ApplicationWindow {
         onImportWanted: importDialog.open()
         onNewNotebookWanted: newNotebookDialog.open()
         onPageSetupWanted: pageSetupDialog.open()
+        onPictureWanted: pictureDialog.open()
         onSettingsWanted: settingsDialog.open()
         onTrashWanted: trashDialog.open()
     }
@@ -261,6 +262,13 @@ ApplicationWindow {
                 if (root.notebook !== null) {
                     contextMenu.openAt(canvas.mapToItem(mainSplit, at.x, at.y));
                 }
+            }
+
+            PictureLayer {
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+                tools: toolState
             }
 
             SelectionLayer {
@@ -463,6 +471,16 @@ ApplicationWindow {
         title: qsTr("Export as PDF")
 
         onAccepted: root.notebook.exportToPdf(exportDialog.selectedFile, root.exportScope)
+    }
+
+    FileDialog {
+        id: pictureDialog
+
+        nameFilters: [qsTr("Pictures (*.png *.jpg *.jpeg *.webp *.bmp)")]
+        objectName: "pictureDialog"
+        title: qsTr("Put a picture on the page")
+
+        onAccepted: root.notebook.addPicture(pictureDialog.selectedFile)
     }
 
     FileDialog {

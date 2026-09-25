@@ -141,6 +141,90 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aPictureGoesOnThePageAndComesOffAgain() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addPicture(AppInfo.fileUrl(samplePicture));
+
+        verify(notebook.pickedPicture !== "");
+        const shape = notebook.pickedPictureBox.boxWidth / notebook.pickedPictureBox.boxHeight;
+        verify(notebook.pickedPictureBox.boxWidth > 0);
+        // The picture keeps the shape it came with: twice as wide as it is tall.
+        fuzzyCompare(shape, 2.0, 0.05);
+        verify(notebook.canUndo);
+
+        notebook.undo();
+
+        compare(notebook.pickedPictureBox.pictureId, undefined);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aPictureIsFoundWhereItStandsAndNowhereElse() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPicture(AppInfo.fileUrl(samplePicture));
+        const box = notebook.pickedPictureBox;
+
+        const inside = notebook.pictureUnder(box.columnX + (box.boxWidth / 2), box.columnY + (box.boxHeight / 2));
+        const outside = notebook.pictureUnder(box.columnX - 40, box.columnY - 40);
+
+        compare(inside, notebook.pickedPicture);
+        compare(outside, "");
+    }
+
+    function test_aPictureIsMovedTurnedAndSizedAsOneChange() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPicture(AppInfo.fileUrl(samplePicture));
+        const pictureId = notebook.pickedPicture;
+        // What the notebook says about the picture it holds follows the picture, so the numbers
+        // are taken down before it is asked to change.
+        const wasX = notebook.pickedPictureBox.columnX;
+        const wasWide = notebook.pickedPictureBox.boxWidth;
+
+        notebook.placePicture(pictureId, {
+            "columnX": wasX + 30,
+            "columnY": notebook.pickedPictureBox.columnY + 40,
+            "boxWidth": wasWide * 2,
+            "boxHeight": notebook.pickedPictureBox.boxHeight * 2,
+            "turn": 45
+        });
+
+        compare(notebook.errorMessage, "");
+        fuzzyCompare(notebook.pickedPictureBox.turn, 45, 0.01);
+        fuzzyCompare(notebook.pickedPictureBox.boxWidth, wasWide * 2, 0.01);
+        fuzzyCompare(notebook.pickedPictureBox.columnX, wasX + 30, 0.01);
+
+        notebook.undo();
+
+        fuzzyCompare(notebook.pickedPictureBox.columnX, wasX, 0.01);
+        fuzzyCompare(notebook.pickedPictureBox.boxWidth, wasWide, 0.01);
+        fuzzyCompare(notebook.pickedPictureBox.turn, 0, 0.01);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_takingAPictureAwayLetsGoOfIt() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPicture(AppInfo.fileUrl(samplePicture));
+        const pictureId = notebook.pickedPicture;
+
+        notebook.removePicture(pictureId);
+
+        compare(notebook.pickedPicture, "");
+        compare(notebook.pictureUnder(0, 0), "");
+
+        notebook.undo();
+
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_somethingThatIsNoPictureIsRefusedPlainly() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addPicture(AppInfo.fileUrl(samplePdf));
+
+        compare(notebook.pickedPicture, "");
+        verify(notebook.errorMessage !== "");
+    }
+
     function test_whetherThisMachineReadsHandwritingIsSaidPlainly() {
         const notebook = openNotebook(newNotebookPath());
 

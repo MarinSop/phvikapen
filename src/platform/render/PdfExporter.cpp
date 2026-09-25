@@ -29,6 +29,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -122,6 +123,30 @@ private:
     return area;
 }
 
+// The pictures standing on a page, with what each is made of read once however many pages show
+// it. A picture whose making cannot be read is left out rather than drawn as a hole.
+[[nodiscard]] std::vector<DrawnPicture> picturesOn(const core::NotebookStore& store,
+                                                   std::span<const core::PlacedPicture> standing,
+                                                   std::map<core::ContentId, QImage>& read) {
+    std::vector<DrawnPicture> drawn;
+    drawn.reserve(standing.size());
+    for (const core::PlacedPicture& placed : standing) {
+        auto found = read.find(placed.picture.source);
+        if (found == read.end()) {
+            QImage picture;
+            if (const core::Result<core::Asset> asset = store.asset(placed.picture.source)) {
+                std::ignore = picture.loadFromData(toByteArray(asset->data));
+            }
+            found = read.insert_or_assign(placed.picture.source, picture).first;
+        }
+        if (found->second.isNull()) {
+            continue;
+        }
+        drawn.push_back(DrawnPicture{.placed = placed.picture, .picture = &found->second});
+    }
+    return drawn;
+}
+
 void setPageSize(QPdfWriter& writer, const core::Rect& area) {
     const QSizeF points{area.width() * kPointsPerPageUnit, area.height() * kPointsPerPageUnit};
     writer.setPageSize(QPageSize{points, QPageSize::Point});
@@ -138,7 +163,8 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
         return std::unexpected{store.error()};
     }
 
-    const core::Result<core::NotebookOutline> outline = store->readOutline();
+    const core::NotebookStore& opened = *store;
+    const core::Result<core::NotebookOutline> outline = opened.readOutline();
     if (!outline) {
         return std::unexpected{outline.error()};
     }
@@ -154,33 +180,41 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
     writer.setTitle(QString::fromStdString(outline->title));
 
     MediaCache media;
+    // What the pictures of a page are made of, read once however many pages show them.
+    std::map<core::ContentId, QImage> pictureImages;
     std::optional<QPainter> painter;
     int written = 0;
 
     for (const core::PageInfo& info : pages) {
-        const core::Result<std::vector<core::PlacedStroke>> strokes = store->strokesOfPage(info.id);
+        const core::Result<std::vector<core::PlacedStroke>> strokes = opened.strokesOfPage(info.id);
         if (!strokes) {
             return std::unexpected{strokes.error()};
         }
-        const core::Result<std::vector<core::PlacedText>> texts = store->textsOfPage(info.id);
+        const core::Result<std::vector<core::PlacedText>> texts = opened.textsOfPage(info.id);
         if (!texts) {
             return std::unexpected{texts.error()};
         }
+        const core::Result<std::vector<core::PlacedPicture>> standing =
+            opened.picturesOfPage(info.id);
+        if (!standing) {
+            return std::unexpected{standing.error()};
+        }
+        const std::vector<DrawnPicture> pictures = picturesOn(opened, *standing, pictureImages);
 
         const PageContents contents{
             .style = info.style,
             .strokes = *strokes,
             .texts = *texts,
-            .pictures = {},
+            .pictures = pictures,
             .media = nullptr,
         };
         const core::Rect area = areaFor(contents, options.scope);
-        const QImage picture = info.media ? media.imageFor(*store, *info.media, area) : QImage{};
+        const QImage picture = info.media ? media.imageFor(opened, *info.media, area) : QImage{};
         const PageContents page{
             .style = info.style,
             .strokes = *strokes,
             .texts = *texts,
-            .pictures = {},
+            .pictures = pictures,
             .media = picture.isNull() ? nullptr : &picture,
         };
 
