@@ -97,3 +97,37 @@ application says so, exactly as it already does for finding handwriting.
   the same structure and can be added without moving anything already kept.
 - The answer goes back on the page as type, like everything else read out of handwriting, so it can
   be corrected, moved and taken away, and one step of undo puts the handwriting back.
+
+## What was added later: drawing a sum the way it is written
+
+A sum typed on one line reads badly as one line. `1/2` is not how anyone writes a half, and `2^10`
+is not how anyone writes a power. The structure was already there, so what was missing was only the
+drawing of it.
+
+A fourth link was added to the chain, after the structure and beside the working out:
+
+```
+strokes  →  characters  →  a structure  →  an answer
+                                 ↓
+                            a drawing
+```
+
+**Laying a sum out is ours, and takes no dependency.** Division becomes a fraction, one part over
+the other with a bar between; a power is set smaller and raised to the shoulder of what it stands
+on; a root is drawn under a roof that runs the length of what it covers. Brackets are put back
+wherever the shape needs them, whatever the reader typed, and they grow with what they hold.
+
+**How wide type runs is asked for rather than worked out.** Only a window knows how wide a letter
+is, and the core must not know what a window is. The laying out therefore takes a way of measuring
+as an argument. The window hands it one that asks the font; the tests hand it one that reckons every
+letter half as wide as the type is tall, so that what is laid out can be checked without a window
+at all.
+
+**A box of type says whether it holds a sum.** A sum is not a document object of its own: it is a
+box of type that is drawn differently. It is moved, sized, taken away, printed and shown in the
+small picture of the page like any other box, and one flag beside the words is the whole of what
+had to be written down. While it is being typed in, what was typed is shown, so that it can be
+corrected; the moment it is let go of, it is drawn.
+
+Where what is typed is not arithmetic — half a sum, or a shopping list — nothing is laid out and
+the words are shown as they were typed. Nothing is ever left blank.

@@ -195,10 +195,17 @@ constexpr std::string_view kSchemaVersion10 = R"sql(
     ALTER TABLE page_table_cells ADD COLUMN down INTEGER NOT NULL DEFAULT 1;
 )sql";
 
+// Whether a box of type holds a sum to be drawn as arithmetic is written. Every box written down
+// before this holds plain words.
+constexpr std::string_view kSchemaVersion11 = R"sql(
+    ALTER TABLE page_texts ADD COLUMN formula INTEGER NOT NULL DEFAULT 0;
+)sql";
+
 constexpr std::array kMigrations{
-    std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
-    std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
-    std::pair{8, kSchemaVersion8}, std::pair{9, kSchemaVersion9}, std::pair{10, kSchemaVersion10},
+    std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
+    std::pair{4, kSchemaVersion4},   std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
+    std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9}, std::pair{10, kSchemaVersion10},
+    std::pair{11, kSchemaVersion11},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -341,6 +348,7 @@ enum class TextColumn : std::uint8_t {
     Align,
     LineHeight,
     Marks,
+    Formula,
 };
 
 [[nodiscard]] constexpr int column(TextColumn which) noexcept {
@@ -505,6 +513,7 @@ struct StoredFace {
                     .lineHeight = statement.real(column(TextColumn::LineHeight)),
                     .marks = statement.integer(column(TextColumn::Marks)),
                 }),
+                .formula = statement.integer(column(TextColumn::Formula)) != 0,
             },
     };
 }
@@ -1330,8 +1339,8 @@ Result<void> NotebookStore::insertText(const Uuid& pageId, const PlacedText& pla
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
         "INSERT INTO page_texts (id, page_id, ordinal, left_edge, top_edge, width, height, text, "
-        "folded, font, size, color, align, line_height, marks) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+        "folded, font, size, color, align, line_height, marks, formula) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1352,6 +1361,7 @@ Result<void> NotebookStore::insertText(const Uuid& pageId, const PlacedText& pla
         statement->bindInteger(13, static_cast<std::int64_t>(box.style.align)),
         statement->bindReal(14, box.style.lineHeight),
         statement->bindInteger(15, marksOf(box.style)),
+        statement->bindInteger(16, box.formula ? 1 : 0),
     });
     if (!bound) {
         return bound;
@@ -1363,7 +1373,7 @@ Result<void> NotebookStore::updateText(const Uuid& pageId, const TextBox& box) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "UPDATE page_texts SET left_edge = ?, top_edge = ?, width = ?, height = ?, "
                     "text = ?, folded = ?, font = ?, size = ?, color = ?, align = ?, "
-                    "line_height = ?, marks = ? WHERE page_id = ? AND id = ?;");
+                    "line_height = ?, marks = ?, formula = ? WHERE page_id = ? AND id = ?;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1380,8 +1390,9 @@ Result<void> NotebookStore::updateText(const Uuid& pageId, const TextBox& box) {
         statement->bindInteger(10, static_cast<std::int64_t>(box.style.align)),
         statement->bindReal(11, box.style.lineHeight),
         statement->bindInteger(12, marksOf(box.style)),
-        statement->bindId(13, pageId),
-        statement->bindId(14, box.id),
+        statement->bindInteger(13, box.formula ? 1 : 0),
+        statement->bindId(14, pageId),
+        statement->bindId(15, box.id),
     });
     if (!bound) {
         return bound;
@@ -1423,7 +1434,7 @@ Result<std::size_t> NotebookStore::removeTextsOfPage(const Uuid& pageId) {
 Result<std::vector<PlacedText>> NotebookStore::textsOfPage(const Uuid& pageId) const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "SELECT id, ordinal, left_edge, top_edge, width, height, text, font, size, "
-                    "color, align, line_height, marks "
+                    "color, align, line_height, marks, formula "
                     "FROM page_texts WHERE page_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};

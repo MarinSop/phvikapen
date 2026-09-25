@@ -369,6 +369,50 @@ TestCase {
         compare(notebook.wordsOf(textId), "sqrt(81) * 2 = 18");
     }
 
+    function test_aSumPutOnThePageIsDrawnAsArithmeticIsWritten() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+
+        notebook.addEquation(tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "1/2 + sqrt(9)", 24);
+
+        const box = notebook.pickedBox;
+        verify(box.formula, "the box does not know it holds a sum");
+        verify(box.drawing.glyphs.length > 0, "nothing was laid out to draw");
+        verify(box.drawing.bars.length >= 2, "neither the fraction bar nor the root roof is there");
+        // A fraction stands taller than one line of type.
+        verify(box.drawing.height > box.size * 2, "the drawing is no taller than plain words");
+    }
+
+    function test_aBoxOfPlainWordsIsNotDrawnAsASum() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const sheet = notebook.canvas.sheetRect(0);
+
+        notebook.addTextAt(sheet.x + 40, sheet.y + 40, tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "1/2 + sqrt(9)", 24);
+
+        verify(!notebook.pickedBox.formula);
+        // Nothing is laid out for a box that holds plain words.
+        compare(notebook.pickedBox.drawing, undefined);
+    }
+
+    function test_aSumThatCannotBeReadIsStillShownAsWhatWasTyped() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+
+        notebook.addEquation(tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "1/2 +", 24);
+
+        verify(notebook.pickedBox.formula);
+        // Half a sum lays nothing out, so what was typed is shown instead.
+        compare(notebook.pickedBox.drawing.glyphs.length, 0);
+        compare(notebook.wordsOf(textId), "1/2 +");
+    }
+
     function test_aSumThatIsTypedIsWorkedOutInPlace() {
         const notebook = openNotebook(newNotebookPath());
         const tools = createTemporaryObject(toolsComponent, testCase);

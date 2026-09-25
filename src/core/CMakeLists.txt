@@ -25,6 +25,7 @@ target_sources(phvikapen_core
         ink/StrokeSteadier.cpp
         ink/StrokeTransform.cpp
         math/Answer.cpp
+        math/Drawing.cpp
         math/Equation.cpp
         math/Reading.cpp
         model/Outline.cpp
@@ -73,6 +74,7 @@ target_sources(phvikapen_core
             ink/StrokeSteadier.hpp
             ink/StrokeTransform.hpp
             math/Answer.hpp
+            math/Drawing.hpp
             math/Equation.hpp
             math/Reading.hpp
             model/Asset.hpp

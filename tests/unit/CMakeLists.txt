@@ -4,6 +4,7 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_executable(phvikapen_tests
     core/DistanceTest.cpp
+    core/DrawingTest.cpp
     core/EquationTest.cpp
     core/ErrorTest.cpp
     core/NotebookOutlineTest.cpp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/math/Drawing.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <QAbstractListModel>
@@ -9,6 +10,7 @@
 #include <QModelIndex>
 #include <QString>
 #include <QVariant>
+#include <QVariantList>
 #include <QVariantMap>
 #include <QtQmlIntegration>
 #include <QtTypes>
@@ -31,8 +33,10 @@ struct TextItem {
     qreal height{};
     qreal size{};
     qreal lineHeight{};
+    QVariantMap drawing;
     int align{};
     int sheet{};
+    bool formula{};
     bool bold{};
     bool italic{};
     bool underline{};
@@ -65,6 +69,8 @@ public:
     static constexpr int kItalicRole = Qt::UserRole + 15;
     static constexpr int kUnderlineRole = Qt::UserRole + 16;
     static constexpr int kStruckOutRole = Qt::UserRole + 17;
+    static constexpr int kFormulaRole = Qt::UserRole + 18;
+    static constexpr int kDrawingRole = Qt::UserRole + 19;
 
     explicit TextListModel(QObject* parent = nullptr);
 
@@ -88,5 +94,9 @@ private:
 [[nodiscard]] QVariantMap mapOfStyle(const core::TextStyle& style);
 
 [[nodiscard]] core::TextStyle styleOfMap(const QVariantMap& style);
+
+// A sum laid out to be drawn, as QML hands it about: every piece of type where it belongs and
+// every line that holds the pieces together.
+[[nodiscard]] QVariantMap mapOfDrawing(const core::Drawing& drawing);
 
 }

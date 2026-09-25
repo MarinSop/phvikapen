@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/geometry/Rect.hpp"
+#include "core/math/Drawing.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
@@ -8,6 +9,7 @@
 #include "core/model/TextBox.hpp"
 
 #include <span>
+#include <string>
 
 class QImage;
 class QPainter;
@@ -28,6 +30,10 @@ struct PageContents {
     std::span<const core::PlacedTable> tables;
     const QImage* media{nullptr};
 };
+
+// A sum laid out to be drawn, measured with the window's own reckoning of how wide type runs.
+// Nothing comes back where what is typed is not arithmetic, and it is then shown as plain words.
+[[nodiscard]] core::Drawing drawnFormula(const std::string& said, const core::TextStyle& style);
 
 [[nodiscard]] core::Rect pageArea(const PageContents& page);
 

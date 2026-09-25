@@ -4,6 +4,9 @@
 #include "core/geometry/Rect.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeOutline.hpp"
+#include "core/math/Drawing.hpp"
+#include "core/math/Equation.hpp"
+#include "core/math/Reading.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Table.hpp"
@@ -13,6 +16,7 @@
 #include <QAbstractTextDocumentLayout>
 #include <QColor>
 #include <QFont>
+#include <QFontMetricsF>
 #include <QImage>
 #include <QPainter>
 #include <QPainterPath>
@@ -29,6 +33,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace phvikapen::platform::render {
@@ -174,11 +179,43 @@ void drawWords(QPainter& painter, const QTextDocument& document, const core::Col
     document.documentLayout()->draw(&painter, context);
 }
 
+// A sum is drawn piece by piece where it was laid out, with the bars of its fractions and the
+// roofs of its roots filled in as lines rather than written as letters.
+void paintDrawing(QPainter& painter, const core::Drawing& drawing, const core::TextStyle& style,
+                  const core::Point& at) {
+    painter.save();
+    painter.translate(at.x, at.y);
+    const QColor ink = toColor(style.color);
+    for (const core::Bar& bar : drawing.bars) {
+        painter.fillRect(toRect(bar.area), ink);
+    }
+    painter.setPen(QPen{ink});
+    for (const core::Glyph& glyph : drawing.glyphs) {
+        core::TextStyle set = style;
+        set.size = glyph.size;
+        const QFont font = fontOf(set);
+        painter.setFont(font);
+        const QFontMetricsF metrics{font};
+        const auto line =
+            static_cast<double>(core::pageUnitsOfPoints(glyph.size) * core::kLineRoom);
+        const double baseline = glyph.at.y + ((line + metrics.ascent() - metrics.descent()) / 2.0);
+        painter.drawText(QPointF{glyph.at.x, baseline}, QString::fromStdString(glyph.text));
+    }
+    painter.restore();
+}
+
 void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
     for (const core::PlacedText& placed : texts) {
         const core::TextBox& box = placed.box;
         if (box.text.empty()) {
             continue;
+        }
+        if (box.formula) {
+            const core::Drawing drawn = drawnFormula(box.text, box.style);
+            if (!drawn.glyphs.empty()) {
+                paintDrawing(painter, drawn, box.style, box.at);
+                continue;
+            }
         }
         QTextDocument document;
         layOutWords(document, box.style, box.style.align, box.text, box.width);
@@ -259,6 +296,21 @@ void paintStrokes(QPainter& painter, std::span<const core::PlacedStroke> strokes
     }
 }
 
+}
+
+core::Drawing drawnFormula(const std::string& said, const core::TextStyle& style) {
+    const core::Result<core::Equation> equation = core::equationOf(core::tidied(said));
+    if (!equation) {
+        return {};
+    }
+    const core::Measure measure = [&style](std::string_view piece, float size) {
+        core::TextStyle set = style;
+        set.size = size;
+        const QFontMetricsF metrics{fontOf(set)};
+        return static_cast<float>(metrics.horizontalAdvance(
+            QString::fromUtf8(piece.data(), static_cast<qsizetype>(piece.size()))));
+    };
+    return core::laidOut(*equation, style.size, measure);
 }
 
 core::Rect pageArea(const PageContents& page) {

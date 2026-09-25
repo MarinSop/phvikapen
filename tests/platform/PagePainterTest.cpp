@@ -394,6 +394,78 @@ TEST(PagePainterTest, AJoinedBoxIsNeverRuledThroughTheMiddle) {
     EXPECT_TRUE(hasColorIn(sheet, QColor(255, 0, 0), joined));
 }
 
+TEST(PagePainterTest, ASumIsDrawnWithTheBarOfItsFraction) {
+    const std::array texts{
+        core::PlacedText{
+            .ordinal = 0,
+            .box =
+                core::TextBox{
+                    .id = {},
+                    .at = core::Point{.x = 20.0F, .y = 20.0F},
+                    .width = 120.0F,
+                    .height = 60.0F,
+                    .text = "1/2",
+                    .style = core::TextStyle{.size = 24.0F},
+                    .formula = true,
+                },
+        },
+    };
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = texts,
+        .pictures = {},
+        .tables = {},
+    };
+
+    const QImage sheet = paint(page, area);
+
+    const core::Drawing drawn = drawnFormula(texts.front().box.text, texts.front().box.style);
+    ASSERT_EQ(drawn.bars.size(), 1U);
+    // The bar of the fraction is filled in where it was laid out.
+    const core::Rect bar = drawn.bars.front().area;
+    EXPECT_TRUE(hasColorIn(sheet, QColor(0, 0, 0),
+                           core::Rect{
+                               .left = 20.0F + bar.left + 1.0F,
+                               .top = 20.0F + bar.top,
+                               .right = 20.0F + bar.right - 1.0F,
+                               .bottom = 20.0F + bar.bottom + 1.0F,
+                           }));
+}
+
+TEST(PagePainterTest, WhatIsNoSumIsWrittenOutAsItWasTyped) {
+    const std::array texts{
+        core::PlacedText{
+            .ordinal = 0,
+            .box =
+                core::TextBox{
+                    .id = {},
+                    .at = core::Point{.x = 20.0F, .y = 20.0F},
+                    .width = 160.0F,
+                    .height = 40.0F,
+                    .text = "1/2 +",
+                    .style = core::TextStyle{.size = 24.0F},
+                    .formula = true,
+                },
+        },
+    };
+    const core::Rect area{.right = 200.0F, .bottom = 200.0F};
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = kNoStrokes,
+        .texts = texts,
+        .pictures = {},
+        .tables = {},
+    };
+
+    EXPECT_TRUE(drawnFormula(texts.front().box.text, texts.front().box.style).glyphs.empty());
+    // Half a sum lays nothing out, so it is written out rather than left blank.
+    EXPECT_TRUE(
+        hasColorIn(paint(page, area), QColor(0, 0, 0),
+                   core::Rect{.left = 20.0F, .top = 20.0F, .right = 180.0F, .bottom = 60.0F}));
+}
+
 TEST(PagePainterTest, HandwritingInsideABoxIsSeenThroughTheTable) {
     const std::array tables{ruled(core::Color{.red = 255}, "")};
     const std::vector<core::PlacedStroke> strokes{

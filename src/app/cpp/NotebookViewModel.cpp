@@ -2917,6 +2917,10 @@ QVariantMap NotebookViewModel::pickedBox() const {
     map.insert("columnY", where.y() + static_cast<qreal>(box.at.y));
     map.insert("boxWidth", static_cast<qreal>(box.width));
     map.insert("boxHeight", static_cast<qreal>(box.height));
+    map.insert("formula", box.formula);
+    if (box.formula) {
+        map.insert("drawing", mapOfDrawing(platform::render::drawnFormula(box.text, box.style)));
+    }
     return map;
 }
 
@@ -2953,8 +2957,12 @@ void NotebookViewModel::publishTexts() {
                     .height = static_cast<qreal>(box.height),
                     .size = static_cast<qreal>(box.style.size),
                     .lineHeight = static_cast<qreal>(box.style.lineHeight),
+                    .drawing = box.formula ? mapOfDrawing(platform::render::drawnFormula(box.text,
+                                                                                         box.style))
+                                           : QVariantMap{},
                     .align = static_cast<int>(box.style.align),
                     .sheet = sheet,
+                    .formula = box.formula,
                     .bold = box.style.bold,
                     .italic = box.style.italic,
                     .underline = box.style.underline,
@@ -2967,7 +2975,23 @@ void NotebookViewModel::publishTexts() {
     emit pickedBoxChanged();
 }
 
+// A box holding a sum is exactly as large as what is drawn in it, so that taking hold of it,
+// printing it and the small picture of the page all agree about the room it takes.
+[[nodiscard]] core::TextBox asLargeAsItDraws(core::TextBox box) {
+    if (!box.formula) {
+        return box;
+    }
+    const core::Drawing drawn = platform::render::drawnFormula(box.text, box.style);
+    if (drawn.glyphs.empty()) {
+        return box;
+    }
+    box.width = std::max(drawn.width, core::TextBox::kNarrowest);
+    box.height = drawn.height;
+    return box;
+}
+
 void NotebookViewModel::changeText(const core::Uuid& pageId, core::TextBox box) {
+    box = asLargeAsItDraws(std::move(box));
     if (m_draft && m_draft->box.id == box.id) {
         m_draft->box = core::normalized(std::move(box));
         publishTexts();
@@ -3380,6 +3404,19 @@ void NotebookViewModel::addEquation(const QVariantMap& style) {
               sheet.y() + static_cast<qreal>(visible.top)
                   + (static_cast<qreal>(visible.height()) * kHalfway),
               style);
+    // What goes in this box is a sum, and is drawn the way arithmetic is written rather than as a
+    // plain line of letters.
+    markAsFormula(m_pickedText);
+}
+
+void NotebookViewModel::markAsFormula(const QString& textId) {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
+    if (!found || found->second.formula) {
+        return;
+    }
+    core::TextBox box = found->second;
+    box.formula = true;
+    changeText(found->first, std::move(box));
 }
 
 void NotebookViewModel::solveSelection(QVariantMap style) {

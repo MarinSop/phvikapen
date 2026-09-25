@@ -199,6 +199,9 @@ written so that all of them can share it. They are listed in the order they are 
   reader the platform carries reads a line of characters. That needs a recognizer built for
   mathematics, which is a dependency and needs a decision of its own written down. Nothing else in
   the chain moves when it comes: it replaces the first link only.
+- **A sum drawn with more than the four operations.** Fractions, powers, roots and brackets are
+  drawn the way they are written. A sum sign, an integral, a matrix and anything else that stands
+  over a range are not, and each needs a shape of its own in the structure before it can be drawn.
 - **Solving for an unknown.** Only arithmetic is answered. An equation with an x in it to be solved
   for is what a student most wants, and it works on the same structure that is already kept. It is
   held up by the reading, not by the working out: a letter x is read as a times sign, because

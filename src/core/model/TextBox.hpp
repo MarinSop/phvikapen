@@ -61,6 +61,9 @@ struct TextBox {
     float height{};
     std::string text;
     TextStyle style;
+    // Whether what is typed here is a sum to be drawn as arithmetic is written, with fractions one
+    // part over the other and powers raised, rather than as a plain line of letters.
+    bool formula{};
 
     friend bool operator==(const TextBox&, const TextBox&) = default;
 };

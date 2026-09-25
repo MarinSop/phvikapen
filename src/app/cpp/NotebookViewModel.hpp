@@ -591,6 +591,7 @@ private:
     void answerWhatWasAsked(const core::Uuid& pageId, std::span<const core::InkWord> words,
                             const QVariantMap& style);
     void solveWhatIsTyped();
+    void markAsFormula(const QString& textId);
     [[nodiscard]] core::TextBox answerBeside(const core::TextBlock& asked,
                                              const std::string& answer, core::TextStyle face);
     void readKeptAt();

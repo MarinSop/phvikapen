@@ -1,5 +1,6 @@
 #include "app/cpp/TextModels.hpp"
 
+#include "core/math/Drawing.hpp"
 #include "core/model/Color.hpp"
 #include "core/model/TextBox.hpp"
 
@@ -9,6 +10,7 @@
 #include <QModelIndex>
 #include <QString>
 #include <QVariant>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include <cstddef>
@@ -69,6 +71,10 @@ QVariant TextListModel::data(const QModelIndex& index, int role) const {
         return item.underline;
     case kStruckOutRole:
         return item.struckOut;
+    case kFormulaRole:
+        return item.formula;
+    case kDrawingRole:
+        return item.drawing;
     default:
         return {};
     }
@@ -93,6 +99,8 @@ QHash<int, QByteArray> TextListModel::roleNames() const {
         {kItalicRole, "italic"},
         {kUnderlineRole, "underline"},
         {kStruckOutRole, "struckOut"},
+        {kFormulaRole, "formula"},
+        {kDrawingRole, "drawing"},
     };
 }
 
@@ -143,6 +151,35 @@ QVariantMap mapOfStyle(const core::TextStyle& style) {
         {"italic", style.italic},
         {"underline", style.underline},
         {"struckOut", style.struckOut},
+    };
+}
+
+QVariantMap mapOfDrawing(const core::Drawing& drawing) {
+    QVariantList glyphs;
+    glyphs.reserve(static_cast<qsizetype>(drawing.glyphs.size()));
+    for (const core::Glyph& glyph : drawing.glyphs) {
+        glyphs.append(QVariantMap{
+            {"text", QString::fromStdString(glyph.text)},
+            {"x", static_cast<qreal>(glyph.at.x)},
+            {"y", static_cast<qreal>(glyph.at.y)},
+            {"size", static_cast<qreal>(glyph.size)},
+        });
+    }
+    QVariantList bars;
+    bars.reserve(static_cast<qsizetype>(drawing.bars.size()));
+    for (const core::Bar& bar : drawing.bars) {
+        bars.append(QVariantMap{
+            {"x", static_cast<qreal>(bar.area.left)},
+            {"y", static_cast<qreal>(bar.area.top)},
+            {"width", static_cast<qreal>(bar.area.width())},
+            {"height", static_cast<qreal>(bar.area.height())},
+        });
+    }
+    return QVariantMap{
+        {"glyphs", glyphs},
+        {"bars", bars},
+        {"width", static_cast<qreal>(drawing.width)},
+        {"height", static_cast<qreal>(drawing.height)},
     };
 }
 
