@@ -25,6 +25,23 @@ Menu {
 
     objectName: "contextMenu"
 
+    // The view the lines stand in leaves no room between them. A line that does not apply is not
+    // shown and takes up no height, but the room between one line and the next was still kept for
+    // it, which is what left a band of nothing under the last command the menu was offering.
+    contentItem: ListView {
+        clip: true
+        currentIndex: root.currentIndex
+        implicitHeight: contentHeight
+        interactive: Window.window !== null && contentHeight > Window.window.height
+        keyNavigationEnabled: true
+        keyNavigationWraps: true
+        model: root.contentModel
+        spacing: 0
+
+        ScrollIndicator.vertical: ScrollIndicator {
+        }
+    }
+
     MenuCommand {
         action: root.actions.cut
         objectName: "contextCut"

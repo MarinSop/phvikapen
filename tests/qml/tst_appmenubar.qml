@@ -111,6 +111,49 @@ TestCase {
         compare(line.height, 0);
     }
 
+    function test_y1_theMenuUnderThePointerIsAsTallAsWhatItOffers() {
+        const menu = createTemporaryObject(contextComponent, testCase, {
+            actions: actions
+        });
+
+        menu.popup(0, 0);
+        wait(0);
+
+        let shown = 0;
+        let tall = 0;
+        for (let i = 0; i < menu.count; ++i) {
+            const line = menu.itemAt(i);
+            if (line.visible) {
+                shown += 1;
+                tall += line.height;
+            }
+        }
+        verify(shown > 0);
+        verify(shown < menu.count, "nothing was left out, so there is nothing to prove");
+        compare(menu.contentItem.contentHeight, tall);
+        menu.close();
+    }
+
+    function test_y2_theMenuIsNoWiderThanTheLinesItIsShowing() {
+        const menu = createTemporaryObject(contextComponent, testCase, {
+            actions: actions
+        });
+
+        menu.popup(0, 0);
+        wait(0);
+
+        let widest = 0;
+        for (let i = 0; i < menu.count; ++i) {
+            const line = menu.itemAt(i);
+            if (line.visible) {
+                widest = Math.max(widest, line.implicitWidth);
+            }
+        }
+        verify(widest > 0);
+        compare(menu.contentItem.contentWidth <= widest + menu.leftPadding + menu.rightPadding, true);
+        menu.close();
+    }
+
     height: 60
     name: "AppMenuBar"
     visible: true
@@ -135,6 +178,13 @@ TestCase {
         id: lineComponent
 
         MenuLine {
+        }
+    }
+
+    Component {
+        id: contextComponent
+
+        ContextMenu {
         }
     }
 

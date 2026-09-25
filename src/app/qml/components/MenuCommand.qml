@@ -7,10 +7,11 @@ MenuItem {
 
     readonly property string shortcutText: root.action === null ? "" : AppInfo.shortcutText(root.action.shortcut)
 
-    // A line that is not shown takes up no room, so a menu is as tall as what it offers.
+    // A line that is not shown takes up no room, neither down the menu nor across it, so a menu is
+    // as large as what it offers and no larger.
     height: root.visible ? root.implicitHeight : 0
     implicitHeight: Math.max(Theme.rowHeight, implicitContentHeight + topPadding + bottomPadding)
-    implicitWidth: implicitContentWidth + leftPadding + rightPadding
+    implicitWidth: root.visible ? implicitContentWidth + leftPadding + rightPadding : 0
     indicator: null
 
     contentItem: Item {
