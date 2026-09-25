@@ -84,10 +84,16 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(std::unexpected{pictures.error()});
             return;
         }
+        Result<std::vector<PlacedTable>> tables = m_store->tablesOfPage(pageId);
+        if (!tables) {
+            onLoaded(std::unexpected{tables.error()});
+            return;
+        }
         onLoaded(LoadedPage{
             .strokes = std::move(*strokes),
             .texts = std::move(*texts),
             .pictures = std::move(*pictures),
+            .tables = std::move(*tables),
         });
     });
 }

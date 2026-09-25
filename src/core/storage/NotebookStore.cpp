@@ -6,6 +6,7 @@
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/Sqlite.hpp"
 #include "core/storage/StrokeCodec.hpp"
@@ -15,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -152,10 +154,44 @@ constexpr std::string_view kSchemaVersion8 = R"sql(
     CREATE UNIQUE INDEX page_pictures_by_page ON page_pictures (page_id, ordinal);
 )sql";
 
+// Tables put on a page. How wide the columns run and how tall the rows stand is kept as it is
+// measured, because nothing ever asks a question about it; what is typed into the boxes is kept
+// box by box, because a reader searches for it. A box with nothing in it is not written down: the
+// measures say how many boxes there are.
+constexpr std::string_view kSchemaVersion9 = R"sql(
+    CREATE TABLE page_tables (
+        id            BLOB PRIMARY KEY NOT NULL,
+        page_id       BLOB NOT NULL REFERENCES pages (id),
+        ordinal       INTEGER NOT NULL,
+        left_edge     REAL NOT NULL,
+        top_edge      REAL NOT NULL,
+        column_widths BLOB NOT NULL,
+        row_heights   BLOB NOT NULL,
+        font          TEXT NOT NULL,
+        size          REAL NOT NULL,
+        color         INTEGER NOT NULL,
+        align         INTEGER NOT NULL,
+        line_height   REAL NOT NULL,
+        marks         INTEGER NOT NULL,
+        rule_color    INTEGER NOT NULL,
+        rule_width    REAL NOT NULL
+    );
+    CREATE UNIQUE INDEX page_tables_by_page ON page_tables (page_id, ordinal);
+    CREATE TABLE page_table_cells (
+        table_id BLOB NOT NULL REFERENCES page_tables (id),
+        ordinal  INTEGER NOT NULL,
+        text     TEXT NOT NULL,
+        folded   TEXT NOT NULL,
+        align    INTEGER NOT NULL,
+        PRIMARY KEY (table_id, ordinal)
+    );
+    CREATE INDEX page_table_cells_by_word ON page_table_cells (folded);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1}, std::pair{2, kSchemaVersion2}, std::pair{3, kSchemaVersion3},
     std::pair{4, kSchemaVersion4}, std::pair{6, kSchemaVersion6}, std::pair{7, kSchemaVersion7},
-    std::pair{8, kSchemaVersion8},
+    std::pair{8, kSchemaVersion8}, std::pair{9, kSchemaVersion9},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -364,8 +400,83 @@ enum class PictureColumn : std::uint8_t {
     };
 }
 
+constexpr unsigned int kByteBits = 8U;
+constexpr std::uint32_t kByteMask = 0xFFU;
+
+// How wide the columns of a table run and how tall its rows stand, written down as they are
+// measured, smallest part first.
+[[nodiscard]] std::vector<std::byte> measureBytes(const std::vector<float>& measures) {
+    std::vector<std::byte> bytes;
+    bytes.reserve(measures.size() * sizeof(float));
+    for (const float measure : measures) {
+        const auto whole = std::bit_cast<std::uint32_t>(measure);
+        for (unsigned int part = 0; part < sizeof(float); ++part) {
+            bytes.push_back(static_cast<std::byte>((whole >> (part * kByteBits)) & kByteMask));
+        }
+    }
+    return bytes;
+}
+
+[[nodiscard]] std::vector<float> measuresFrom(std::span<const std::byte> bytes) {
+    std::vector<float> measures;
+    measures.reserve(bytes.size() / sizeof(float));
+    for (std::size_t step = 0; step + sizeof(float) <= bytes.size(); step += sizeof(float)) {
+        std::uint32_t whole = 0;
+        for (unsigned int part = 0; part < sizeof(float); ++part) {
+            whole |= static_cast<std::uint32_t>(bytes[step + part]) << (part * kByteBits);
+        }
+        measures.push_back(std::bit_cast<float>(whole));
+    }
+    return measures;
+}
+
+enum class TableColumn : std::uint8_t {
+    Id,
+    Ordinal,
+    Left,
+    Top,
+    ColumnWidths,
+    RowHeights,
+    Font,
+    Size,
+    Color,
+    Align,
+    LineHeight,
+    Marks,
+    RuleColor,
+    RuleWidth,
+};
+
+[[nodiscard]] constexpr int column(TableColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+// The face a run of type wears, as it comes back out of a row, whichever row holds it.
+struct StoredFace {
+    std::string font;
+    double size{};
+    std::int64_t color{};
+    std::int64_t align{};
+    double lineHeight{};
+    std::int64_t marks{};
+};
+
+[[nodiscard]] TextStyle faceOf(StoredFace stored) {
+    const auto marks = static_cast<std::uint64_t>(stored.marks);
+    return TextStyle{
+        .font = std::move(stored.font),
+        .size = static_cast<float>(stored.size),
+        .color = unpacked(static_cast<std::uint32_t>(stored.color)),
+        .align = toAlign(stored.align),
+        .lineHeight = static_cast<float>(stored.lineHeight),
+        .bold = (marks & kBoldMark) != 0U,
+        .italic = (marks & kItalicMark) != 0U,
+        .underline = (marks & kUnderlineMark) != 0U,
+        .struckOut = (marks & kStruckMark) != 0U,
+    };
+}
+
 [[nodiscard]] PlacedText textFrom(const sqlite::Statement& statement) {
-    const auto marks = static_cast<std::uint64_t>(statement.integer(column(TextColumn::Marks)));
     return PlacedText{
         .ordinal = statement.integer(column(TextColumn::Ordinal)),
         .box =
@@ -379,21 +490,46 @@ enum class PictureColumn : std::uint8_t {
                 .width = static_cast<float>(statement.real(column(TextColumn::Width))),
                 .height = static_cast<float>(statement.real(column(TextColumn::Height))),
                 .text = statement.text(column(TextColumn::Text)),
-                .style =
-                    TextStyle{
-                        .font = statement.text(column(TextColumn::Font)),
-                        .size = static_cast<float>(statement.real(column(TextColumn::Size))),
-                        .color = unpacked(static_cast<std::uint32_t>(
-                            statement.integer(column(TextColumn::Color)))),
-                        .align = toAlign(statement.integer(column(TextColumn::Align))),
-                        .lineHeight =
-                            static_cast<float>(statement.real(column(TextColumn::LineHeight))),
-                        .bold = (marks & kBoldMark) != 0U,
-                        .italic = (marks & kItalicMark) != 0U,
-                        .underline = (marks & kUnderlineMark) != 0U,
-                        .struckOut = (marks & kStruckMark) != 0U,
-                    },
+                .style = faceOf(StoredFace{
+                    .font = statement.text(column(TextColumn::Font)),
+                    .size = statement.real(column(TextColumn::Size)),
+                    .color = statement.integer(column(TextColumn::Color)),
+                    .align = statement.integer(column(TextColumn::Align)),
+                    .lineHeight = statement.real(column(TextColumn::LineHeight)),
+                    .marks = statement.integer(column(TextColumn::Marks)),
+                }),
             },
+    };
+}
+
+// A table as its own row says it stands. What is typed into its boxes is read afterwards, so the
+// boxes come back empty and as many as the measures ask for.
+[[nodiscard]] PlacedTable tableFrom(const sqlite::Statement& statement) {
+    Table table{
+        .id = statement.id(column(TableColumn::Id)),
+        .at =
+            Point{
+                .x = static_cast<float>(statement.real(column(TableColumn::Left))),
+                .y = static_cast<float>(statement.real(column(TableColumn::Top))),
+            },
+        .columns = measuresFrom(statement.blob(column(TableColumn::ColumnWidths))),
+        .rows = measuresFrom(statement.blob(column(TableColumn::RowHeights))),
+        .cells = {},
+        .style = faceOf(StoredFace{
+            .font = statement.text(column(TableColumn::Font)),
+            .size = statement.real(column(TableColumn::Size)),
+            .color = statement.integer(column(TableColumn::Color)),
+            .align = statement.integer(column(TableColumn::Align)),
+            .lineHeight = statement.real(column(TableColumn::LineHeight)),
+            .marks = statement.integer(column(TableColumn::Marks)),
+        }),
+        .rule =
+            unpacked(static_cast<std::uint32_t>(statement.integer(column(TableColumn::RuleColor)))),
+        .ruleWidth = static_cast<float>(statement.real(column(TableColumn::RuleWidth))),
+    };
+    return PlacedTable{
+        .ordinal = statement.integer(column(TableColumn::Ordinal)),
+        .table = normalized(std::move(table)),
     };
 }
 
@@ -496,6 +632,18 @@ struct Hit {
     }
 }
 
+// The words asked for, one after another, in the shape a search of the written-down text takes.
+[[nodiscard]] std::string phraseOf(const std::vector<std::string>& wanted) {
+    std::string phrase;
+    for (const std::string& word : wanted) {
+        if (!phrase.empty()) {
+            phrase.push_back(' ');
+        }
+        phrase.append(escapedForLike(word));
+    }
+    return phrase;
+}
+
 [[nodiscard]] Result<std::vector<Hit>> typedHits(sqlite3* database,
                                                  const std::vector<std::string>& wanted) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
@@ -511,14 +659,7 @@ struct Hit {
     if (!statement) {
         return std::unexpected{statement.error()};
     }
-    std::string phrase;
-    for (const std::string& word : wanted) {
-        if (!phrase.empty()) {
-            phrase.push_back(' ');
-        }
-        phrase.append(escapedForLike(word));
-    }
-    if (const Result<void> bound = statement->bindText(1, "%" + phrase + "%"); !bound) {
+    if (const Result<void> bound = statement->bindText(1, "%" + phraseOf(wanted) + "%"); !bound) {
         return std::unexpected{bound.error()};
     }
 
@@ -558,6 +699,88 @@ struct Hit {
     }
 }
 
+enum class TableWordColumn : std::uint8_t {
+    PageId,
+    Text,
+    Left,
+    Top,
+    ColumnWidths,
+    RowHeights,
+    Cell,
+    Section,
+    Page,
+};
+
+[[nodiscard]] constexpr int column(TableWordColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+// Words typed into the boxes of a table are found the way words typed anywhere else are, and each
+// one is shown where its own box stands.
+[[nodiscard]] Result<std::vector<Hit>> tableHits(sqlite3* database,
+                                                 const std::vector<std::string>& wanted) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database, "SELECT page_tables.page_id, page_table_cells.text, page_tables.left_edge, "
+                  "       page_tables.top_edge, page_tables.column_widths, "
+                  "       page_tables.row_heights, page_table_cells.ordinal, "
+                  "       sections.ordinal, pages.ordinal "
+                  "FROM page_table_cells "
+                  "JOIN page_tables ON page_tables.id = page_table_cells.table_id "
+                  "JOIN pages ON pages.id = page_tables.page_id "
+                  "JOIN sections ON sections.id = pages.section_id "
+                  "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+                  "  AND page_table_cells.folded LIKE ? ESCAPE '\\' "
+                  "ORDER BY sections.ordinal, pages.ordinal, page_tables.ordinal, "
+                  "         page_table_cells.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindText(1, "%" + phraseOf(wanted) + "%"); !bound) {
+        return std::unexpected{bound.error()};
+    }
+
+    std::vector<Hit> hits;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return hits;
+        }
+        Table standing;
+        standing.at = Point{
+            .x = static_cast<float>(statement->real(column(TableWordColumn::Left))),
+            .y = static_cast<float>(statement->real(column(TableWordColumn::Top))),
+        };
+        standing.columns = measuresFrom(statement->blob(column(TableWordColumn::ColumnWidths)));
+        standing.rows = measuresFrom(statement->blob(column(TableWordColumn::RowHeights)));
+        const auto wide = static_cast<std::int64_t>(standing.columns.size());
+        if (wide <= 0) {
+            continue;
+        }
+        const std::int64_t where = statement->integer(column(TableWordColumn::Cell));
+        const Rect box = areaOfCell(standing, CellAt{
+                                                  .row = static_cast<int>(where / wide),
+                                                  .column = static_cast<int>(where % wide),
+                                              });
+        hits.push_back(Hit{
+            .section = statement->integer(column(TableWordColumn::Section)),
+            .page = statement->integer(column(TableWordColumn::Page)),
+            .found =
+                FoundWord{
+                    .pageId = statement->id(column(TableWordColumn::PageId)),
+                    .word =
+                        InkWord{
+                            .text = statement->text(column(TableWordColumn::Text)),
+                            .box = box,
+                            .strokes = {},
+                        },
+                },
+        });
+    }
+}
+
 [[nodiscard]] Result<void> bindAll(std::initializer_list<Result<void>> bindings) {
     for (const Result<void>& bound : bindings) {
         if (!bound) {
@@ -565,6 +788,82 @@ struct Hit {
         }
     }
     return {};
+}
+
+// A box with nothing in it and nothing said about it is not written down, so that a wide table
+// with a few words in it costs the room of those words.
+[[nodiscard]] Result<void> writeCells(sqlite3* database, const Table& table) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database, "INSERT INTO page_table_cells (table_id, ordinal, text, folded, align) "
+                  "VALUES (?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    for (std::size_t step = 0; step < table.cells.size(); ++step) {
+        const TableCell& cell = table.cells[step];
+        if (cell == TableCell{}) {
+            continue;
+        }
+        if (const Result<void> ready = statement->reset(); !ready) {
+            return ready;
+        }
+        const Result<void> bound = bindAll({
+            statement->bindId(1, table.id),
+            statement->bindInteger(2, static_cast<std::int64_t>(step)),
+            statement->bindText(3, cell.text),
+            statement->bindText(4, foldedRun(cell.text)),
+            statement->bindInteger(5, static_cast<std::int64_t>(cell.align)),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> written = statement->run(); !written) {
+            return written;
+        }
+    }
+    return {};
+}
+
+[[nodiscard]] Result<void> removeCells(sqlite3* database, const Uuid& tableId) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(database, "DELETE FROM page_table_cells WHERE table_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, tableId); !bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+[[nodiscard]] Result<void> readCells(sqlite3* database, Table& table) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database, "SELECT ordinal, text, align FROM page_table_cells WHERE table_id = ? "
+                  "ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, table.id); !bound) {
+        return bound;
+    }
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return {};
+        }
+        const auto where =
+            static_cast<std::size_t>(std::max(statement->integer(0), std::int64_t{0}));
+        if (where >= table.cells.size()) {
+            continue;
+        }
+        table.cells[where] = TableCell{
+            .text = statement->text(1),
+            .align = toAlign(statement->integer(2)),
+        };
+    }
 }
 
 [[nodiscard]] Result<std::int64_t> queryInteger(sqlite3* database, std::string_view sql) {
@@ -975,6 +1274,12 @@ Result<std::vector<FoundWord>> NotebookStore::findWords(std::string_view text) c
     }
     hits->insert(hits->end(), std::make_move_iterator(typed->begin()),
                  std::make_move_iterator(typed->end()));
+    Result<std::vector<Hit>> tabled = tableHits(m_database, wanted);
+    if (!tabled) {
+        return std::unexpected{tabled.error()};
+    }
+    hits->insert(hits->end(), std::make_move_iterator(tabled->begin()),
+                 std::make_move_iterator(tabled->end()));
     std::ranges::stable_sort(*hits, {},
                              [](const Hit& hit) { return std::pair{hit.section, hit.page}; });
 
@@ -1204,6 +1509,188 @@ Result<std::vector<PlacedPicture>> NotebookStore::picturesOfPage(const Uuid& pag
         }
         pictures.push_back(pictureFrom(*statement));
     }
+}
+
+Result<void> NotebookStore::insertTable(const Uuid& pageId, const PlacedTable& placed) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database,
+        "INSERT INTO page_tables (id, page_id, ordinal, left_edge, top_edge, column_widths, "
+        "row_heights, font, size, color, align, line_height, marks, rule_color, rule_width) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Table& table = placed.table;
+    const std::vector<std::byte> widths = measureBytes(table.columns);
+    const std::vector<std::byte> heights = measureBytes(table.rows);
+    const Result<void> bound = bindAll({
+        statement->bindId(1, table.id),
+        statement->bindId(2, pageId),
+        statement->bindInteger(3, placed.ordinal),
+        statement->bindReal(4, table.at.x),
+        statement->bindReal(5, table.at.y),
+        statement->bindBlob(6, widths),
+        statement->bindBlob(7, heights),
+        statement->bindText(8, table.style.font),
+        statement->bindReal(9, table.style.size),
+        statement->bindInteger(10, packed(table.style.color)),
+        statement->bindInteger(11, static_cast<std::int64_t>(table.style.align)),
+        statement->bindReal(12, table.style.lineHeight),
+        statement->bindInteger(13, marksOf(table.style)),
+        statement->bindInteger(14, packed(table.rule)),
+        statement->bindReal(15, table.ruleWidth),
+    });
+    if (!bound) {
+        return bound;
+    }
+    if (const Result<void> written = statement->run(); !written) {
+        return written;
+    }
+    if (const Result<void> cells = writeCells(m_database, table); !cells) {
+        return cells;
+    }
+    return transaction->commit();
+}
+
+Result<void> NotebookStore::updateTable(const Uuid& pageId, const Table& table) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE page_tables SET left_edge = ?, top_edge = ?, column_widths = ?, "
+                    "row_heights = ?, font = ?, size = ?, color = ?, align = ?, line_height = ?, "
+                    "marks = ?, rule_color = ?, rule_width = ? WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const std::vector<std::byte> widths = measureBytes(table.columns);
+    const std::vector<std::byte> heights = measureBytes(table.rows);
+    const Result<void> bound = bindAll({
+        statement->bindReal(1, table.at.x),
+        statement->bindReal(2, table.at.y),
+        statement->bindBlob(3, widths),
+        statement->bindBlob(4, heights),
+        statement->bindText(5, table.style.font),
+        statement->bindReal(6, table.style.size),
+        statement->bindInteger(7, packed(table.style.color)),
+        statement->bindInteger(8, static_cast<std::int64_t>(table.style.align)),
+        statement->bindReal(9, table.style.lineHeight),
+        statement->bindInteger(10, marksOf(table.style)),
+        statement->bindInteger(11, packed(table.rule)),
+        statement->bindReal(12, table.ruleWidth),
+        statement->bindId(13, pageId),
+        statement->bindId(14, table.id),
+    });
+    if (!bound) {
+        return bound;
+    }
+    if (const Result<void> written = statement->run(); !written) {
+        return written;
+    }
+    if (const Result<void> gone = removeCells(m_database, table.id); !gone) {
+        return gone;
+    }
+    if (const Result<void> cells = writeCells(m_database, table); !cells) {
+        return cells;
+    }
+    return transaction->commit();
+}
+
+Result<void> NotebookStore::removeTable(const Uuid& pageId, const Uuid& tableId) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    if (const Result<void> gone = removeCells(m_database, tableId); !gone) {
+        return gone;
+    }
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "DELETE FROM page_tables WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, pageId),
+        statement->bindId(2, tableId),
+    });
+    if (!bound) {
+        return bound;
+    }
+    if (const Result<void> removed = statement->run(); !removed) {
+        return removed;
+    }
+    return transaction->commit();
+}
+
+Result<std::size_t> NotebookStore::removeTablesOfPage(const Uuid& pageId) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    Result<sqlite::Statement> cells =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_table_cells WHERE table_id IN "
+                                               "  (SELECT id FROM page_tables WHERE page_id = ?);");
+    if (!cells) {
+        return std::unexpected{cells.error()};
+    }
+    if (const Result<void> bound = cells->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    if (const Result<void> gone = cells->run(); !gone) {
+        return std::unexpected{gone.error()};
+    }
+
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_tables WHERE page_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    if (const Result<void> removed = statement->run(); !removed) {
+        return std::unexpected{removed.error()};
+    }
+    const auto removed = static_cast<std::size_t>(sqlite::changes(m_database));
+    if (const Result<void> committed = transaction->commit(); !committed) {
+        return std::unexpected{committed.error()};
+    }
+    return removed;
+}
+
+Result<std::vector<PlacedTable>> NotebookStore::tablesOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT id, ordinal, left_edge, top_edge, column_widths, row_heights, font, "
+                    "size, color, align, line_height, marks, rule_color, rule_width "
+                    "FROM page_tables WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<PlacedTable> tables;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            break;
+        }
+        tables.push_back(tableFrom(*statement));
+    }
+    for (PlacedTable& placed : tables) {
+        if (const Result<void> cells = readCells(m_database, placed.table); !cells) {
+            return std::unexpected{cells.error()};
+        }
+    }
+    return tables;
 }
 
 Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
@@ -1634,6 +2121,11 @@ Result<void> NotebookStore::emptyTrash() {
         "DELETE FROM page_texts WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM page_pictures WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
+        "DELETE FROM page_table_cells WHERE table_id IN (SELECT id FROM page_tables "
+        "  WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
+        "    OR section_id IN (SELECT id FROM sections WHERE trashed = 1)));"
+        "DELETE FROM page_tables WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"
         "DELETE FROM strokes WHERE page_id IN (SELECT id FROM pages WHERE trashed = 1 "
         "  OR section_id IN (SELECT id FROM sections WHERE trashed = 1));"

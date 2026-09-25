@@ -1,0 +1,117 @@
+#pragma once
+
+#include "core/Error.hpp"
+#include "core/geometry/Distance.hpp"
+#include "core/geometry/Rect.hpp"
+#include "core/id/Uuid.hpp"
+#include "core/model/Color.hpp"
+#include "core/model/TextBox.hpp"
+
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace phvikapen::core {
+
+// One box of a table. What is typed into it belongs to the table; what is written into it with a
+// pen belongs to the page and stays where it was written.
+struct TableCell {
+    std::string text;
+    TextAlign align{TextAlign::Left};
+
+    friend bool operator==(const TableCell&, const TableCell&) = default;
+};
+
+// Where a box sits in the grid, counted from the top left.
+struct CellAt {
+    int row{};
+    int column{};
+
+    friend bool operator==(const CellAt&, const CellAt&) = default;
+};
+
+// A table standing on a page: where its top left corner is, how wide each column runs, how tall
+// each row stands and what is typed in each box. The boxes are kept row by row, so the one at a
+// row and a column is the box at row * columns + column.
+struct Table {
+    static constexpr float kNarrowestColumn = 16.0F;
+    static constexpr float kShortestRow = 14.0F;
+    static constexpr float kDefaultColumnWidth = 110.0F;
+    static constexpr float kDefaultRowHeight = 26.0F;
+    static constexpr int kDefaultColumns = 3;
+    static constexpr int kDefaultRows = 3;
+    static constexpr int kMostColumns = 64;
+    static constexpr int kMostRows = 512;
+    static constexpr float kDefaultRuleWidth = 1.0F;
+    static constexpr float kThinnestRule = 0.25F;
+    static constexpr float kThickestRule = 8.0F;
+    static constexpr std::uint8_t kDefaultRuleShade = 110;
+    static constexpr Color kDefaultRule{
+        .red = kDefaultRuleShade,
+        .green = kDefaultRuleShade,
+        .blue = kDefaultRuleShade,
+        .alpha = Color::kOpaque,
+    };
+
+    Uuid id;
+    Point at{};
+    std::vector<float> columns;
+    std::vector<float> rows;
+    std::vector<TableCell> cells;
+    TextStyle style;
+    Color rule{kDefaultRule};
+    float ruleWidth{kDefaultRuleWidth};
+
+    friend bool operator==(const Table&, const Table&) = default;
+};
+
+struct PlacedTable {
+    std::int64_t ordinal{};
+    Table table;
+
+    friend bool operator==(const PlacedTable&, const PlacedTable&) = default;
+};
+
+[[nodiscard]] int columnsOf(const Table& table) noexcept;
+
+[[nodiscard]] int rowsOf(const Table& table) noexcept;
+
+// A table of empty boxes, as many rows and columns as are asked for, within what one may hold.
+[[nodiscard]] Table gridOf(int rows, int columns);
+
+[[nodiscard]] float widthOf(const Table& table) noexcept;
+
+[[nodiscard]] float heightOf(const Table& table) noexcept;
+
+[[nodiscard]] Rect areaOf(const Table& table) noexcept;
+
+// The box a cell covers, in the units a page is measured in. A cell the table does not hold
+// covers nothing.
+[[nodiscard]] Rect areaOfCell(const Table& table, CellAt cell) noexcept;
+
+[[nodiscard]] std::optional<CellAt> cellUnder(const Table& table, Point at) noexcept;
+
+[[nodiscard]] const TableCell* cellAt(const Table& table, CellAt cell) noexcept;
+
+[[nodiscard]] Table normalized(Table table);
+
+// A table with one row or one column more. Adding at the end is asking for the place one past the
+// last.
+[[nodiscard]] Result<Table> withRowAdded(Table table, int at);
+
+[[nodiscard]] Result<Table> withColumnAdded(Table table, int at);
+
+// A table with one row or one column less. The last row and the last column cannot go: a table
+// with nothing in it is not a table.
+[[nodiscard]] Result<Table> withRowRemoved(Table table, int at);
+
+[[nodiscard]] Result<Table> withColumnRemoved(Table table, int at);
+
+[[nodiscard]] Result<Table> withCellWritten(Table table, CellAt cell, std::string words);
+
+// The same table drawn to a given size, every column and every row given the same share of the
+// change, so that a table dragged by its corner keeps its proportions.
+[[nodiscard]] Table sizedTo(Table table, float width, float height) noexcept;
+
+}

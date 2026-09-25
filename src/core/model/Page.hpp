@@ -6,6 +6,7 @@
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Picture.hpp"
 #include "core/model/StrokeGrid.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <cstdint>
@@ -23,7 +24,7 @@ class Page {
 public:
     explicit Page(const Uuid& id) noexcept;
     Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts = {},
-         std::vector<PlacedPicture> pictures = {});
+         std::vector<PlacedPicture> pictures = {}, std::vector<PlacedTable> tables = {});
 
     [[nodiscard]] const Uuid& id() const noexcept { return m_id; }
 
@@ -74,11 +75,31 @@ public:
 
     [[nodiscard]] std::vector<PlacedPicture> takeAllPictures() noexcept;
 
+    // Tables stand over the ink, as typed text does: a table is a thing in its own right, and its
+    // boxes are empty of everything but what is typed into them.
+    [[nodiscard]] std::span<const PlacedTable> tables() const noexcept { return m_tables; }
+
+    [[nodiscard]] std::int64_t nextTableOrdinal() const noexcept;
+
+    [[nodiscard]] Result<void> insertTable(PlacedTable placed);
+
+    [[nodiscard]] Result<PlacedTable> removeTable(const Uuid& tableId);
+
+    [[nodiscard]] Result<void> replaceTable(Table table);
+
+    [[nodiscard]] const Table* tableAt(const Uuid& tableId) const noexcept;
+
+    // The table a tap lands in: the last one put down, where several lie over one another.
+    [[nodiscard]] const Table* tableUnder(Point at) const noexcept;
+
+    [[nodiscard]] std::vector<PlacedTable> takeAllTables() noexcept;
+
 private:
     Uuid m_id;
     std::vector<PlacedStroke> m_strokes;
     std::vector<PlacedText> m_texts;
     std::vector<PlacedPicture> m_pictures;
+    std::vector<PlacedTable> m_tables;
     StrokeGrid m_grid;
 };
 

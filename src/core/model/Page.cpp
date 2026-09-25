@@ -4,6 +4,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <algorithm>
@@ -18,12 +19,13 @@ namespace phvikapen::core {
 Page::Page(const Uuid& id) noexcept : m_id{id} {}
 
 Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts,
-           std::vector<PlacedPicture> pictures)
+           std::vector<PlacedPicture> pictures, std::vector<PlacedTable> tables)
     : m_id{id}, m_strokes{std::move(strokes)}, m_texts{std::move(texts)},
-      m_pictures{std::move(pictures)} {
+      m_pictures{std::move(pictures)}, m_tables{std::move(tables)} {
     std::ranges::stable_sort(m_strokes, {}, &PlacedStroke::ordinal);
     std::ranges::stable_sort(m_texts, {}, &PlacedText::ordinal);
     std::ranges::stable_sort(m_pictures, {}, &PlacedPicture::ordinal);
+    std::ranges::stable_sort(m_tables, {}, &PlacedTable::ordinal);
     for (const PlacedStroke& placed : m_strokes) {
         if (const std::optional<Rect> bounds = placed.stroke.boundingBox()) {
             m_grid.insert(placed.ordinal, *bounds);
@@ -137,6 +139,68 @@ const TextBox* Page::textUnder(Point at) const noexcept {
 
 std::vector<PlacedPicture> Page::takeAllPictures() noexcept {
     return std::exchange(m_pictures, {});
+}
+
+std::int64_t Page::nextTableOrdinal() const noexcept {
+    return m_tables.empty() ? 0 : m_tables.back().ordinal + 1;
+}
+
+Result<void> Page::insertTable(PlacedTable placed) {
+    const bool idTaken = std::ranges::any_of(m_tables, [&](const PlacedTable& existing) {
+        return existing.table.id == placed.table.id;
+    });
+    if (idTaken) {
+        return makeError(ErrorCode::InvalidArgument, "the page already holds that table");
+    }
+
+    const auto position =
+        std::ranges::lower_bound(m_tables, placed.ordinal, {}, &PlacedTable::ordinal);
+    if (position != m_tables.end() && position->ordinal == placed.ordinal) {
+        return makeError(ErrorCode::InvalidArgument, "another table already has that place");
+    }
+    m_tables.insert(position, std::move(placed));
+    return {};
+}
+
+Result<PlacedTable> Page::removeTable(const Uuid& tableId) {
+    const auto position = std::ranges::find_if(
+        m_tables, [&](const PlacedTable& placed) { return placed.table.id == tableId; });
+    if (position == m_tables.end()) {
+        return makeError(ErrorCode::NotFound, "the page does not hold that table");
+    }
+    PlacedTable removed = std::move(*position);
+    m_tables.erase(position);
+    return removed;
+}
+
+Result<void> Page::replaceTable(Table table) {
+    const auto position = std::ranges::find_if(
+        m_tables, [&](const PlacedTable& placed) { return placed.table.id == table.id; });
+    if (position == m_tables.end()) {
+        return makeError(ErrorCode::NotFound, "the page does not hold that table");
+    }
+    position->table = std::move(table);
+    return {};
+}
+
+const Table* Page::tableAt(const Uuid& tableId) const noexcept {
+    const auto position = std::ranges::find_if(
+        m_tables, [&](const PlacedTable& placed) { return placed.table.id == tableId; });
+    return position == m_tables.end() ? nullptr : &position->table;
+}
+
+const Table* Page::tableUnder(Point at) const noexcept {
+    for (const PlacedTable& placed : std::ranges::reverse_view{m_tables}) {
+        const Rect area = areaOf(placed.table);
+        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
+            return &placed.table;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<PlacedTable> Page::takeAllTables() noexcept {
+    return std::exchange(m_tables, {});
 }
 
 std::int64_t Page::nextPictureOrdinal() const noexcept {

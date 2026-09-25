@@ -8,6 +8,7 @@ add_executable(phvikapen_tests
     core/NotebookOutlineTest.cpp
     core/NotebookPicturesTest.cpp
     core/NotebookStoreTest.cpp
+    core/NotebookTablesTest.cpp
     core/NotebookTextsTest.cpp
     core/NotebookWordsTest.cpp
     core/OutlineCommandsTest.cpp
@@ -29,6 +30,7 @@ add_executable(phvikapen_tests
     core/StrokeSplineTest.cpp
     core/StrokeSteadierTest.cpp
     core/StrokeTransformTest.cpp
+    core/TableTest.cpp
     core/StrokeTest.cpp
     core/TextBoxTest.cpp
     core/TextCommandsTest.cpp

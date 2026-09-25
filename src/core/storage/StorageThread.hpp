@@ -27,6 +27,7 @@ struct LoadedPage {
     std::vector<PlacedStroke> strokes;
     std::vector<PlacedText> texts;
     std::vector<PlacedPicture> pictures;
+    std::vector<PlacedTable> tables;
 };
 
 class StorageThread {

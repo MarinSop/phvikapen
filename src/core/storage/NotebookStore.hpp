@@ -7,6 +7,7 @@
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/text/InkWord.hpp"
 
@@ -22,7 +23,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 8;
+inline constexpr int kNotebookSchemaVersion = 9;
 
 struct TrashedItem {
     Uuid id;
@@ -72,6 +73,12 @@ public:
     [[nodiscard]] Result<void> removePicture(const Uuid& pageId, const Uuid& pictureId);
     [[nodiscard]] Result<std::size_t> removePicturesOfPage(const Uuid& pageId);
     [[nodiscard]] Result<std::vector<PlacedPicture>> picturesOfPage(const Uuid& pageId) const;
+
+    [[nodiscard]] Result<void> insertTable(const Uuid& pageId, const PlacedTable& placed);
+    [[nodiscard]] Result<void> updateTable(const Uuid& pageId, const Table& table);
+    [[nodiscard]] Result<void> removeTable(const Uuid& pageId, const Uuid& tableId);
+    [[nodiscard]] Result<std::size_t> removeTablesOfPage(const Uuid& pageId);
+    [[nodiscard]] Result<std::vector<PlacedTable>> tablesOfPage(const Uuid& pageId) const;
 
     [[nodiscard]] Result<NotebookOutline> readOutline() const;
 

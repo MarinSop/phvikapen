@@ -59,6 +59,7 @@ Result<void> ClearPageCommand::apply() {
     m_removed = m_page->takeAll();
     m_removedTexts = m_page->takeAllTexts();
     m_removedPictures = m_page->takeAllPictures();
+    m_removedTables = m_page->takeAllTables();
     m_storage->removeStrokesOfPage(m_page->id());
     m_storage->submit([pageId = m_page->id()](NotebookStore& store) {
         return store.removeTextsOfPage(pageId).transform([](std::size_t) {});
@@ -66,10 +67,21 @@ Result<void> ClearPageCommand::apply() {
     m_storage->submit([pageId = m_page->id()](NotebookStore& store) {
         return store.removePicturesOfPage(pageId).transform([](std::size_t) {});
     });
+    m_storage->submit([pageId = m_page->id()](NotebookStore& store) {
+        return store.removeTablesOfPage(pageId).transform([](std::size_t) {});
+    });
     return {};
 }
 
 Result<void> ClearPageCommand::revert() {
+    for (PlacedTable& placed : std::exchange(m_removedTables, {})) {
+        if (const Result<void> inserted = m_page->insertTable(placed); !inserted) {
+            return inserted;
+        }
+        m_storage->submit([pageId = m_page->id(), placed](NotebookStore& store) {
+            return store.insertTable(pageId, placed);
+        });
+    }
     for (PlacedPicture& placed : std::exchange(m_removedPictures, {})) {
         if (const Result<void> inserted = m_page->insertPicture(placed); !inserted) {
             return inserted;

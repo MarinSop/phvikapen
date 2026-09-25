@@ -29,6 +29,7 @@ target_sources(phvikapen_core
         model/PageStyle.cpp
         model/Picture.cpp
         model/StrokeGrid.cpp
+        model/Table.cpp
         model/TextBox.cpp
         storage/NotebookStore.cpp
         storage/Sqlite.cpp
@@ -41,6 +42,7 @@ target_sources(phvikapen_core
         undo/OutlineCommands.cpp
         undo/PictureCommands.cpp
         undo/StrokeCommands.cpp
+        undo/TableCommands.cpp
         undo/TextCommands.cpp
         undo/UndoStack.cpp
     PUBLIC
@@ -73,6 +75,7 @@ target_sources(phvikapen_core
             model/PageStyle.hpp
             model/Picture.hpp
             model/StrokeGrid.hpp
+            model/Table.hpp
             model/TextBox.hpp
             storage/NotebookStore.hpp
             storage/StorageThread.hpp
@@ -84,6 +87,7 @@ target_sources(phvikapen_core
             undo/OutlineCommands.hpp
             undo/PictureCommands.hpp
             undo/StrokeCommands.hpp
+            undo/TableCommands.hpp
             undo/TextCommands.hpp
             undo/UndoStack.hpp
             "${generated_dir}/core/version.hpp"

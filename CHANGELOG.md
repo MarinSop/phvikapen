@@ -77,6 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   degrees while Shift is held, and inside the frame carries it about. Delete takes it away. Moving,
   sizing and turning a picture is one change however long the drag, and every one of them can be
   undone.
+- A notebook can hold tables that stand on a page: where the table sits, how wide each column runs,
+  how tall each row stands and what is typed in each box. Rows and columns can be added and taken
+  away, boxes written in, and the whole table moved and sized, each as one change that can be
+  undone. A box with nothing in it costs nothing, and a search of the notebook now finds words
+  typed into a table where that box stands, alongside words typed and written anywhere else.
 
 ### Fixed
 

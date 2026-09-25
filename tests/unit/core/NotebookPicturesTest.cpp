@@ -142,7 +142,7 @@ TEST(NotebookPicturesTest, OpensANotebookAtTheVersionThatHoldsPictures) {
     ASSERT_TRUE(store.has_value()) << store.error().message;
 
     EXPECT_EQ(store->schemaVersion().value(), kNotebookSchemaVersion);
-    EXPECT_EQ(kNotebookSchemaVersion, 8);
+    EXPECT_GE(kNotebookSchemaVersion, 8);
 }
 
 struct OpenNotebook {

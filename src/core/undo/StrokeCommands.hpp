@@ -44,6 +44,7 @@ private:
     std::vector<PlacedStroke> m_removed;
     std::vector<PlacedText> m_removedTexts;
     std::vector<PlacedPicture> m_removedPictures;
+    std::vector<PlacedTable> m_removedTables;
 };
 
 class MoveStrokesCommand final : public ICommand {
