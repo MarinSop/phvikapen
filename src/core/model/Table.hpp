@@ -110,8 +110,14 @@ struct PlacedTable {
 
 [[nodiscard]] Result<Table> withCellWritten(Table table, CellAt cell, std::string words);
 
+[[nodiscard]] Result<Table> withCellAligned(Table table, CellAt cell, TextAlign align);
+
 // The same table drawn to a given size, every column and every row given the same share of the
 // change, so that a table dragged by its corner keeps its proportions.
 [[nodiscard]] Table sizedTo(Table table, float width, float height) noexcept;
+
+// The same table with its columns and rows measured out one by one, for a rule pulled about on its
+// own. Measures that make no sense are put right, and a table is never left without any.
+[[nodiscard]] Table spreadAs(Table table, std::vector<float> columns, std::vector<float> rows);
 
 }

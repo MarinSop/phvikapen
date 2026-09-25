@@ -232,6 +232,24 @@ Result<Table> withCellWritten(Table table, CellAt cell, std::string words) {
     return table;
 }
 
+Result<Table> withCellAligned(Table table, CellAt cell, TextAlign align) {
+    if (!holds(table, cell)) {
+        return makeError(ErrorCode::InvalidArgument, "the table has no such box");
+    }
+    table.cells[indexOf(table, cell)].align = align;
+    return table;
+}
+
+Table spreadAs(Table table, std::vector<float> columns, std::vector<float> rows) {
+    if (!columns.empty()) {
+        table.columns = std::move(columns);
+    }
+    if (!rows.empty()) {
+        table.rows = std::move(rows);
+    }
+    return normalized(std::move(table));
+}
+
 Table sizedTo(Table table, float width, float height) noexcept {
     spreadOver(table.columns, width, Table::kNarrowestColumn);
     spreadOver(table.rows, height, Table::kShortestRow);

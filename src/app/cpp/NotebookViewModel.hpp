@@ -40,6 +40,7 @@
 #include <QString>
 #include <QTimer>
 #include <QUrl>
+#include <QVariantList>
 #include <QVariantMap>
 #include <QtQmlIntegration>
 
@@ -343,6 +344,16 @@ public:
     Q_INVOKABLE void removeRow(const QString& tableId, int at);
 
     Q_INVOKABLE void removeColumn(const QString& tableId, int at);
+
+    // Which box of a table a point of the column of sheets falls in, if any.
+    Q_INVOKABLE [[nodiscard]] QVariantMap cellUnder(const QString& tableId, qreal columnX,
+                                                    qreal columnY) const;
+
+    // The columns and rows of a table measured out one by one, for a rule pulled about on its own.
+    Q_INVOKABLE void spreadTable(const QString& tableId, const QVariantList& widths,
+                                 const QVariantList& heights);
+
+    Q_INVOKABLE void alignCell(const QString& tableId, int row, int column, int align);
 
     // Where a picture stands, how large it is drawn and how far it is turned. The change is read
     // from `columnX`, `columnY`, `boxWidth`, `boxHeight` and `turn`.

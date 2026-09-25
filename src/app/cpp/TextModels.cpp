@@ -16,14 +16,10 @@
 #include <vector>
 
 namespace phvikapen::app {
-namespace {
-
-[[nodiscard]] core::TextAlign alignOf(int value) {
+core::TextAlign alignOf(int value) {
     return value >= 0 && value <= static_cast<int>(core::TextAlign::Justify)
                ? static_cast<core::TextAlign>(value)
                : core::TextAlign::Left;
-}
-
 }
 
 TextListModel::TextListModel(QObject* parent) : QAbstractListModel(parent) {}

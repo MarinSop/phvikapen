@@ -160,6 +160,35 @@ TEST(TableTest, RefusesARowOrAColumnThatIsNotThere) {
     EXPECT_FALSE(withCellWritten(table, CellAt{.row = 9, .column = 0}, "nowhere").has_value());
 }
 
+TEST(TableTest, LinesTheWordsOfOneBoxUpOnTheirOwn) {
+    const Table table = threeByTwo();
+
+    const Result<Table> lined =
+        withCellAligned(table, CellAt{.row = 1, .column = 0}, TextAlign::Right);
+
+    ASSERT_TRUE(lined.has_value()) << lined.error().message;
+    EXPECT_EQ(cellAt(*lined, CellAt{.row = 1, .column = 0})->align, TextAlign::Right);
+    EXPECT_EQ(cellAt(*lined, CellAt{.row = 0, .column = 0})->align, TextAlign::Left);
+    EXPECT_FALSE(withCellAligned(table, CellAt{.row = 9, .column = 0}, TextAlign::Right));
+}
+
+TEST(TableTest, MeasuresOutEveryColumnAndRowOnItsOwn) {
+    const Table table = spreadAs(threeByTwo(), {70.0F, 30.0F}, {});
+
+    EXPECT_FLOAT_EQ(table.columns.front(), 70.0F);
+    EXPECT_FLOAT_EQ(table.columns.back(), 30.0F);
+    // The rows were not asked about, so they stand as they were.
+    EXPECT_EQ(rowsOf(table), 3);
+    EXPECT_EQ(table.rows, normalized(threeByTwo()).rows);
+}
+
+TEST(TableTest, MeasuresThatMakeNoSenseArePutRight) {
+    const Table table = spreadAs(threeByTwo(), {1.0F, -8.0F}, {});
+
+    EXPECT_FLOAT_EQ(table.columns.front(), Table::kNarrowestColumn);
+    EXPECT_FLOAT_EQ(table.columns.back(), Table::kNarrowestColumn);
+}
+
 TEST(TableTest, GivesEveryColumnAndRowTheSameShareOfASizeChange) {
     const Table table = sizedTo(threeByTwo(), 200.0F, 120.0F);
 

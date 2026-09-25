@@ -81,6 +81,9 @@ private:
     std::vector<TextItem> m_items;
 };
 
+// How the lines of a run of type line up, as a number crosses from QML and back.
+[[nodiscard]] core::TextAlign alignOf(int value);
+
 // What a text box wears, as QML hands it about.
 [[nodiscard]] QVariantMap mapOfStyle(const core::TextStyle& style);
 

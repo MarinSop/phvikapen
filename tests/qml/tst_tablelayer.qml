@@ -78,7 +78,7 @@ TestCase {
         const tableId = notebook.pickedTable;
         const box = notebook.pickedTableBox;
 
-        layer.openCellAt(Qt.point(box.columnX + box.widths[0] + 2, box.columnY + box.heights[0] + 2));
+        layer.openCellAt(tableId, Qt.point(box.columnX + box.widths[0] + 2, box.columnY + box.heights[0] + 2));
 
         compare(layer.editingRow, 1);
         compare(layer.editingColumn, 1);
@@ -96,7 +96,7 @@ TestCase {
         notebook.addTable(2, 2);
         const box = notebook.pickedTableBox;
 
-        layer.openCellAt(Qt.point(box.columnX - 20, box.columnY - 20));
+        layer.openCellAt(notebook.pickedTable, Qt.point(box.columnX - 20, box.columnY - 20));
 
         compare(layer.editingRow, -1);
         compare(layer.editingColumn, -1);
@@ -108,7 +108,7 @@ TestCase {
         const layer = openLayer(notebook, tools);
         notebook.addTable(2, 2);
 
-        layer.openCell(0, 0);
+        layer.openCell(notebook.pickedTable, 0, 0);
         layer.stepOn(1);
 
         compare(layer.editingRow, 0);
@@ -125,17 +125,18 @@ TestCase {
         compare(layer.editingColumn, 1);
     }
 
-    function test_theBoxAfterTheLastIsNeverOpened() {
+    function test_theBoxBeforeTheFirstIsNeverOpened() {
         const notebook = openNotebook(newNotebookPath());
         const tools = pickingTools();
         const layer = openLayer(notebook, tools);
         notebook.addTable(1, 2);
 
-        layer.openCell(0, 1);
-        layer.stepOn(1);
+        layer.openCell(notebook.pickedTable, 0, 0);
+        layer.stepOn(-1);
 
         compare(layer.editingRow, 0);
-        compare(layer.editingColumn, 1);
+        compare(layer.editingColumn, 0);
+        compare(notebook.pickedTableBox.heights.length, 1);
     }
 
     function test_reachingForAnotherToolLetsGoOfTheTable() {
@@ -143,7 +144,7 @@ TestCase {
         const tools = pickingTools();
         const layer = openLayer(notebook, tools);
         notebook.addTable(2, 2);
-        layer.openCell(0, 0);
+        layer.openCell(notebook.pickedTable, 0, 0);
 
         tools.currentTool = ToolViewModel.Pen;
 
@@ -159,9 +160,107 @@ TestCase {
 
         compare(layer.editingCell, -1);
 
-        layer.openCell(1, 1);
+        layer.openCell(notebook.pickedTable, 1, 1);
 
         compare(layer.editingCell, 3);
+    }
+
+    function test_oneTapTakesHoldOfTheTableAndOpensTheBoxItLandedIn() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        // What the notebook says about the table it holds follows the table, so the numbers are
+        // taken down before it is let go of.
+        const atX = notebook.pickedTableBox.columnX + 4;
+        const atY = notebook.pickedTableBox.columnY + 4;
+        notebook.pickedTable = "";
+        layer.leave();
+
+        // What a tap does, without going through the pointer.
+        notebook.pickedTable = notebook.tableUnder(atX, atY);
+        layer.openCellAt(notebook.pickedTable, Qt.point(atX, atY));
+
+        compare(notebook.pickedTable, tableId);
+        compare(layer.editingRow, 0);
+        compare(layer.editingColumn, 0);
+    }
+
+    function test_walkingOffTheEndOfATableAddsARow() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+
+        layer.openCell(tableId, 1, 1);
+        layer.stepOn(1);
+
+        compare(notebook.pickedTableBox.heights.length, 3);
+        compare(layer.editingRow, 2);
+        compare(layer.editingColumn, 0);
+    }
+
+    function test_aRuleBetweenTwoColumnsIsPulledAboutWithoutChangingTheWidth() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 3);
+        const tableId = notebook.pickedTable;
+        // The measures the notebook publishes follow the table, so they are taken down as plain
+        // numbers before it is asked to change.
+        const first = notebook.pickedTableBox.widths[0];
+        const second = notebook.pickedTableBox.widths[1];
+        const third = notebook.pickedTableBox.widths[2];
+        const wide = first + second + third;
+
+        layer.pullColumn(1, 20);
+
+        // The ruling follows the pointer before anything is written down.
+        compare(layer.widths[0], first + 20);
+        compare(layer.widths[1], second - 20);
+
+        layer.settleRules();
+
+        const now = notebook.pickedTableBox.widths;
+        fuzzyCompare(now[0], first + 20, 0.01);
+        fuzzyCompare(now[1], second - 20, 0.01);
+        fuzzyCompare(now[2], third, 0.01);
+        fuzzyCompare(now[0] + now[1] + now[2], wide, 0.01);
+
+        notebook.undo();
+
+        fuzzyCompare(notebook.pickedTableBox.widths[0], first, 0.01);
+    }
+
+    function test_ARuleIsNeverPulledPastWhatABoxNeeds() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = pickingTools();
+        const layer = openLayer(notebook, tools);
+        notebook.addTable(2, 2);
+        const first = notebook.pickedTableBox.widths[0];
+        const second = notebook.pickedTableBox.widths[1];
+
+        layer.pullColumn(1, 100000);
+
+        compare(layer.widths[1], layer.narrowest);
+        fuzzyCompare(layer.widths[0], first + second - layer.narrowest, 0.01);
+    }
+
+    function test_theWordsOfABoxCanBeLinedUpOnTheirOwn() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+
+        notebook.alignCell(tableId, 1, 0, 2);
+
+        compare(notebook.pickedTableBox.aligns[2], 2);
+        compare(notebook.pickedTableBox.aligns[0], 0);
+
+        notebook.undo();
+
+        compare(notebook.pickedTableBox.aligns[2], 0);
     }
 
     height: 300

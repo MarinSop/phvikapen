@@ -227,6 +227,28 @@ Item {
 
         onTriggered: root.notebook.removeRow(root.notebook.pickedTable, root.rowInHand)
     }
+    // How the words of the box in hand line up, counted the way a run of type counts it.
+    readonly property Action alignCellLeft: Action {
+        enabled: root.hasTable
+        icon.source: Icons.alignLeft
+        text: qsTr("Align Left")
+
+        onTriggered: root.alignTheBoxInHand(0)
+    }
+    readonly property Action alignCellCentre: Action {
+        enabled: root.hasTable
+        icon.source: Icons.alignCenter
+        text: qsTr("Center")
+
+        onTriggered: root.alignTheBoxInHand(1)
+    }
+    readonly property Action alignCellRight: Action {
+        enabled: root.hasTable
+        icon.source: Icons.alignRight
+        text: qsTr("Align Right")
+
+        onTriggered: root.alignTheBoxInHand(2)
+    }
     readonly property Action removeColumn: Action {
         enabled: root.hasTable
         text: qsTr("Delete Column")
@@ -484,6 +506,12 @@ Item {
             root.closeAsked(index);
         } else {
             root.notebooks.closeNotebook(index);
+        }
+    }
+
+    function alignTheBoxInHand(align) {
+        if (root.hasTable) {
+            root.notebook.alignCell(root.notebook.pickedTable, root.rowInHand, root.columnInHand, align);
         }
     }
 

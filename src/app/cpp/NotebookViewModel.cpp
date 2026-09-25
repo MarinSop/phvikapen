@@ -3631,6 +3631,63 @@ void NotebookViewModel::removeColumn(const QString& tableId, int at) {
                  [at](core::Table table) { return core::withColumnRemoved(std::move(table), at); });
 }
 
+QVariantMap NotebookViewModel::cellUnder(const QString& tableId, qreal columnX,
+                                         qreal columnY) const {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found || m_canvas.isNull()) {
+        return {};
+    }
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(found->first));
+    const std::optional<core::CellAt> cell =
+        core::cellUnder(found->second, core::Point{
+                                           .x = static_cast<float>(columnX - sheet.x()),
+                                           .y = static_cast<float>(columnY - sheet.y()),
+                                       });
+    if (!cell) {
+        return {};
+    }
+    return QVariantMap{
+        {"row", cell->row},
+        {"column", cell->column},
+    };
+}
+
+void NotebookViewModel::spreadTable(const QString& tableId, const QVariantList& widths,
+                                    const QVariantList& heights) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    std::vector<float> columns;
+    columns.reserve(static_cast<std::size_t>(widths.size()));
+    for (const QVariant& width : widths) {
+        columns.push_back(static_cast<float>(width.toReal()));
+    }
+    std::vector<float> rows;
+    rows.reserve(static_cast<std::size_t>(heights.size()));
+    for (const QVariant& height : heights) {
+        rows.push_back(static_cast<float>(height.toReal()));
+    }
+    core::Table wanted = core::spreadAs(found->second, std::move(columns), std::move(rows));
+    if (wanted == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(wanted));
+}
+
+void NotebookViewModel::alignCell(const QString& tableId, int row, int column, int align) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> aligned = core::withCellAligned(
+        found->second, core::CellAt{.row = row, .column = column}, alignOf(align));
+    if (!aligned || *aligned == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(*aligned));
+}
+
 void NotebookViewModel::publishTables() {
     std::vector<TableItem> items;
     if (!m_canvas.isNull()) {

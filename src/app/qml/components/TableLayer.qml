@@ -23,13 +23,21 @@ Item {
     property real liveX: 0
     property real liveY: 0
     property string loadedId: ""
+    // The measures while a rule is being pulled about, before they are written down.
+    property var pulledHeights: []
+    property var pulledWidths: []
     readonly property real boxLeft: (((root.holding ? root.picked.columnX : 0) - root.origin.x) * root.zoom) + root.liveX
     readonly property real boxTop: (((root.holding ? root.picked.columnY : 0) - root.origin.y) * root.zoom) + root.liveY
     readonly property real cellPadding: 3
     readonly property int columns: root.widths.length
     readonly property int editingCell: root.typing ? (root.editingRow * Math.max(1, root.columns)) + root.editingColumn : -1
     readonly property int gripSize: Math.round(9 * Theme.scale)
-    readonly property var heights: root.holding ? root.picked.heights : []
+    readonly property real grabRoom: Math.round(9 * Theme.scale)
+    readonly property var keptHeights: root.holding ? root.picked.heights : []
+    readonly property var keptWidths: root.holding ? root.picked.widths : []
+    readonly property var heights: root.pulledHeights.length > 0 ? root.pulledHeights : root.keptHeights
+    readonly property real narrowest: 16
+    readonly property real shortest: 14
     readonly property bool holding: root.pickedId !== "" && root.picked.tableId !== undefined
     readonly property real onPageTall: Math.max(8, root.spanOf(root.heights) + root.liveTall)
     readonly property real onPageWide: Math.max(8, root.spanOf(root.widths) + root.liveWide)
@@ -40,7 +48,7 @@ Item {
     readonly property string pickedId: root.notebook === null ? "" : root.notebook.pickedTable
     readonly property bool picking: root.tools !== null && root.tools.currentTool === ToolViewModel.Selection
     readonly property bool typing: root.editingRow >= 0 && root.editingColumn >= 0
-    readonly property var widths: root.holding ? root.picked.widths : []
+    readonly property var widths: root.pulledWidths.length > 0 ? root.pulledWidths : root.keptWidths
     readonly property real zoom: root.canvas === null ? 1 : root.canvas.zoom
 
     // What is in the editor becomes what its box says, but only for the table the editor was
@@ -94,38 +102,90 @@ Item {
 
     // A box is opened with what it already says in it, and what the box before said is written
     // down first.
-    function openCell(row, column) {
-        if (root.notebook === null || row < 0 || column < 0) {
+    function openCell(tableId, row, column) {
+        if (root.notebook === null || tableId === "" || row < 0 || column < 0) {
             return;
         }
-        if (row === root.editingRow && column === root.editingColumn && root.loadedId === root.pickedId) {
+        if (row === root.editingRow && column === root.editingColumn && root.loadedId === tableId) {
             return;
         }
         root.leave();
         root.editingRow = row;
         root.editingColumn = column;
-        root.loadedId = root.pickedId;
-        editor.text = root.notebook.wordsOfCell(root.pickedId, row, column);
+        root.loadedId = tableId;
+        editor.text = root.notebook.wordsOfCell(tableId, row, column);
         editor.forceActiveFocus();
         Qt.callLater(root.takeTheKeyboard);
     }
 
-    // The box a tap landed in.
-    function openCellAt(at) {
-        root.openCell(root.lineUnder(root.heights, at.y - root.picked.columnY), root.lineUnder(root.widths, at.x - root.picked.columnX));
+    // The box a tap landed in, asked of the table itself rather than of what has been published,
+    // so that a table only just taken hold of answers for the tap that took it.
+    function openCellAt(tableId, at) {
+        const cell = root.notebook.cellUnder(tableId, at.x, at.y);
+        if (cell.row === undefined) {
+            return;
+        }
+        root.openCell(tableId, cell.row, cell.column);
     }
 
-    // The next box along, or the one before it, running on into the row below.
+    // One rule between two columns pulled about: what one column gains the next gives up, so the
+    // table stays as wide as it was.
+    function pullColumn(at, by) {
+        root.pulledWidths = root.pulledMeasures(root.keptWidths, at, by, root.narrowest);
+    }
+
+    function pullRow(at, by) {
+        root.pulledHeights = root.pulledMeasures(root.keptHeights, at, by, root.shortest);
+    }
+
+    function pulledMeasures(kept, at, by, smallest) {
+        if (at < 1 || at >= kept.length) {
+            return [];
+        }
+        const before = kept[at - 1];
+        const after = kept[at];
+        const moved = Math.max(smallest - before, Math.min(after - smallest, by));
+        const put = [];
+        for (let step = 0; step < kept.length; ++step) {
+            put.push(kept[step]);
+        }
+        put[at - 1] = before + moved;
+        put[at] = after - moved;
+        return put;
+    }
+
+    // Where the rules have been pulled to becomes where they stand.
+    function settleRules() {
+        if (root.holding && (root.pulledWidths.length > 0 || root.pulledHeights.length > 0)) {
+            root.notebook.spreadTable(root.pickedId, root.pulledWidths, root.pulledHeights);
+        }
+        root.pulledWidths = [];
+        root.pulledHeights = [];
+    }
+
+    // The next box along, or the one before it, running on into the row below. Walking off the
+    // end adds a row, as it does everywhere else.
     function stepOn(step) {
         if (!root.typing) {
             return;
         }
+        const tableId = root.pickedId;
         const wide = Math.max(1, root.columns);
+        const rows = root.heights.length;
         const at = (root.editingRow * wide) + root.editingColumn + step;
-        if (at < 0 || at >= wide * root.heights.length) {
+        if (at < 0) {
             return;
         }
-        root.openCell(Math.floor(at / wide), at % wide);
+        if (at >= wide * rows) {
+            if (step <= 0) {
+                return;
+            }
+            root.leave();
+            root.notebook.addRow(tableId, rows);
+            root.openCell(tableId, rows, 0);
+            return;
+        }
+        root.openCell(tableId, Math.floor(at / wide), at % wide);
     }
 
     // Where the table has been carried and pulled to becomes where it stands.
@@ -183,6 +243,8 @@ Item {
             id: drawn
 
             hiddenCell: drawn.tableId === root.pickedId ? root.editingCell : -1
+            liveHeights: drawn.tableId === root.pickedId ? root.pulledHeights : []
+            liveWidths: drawn.tableId === root.pickedId ? root.pulledWidths : []
             origin: root.origin
             zoom: root.zoom
         }
@@ -208,9 +270,10 @@ Item {
             if (found !== root.pickedId) {
                 root.leave();
                 root.notebook.pickedTable = found;
-                return;
             }
-            root.openCellAt(at);
+            // One tap both takes hold of the table and opens the box it landed in, the way every
+            // other application behaves.
+            root.openCellAt(found, at);
         }
     }
 
@@ -296,6 +359,90 @@ Item {
                 // with what was typed.
                 Keys.onTabPressed: root.stepOn(1)
                 Keys.onBacktabPressed: root.stepOn(-1)
+            }
+        }
+    }
+
+    // The rules between the columns can be pulled about, so that one column may be wider than the
+    // rest, and likewise the rules between the rows.
+    Repeater {
+        model: Math.max(0, root.columns - 1)
+
+        Rectangle {
+            id: downRule
+
+            required property int index
+            readonly property int at: downRule.index + 1
+
+            color: pullDown.active ? Theme.accent : "transparent"
+            height: root.onPageTall * root.zoom
+            objectName: "tableColumnRule" + downRule.index
+            visible: root.picking && root.holding
+            width: root.grabRoom
+            x: root.boxLeft + (root.edgeBefore(root.widths, downRule.at) * root.zoom) - (width / 2)
+            y: root.boxTop
+
+            HoverHandler {
+                cursorShape: Qt.SplitHCursor
+            }
+
+            DragHandler {
+                id: pullDown
+
+                target: null
+                yAxis.enabled: false
+
+                onActiveChanged: {
+                    if (!pullDown.active) {
+                        root.settleRules();
+                    }
+                }
+                onTranslationChanged: {
+                    if (pullDown.active && root.holding) {
+                        root.pullColumn(downRule.at, pullDown.activeTranslation.x / root.zoom);
+                    }
+                }
+            }
+        }
+    }
+
+    Repeater {
+        model: Math.max(0, root.heights.length - 1)
+
+        Rectangle {
+            id: acrossRule
+
+            required property int index
+            readonly property int at: acrossRule.index + 1
+
+            color: pullAcross.active ? Theme.accent : "transparent"
+            height: root.grabRoom
+            objectName: "tableRowRule" + acrossRule.index
+            visible: root.picking && root.holding
+            width: root.onPageWide * root.zoom
+            x: root.boxLeft
+            y: root.boxTop + (root.edgeBefore(root.heights, acrossRule.at) * root.zoom) - (height / 2)
+
+            HoverHandler {
+                cursorShape: Qt.SplitVCursor
+            }
+
+            DragHandler {
+                id: pullAcross
+
+                target: null
+                xAxis.enabled: false
+
+                onActiveChanged: {
+                    if (!pullAcross.active) {
+                        root.settleRules();
+                    }
+                }
+                onTranslationChanged: {
+                    if (pullAcross.active && root.holding) {
+                        root.pullRow(acrossRule.at, pullAcross.activeTranslation.y / root.zoom);
+                    }
+                }
             }
         }
     }

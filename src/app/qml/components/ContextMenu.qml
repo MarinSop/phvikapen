@@ -123,6 +123,26 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.alignCellLeft
+        objectName: "contextAlignCellLeft"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.alignCellCentre
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.alignCellRight
+        visible: root.onTable
+    }
+
+    MenuLine {
+        visible: root.onTable
+    }
+
+    MenuCommand {
         action: root.actions.addRowAbove
         objectName: "contextAddRowAbove"
         visible: root.onTable

@@ -19,14 +19,20 @@ Item {
     required property var words
     // Which box the layer is typing in, so that it is not drawn twice.
     property int hiddenCell: -1
+    // The measures while a rule is being pulled about, so that the ruling follows the pointer
+    // before anything is written down.
+    property var liveHeights: []
+    property var liveWidths: []
     required property point origin
     required property color rule
     required property real ruleWidth
     required property real zoom
     readonly property real cellPadding: 3
-    readonly property int columns: Math.max(1, root.widths.length)
-    readonly property real onPageTall: root.spanOf(root.heights)
-    readonly property real onPageWide: root.spanOf(root.widths)
+    readonly property var acrossNow: root.liveWidths.length > 0 ? root.liveWidths : root.widths
+    readonly property var downNow: root.liveHeights.length > 0 ? root.liveHeights : root.heights
+    readonly property int columns: Math.max(1, root.acrossNow.length)
+    readonly property real onPageTall: root.spanOf(root.downNow)
+    readonly property real onPageWide: root.spanOf(root.acrossNow)
     // A point of type, in the units a page is measured in.
     readonly property real pageUnitsPerPoint: 96 / 72
 
@@ -57,7 +63,7 @@ Item {
         }
 
         Repeater {
-            model: root.widths.length + 1
+            model: root.acrossNow.length + 1
 
             Rectangle {
                 id: downLine
@@ -67,13 +73,13 @@ Item {
                 color: root.rule
                 height: root.onPageTall
                 width: root.ruleWidth
-                x: root.edgeBefore(root.widths, downLine.index) - (root.ruleWidth / 2)
+                x: root.edgeBefore(root.acrossNow, downLine.index) - (root.ruleWidth / 2)
                 y: 0
             }
         }
 
         Repeater {
-            model: root.heights.length + 1
+            model: root.downNow.length + 1
 
             Rectangle {
                 id: acrossLine
@@ -84,7 +90,7 @@ Item {
                 height: root.ruleWidth
                 width: root.onPageWide
                 x: 0
-                y: root.edgeBefore(root.heights, acrossLine.index) - (root.ruleWidth / 2)
+                y: root.edgeBefore(root.downNow, acrossLine.index) - (root.ruleWidth / 2)
             }
         }
 
@@ -106,15 +112,15 @@ Item {
                 font.pixelSize: Math.max(1, root.style.size * root.pageUnitsPerPoint)
                 font.strikeout: root.style.struckOut
                 font.underline: root.style.underline
-                height: Math.max(1, root.heights[label.row] - (2 * root.cellPadding))
+                height: Math.max(1, root.downNow[label.row] - (2 * root.cellPadding))
                 horizontalAlignment: [Text.AlignLeft, Text.AlignHCenter, Text.AlignRight, Text.AlignJustify][root.aligns[label.index]]
                 objectName: "tableCell"
                 text: root.words[label.index]
                 visible: label.index !== root.hiddenCell
-                width: Math.max(1, root.widths[label.column] - (2 * root.cellPadding))
+                width: Math.max(1, root.acrossNow[label.column] - (2 * root.cellPadding))
                 wrapMode: Text.Wrap
-                x: root.edgeBefore(root.widths, label.column) + root.cellPadding
-                y: root.edgeBefore(root.heights, label.row) + root.cellPadding
+                x: root.edgeBefore(root.acrossNow, label.column) + root.cellPadding
+                y: root.edgeBefore(root.downNow, label.row) + root.cellPadding
             }
         }
     }
