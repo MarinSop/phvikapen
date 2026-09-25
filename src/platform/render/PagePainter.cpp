@@ -6,6 +6,7 @@
 #include "core/ink/StrokeOutline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "platform/render/PaperLook.hpp"
 
@@ -27,6 +28,7 @@
 #include <cmath>
 #include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace phvikapen::platform::render {
@@ -34,6 +36,7 @@ namespace {
 
 constexpr float kInkMargin = core::millimeters(10.0F);
 constexpr float kMaximumRules = 4096.0F;
+constexpr float kCellPadding = 3.0F;
 
 [[nodiscard]] QColor toColor(const Rgba& color) {
     return QColor::fromRgbF(color[0], color[1], color[2], color[3]);
@@ -153,6 +156,24 @@ void paintRuling(QPainter& painter, const core::PageStyle& style, const core::Re
 
 // Type is laid out the same way the window lays it out: the same font, the same width to run in
 // and no margin of its own, so that what is printed is what was seen.
+void layOutWords(QTextDocument& document, const core::TextStyle& style, core::TextAlign align,
+                 const std::string& words, float width) {
+    document.setDocumentMargin(0.0);
+    document.setDefaultFont(fontOf(style));
+    QTextOption option;
+    option.setAlignment(alignmentOf(align));
+    option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    document.setDefaultTextOption(option);
+    document.setPlainText(QString::fromStdString(words));
+    document.setTextWidth(width);
+}
+
+void drawWords(QPainter& painter, const QTextDocument& document, const core::Color& color) {
+    QAbstractTextDocumentLayout::PaintContext context;
+    context.palette.setColor(QPalette::Text, toColor(color));
+    document.documentLayout()->draw(&painter, context);
+}
+
 void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
     for (const core::PlacedText& placed : texts) {
         const core::TextBox& box = placed.box;
@@ -160,21 +181,64 @@ void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
             continue;
         }
         QTextDocument document;
-        document.setDocumentMargin(0.0);
-        document.setDefaultFont(fontOf(box.style));
-        QTextOption option;
-        option.setAlignment(alignmentOf(box.style.align));
-        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-        document.setDefaultTextOption(option);
-        document.setPlainText(QString::fromStdString(box.text));
-        document.setTextWidth(box.width);
+        layOutWords(document, box.style, box.style.align, box.text, box.width);
 
         painter.save();
         painter.translate(box.at.x, box.at.y);
-        QAbstractTextDocumentLayout::PaintContext context;
-        context.palette.setColor(QPalette::Text, toColor(box.style.color));
-        document.documentLayout()->draw(&painter, context);
+        drawWords(painter, document, box.style.color);
         painter.restore();
+    }
+}
+
+void paintTableRuling(QPainter& painter, const core::Table& table) {
+    const core::Rect area = core::areaOf(table);
+    painter.setPen(QPen{toColor(table.rule), table.ruleWidth});
+
+    float down = area.left;
+    painter.drawLine(QPointF{down, area.top}, QPointF{down, area.bottom});
+    for (const float width : table.columns) {
+        down += width;
+        painter.drawLine(QPointF{down, area.top}, QPointF{down, area.bottom});
+    }
+
+    float across = area.top;
+    painter.drawLine(QPointF{area.left, across}, QPointF{area.right, across});
+    for (const float height : table.rows) {
+        across += height;
+        painter.drawLine(QPointF{area.left, across}, QPointF{area.right, across});
+    }
+}
+
+// What is typed in a box runs within that box and no further, so that too many words are cut off
+// at the ruling rather than written over what stands beside them.
+void paintCell(QPainter& painter, const core::Table& table, const core::TableCell& cell,
+               const core::Rect& box) {
+    const float room = std::max(box.width() - (2.0F * kCellPadding), 1.0F);
+    QTextDocument document;
+    layOutWords(document, table.style, cell.align, cell.text, room);
+
+    painter.save();
+    painter.setClipRect(toRect(box));
+    painter.translate(box.left + kCellPadding, box.top + kCellPadding);
+    drawWords(painter, document, table.style.color);
+    painter.restore();
+}
+
+// Tables stand over the ink, as typed text does, but only their ruling is drawn: what is written
+// by hand inside a box is seen through it, so a table can be ruled first and filled in by hand.
+void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables) {
+    for (const core::PlacedTable& placed : tables) {
+        const core::Table& table = placed.table;
+        paintTableRuling(painter, table);
+        for (int row = 0; row < core::rowsOf(table); ++row) {
+            for (int column = 0; column < core::columnsOf(table); ++column) {
+                const core::CellAt at{.row = row, .column = column};
+                const core::TableCell* const cell = core::cellAt(table, at);
+                if (cell != nullptr && !cell->text.empty()) {
+                    paintCell(painter, table, *cell, core::areaOfCell(table, at));
+                }
+            }
+        }
     }
 }
 
@@ -252,6 +316,7 @@ void paintPage(QPainter& painter, const PageContents& page, const core::Rect& ar
 
     paintPictures(painter, page.pictures);
     paintStrokes(painter, page.strokes);
+    paintTables(painter, page.tables);
     paintTexts(painter, page.texts);
     painter.restore();
 }

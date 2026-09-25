@@ -1325,6 +1325,7 @@ void NotebookViewModel::wantThumbnail(int index) {
         .strokes = {},
         .texts = {},
         .pictures = {},
+        .tables = {},
         .media = {},
     });
     if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
@@ -1332,6 +1333,8 @@ void NotebookViewModel::wantThumbnail(int index) {
         work->strokes.assign(strokes.begin(), strokes.end());
         const std::span<const core::PlacedText> texts = cached->second->texts();
         work->texts.assign(texts.begin(), texts.end());
+        const std::span<const core::PlacedTable> tables = cached->second->tables();
+        work->tables.assign(tables.begin(), tables.end());
         takePictures(*work, cached->second->pictures());
         gatherThumbnail(work);
         return;
@@ -1348,6 +1351,7 @@ void NotebookViewModel::wantThumbnail(int index) {
                                     }
                                     work->strokes = std::move(loaded->strokes);
                                     work->texts = std::move(loaded->texts);
+                                    work->tables = std::move(loaded->tables);
                                     takePictures(*work, loaded->pictures);
                                     gatherThumbnail(work);
                                 },
@@ -1450,6 +1454,7 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
         .strokes = work.strokes,
         .texts = work.texts,
         .pictures = pictures,
+        .tables = work.tables,
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);

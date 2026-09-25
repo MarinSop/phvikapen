@@ -7,6 +7,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Table.hpp"
 #include "core/storage/NotebookStore.hpp"
 #include "platform/pdf/IPdfDocument.hpp"
 #include "platform/pdf/PdfiumDocument.hpp"
@@ -200,12 +201,17 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             return std::unexpected{standing.error()};
         }
         const std::vector<DrawnPicture> pictures = picturesOn(opened, *standing, pictureImages);
+        const core::Result<std::vector<core::PlacedTable>> tables = opened.tablesOfPage(info.id);
+        if (!tables) {
+            return std::unexpected{tables.error()};
+        }
 
         const PageContents contents{
             .style = info.style,
             .strokes = *strokes,
             .texts = *texts,
             .pictures = pictures,
+            .tables = *tables,
             .media = nullptr,
         };
         const core::Rect area = areaFor(contents, options.scope);
@@ -215,6 +221,7 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
             .strokes = *strokes,
             .texts = *texts,
             .pictures = pictures,
+            .tables = *tables,
             .media = picture.isNull() ? nullptr : &picture,
         };
 

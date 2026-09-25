@@ -82,6 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   away, boxes written in, and the whole table moved and sized, each as one change that can be
   undone. A box with nothing in it costs nothing, and a search of the notebook now finds words
   typed into a table where that box stands, alongside words typed and written anywhere else.
+  Tables are ruled over the ink, as typed text is drawn over it, but only the ruling is drawn: what
+  is written by hand inside a box is seen through the table, so one can be ruled first and filled in
+  by hand. What is printed and the small picture of a page show them the same way.
 
 ### Fixed
 

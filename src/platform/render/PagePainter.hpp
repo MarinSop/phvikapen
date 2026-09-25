@@ -4,6 +4,7 @@
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 
 #include <span>
@@ -24,6 +25,7 @@ struct PageContents {
     std::span<const core::PlacedStroke> strokes;
     std::span<const core::PlacedText> texts;
     std::span<const DrawnPicture> pictures;
+    std::span<const core::PlacedTable> tables;
     const QImage* media{nullptr};
 };
 

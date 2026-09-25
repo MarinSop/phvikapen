@@ -428,6 +428,7 @@ private:
         std::vector<core::PlacedStroke> strokes;
         std::vector<core::PlacedText> texts;
         std::vector<ThumbnailPicture> pictures;
+        std::vector<core::PlacedTable> tables;
         QImage media;
     };
 
