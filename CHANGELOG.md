@@ -128,6 +128,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A line drawn slowly, and a diagonal one above all, came out wavy. A pen reports where it is to
+  the nearest pixel, so a hand moving slowly leaves a staircase rather than a line, and the evening
+  out reached barely a pixel either way: far too little to lose it. It now reaches as far as the
+  shake of a slow hand carries, and stops at a corner rather than rounding it away, so a line comes
+  out as straight as it was meant while what is written keeps its corners. The curve the ink is
+  drawn along is hung from samples far enough apart to say where the hand went, instead of being
+  threaded through every reported position.
 - A picture could be taken hold of once and never again: the layer that reaches the paper hid
   itself as soon as the picture was let go, so no later tap could find one.
 - The menu that opens under the pointer kept room for every line it was not showing, which left it
