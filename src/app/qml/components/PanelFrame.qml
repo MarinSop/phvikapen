@@ -136,8 +136,6 @@ Rectangle {
                     orientation: ListView.Horizontal
                     spacing: 2
 
-                    Component.onCompleted: tabs.positionViewAtIndex(root.current, ListView.Contain)
-
                     delegate: PanelTab {
                         required property int index
                         required property string modelData
@@ -150,6 +148,8 @@ Rectangle {
                             root.workspace.choosePanel(root.side, root.group, index);
                         }
                     }
+
+                    Component.onCompleted: tabs.positionViewAtIndex(root.current, ListView.Contain)
                 }
 
                 ShapeButton {

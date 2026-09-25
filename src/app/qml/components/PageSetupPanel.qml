@@ -11,7 +11,6 @@ Pane {
 
     objectName: "pageSetupPanel"
     padding: 8
-
     background: null
 
     ScrollView {

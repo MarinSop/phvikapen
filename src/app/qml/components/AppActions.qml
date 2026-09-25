@@ -368,6 +368,7 @@ Item {
     readonly property Action showPageSetupPanel: Action {
         checkable: true
         checked: root.isPanelOpen(Panels.pageSetup)
+        shortcut: root.settings.keysFor("pagePanel")
         text: qsTr("Page Setup")
 
         onTriggered: root.workspace.togglePanel(Panels.pageSetup)

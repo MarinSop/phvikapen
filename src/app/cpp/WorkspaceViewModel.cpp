@@ -387,12 +387,11 @@ void WorkspaceViewModel::writeLayout() const {
                                });
     }
     QSettings settings;
-    settings.setValue(kLayoutSetting,
-                      QString::fromUtf8(QJsonDocument{QJsonObject{
-                                                          {QStringLiteral("docks"), docks},
-                                                          {QStringLiteral("closed"), closed},
-                                                      }}
-                                            .toJson(QJsonDocument::Compact)));
+    settings.setValue(kLayoutSetting, QString::fromUtf8(QJsonDocument{
+                                          QJsonObject{
+                                              {QStringLiteral("docks"), docks},
+                                              {QStringLiteral("closed"), closed},
+                                          }}.toJson(QJsonDocument::Compact)));
 }
 
 }

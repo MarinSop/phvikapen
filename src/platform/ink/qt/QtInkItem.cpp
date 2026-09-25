@@ -9,8 +9,6 @@
 #include <QMouseEvent>
 #include <QNativeGestureEvent>
 #include <QPointingDevice>
-#include <QQuickItemGrabResult>
-#include <QSharedPointer>
 #include <QTabletEvent>
 #include <QTouchEvent>
 #include <QWheelEvent>
@@ -1228,43 +1226,29 @@ void QtInkItem::setHoldForMenu(bool wanted) {
 }
 
 void QtInkItem::takeColourAt(const InkSample& sample, int sheet) {
-    const InkSample here = onSheet(sample);
-    const auto askTheModel = [this, here, sheet] {
-        if (m_sink != nullptr) {
-            m_sink->colourWanted(here, sheet);
-        }
-    };
-    const QSharedPointer<QQuickItemGrabResult> grabbed = grabToImage();
-    if (grabbed.isNull() || width() <= 0 || height() <= 0) {
-        askTheModel();
+    const core::Point spot = m_viewport.toView(core::Point{.x = sample.x, .y = sample.y});
+    QQuickWindow* const shown = window();
+    const QImage glass = shown == nullptr ? QImage{} : shown->grabWindow();
+    if (m_sink == nullptr) {
         return;
     }
-    const core::Point spot = m_viewport.toView(core::Point{.x = sample.x, .y = sample.y});
-    connect(
-        grabbed.data(), &QQuickItemGrabResult::ready, this,
-        [this, grabbed, spot, askTheModel] {
-            const QImage shown = grabbed->image();
-            if (shown.isNull() || shown.width() <= 0 || shown.height() <= 0) {
-                askTheModel();
-                return;
-            }
-            const auto column =
-                static_cast<int>(static_cast<qreal>(spot.x) * shown.width() / width());
-            const auto row =
-                static_cast<int>(static_cast<qreal>(spot.y) * shown.height() / height());
-            const QColor seen = shown.pixelColor(std::clamp(column, 0, shown.width() - 1),
-                                                 std::clamp(row, 0, shown.height() - 1));
-            if (m_sink == nullptr) {
-                return;
-            }
+    if (!glass.isNull() && shown->width() > 0 && shown->height() > 0) {
+        const QPointF here = mapToScene(QPointF{spot.x, spot.y});
+        const auto column = static_cast<int>(here.x() * glass.width() / shown->width());
+        const auto row = static_cast<int>(here.y() * glass.height() / shown->height());
+        const QColor seen = glass.pixelColor(std::clamp(column, 0, glass.width() - 1),
+                                             std::clamp(row, 0, glass.height() - 1));
+        if (seen.alpha() > 0) {
             m_sink->colourSeen(core::Color{
                 .red = static_cast<std::uint8_t>(seen.red()),
                 .green = static_cast<std::uint8_t>(seen.green()),
                 .blue = static_cast<std::uint8_t>(seen.blue()),
                 .alpha = static_cast<std::uint8_t>(seen.alpha()),
             });
-        },
-        Qt::SingleShotConnection);
+            return;
+        }
+    }
+    m_sink->colourWanted(onSheet(sample), sheet);
 }
 
 void QtInkItem::press(const InkSample& sample, bool eraserTip) {

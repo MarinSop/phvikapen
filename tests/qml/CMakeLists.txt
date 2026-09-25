@@ -26,3 +26,9 @@ add_test(NAME qml.components COMMAND phvikapen_qml_tests)
 set_tests_properties(qml.components PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software"
 )
+
+# Taking a colour reads back what the canvas drew, which a window without a screen behind it
+# cannot hand over. This runs on whatever window system is there and says so when there is none.
+add_test(NAME qml.onscreen
+    COMMAND phvikapen_qml_tests -input "${CMAKE_CURRENT_SOURCE_DIR}/tst_colourpicker.qml"
+)
