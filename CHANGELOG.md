@@ -105,6 +105,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A picture could be taken hold of once and never again: the layer that reaches the paper hid
+  itself as soon as the picture was let go, so no later tap could find one.
+- The menu that opens under the pointer kept room for every line it was not showing, which left it
+  with a tall band of nothing. A line that is not shown now takes up no room, so the menu is as
+  tall as what it offers.
 - A picture on a page other than the one being read was forgotten as soon as that page was made
   ready in the background, so leafing through a notebook could leave a page bare until it was
   opened again.

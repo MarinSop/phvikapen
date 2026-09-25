@@ -103,6 +103,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
         qml/components/MenuCommand.qml
+        qml/components/MenuLine.qml
         qml/components/MessageBar.qml
         qml/components/NotebookTabs.qml
         qml/components/NewNotebookDialog.qml

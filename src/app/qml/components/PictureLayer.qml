@@ -65,7 +65,9 @@ Item {
     }
 
     objectName: "pictureLayer"
-    visible: root.picking && root.holding
+    // The layer reaches the paper whenever the pick tool is in hand, whether a picture is held or
+    // not: a layer that hides itself once one is let go can never be asked for another.
+    visible: root.picking
 
     onPickingChanged: {
         if (!root.picking && root.notebook !== null) {

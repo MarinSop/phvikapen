@@ -42,7 +42,7 @@ Menu {
         visible: root.onSelection
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onSelection
     }
 
@@ -63,7 +63,7 @@ Menu {
         visible: root.onSelection
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onSelection
     }
 
@@ -89,7 +89,7 @@ Menu {
         visible: root.onPage
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onPage
     }
 
@@ -103,7 +103,7 @@ Menu {
         visible: root.onPage
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onPage
     }
 
@@ -143,7 +143,7 @@ Menu {
         visible: root.onTable
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onTable
     }
 
@@ -158,7 +158,7 @@ Menu {
         visible: root.onTable
     }
 
-    MenuSeparator {
+    MenuLine {
         visible: root.onTable
     }
 

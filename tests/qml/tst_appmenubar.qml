@@ -89,6 +89,28 @@ TestCase {
         settings.showPages = true;
     }
 
+    function test_x1_aLineOfAMenuThatIsNotShownTakesUpNoRoom() {
+        const command = createTemporaryObject(commandComponent, testCase, {
+            text: "Something"
+        });
+
+        verify(command.height > 0);
+
+        command.visible = false;
+
+        compare(command.height, 0);
+    }
+
+    function test_x2_aRuleBetweenGroupsThatIsNotShownTakesUpNoRoom() {
+        const line = createTemporaryObject(lineComponent, testCase);
+
+        verify(line.height > 0);
+
+        line.visible = false;
+
+        compare(line.height, 0);
+    }
+
     height: 60
     name: "AppMenuBar"
     visible: true
@@ -99,6 +121,20 @@ TestCase {
         id: spyComponent
 
         SignalSpy {
+        }
+    }
+
+    Component {
+        id: commandComponent
+
+        MenuCommand {
+        }
+    }
+
+    Component {
+        id: lineComponent
+
+        MenuLine {
         }
     }
 
