@@ -14,12 +14,14 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Table.hpp"
 #include "core/text/InkWord.hpp"
 #include "core/text/WrittenText.hpp"
 #include "core/undo/BundleCommand.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/PictureCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
+#include "core/undo/TableCommands.hpp"
 #include "core/undo/TextCommands.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
 #include "platform/render/PagePainter.hpp"
@@ -76,6 +78,10 @@ constexpr qreal kTextMargin = 8.0;
 constexpr qreal kPictureShare = 0.6;
 constexpr int kWidestPicture = 4096;
 constexpr qreal kNewTextWidth = core::TextBox::kDefaultWidth;
+// How much of a sheet a table takes up when it is first ruled, and the way to the middle of what
+// is left over.
+constexpr qreal kTableShare = 0.8;
+constexpr qreal kHalfway = 0.5;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 3;
@@ -387,9 +393,9 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
         return;
     }
     if (!m_pages.contains(pageId)) {
-        m_pages.emplace(pageId, std::make_unique<core::Page>(pageId, std::move(loaded->strokes),
-                                                             std::move(loaded->texts),
-                                                             std::move(loaded->pictures)));
+        m_pages.emplace(pageId, std::make_unique<core::Page>(
+                                    pageId, std::move(loaded->strokes), std::move(loaded->texts),
+                                    std::move(loaded->pictures), std::move(loaded->tables)));
     }
     if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
         wantPicturesFor(*opened->second);
@@ -2049,6 +2055,7 @@ void NotebookViewModel::refreshCanvas() {
         m_canvas->showView(remembered->second);
     }
     publishTexts();
+    publishTables();
 }
 
 // The pages of the section stand in one column; the ones that are not read yet are empty sheets
@@ -2075,6 +2082,7 @@ void NotebookViewModel::showColumn() {
 
     m_canvas->showColumn(views, currentPage(), setAside(), standingIn());
     publishTexts();
+    publishTables();
     wantNeighbours();
 }
 
@@ -2133,9 +2141,14 @@ void NotebookViewModel::wantNeighbours() {
                     if (opening != m_opening || !loaded || m_pages.contains(page)) {
                         return;
                     }
-                    m_pages.emplace(page,
-                                    std::make_unique<core::Page>(page, std::move(loaded->strokes),
-                                                                 std::move(loaded->texts)));
+                    const auto opened =
+                        m_pages
+                            .emplace(page,
+                                     std::make_unique<core::Page>(
+                                         page, std::move(loaded->strokes), std::move(loaded->texts),
+                                         std::move(loaded->pictures), std::move(loaded->tables)))
+                            .first;
+                    wantPicturesFor(*opened->second);
                     refreshCanvas();
                 },
                 Qt::QueuedConnection);
@@ -3287,6 +3300,235 @@ void NotebookViewModel::publishPictures() {
         }
     }
     m_canvas->showPictures(pieces);
+}
+
+void NotebookViewModel::addTable(int rows, int columns) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+
+    // As wide as most of the sheet, or of what is on the screen where the paper runs on, every
+    // column taking the same share of it.
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    const core::Rect visible = m_canvas->visibleOnPage();
+    const qreal room = sheet.width() > 0.0 ? sheet.width() : static_cast<qreal>(visible.width());
+    core::Table table = core::gridOf(rows, columns);
+    table.id = m_ids.next();
+    const float tall = core::heightOf(table);
+    const auto wide = static_cast<float>(
+        std::max(room * kTableShare, static_cast<qreal>(core::Table::kNarrowestColumn)));
+    table = core::sizedTo(std::move(table), wide, tall);
+    const float across = core::widthOf(table);
+    const float down = core::heightOf(table);
+    table.at = core::Point{
+        .x = static_cast<float>((room - static_cast<qreal>(across)) * kHalfway),
+        .y = visible.top + static_cast<float>((visible.height() - down) * kHalfway),
+    };
+    table = core::normalized(std::move(table));
+
+    const QString tableId = QString::fromStdString(table.id.toString());
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::AddTableCommand>(
+        page, storage,
+        core::PlacedTable{.ordinal = page->nextTableOrdinal(), .table = std::move(table)}));
+    publishTables();
+    setPickedTable(tableId);
+}
+
+std::optional<std::pair<core::Uuid, core::Table>>
+NotebookViewModel::tableById(const QString& tableId) const {
+    for (const auto& [pageId, page] : m_pages) {
+        for (const core::PlacedTable& placed : page->tables()) {
+            if (QString::fromStdString(placed.table.id.toString()) == tableId) {
+                return std::pair{pageId, placed.table};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+void NotebookViewModel::setPickedTable(const QString& tableId) {
+    if (tableId == m_pickedTable) {
+        return;
+    }
+    m_pickedTable = tableId;
+    emit pickedTableChanged();
+}
+
+QVariantMap NotebookViewModel::pickedTableBox() const {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(m_pickedTable);
+    if (!found) {
+        return {};
+    }
+    const int sheet = sheetOfPage(found->first);
+    const QRectF where = m_canvas.isNull() ? QRectF{} : m_canvas->sheetRect(sheet);
+    return mapOfItem(itemOfTable(found->second,
+                                 TablePlace{
+                                     .pageId = QString::fromStdString(found->first.toString()),
+                                     .columnX = where.x() + static_cast<qreal>(found->second.at.x),
+                                     .columnY = where.y() + static_cast<qreal>(found->second.at.y),
+                                     .sheet = sheet,
+                                 }));
+}
+
+QString NotebookViewModel::tableUnder(qreal columnX, qreal columnY) const {
+    if (m_canvas.isNull()) {
+        return {};
+    }
+    const int sheets = sheetCount();
+    for (int sheet = sheets - 1; sheet >= 0; --sheet) {
+        const QRectF where = m_canvas->sheetRect(sheet);
+        const auto found = m_pages.find(pageOfSheet(sheet));
+        if (found == m_pages.end()) {
+            continue;
+        }
+        const core::Point at{
+            .x = static_cast<float>(columnX - where.x()),
+            .y = static_cast<float>(columnY - where.y()),
+        };
+        if (const core::Table* const table = found->second->tableUnder(at)) {
+            return QString::fromStdString(table->id.toString());
+        }
+    }
+    return {};
+}
+
+void NotebookViewModel::changeTable(const core::Uuid& pageId, core::Table table) {
+    const auto found = m_pages.find(pageId);
+    if (found == m_pages.end() || !m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(pageId);
+    runCommand(std::make_unique<core::ChangeTableCommand>(found->second.get(), storage,
+                                                          core::normalized(std::move(table))));
+    publishTables();
+}
+
+void NotebookViewModel::placeTable(const QString& tableId, const QVariantMap& where) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found || m_canvas.isNull()) {
+        return;
+    }
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(found->first));
+    core::Table wanted =
+        core::sizedTo(found->second, static_cast<float>(where.value("boxWidth").toReal()),
+                      static_cast<float>(where.value("boxHeight").toReal()));
+    wanted.at = core::Point{
+        .x = static_cast<float>(where.value("columnX").toReal() - sheet.x()),
+        .y = static_cast<float>(where.value("columnY").toReal() - sheet.y()),
+    };
+    wanted = core::normalized(std::move(wanted));
+    if (wanted == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(wanted));
+}
+
+void NotebookViewModel::removeTable(const QString& tableId) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found || !m_storage) {
+        return;
+    }
+    const auto page = m_pages.find(found->first);
+    if (page == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    if (tableId == m_pickedTable) {
+        setPickedTable({});
+    }
+    forgetThumbnail(found->first);
+    runCommand(
+        std::make_unique<core::RemoveTableCommand>(page->second.get(), storage, found->second.id));
+    publishTables();
+}
+
+QString NotebookViewModel::wordsOfCell(const QString& tableId, int row, int column) const {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return {};
+    }
+    const core::TableCell* const cell =
+        core::cellAt(found->second, core::CellAt{.row = row, .column = column});
+    return cell == nullptr ? QString{} : QString::fromStdString(cell->text);
+}
+
+void NotebookViewModel::writeCell(const QString& tableId, int row, int column,
+                                  const QString& words) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> written = core::withCellWritten(
+        found->second, core::CellAt{.row = row, .column = column}, words.toStdString());
+    if (!written || *written == found->second) {
+        return;
+    }
+    changeTable(found->first, std::move(*written));
+}
+
+void NotebookViewModel::reshapeTable(
+    const QString& tableId, const std::function<core::Result<core::Table>(core::Table)>& reshaped) {
+    const std::optional<std::pair<core::Uuid, core::Table>> found = tableById(tableId);
+    if (!found) {
+        return;
+    }
+    core::Result<core::Table> wanted = reshaped(found->second);
+    if (!wanted) {
+        reportError(QString::fromStdString(wanted.error().message));
+        return;
+    }
+    changeTable(found->first, std::move(*wanted));
+}
+
+void NotebookViewModel::addRow(const QString& tableId, int at) {
+    reshapeTable(tableId,
+                 [at](core::Table table) { return core::withRowAdded(std::move(table), at); });
+}
+
+void NotebookViewModel::addColumn(const QString& tableId, int at) {
+    reshapeTable(tableId,
+                 [at](core::Table table) { return core::withColumnAdded(std::move(table), at); });
+}
+
+void NotebookViewModel::removeRow(const QString& tableId, int at) {
+    reshapeTable(tableId,
+                 [at](core::Table table) { return core::withRowRemoved(std::move(table), at); });
+}
+
+void NotebookViewModel::removeColumn(const QString& tableId, int at) {
+    reshapeTable(tableId,
+                 [at](core::Table table) { return core::withColumnRemoved(std::move(table), at); });
+}
+
+void NotebookViewModel::publishTables() {
+    std::vector<TableItem> items;
+    if (!m_canvas.isNull()) {
+        const int sheets = sheetCount();
+        for (int sheet = 0; sheet < sheets; ++sheet) {
+            const core::Uuid pageId = pageOfSheet(sheet);
+            const auto found = m_pages.find(pageId);
+            if (found == m_pages.end()) {
+                continue;
+            }
+            const QRectF where = m_canvas->sheetRect(sheet);
+            const QString page = QString::fromStdString(pageId.toString());
+            for (const core::PlacedTable& placed : found->second->tables()) {
+                items.push_back(itemOfTable(
+                    placed.table, TablePlace{
+                                      .pageId = page,
+                                      .columnX = where.x() + static_cast<qreal>(placed.table.at.x),
+                                      .columnY = where.y() + static_cast<qreal>(placed.table.at.y),
+                                      .sheet = sheet,
+                                  }));
+            }
+        }
+    }
+    m_tablesModel.setItems(std::move(items));
+    emit pickedTableChanged();
 }
 
 void NotebookViewModel::addPicture(const QUrl& fileUrl) {

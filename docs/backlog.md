@@ -189,11 +189,11 @@ written so that all of them can share it. They are listed in the order they are 
   picture is done where the window waits for it rather than on a thread of its own.
 - **Cropping a picture.** A picture keeps the whole of what it was given. Cropping would be a
   rectangle kept beside the rest, and can be added without moving anything already kept.
-- **Tables.** A real table of rows, columns and cells, each cell holding what a box of typed text
-  holds, with rows and columns added, removed and resized, cells joined and split, and the keyboard
-  walking from cell to cell. The table itself is one thing on the page that can be moved and sized.
-  This is the largest of the three: it needs a model of its own, a way of laying it out that agrees
-  between the window and what is printed, and a menu of its own.
+- **Tables that are more than a plain grid.** A table is ruled, filled in, moved, sized, and has
+  rows and columns added and taken away, and the keyboard walks from box to box. What it cannot do
+  is join two boxes into one, wear a different face in one box than in another, or have one column
+  pulled wider than the rest: sizing gives every column and row the same share. Joining is the one
+  readers ask for first, and the shape that is written down leaves room for it.
 - **Equations, and answering handwritten sums.** Handwriting is already read into words on Windows;
   reading it into an equation is another matter, and the reader the platform carries does not do it.
   The shape it should take is a chain that is not tied together: strokes are read into an equation,

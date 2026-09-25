@@ -257,6 +257,12 @@ namespace {
             .keys = "Ctrl+Shift+I",
         },
         Command{
+            .id = "insertTable",
+            .name = QObject::tr("Table on the page"),
+            .group = CommandGroup::Insert,
+            .keys = "Ctrl+Shift+G",
+        },
+        Command{
             .id = "import",
             .name = QObject::tr("Import a PDF or picture"),
             .group = CommandGroup::Insert,

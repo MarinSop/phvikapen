@@ -314,6 +314,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.insertTable
+            objectName: "insertTableItem"
+        }
+
+        MenuCommand {
             action: root.actions.importDocument
             objectName: "importItem"
         }

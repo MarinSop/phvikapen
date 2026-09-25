@@ -19,6 +19,14 @@ Item {
     readonly property bool hasSelection: root.canvas !== null && root.canvas.selectedCount > 0
     readonly property bool hasTextBox: root.notebook !== null && root.notebook.pickedText !== ""
     readonly property bool hasPicture: root.notebook !== null && root.notebook.pickedPicture !== ""
+    readonly property bool hasTable: root.notebook !== null && root.notebook.pickedTable !== ""
+    // A table starts as a plain grid; rows and columns are added to it afterwards.
+    readonly property int plainTableColumns: 3
+    readonly property int plainTableRows: 3
+    // Which row and column of the table in hand the reader is working in. The layer that holds the
+    // editor keeps this up to date, so that a row is added beside the box being typed in.
+    property int rowInHand: 0
+    property int columnInHand: 0
     // While words are being typed the keyboard belongs to whoever is typing them: a command with
     // a plain letter for a key, and the ones an editor owns itself, stand aside.
     readonly property bool typing: AppInfo.typing
@@ -175,8 +183,51 @@ Item {
 
         onTriggered: root.pictureWanted()
     }
+    readonly property Action insertTable: Action {
+        enabled: root.hasNotebook
+        shortcut: root.keysFor("insertTable")
+        text: qsTr("Table")
+
+        onTriggered: root.notebook.addTable(root.plainTableRows, root.plainTableColumns)
+    }
+    readonly property Action addRowAbove: Action {
+        enabled: root.hasTable
+        text: qsTr("Insert Row Above")
+
+        onTriggered: root.notebook.addRow(root.notebook.pickedTable, root.rowInHand)
+    }
+    readonly property Action addRowBelow: Action {
+        enabled: root.hasTable
+        text: qsTr("Insert Row Below")
+
+        onTriggered: root.notebook.addRow(root.notebook.pickedTable, root.rowInHand + 1)
+    }
+    readonly property Action addColumnBefore: Action {
+        enabled: root.hasTable
+        text: qsTr("Insert Column Left")
+
+        onTriggered: root.notebook.addColumn(root.notebook.pickedTable, root.columnInHand)
+    }
+    readonly property Action addColumnAfter: Action {
+        enabled: root.hasTable
+        text: qsTr("Insert Column Right")
+
+        onTriggered: root.notebook.addColumn(root.notebook.pickedTable, root.columnInHand + 1)
+    }
+    readonly property Action removeRow: Action {
+        enabled: root.hasTable
+        text: qsTr("Delete Row")
+
+        onTriggered: root.notebook.removeRow(root.notebook.pickedTable, root.rowInHand)
+    }
+    readonly property Action removeColumn: Action {
+        enabled: root.hasTable
+        text: qsTr("Delete Column")
+
+        onTriggered: root.notebook.removeColumn(root.notebook.pickedTable, root.columnInHand)
+    }
     readonly property Action remove: Action {
-        enabled: root.hasSelection || root.hasTextBox || root.hasPicture
+        enabled: root.hasSelection || root.hasTextBox || root.hasPicture || root.hasTable
         icon.source: Icons.trash
         shortcut: root.pageKeys("delete")
         text: qsTr("Delete")
@@ -437,6 +488,8 @@ Item {
             root.notebook.removeText(root.notebook.pickedText);
         } else if (root.hasPicture) {
             root.notebook.removePicture(root.notebook.pickedPicture);
+        } else if (root.hasTable) {
+            root.notebook.removeTable(root.notebook.pickedTable);
         }
     }
 

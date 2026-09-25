@@ -72,6 +72,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/PageDefaults.cpp
         cpp/PageDefaults.hpp
         cpp/SettingsViewModel.cpp
+        cpp/TableModels.cpp
+        cpp/TableModels.hpp
         cpp/TextModels.cpp
         cpp/TextModels.hpp
         cpp/Shortcuts.cpp
@@ -107,6 +109,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/NumberField.qml
         qml/components/OptionsBar.qml
         qml/components/PagePanel.qml
+        qml/components/TableBox.qml
+        qml/components/TableLayer.qml
         qml/components/PagesPanel.qml
         qml/components/PageLook.qml
         qml/components/PageSetup.qml

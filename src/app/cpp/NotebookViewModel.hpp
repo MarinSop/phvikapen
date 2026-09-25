@@ -2,6 +2,7 @@
 
 #include "app/cpp/HandwritingReader.hpp"
 #include "app/cpp/OutlineModels.hpp"
+#include "app/cpp/TableModels.hpp"
 #include "app/cpp/TextModels.hpp"
 #include "core/Error.hpp"
 #include "core/geometry/Distance.hpp"
@@ -19,6 +20,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
+#include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/StorageThread.hpp"
 #include "core/undo/UndoStack.hpp"
@@ -43,6 +45,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -114,6 +117,10 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QString pickedPicture READ pickedPicture WRITE setPickedPicture NOTIFY
                    pickedPictureChanged FINAL)
     Q_PROPERTY(QVariantMap pickedPictureBox READ pickedPictureBox NOTIFY pickedPictureChanged FINAL)
+    Q_PROPERTY(phvikapen::app::TableListModel* tables READ tables CONSTANT FINAL)
+    Q_PROPERTY(
+        QString pickedTable READ pickedTable WRITE setPickedTable NOTIFY pickedTableChanged FINAL)
+    Q_PROPERTY(QVariantMap pickedTableBox READ pickedTableBox NOTIFY pickedTableChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -255,6 +262,8 @@ public:
 
     [[nodiscard]] TextListModel* texts() { return &m_textsModel; }
 
+    [[nodiscard]] TableListModel* tables() { return &m_tablesModel; }
+
     // Which box of text the reader is working on, or nothing when none is.
     [[nodiscard]] QString pickedText() const { return m_pickedText; }
 
@@ -298,6 +307,36 @@ public:
 
     // Which picture stands under a point of the column of sheets, if any.
     Q_INVOKABLE [[nodiscard]] QString pictureUnder(qreal columnX, qreal columnY) const;
+
+    // Rule a table on the page being read, as wide as most of the sheet.
+    Q_INVOKABLE void addTable(int rows, int columns);
+
+    [[nodiscard]] QString pickedTable() const { return m_pickedTable; }
+
+    void setPickedTable(const QString& tableId);
+
+    [[nodiscard]] QVariantMap pickedTableBox() const;
+
+    // Which table stands under a point of the column of sheets, if any.
+    Q_INVOKABLE [[nodiscard]] QString tableUnder(qreal columnX, qreal columnY) const;
+
+    // Where a table has been carried and pulled to becomes where it stands, in one change.
+    Q_INVOKABLE void placeTable(const QString& tableId, const QVariantMap& where);
+
+    Q_INVOKABLE void removeTable(const QString& tableId);
+
+    Q_INVOKABLE [[nodiscard]] QString wordsOfCell(const QString& tableId, int row,
+                                                  int column) const;
+
+    Q_INVOKABLE void writeCell(const QString& tableId, int row, int column, const QString& words);
+
+    Q_INVOKABLE void addRow(const QString& tableId, int at);
+
+    Q_INVOKABLE void addColumn(const QString& tableId, int at);
+
+    Q_INVOKABLE void removeRow(const QString& tableId, int at);
+
+    Q_INVOKABLE void removeColumn(const QString& tableId, int at);
 
     // Where a picture stands, how large it is drawn and how far it is turned. The change is read
     // from `columnX`, `columnY`, `boxWidth`, `boxHeight` and `turn`.
@@ -351,6 +390,7 @@ signals:
     void pickedTextChanged();
     void pickedBoxChanged();
     void pickedPictureChanged();
+    void pickedTableChanged();
     void textAdded(const QString& textId);
     void startPageChanged();
     void canvasChanged();
@@ -509,6 +549,14 @@ private:
     void wantPicturesFor(const core::Page& page);
     void usePictureAsset(core::Result<core::Asset> asset);
     void publishPictures();
+    // The page a table stands on, and the table itself.
+    [[nodiscard]] std::optional<std::pair<core::Uuid, core::Table>>
+    tableById(const QString& tableId) const;
+    void changeTable(const core::Uuid& pageId, core::Table table);
+    // A table with one row or column more or less, put down as one change.
+    void reshapeTable(const QString& tableId,
+                      const std::function<core::Result<core::Table>(core::Table)>& reshaped);
+    void publishTables();
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();
@@ -578,6 +626,8 @@ private:
     std::vector<core::TrashedItem> m_trashed;
     TrashListModel m_trashModel;
     TextListModel m_textsModel;
+    TableListModel m_tablesModel;
+    QString m_pickedTable;
     std::map<core::ContentId, QImage> m_pictureImages;
     std::set<core::ContentId> m_wantedPictures;
     QString m_pickedPicture;

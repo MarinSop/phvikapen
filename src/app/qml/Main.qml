@@ -278,6 +278,30 @@ ApplicationWindow {
                 tools: toolState
             }
 
+            TableLayer {
+                id: tableLayer
+
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+                tools: toolState
+                visible: root.notebook !== null
+            }
+
+            // A row or a column is added beside the box being typed in, so the commands are told
+            // which box that is.
+            Binding {
+                property: "rowInHand"
+                target: appActions
+                value: Math.max(0, tableLayer.editingRow)
+            }
+
+            Binding {
+                property: "columnInHand"
+                target: appActions
+                value: Math.max(0, tableLayer.editingColumn)
+            }
+
             TextLayer {
                 anchors.fill: parent
                 canvas: canvas

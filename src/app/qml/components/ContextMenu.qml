@@ -12,7 +12,8 @@ Menu {
     required property AppActions actions
     readonly property bool onSelection: root.actions.hasSelection
     readonly property bool onText: !root.actions.hasSelection && root.actions.hasTextBox
-    readonly property bool onPage: !root.actions.hasSelection && !root.actions.hasTextBox
+    readonly property bool onTable: !root.actions.hasSelection && !root.actions.hasTextBox && root.actions.hasTable
+    readonly property bool onPage: !root.actions.hasSelection && !root.actions.hasTextBox && !root.actions.hasTable
 
     // Opened where the reader asked, and never off the edge of the window.
     function openAt(at) {
@@ -116,8 +117,48 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.addRowAbove
+        objectName: "contextAddRowAbove"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.addRowBelow
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.addColumnBefore
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.addColumnAfter
+        visible: root.onTable
+    }
+
+    MenuSeparator {
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.removeRow
+        objectName: "contextRemoveRow"
+        visible: root.onTable
+    }
+
+    MenuCommand {
+        action: root.actions.removeColumn
+        visible: root.onTable
+    }
+
+    MenuSeparator {
+        visible: root.onTable
+    }
+
+    MenuCommand {
         action: root.actions.remove
         objectName: "contextDelete"
-        visible: root.onSelection || root.onText
+        visible: root.onSelection || root.onText || root.onTable
     }
 }

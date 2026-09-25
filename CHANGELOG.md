@@ -85,9 +85,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tables are ruled over the ink, as typed text is drawn over it, but only the ruling is drawn: what
   is written by hand inside a box is seen through the table, so one can be ruled first and filled in
   by hand. What is printed and the small picture of a page show them the same way.
+- A table goes on the page from Insert ▸ Table, or on Ctrl+Shift+G, three rows by three columns and
+  as wide as most of the sheet. The pick tool takes hold of it: a frame appears with four corner
+  grips that size it, every column and row taking the same share of the change, and inside the frame
+  carries it about. A second tap opens the box it landed in and the words go straight in; Tab and
+  Shift+Tab walk from box to box, Escape lets go, and Delete takes the whole table away. The menu
+  under the pointer adds and takes away rows and columns beside the box being typed in.
 
 ### Fixed
 
+- A picture on a page other than the one being read was forgotten as soon as that page was made
+  ready in the background, so leafing through a notebook could leave a page bare until it was
+  opened again.
 - The frame around what is picked stood still while the drawing under it was turned or sized, and
   sat in a different place from the one the grips belonged to. There is one frame now: it stands
   where the canvas draws its own, and follows the ink through the whole drag, about the very point

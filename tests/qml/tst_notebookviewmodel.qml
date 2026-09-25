@@ -225,6 +225,132 @@ TestCase {
         verify(notebook.errorMessage !== "");
     }
 
+    function test_aTableIsRuledOnThePageAndComesOffAgain() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addTable(3, 4);
+
+        verify(notebook.pickedTable !== "");
+        const box = notebook.pickedTableBox;
+        compare(box.heights.length, 3);
+        compare(box.widths.length, 4);
+        compare(box.words.length, 12);
+        verify(box.widths[0] > 0);
+        verify(notebook.canUndo);
+
+        notebook.undo();
+
+        compare(notebook.pickedTableBox.tableId, undefined);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aTableIsFoundWhereItStandsAndNowhereElse() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const box = notebook.pickedTableBox;
+        const wide = box.widths[0] + box.widths[1];
+        const tall = box.heights[0] + box.heights[1];
+
+        const inside = notebook.tableUnder(box.columnX + (wide / 2), box.columnY + (tall / 2));
+        const outside = notebook.tableUnder(box.columnX - 40, box.columnY - 40);
+
+        compare(inside, notebook.pickedTable);
+        compare(outside, "");
+    }
+
+    function test_wordsTypedIntoABoxAreKeptAndCanBeTakenBack() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+
+        notebook.writeCell(tableId, 1, 0, "Monday");
+
+        compare(notebook.wordsOfCell(tableId, 1, 0), "Monday");
+        compare(notebook.wordsOfCell(tableId, 0, 0), "");
+
+        notebook.undo();
+
+        compare(notebook.wordsOfCell(tableId, 1, 0), "");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aRowAndAColumnComeAndGoWithoutMovingWhatWasTyped() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.writeCell(tableId, 1, 1, "Monday");
+
+        notebook.addRow(tableId, 0);
+
+        compare(notebook.pickedTableBox.heights.length, 3);
+        compare(notebook.wordsOfCell(tableId, 2, 1), "Monday");
+
+        notebook.addColumn(tableId, 0);
+
+        compare(notebook.pickedTableBox.widths.length, 3);
+        compare(notebook.wordsOfCell(tableId, 2, 2), "Monday");
+
+        notebook.removeColumn(tableId, 0);
+        notebook.removeRow(tableId, 0);
+
+        compare(notebook.wordsOfCell(tableId, 1, 1), "Monday");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theLastRowOfATableIsSaidToBeTheLast() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(1, 1);
+
+        notebook.removeRow(notebook.pickedTable, 0);
+
+        verify(notebook.errorMessage !== "");
+        compare(notebook.pickedTableBox.heights.length, 1);
+    }
+
+    function test_aTableIsMovedAndSizedAsOneChange() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        // What the notebook says about the table it holds follows the table, so the numbers are
+        // taken down before it is asked to change.
+        const wasX = notebook.pickedTableBox.columnX;
+        const wasWide = notebook.pickedTableBox.widths[0] + notebook.pickedTableBox.widths[1];
+        const wasTall = notebook.pickedTableBox.heights[0] + notebook.pickedTableBox.heights[1];
+
+        notebook.placeTable(tableId, {
+            "columnX": wasX + 30,
+            "columnY": notebook.pickedTableBox.columnY,
+            "boxWidth": wasWide * 2,
+            "boxHeight": wasTall
+        });
+
+        compare(notebook.errorMessage, "");
+        const moved = notebook.pickedTableBox;
+        fuzzyCompare(moved.columnX, wasX + 30, 0.01);
+        fuzzyCompare(moved.widths[0] + moved.widths[1], wasWide * 2, 0.01);
+
+        notebook.undo();
+
+        const back = notebook.pickedTableBox;
+        fuzzyCompare(back.columnX, wasX, 0.01);
+        fuzzyCompare(back.widths[0] + back.widths[1], wasWide, 0.01);
+    }
+
+    function test_takingATableAwayLetsGoOfIt() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+
+        notebook.removeTable(tableId);
+
+        compare(notebook.pickedTable, "");
+        compare(notebook.tableUnder(0, 0), "");
+
+        notebook.undo();
+
+        compare(notebook.errorMessage, "");
+    }
+
     function test_whetherThisMachineReadsHandwritingIsSaidPlainly() {
         const notebook = openNotebook(newNotebookPath());
 
