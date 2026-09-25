@@ -5,9 +5,11 @@
 #include "platform/update/VelopackUpdater.hpp"
 
 #include <QMetaObject>
+#include <QSettings>
 #include <QString>
 #include <QtLogging>
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -18,13 +20,19 @@ namespace {
 
 using platform::update::UpdateInfo;
 
+constexpr auto kSkippedSetting = "updates/skipped";
+constexpr int kWholeWay = 100;
+
 [[nodiscard]] QString toQString(const std::string& text) {
     return QString::fromStdString(text);
 }
 
 }
 
-UpdateViewModel::UpdateViewModel(QObject* parent) : QObject(parent) {}
+UpdateViewModel::UpdateViewModel(QObject* parent) : QObject(parent) {
+    const QSettings settings;
+    m_skippedVersion = settings.value(kSkippedSetting).toString();
+}
 
 UpdateViewModel::~UpdateViewModel() {
     if (m_worker.joinable()) {
@@ -36,6 +44,30 @@ void UpdateViewModel::show(State state, QString version) {
     m_state = state;
     m_version = std::move(version);
     emit stateChanged();
+}
+
+void UpdateViewModel::showHowFarAlong(int howFar) {
+    const int wanted = std::clamp(howFar, 0, kWholeWay);
+    if (wanted == m_howFarAlong) {
+        return;
+    }
+    m_howFarAlong = wanted;
+    emit howFarAlongChanged();
+}
+
+void UpdateViewModel::setSkippedVersion(const QString& version) {
+    if (version == m_skippedVersion) {
+        return;
+    }
+    m_skippedVersion = version;
+    QSettings settings;
+    settings.setValue(kSkippedSetting, m_skippedVersion);
+    emit skippedVersionChanged();
+    emit stateChanged();
+}
+
+void UpdateViewModel::skipThisVersion() {
+    setSkippedVersion(m_version);
 }
 
 void UpdateViewModel::showFailure(State state, const QString& message) {
@@ -90,6 +122,9 @@ void UpdateViewModel::check() {
                         showFailure(State::Unavailable, toQString(found.error().message));
                     } else if (*found) {
                         show(State::Available, toQString((*found)->version));
+                        if (worthOffering()) {
+                            emit updateFound();
+                        }
                     } else {
                         show(State::UpToDate, QString{});
                     }
@@ -101,11 +136,12 @@ void UpdateViewModel::check() {
     }};
 }
 
-void UpdateViewModel::install() {
+void UpdateViewModel::get() {
     if (m_state != State::Available || !m_updater) {
         return;
     }
-    show(State::Installing, m_version);
+    showHowFarAlong(0);
+    show(State::Getting, m_version);
     if (m_worker.joinable()) {
         m_worker.join();
     }
@@ -114,21 +150,39 @@ void UpdateViewModel::install() {
         std::make_shared<const UpdateInfo>(UpdateInfo{.version = m_version.toStdString()});
     m_worker = std::jthread{[this, update] {
         try {
-            core::Result<void> installed = m_updater->downloadAndRestart(*update);
+            const platform::update::HowFarAlong told = [this](int howFar) {
+                QMetaObject::invokeMethod(
+                    this, [this, howFar] { showHowFarAlong(howFar); }, Qt::QueuedConnection);
+            };
+            core::Result<void> got = m_updater->download(*update, told);
             QMetaObject::invokeMethod(
                 this,
-                [this, installed = std::move(installed)] {
-                    if (!installed) {
-                        showFailure(State::Unavailable, toQString(installed.error().message));
+                [this, update, got = std::move(got)] {
+                    if (!got) {
+                        showFailure(State::Unavailable, toQString(got.error().message));
                         return;
                     }
-                    emit restartWanted();
+                    showHowFarAlong(kWholeWay);
+                    show(State::Ready, toQString(update->version));
                 },
                 Qt::QueuedConnection);
         } catch (...) {
-            qWarning("Installing the update stopped unexpectedly");
+            qWarning("Getting the update stopped unexpectedly");
         }
     }};
+}
+
+void UpdateViewModel::restartNow() {
+    if (m_state != State::Ready || !m_updater) {
+        return;
+    }
+    const core::Result<void> applied =
+        m_updater->applyAndRestart(UpdateInfo{.version = m_version.toStdString()});
+    if (!applied) {
+        showFailure(State::Unavailable, toQString(applied.error().message));
+        return;
+    }
+    emit restartWanted();
 }
 
 }

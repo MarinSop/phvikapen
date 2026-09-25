@@ -24,10 +24,22 @@ TEST(VelopackUpdaterTest, SaysSoWhenTheApplicationIsNotInstalled) {
     EXPECT_FALSE(updater.error().message.empty());
 }
 
-TEST(VelopackUpdaterTest, RefusesToInstallAnUpdateItNeverFound) {
+TEST(VelopackUpdaterTest, RefusesToGetAnUpdateItNeverFound) {
+    VelopackUpdater updater;
+    int toldHowFar = -1;
+
+    const core::Result<void> got = updater.download(
+        UpdateInfo{.version = "9.9.9"}, [&toldHowFar](int howFar) { toldHowFar = howFar; });
+
+    ASSERT_FALSE(got.has_value());
+    EXPECT_EQ(got.error().code, core::ErrorCode::NotFound);
+    EXPECT_EQ(toldHowFar, -1);
+}
+
+TEST(VelopackUpdaterTest, RefusesToInstallAnUpdateItNeverGot) {
     VelopackUpdater updater;
 
-    const core::Result<void> installed = updater.downloadAndRestart(UpdateInfo{.version = "9.9.9"});
+    const core::Result<void> installed = updater.applyAndRestart(UpdateInfo{.version = "9.9.9"});
 
     ASSERT_FALSE(installed.has_value());
     EXPECT_EQ(installed.error().code, core::ErrorCode::NotFound);

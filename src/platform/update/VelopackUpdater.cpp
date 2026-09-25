@@ -6,6 +6,7 @@
 
 #include <Velopack.hpp>
 
+#include <cstddef>
 #include <exception>
 #include <memory>
 #include <optional>
@@ -18,6 +19,13 @@ namespace {
 
 [[nodiscard]] core::Error asError(const std::exception& failure) {
     return core::Error{.code = core::ErrorCode::IoFailure, .message = failure.what()};
+}
+
+void reportTo(void* whom, std::size_t howFar) {
+    const auto* const told = static_cast<HowFarAlong*>(whom);
+    if (told != nullptr && *told) {
+        (*told)(static_cast<int>(howFar));
+    }
 }
 
 [[nodiscard]] core::Error unknownFailure() {
@@ -80,14 +88,28 @@ core::Result<std::optional<UpdateInfo>> VelopackUpdater::checkForUpdates() {
     }
 }
 
-core::Result<void> VelopackUpdater::downloadAndRestart(const UpdateInfo& update) {
-    if (!m_session || !m_session->available
-        || m_session->available->TargetFullRelease.Version != update.version) {
+core::Result<void> VelopackUpdater::download(const UpdateInfo& update, const HowFarAlong& told) {
+    if (!isTheOneFound(update) || !m_session->available) {
+        return core::makeError(core::ErrorCode::NotFound,
+                               "the update to get was not the one that was found");
+    }
+    try {
+        HowFarAlong mine = told;
+        m_session->manager->DownloadUpdates(*m_session->available, reportTo, &mine);
+        return {};
+    } catch (const std::exception& failure) {
+        return std::unexpected{asError(failure)};
+    } catch (...) {
+        return std::unexpected{unknownFailure()};
+    }
+}
+
+core::Result<void> VelopackUpdater::applyAndRestart(const UpdateInfo& update) {
+    if (!isTheOneFound(update) || !m_session->available) {
         return core::makeError(core::ErrorCode::NotFound,
                                "the update to install was not the one that was found");
     }
     try {
-        m_session->manager->DownloadUpdates(*m_session->available);
         m_session->manager->WaitExitThenApplyUpdates(*m_session->available);
         return {};
     } catch (const std::exception& failure) {
@@ -95,6 +117,11 @@ core::Result<void> VelopackUpdater::downloadAndRestart(const UpdateInfo& update)
     } catch (...) {
         return std::unexpected{unknownFailure()};
     }
+}
+
+bool VelopackUpdater::isTheOneFound(const UpdateInfo& update) const noexcept {
+    return m_session && m_session->available
+           && m_session->available->TargetFullRelease.Version == update.version;
 }
 
 }

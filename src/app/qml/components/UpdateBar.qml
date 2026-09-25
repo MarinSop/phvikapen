@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,10 +9,16 @@ Pane {
     id: root
 
     required property UpdateViewModel updates
+    property bool putAside: false
+    readonly property bool getting: root.updates.state === UpdateViewModel.Getting
+    readonly property bool ready: root.updates.state === UpdateViewModel.Ready
+    readonly property bool worthShowing: root.ready || root.getting || (root.updates.worthOffering && !root.putAside)
+
+    signal openWanted
 
     objectName: "updateBar"
     padding: 8
-    visible: root.updates.state === UpdateViewModel.Available || root.updates.state === UpdateViewModel.Installing
+    visible: root.worthShowing
 
     background: Rectangle {
         color: Theme.accentSoft
@@ -30,15 +38,40 @@ Pane {
         Label {
             Layout.fillWidth: true
             elide: Text.ElideRight
-            text: root.updates.state === UpdateViewModel.Installing ? qsTr("Getting version %1…").arg(root.updates.version) : qsTr("Version %1 is ready to install").arg(root.updates.version)
+            text: root.ready ? qsTr("Version %1 is ready to install").arg(root.updates.version) : root.getting ? qsTr("Getting version %1… %2%").arg(root.updates.version).arg(root.updates.howFarAlong) : qsTr("Version %1 is available").arg(root.updates.version)
+        }
+
+        ProgressBar {
+            Layout.preferredWidth: Math.round(120 * Theme.scale)
+            from: 0
+            objectName: "updateBarProgress"
+            to: 100
+            value: root.updates.howFarAlong
+            visible: root.getting
         }
 
         Button {
-            enabled: !root.updates.busy
-            objectName: "installUpdateButton"
-            text: qsTr("Install and restart")
+            objectName: "updateBarButton"
+            text: root.ready ? qsTr("Restart now") : root.getting ? qsTr("Show") : qsTr("Update")
 
-            onClicked: root.updates.install()
+            onClicked: {
+                if (root.ready) {
+                    root.updates.restartNow();
+                } else if (root.getting) {
+                    root.openWanted();
+                } else {
+                    root.openWanted();
+                }
+            }
+        }
+
+        ShapeButton {
+            icon.source: Icons.close
+            label: qsTr("Put this aside")
+            objectName: "updateBarAsideButton"
+            visible: !root.getting && !root.ready
+
+            onClicked: root.putAside = true
         }
     }
 }

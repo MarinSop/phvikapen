@@ -22,17 +22,33 @@ TestCase {
         verify(failures.signalArguments[0][0] !== "");
     }
 
-    function test_nothingIsInstalledUntilSomethingWasFound() {
+    function test_nothingIsGotUntilSomethingWasFound() {
         const updates = createTemporaryObject(updateComponent, testCase);
         const restarts = createTemporaryObject(signalSpyComponent, testCase, {
             target: updates,
             signalName: "restartWanted"
         });
 
-        updates.install();
+        updates.get();
+        updates.restartNow();
 
         compare(updates.state, UpdateViewModel.Idle);
+        compare(updates.howFarAlong, 0);
         compare(restarts.count, 0);
+    }
+
+    function test_aVersionPutAsideIsNotOfferedAgain() {
+        const updates = createTemporaryObject(updateComponent, testCase);
+        compare(updates.skippedVersion, "", "nothing is put aside to begin with");
+        verify(!updates.worthOffering, "with nothing found there is nothing to offer");
+
+        updates.skippedVersion = "9.9.9";
+
+        compare(updates.skippedVersion, "9.9.9");
+        const later = createTemporaryObject(updateComponent, testCase);
+        compare(later.skippedVersion, "9.9.9", "what was put aside is remembered");
+
+        later.skippedVersion = "";
     }
 
     function test_askingForTestVersionsLooksAgainSomewhereElse() {

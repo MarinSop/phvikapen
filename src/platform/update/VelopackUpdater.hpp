@@ -30,9 +30,14 @@ public:
 
     [[nodiscard]] core::Result<std::optional<UpdateInfo>> checkForUpdates() override;
 
-    [[nodiscard]] core::Result<void> downloadAndRestart(const UpdateInfo& update) override;
+    [[nodiscard]] core::Result<void> download(const UpdateInfo& update,
+                                              const HowFarAlong& told) override;
+
+    [[nodiscard]] core::Result<void> applyAndRestart(const UpdateInfo& update) override;
 
 private:
+    [[nodiscard]] bool isTheOneFound(const UpdateInfo& update) const noexcept;
+
     std::unique_ptr<Session> m_session;
 };
 
