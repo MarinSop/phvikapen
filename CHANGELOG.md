@@ -91,6 +91,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries it about. A second tap opens the box it landed in and the words go straight in; Tab and
   Shift+Tab walk from box to box, Escape lets go, and Delete takes the whole table away. The menu
   under the pointer adds and takes away rows and columns beside the box being typed in.
+- Arithmetic written on one line is read into a structure of its own and worked out: the four
+  operations, powers, square roots, brackets, a sign in front of a number, and a number standing
+  against a bracket meaning multiplication. What a reader of handwriting hands back is put right
+  first — a letter l is a one, a letter O a nought, a letter x a times sign, a colon a division and
+  a comma a decimal point — and whatever follows an equals sign is dropped. An answer that cannot be
+  reached is refused plainly rather than handed back as nonsense.
 
 ### Fixed
 

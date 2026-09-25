@@ -24,6 +24,9 @@ target_sources(phvikapen_core
         ink/StrokeSpline.cpp
         ink/StrokeSteadier.cpp
         ink/StrokeTransform.cpp
+        math/Answer.cpp
+        math/Equation.cpp
+        math/Reading.cpp
         model/Outline.cpp
         model/Page.cpp
         model/PageStyle.cpp
@@ -69,6 +72,9 @@ target_sources(phvikapen_core
             ink/StrokeSpline.hpp
             ink/StrokeSteadier.hpp
             ink/StrokeTransform.hpp
+            math/Answer.hpp
+            math/Equation.hpp
+            math/Reading.hpp
             model/Asset.hpp
             model/Outline.hpp
             model/Page.hpp
