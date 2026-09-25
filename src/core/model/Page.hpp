@@ -11,6 +11,7 @@
 #include "core/model/TextBox.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -110,6 +111,10 @@ public:
 
     // What stands on a layer, counted so that the panel can say whether one is empty.
     [[nodiscard]] int countOnLayer(const Uuid& layerId) const noexcept;
+
+    [[nodiscard]] std::optional<Uuid> layerOfThing(const Uuid& thingId) const noexcept;
+
+    [[nodiscard]] bool isThingOpenToTheHand(const Uuid& thingId) const noexcept;
 
 private:
     Uuid m_id;

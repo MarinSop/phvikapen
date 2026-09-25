@@ -5,6 +5,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 
 #include <algorithm>
@@ -72,7 +73,7 @@ std::vector<Uuid> strokesInside(const Page& page, std::span<const Point> polygon
 
     for (const PlacedStroke& placed : page.strokes()) {
         const std::optional<Rect> bounds = placed.stroke.boundingBox();
-        if (!bounds || !holds(*around, *bounds)) {
+        if (!bounds || !holds(*around, *bounds) || !isOpenToTheHand(page.layers(), placed.layer)) {
             continue;
         }
         const bool whollyInside =

@@ -131,22 +131,11 @@ const TextBox* Page::textAt(const Uuid& textId) const noexcept {
     return position == m_texts.end() ? nullptr : &position->box;
 }
 
-namespace {
-
-// Nothing on a layer that is hidden or locked can be taken hold of: it is either not there to be
-// seen, or it is being kept still on purpose.
-[[nodiscard]] bool canBeTakenHold(std::span<const Layer> layers, const Uuid& stands) noexcept {
-    const Layer* const found = layerOf(layers, stands);
-    return found == nullptr || isOpenToTheHand(*found);
-}
-
-}
-
 const TextBox* Page::textUnder(Point at) const noexcept {
     for (const PlacedText& placed : std::ranges::reverse_view{m_texts}) {
         const Rect area = areaOf(placed.box);
         if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
-            && canBeTakenHold(m_layers, placed.layer)) {
+            && isOpenToTheHand(m_layers, placed.layer)) {
             return &placed.box;
         }
     }
@@ -209,7 +198,7 @@ const Table* Page::tableUnder(Point at) const noexcept {
     for (const PlacedTable& placed : std::ranges::reverse_view{m_tables}) {
         const Rect area = areaOf(placed.table);
         if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
-            && canBeTakenHold(m_layers, placed.layer)) {
+            && isOpenToTheHand(m_layers, placed.layer)) {
             return &placed.table;
         }
     }
@@ -272,7 +261,7 @@ const Picture* Page::pictureUnder(Point at) const noexcept {
     for (const PlacedPicture& placed : std::ranges::reverse_view{m_pictures}) {
         const Rect area = areaOf(placed.picture);
         if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
-            && canBeTakenHold(m_layers, placed.layer)) {
+            && isOpenToTheHand(m_layers, placed.layer)) {
             return &placed.picture;
         }
     }
@@ -285,7 +274,7 @@ std::vector<Uuid> Page::strokesTouchedBy(const EraserSweep& sweep) const {
         const auto position =
             std::ranges::lower_bound(m_strokes, ordinal, {}, &PlacedStroke::ordinal);
         if (position != m_strokes.end() && position->ordinal == ordinal
-            && touches(position->stroke, sweep)) {
+            && isOpenToTheHand(m_layers, position->layer) && touches(position->stroke, sweep)) {
             touched.push_back(position->stroke.id());
         }
     }
@@ -331,6 +320,35 @@ Result<Uuid> Page::moveToLayer(const Uuid& thingId, const Uuid& layerId) {
         }
     }
     return makeError(ErrorCode::NotFound, "the page has nothing of that name on it");
+}
+
+std::optional<Uuid> Page::layerOfThing(const Uuid& thingId) const noexcept {
+    for (const PlacedStroke& placed : m_strokes) {
+        if (placed.stroke.id() == thingId) {
+            return placed.layer;
+        }
+    }
+    for (const PlacedText& placed : m_texts) {
+        if (placed.box.id == thingId) {
+            return placed.layer;
+        }
+    }
+    for (const PlacedPicture& placed : m_pictures) {
+        if (placed.picture.id == thingId) {
+            return placed.layer;
+        }
+    }
+    for (const PlacedTable& placed : m_tables) {
+        if (placed.table.id == thingId) {
+            return placed.layer;
+        }
+    }
+    return std::nullopt;
+}
+
+bool Page::isThingOpenToTheHand(const Uuid& thingId) const noexcept {
+    const std::optional<Uuid> stands = layerOfThing(thingId);
+    return stands && isOpenToTheHand(m_layers, *stands);
 }
 
 int Page::countOnLayer(const Uuid& layerId) const noexcept {

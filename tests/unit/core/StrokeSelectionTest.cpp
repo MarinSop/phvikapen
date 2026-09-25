@@ -5,6 +5,7 @@
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 
 #include <gtest/gtest.h>
@@ -41,6 +42,52 @@ TEST(StrokeSelectionTest, ALineIsNotAShape) {
     const std::array line{Point{.x = 0.0F, .y = 0.0F}, Point{.x = 10.0F, .y = 10.0F}};
 
     EXPECT_FALSE(inside(line, Point{.x = 5.0F, .y = 5.0F}));
+}
+
+TEST(StrokeSelectionTest, LeavesInkOnALockedLayerWhereItIs) {
+    Uuid7Generator ids;
+    const Stroke free = line(ids, 20.0F, 40.0F, 30.0F);
+    const Stroke held = line(ids, 20.0F, 40.0F, 60.0F);
+    const Uuid open = ids.next();
+    const Uuid shut = ids.next();
+    Page page{
+        ids.next(),
+        {
+            PlacedStroke{.ordinal = 0, .stroke = free, .layer = open},
+            PlacedStroke{.ordinal = 1, .stroke = held, .layer = shut},
+        },
+        {},
+        {},
+        {},
+        {Layer{.id = open, .name = "open"}, Layer{.id = shut, .name = "shut", .locked = true}}};
+
+    const std::vector<Uuid> picked = strokesInside(page, kSquare);
+
+    ASSERT_EQ(picked.size(), 1U);
+    EXPECT_EQ(picked.front(), free.id());
+}
+
+TEST(StrokeSelectionTest, LeavesInkOnAHiddenLayerWhereItIs) {
+    Uuid7Generator ids;
+    const Stroke free = line(ids, 20.0F, 40.0F, 30.0F);
+    const Stroke gone = line(ids, 20.0F, 40.0F, 60.0F);
+    const Uuid open = ids.next();
+    const Uuid dark = ids.next();
+    Page page{
+        ids.next(),
+        {
+            PlacedStroke{.ordinal = 0, .stroke = free, .layer = open},
+            PlacedStroke{.ordinal = 1, .stroke = gone, .layer = dark},
+        },
+        {},
+        {},
+        {},
+        {Layer{.id = open, .name = "open"}, Layer{.id = dark, .name = "dark", .shown = false}}};
+
+    const std::vector<Uuid> picked = strokesInside(page, kSquare);
+
+    ASSERT_EQ(picked.size(), 1U);
+    EXPECT_EQ(picked.front(), free.id());
 }
 
 TEST(StrokeSelectionTest, PicksOnlyStrokesThatAreWhollyInside) {

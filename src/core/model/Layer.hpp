@@ -43,6 +43,8 @@ struct Layer {
 
 [[nodiscard]] bool isLockedOn(std::span<const Layer> layers, const Uuid& id) noexcept;
 
+[[nodiscard]] bool isOpenToTheHand(std::span<const Layer> layers, const Uuid& id) noexcept;
+
 // A name no other layer of the page carries, made from the one asked for.
 [[nodiscard]] std::string freeName(std::span<const Layer> layers, const std::string& wanted);
 

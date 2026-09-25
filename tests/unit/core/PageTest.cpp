@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/id/Uuid7Generator.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/model/Layer.hpp"
 #include "support/TemporaryNotebook.hpp"
 
 #include <gtest/gtest.h>
@@ -128,6 +129,56 @@ TEST(PageTest, FindsTheStrokesAnEraserTouches) {
     };
 
     EXPECT_EQ(page.strokesTouchedBy(sweep), std::vector<Uuid>{near.stroke.id()});
+}
+
+TEST(PageTest, AnEraserPassesOverALockedOrHiddenLayer) {
+    Uuid7Generator ids;
+    const Uuid shut = ids.next();
+    const Uuid dark = ids.next();
+    const Uuid open = ids.next();
+    const PlacedStroke held{.ordinal = 0, .stroke = makeStroke(ids, 0.0F), .layer = shut};
+    const PlacedStroke gone{.ordinal = 1, .stroke = makeStroke(ids, 0.0F), .layer = dark};
+    const PlacedStroke free{.ordinal = 2, .stroke = makeStroke(ids, 0.0F), .layer = open};
+    Page page{ids.next(),
+              {held, gone, free},
+              {},
+              {},
+              {},
+              {
+                  Layer{.id = shut, .name = "shut", .locked = true},
+                  Layer{.id = dark, .name = "dark", .shown = false},
+                  Layer{.id = open, .name = "open"},
+              }};
+
+    const EraserSweep sweep{
+        .from = {.x = 5.0F, .y = 55.0F},
+        .to = {.x = 5.0F, .y = 55.0F},
+        .radius = 2.0F,
+    };
+
+    EXPECT_EQ(page.strokesTouchedBy(sweep), std::vector<Uuid>{free.stroke.id()});
+}
+
+TEST(PageTest, SaysWhichLayerAThingStandsOnAndWhetherItIsWithinReach) {
+    Uuid7Generator ids;
+    const Uuid shut = ids.next();
+    const Uuid open = ids.next();
+    const PlacedStroke held{.ordinal = 0, .stroke = makeStroke(ids, 0.0F), .layer = shut};
+    const PlacedStroke free{.ordinal = 1, .stroke = makeStroke(ids, 0.0F), .layer = open};
+    Page page{
+        ids.next(),
+        {held, free},
+        {},
+        {},
+        {},
+        {Layer{.id = shut, .name = "shut", .locked = true}, Layer{.id = open, .name = "open"}}};
+
+    EXPECT_EQ(page.layerOfThing(held.stroke.id()), shut);
+    EXPECT_EQ(page.layerOfThing(free.stroke.id()), open);
+    EXPECT_FALSE(page.layerOfThing(ids.next()).has_value());
+    EXPECT_FALSE(page.isThingOpenToTheHand(held.stroke.id()));
+    EXPECT_TRUE(page.isThingOpenToTheHand(free.stroke.id()));
+    EXPECT_FALSE(page.isThingOpenToTheHand(ids.next()));
 }
 
 TEST(PageTest, AnErasedStrokeCanNoLongerBeTouched) {

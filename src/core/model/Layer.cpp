@@ -45,6 +45,11 @@ bool isLockedOn(std::span<const Layer> layers, const Uuid& id) noexcept {
     return layer != nullptr && layer->locked;
 }
 
+bool isOpenToTheHand(std::span<const Layer> layers, const Uuid& id) noexcept {
+    const Layer* const layer = layerOf(layers, id);
+    return layer == nullptr || isOpenToTheHand(*layer);
+}
+
 std::string freeName(std::span<const Layer> layers, const std::string& wanted) {
     if (!isTaken(layers, wanted)) {
         return wanted;
