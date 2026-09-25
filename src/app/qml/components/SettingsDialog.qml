@@ -167,6 +167,21 @@ AppDialog {
                     wrapMode: Text.WordWrap
                 }
 
+                Switch {
+                    checked: root.settings.reduceMotion
+                    objectName: "reduceMotionSwitch"
+                    text: qsTr("Less movement")
+
+                    onToggled: root.settings.reduceMotion = !root.settings.reduceMotion
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("Panels, tabs and lists change at once instead of sliding into place.")
+                    wrapMode: Text.WordWrap
+                }
+
                 MenuSeparator {
                     Layout.fillWidth: true
                 }

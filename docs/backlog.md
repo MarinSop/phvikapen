@@ -125,8 +125,22 @@ into a real problem earlier.
 
 ## The window
 
-- **The panels cannot be moved or resized.** The pages and the page setup sit at a fixed width on
-  their side of the sheet and can only be turned on and off from the View menu.
+- **A panel cannot be torn off into a window of its own.** Panels dock to any of the four sides and
+  stack into tabs, but they never leave the window, so two panels cannot stand side by side on a
+  second screen. That needs a window per floating group and a way of carrying a panel across the
+  gap between windows.
+- **A tab group cannot be reordered by dragging one tab past another.** A panel is carried to
+  another group, or out of one, but the order of the tabs inside a group is the order they were
+  added in.
+- **The layers carry no small picture of what stands on them.** A line says its name, whether it is
+  shown, whether it is locked and how much stands on it. A thumbnail means drawing the layer alone,
+  which the painter can do for a page but not yet for one layer of it.
+- **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
+  locked in one go.
+- **The first section of a new notebook is named in English.** Pages and layers are named in the
+  language the reader asked for, but the section a notebook is created with is named by the part
+  that writes the file, which has no words of its own. Handing that name in from the window would
+  put it right.
 - **There is no tool for text.** The palette holds only what the application can do: pick, drag the
   page, draw, highlight, draw a shape and erase.
 - **The menus are only checked by their commands.** Tests trigger the commands behind the menus, not

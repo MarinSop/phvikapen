@@ -15,6 +15,12 @@ QtObject {
     }
 
     property int mode: Theme.Brand
+    property bool stillness: false
+    readonly property int quick: root.stillness ? 0 : 110
+    readonly property int calm: root.stillness ? 0 : 180
+    readonly property int unhurried: root.stillness ? 0 : 260
+    readonly property int ease: Easing.OutCubic
+    readonly property int easeBoth: Easing.InOutCubic
     // How large the controls are drawn. A hand holding a pen needs a larger mark to hit than a
     // mouse pointer does, so every button, bar and grip is measured from here rather than from a
     // number written where it is used.

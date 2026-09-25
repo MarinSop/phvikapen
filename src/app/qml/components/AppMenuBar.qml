@@ -228,8 +228,36 @@ MenuBar {
         }
 
         Menu {
+            objectName: "panelsMenu"
+            title: qsTr("Panels")
+
+            MenuCommand {
+                action: root.actions.showContentsPanel
+                objectName: "contentsPanelItem"
+            }
+
+            MenuCommand {
+                action: root.actions.showLayersPanel
+                objectName: "layersPanelItem"
+            }
+
+            MenuCommand {
+                action: root.actions.showPageSetupPanel
+                objectName: "pageSetupPanelItem"
+            }
+
+            MenuSeparator {
+            }
+
+            MenuCommand {
+                action: root.actions.resetPanels
+                objectName: "resetPanelsItem"
+            }
+        }
+
+        Menu {
             objectName: "contentsMenu"
-            title: qsTr("Contents Panel")
+            title: qsTr("Contents Panel Shows")
 
             MenuCommand {
                 action: root.actions.sectionsList
@@ -240,16 +268,6 @@ MenuBar {
                 action: root.actions.pagesList
                 objectName: "pagesListItem"
             }
-        }
-
-        MenuCommand {
-            action: root.actions.pagePanel
-            objectName: "pagePanelItem"
-        }
-
-        MenuCommand {
-            action: root.actions.showLayersPanel
-            objectName: "layersPanelItem"
         }
     }
 

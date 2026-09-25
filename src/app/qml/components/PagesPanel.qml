@@ -9,8 +9,6 @@ Pane {
     id: root
 
     required property AppActions actions
-    property int draggedPage: -1
-    property int draggedSection: -1
     // Where the row in hand would land, so that a line can show it.
     property int pageLanding: -1
     property int sectionLanding: -1
@@ -19,23 +17,6 @@ Pane {
     property int renamingPage: -1
     property int renamingSection: -1
     readonly property SettingsViewModel settings: root.actions.settings
-
-    // The gap a carried row would drop into: 0 is above the first row, count is under the last.
-    // It is worked out from where the rows rest, so the row in hand does not move the answer.
-    function gapIn(list, scenePosition) {
-        if (list.count === 0) {
-            return 0;
-        }
-        const step = list.contentHeight / list.count;
-        const point = list.mapFromItem(null, scenePosition);
-        const inContent = point.y + list.contentY;
-        return Math.max(0, Math.min(list.count, Math.round(inContent / step)));
-    }
-
-    // Where a row taken from `from` ends up when it is dropped into `gap`.
-    function landingOf(from, gap) {
-        return gap > from ? gap - 1 : gap;
-    }
 
     function askToDelete(sectionScope, index, title) {
         deleteDialog.sectionScope = sectionScope;
@@ -60,17 +41,7 @@ Pane {
 
     objectName: "pagesPanel"
     padding: 8
-
-    background: Rectangle {
-        color: Theme.surface
-
-        Rectangle {
-            anchors.right: parent.right
-            color: Theme.line
-            height: parent.height
-            width: 1
-        }
-    }
+    background: null
 
     // Clicking anywhere else in the panel settles a name that is being typed.
     TapHandler {
@@ -153,12 +124,25 @@ Pane {
                 clip: true
                 model: root.ready ? root.notebook.sections : null
 
+                displaced: Transition {
+                    NumberAnimation {
+                        duration: Theme.quick
+                        easing.type: Theme.ease
+                        properties: "y"
+                    }
+                }
+                move: Transition {
+                    NumberAnimation {
+                        duration: Theme.quick
+                        easing.type: Theme.ease
+                        properties: "y"
+                    }
+                }
                 delegate: ItemDelegate {
                     id: sectionDelegate
 
                     required property int index
                     readonly property bool renaming: root.renamingSection === sectionDelegate.index
-                    property real restingY: 0
                     required property string title
 
                     highlighted: root.ready && sectionDelegate.index === root.notebook.currentSection
@@ -219,37 +203,15 @@ Pane {
                     onClicked: root.notebook.currentSection = sectionDelegate.index
                     onPressAndHold: sectionMenu.popup()
 
-                    DragHandler {
+                    ReorderHandler {
                         id: sectionDrag
 
-                        grabPermissions: PointerHandler.CanTakeOverFromAnything
-                        target: sectionDelegate
-                        xAxis.enabled: false
-                        yAxis.enabled: true
+                        index: sectionDelegate.index
+                        list: sectionList
+                        row: sectionDelegate
 
-                        onCentroidChanged: {
-                            if (sectionDrag.active) {
-                                root.sectionLanding = root.gapIn(sectionList, sectionDrag.centroid.scenePosition);
-                            }
-                        }
-                        onActiveChanged: {
-                            if (sectionDrag.active) {
-                                sectionDelegate.restingY = sectionDelegate.y;
-                                root.draggedSection = sectionDelegate.index;
-                                root.sectionLanding = sectionDelegate.index;
-                                return;
-                            }
-                            const carried = root.draggedSection;
-                            const gap = root.sectionLanding;
-                            root.draggedSection = -1;
-                            root.sectionLanding = -1;
-                            sectionDelegate.y = sectionDelegate.restingY;
-                            sectionList.forceLayout();
-                            const landed = root.landingOf(carried, gap);
-                            if (carried >= 0 && landed !== carried) {
-                                root.notebook.moveSection(carried, landed);
-                            }
-                        }
+                        onLandingChanged: root.sectionLanding = sectionDrag.landing
+                        onMoved: (from, to) => root.notebook.moveSection(from, to)
                     }
 
                     TapHandler {
@@ -333,12 +295,25 @@ Pane {
                 clip: true
                 model: root.ready ? root.notebook.pages : null
 
+                displaced: Transition {
+                    NumberAnimation {
+                        duration: Theme.quick
+                        easing.type: Theme.ease
+                        properties: "y"
+                    }
+                }
+                move: Transition {
+                    NumberAnimation {
+                        duration: Theme.quick
+                        easing.type: Theme.ease
+                        properties: "y"
+                    }
+                }
                 delegate: ItemDelegate {
                     id: pageDelegate
 
                     required property int index
                     readonly property bool panelReady: root.ready
-                    property real restingY: 0
                     readonly property bool renaming: root.renamingPage === pageDelegate.index
                     required property string thumbnail
                     required property string title
@@ -410,11 +385,37 @@ Pane {
                         }
 
                         QuickButton {
+                            icon.source: Icons.settings
+                            label: qsTr("Page setup")
+                            objectName: "pageOptionsButton"
+                            opacity: pageDelegate.hovered || pageDelegate.highlighted ? 1 : 0
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Theme.quick
+                                    easing.type: Theme.ease
+                                }
+                            }
+
+                            onClicked: {
+                                root.notebook.currentPage = pageDelegate.index;
+                                root.actions.workspace.showPanel(Panels.pageSetup);
+                            }
+                        }
+
+                        QuickButton {
                             enabled: root.ready && root.notebook.pageCount > 1
                             icon.source: Icons.close
                             label: qsTr("Delete page")
                             objectName: "deletePageButton"
                             opacity: pageDelegate.hovered || pageDelegate.highlighted ? 1 : 0
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Theme.quick
+                                    easing.type: Theme.ease
+                                }
+                            }
 
                             onClicked: root.askToDelete(false, pageDelegate.index, pageDelegate.title)
                         }
@@ -426,41 +427,15 @@ Pane {
                     onClicked: root.notebook.currentPage = pageDelegate.index
                     onPressAndHold: pageMenu.popup()
 
-                    // Picking a page up and carrying it: the row follows the pointer and the
-                    // page lands where it is let go.
-                    DragHandler {
+                    ReorderHandler {
                         id: pageDrag
 
-                        // The list would rather scroll; carrying a page has to win that argument.
-                        grabPermissions: PointerHandler.CanTakeOverFromAnything
-                        target: pageDelegate
-                        xAxis.enabled: false
-                        yAxis.enabled: true
+                        index: pageDelegate.index
+                        list: pageList
+                        row: pageDelegate
 
-                        onCentroidChanged: {
-                            if (pageDrag.active) {
-                                root.pageLanding = root.gapIn(pageList, pageDrag.centroid.scenePosition);
-                            }
-                        }
-                        onActiveChanged: {
-                            if (pageDrag.active) {
-                                pageDelegate.restingY = pageDelegate.y;
-                                root.draggedPage = pageDelegate.index;
-                                root.pageLanding = pageDelegate.index;
-                                return;
-                            }
-                            const carried = root.draggedPage;
-                            const gap = root.pageLanding;
-                            root.draggedPage = -1;
-                            root.pageLanding = -1;
-                            // The carried row goes back in line; the list puts it where it belongs.
-                            pageDelegate.y = pageDelegate.restingY;
-                            pageList.forceLayout();
-                            const landed = root.landingOf(carried, gap);
-                            if (carried >= 0 && landed !== carried) {
-                                root.notebook.movePage(carried, landed);
-                            }
-                        }
+                        onLandingChanged: root.pageLanding = pageDrag.landing
+                        onMoved: (from, to) => root.notebook.movePage(from, to)
                     }
 
                     TapHandler {

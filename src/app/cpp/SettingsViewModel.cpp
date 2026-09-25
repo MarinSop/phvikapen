@@ -30,18 +30,13 @@ constexpr auto kUiScaleSetting = "look/uiScale";
 constexpr auto kHoldMenuSetting = "input/holdForMenu";
 constexpr auto kExportScopeSetting = "export/scope";
 constexpr auto kContinuousPagesSetting = "view/continuous";
-constexpr auto kPagePanelSetting = "view/pagePanel";
 constexpr auto kThemeChosenSetting = "look/chosen";
 constexpr auto kReopenSetting = "session/reopen";
 constexpr auto kSectionsSetting = "view/sections";
 constexpr auto kPagesSetting = "view/pages";
-constexpr auto kPanelWidthSetting = "view/panelWidth";
 constexpr auto kLanguageSetting = "look/language";
-constexpr auto kLayersSetting = "view/layers";
-constexpr auto kLayersWidthSetting = "view/layersWidth";
+constexpr auto kReduceMotionSetting = "look/reduceMotion";
 constexpr auto kSectionsHeightSetting = "view/sectionsHeight";
-constexpr int kNarrowestPanel = 140;
-constexpr int kWidestPanel = 520;
 constexpr int kShortestList = 60;
 constexpr int kTallestList = 800;
 constexpr int kExportScopes = 3;
@@ -72,14 +67,9 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
     m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
     m_language = settings.value(kLanguageSetting, m_language).toString();
-    m_showLayers = settings.value(kLayersSetting, m_showLayers).toBool();
-    m_layersWidth = std::clamp(settings.value(kLayersWidthSetting, m_layersWidth).toInt(),
-                               kNarrowestPanel, kWidestPanel);
-    m_panelWidth = std::clamp(settings.value(kPanelWidthSetting, m_panelWidth).toInt(),
-                              kNarrowestPanel, kWidestPanel);
+    m_reduceMotion = settings.value(kReduceMotionSetting, m_reduceMotion).toBool();
     m_sectionsHeight = std::clamp(settings.value(kSectionsHeightSetting, m_sectionsHeight).toInt(),
                                   kShortestList, kTallestList);
-    m_showPagePanel = settings.value(kPagePanelSetting, m_showPagePanel).toBool();
     m_usePressure = settings.value(kPressureSetting, m_usePressure).toBool();
     m_holdForMenu = settings.value(kHoldMenuSetting, m_holdForMenu).toBool();
     m_zoomStep = std::clamp(settings.value(kZoomStepSetting, m_zoomStep).toDouble(),
@@ -371,16 +361,6 @@ void SettingsViewModel::setContinuousPages(bool continuous) {
     emit continuousPagesChanged();
 }
 
-void SettingsViewModel::setShowPagePanel(bool shown) {
-    if (shown == m_showPagePanel) {
-        return;
-    }
-    m_showPagePanel = shown;
-    QSettings settings;
-    settings.setValue(kPagePanelSetting, m_showPagePanel);
-    emit panelsChanged();
-}
-
 void SettingsViewModel::setReopenNotebooks(bool reopen) {
     if (reopen == m_reopenNotebooks) {
         return;
@@ -421,17 +401,6 @@ void SettingsViewModel::setShowPages(bool shown) {
     emit panelsChanged();
 }
 
-void SettingsViewModel::setPanelWidth(int width) {
-    const int wanted = std::clamp(width, kNarrowestPanel, kWidestPanel);
-    if (wanted == m_panelWidth) {
-        return;
-    }
-    m_panelWidth = wanted;
-    QSettings settings;
-    settings.setValue(kPanelWidthSetting, m_panelWidth);
-    emit panelsChanged();
-}
-
 void SettingsViewModel::setLanguage(const QString& tag) {
     if (tag == m_language) {
         return;
@@ -442,25 +411,14 @@ void SettingsViewModel::setLanguage(const QString& tag) {
     emit languageChanged();
 }
 
-void SettingsViewModel::setShowLayers(bool shown) {
-    if (shown == m_showLayers) {
+void SettingsViewModel::setReduceMotion(bool reduce) {
+    if (reduce == m_reduceMotion) {
         return;
     }
-    m_showLayers = shown;
+    m_reduceMotion = reduce;
     QSettings settings;
-    settings.setValue(kLayersSetting, m_showLayers);
-    emit panelsChanged();
-}
-
-void SettingsViewModel::setLayersWidth(int width) {
-    const int wanted = std::clamp(width, kNarrowestPanel, kWidestPanel);
-    if (wanted == m_layersWidth) {
-        return;
-    }
-    m_layersWidth = wanted;
-    QSettings settings;
-    settings.setValue(kLayersWidthSetting, m_layersWidth);
-    emit panelsChanged();
+    settings.setValue(kReduceMotionSetting, m_reduceMotion);
+    emit reduceMotionChanged();
 }
 
 void SettingsViewModel::setSectionsHeight(int height) {

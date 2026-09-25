@@ -126,6 +126,11 @@ TestCase {
         notebooks: notebooks
         settings: settings
         tools: tools
+        workspace: workspace
+    }
+
+    WorkspaceViewModel {
+        id: workspace
     }
 
     OptionsBar {

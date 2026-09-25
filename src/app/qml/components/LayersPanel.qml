@@ -5,71 +5,57 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import PhvikaPen.Ui
 
-// The layers of the page being read, top first, the way a panel of layers is read everywhere. Each
-// line says whether its layer is shown, whether it is locked, what it is called and how much
-// stands on it; the line that is drawn in is the one anything new is put on. A line dragged up or
-// down changes the order the layers are drawn in.
-Item {
+Pane {
     id: root
 
     required property AppActions actions
     readonly property string active: root.notebook === null ? "" : root.notebook.activeLayer
     readonly property NotebookViewModel notebook: root.actions.notebook
-    readonly property real lineHeight: Math.round(38 * Theme.scale)
+    readonly property bool ready: root.notebook !== null && root.notebook.loaded
+    readonly property real lineHeight: Math.round(40 * Theme.scale)
+    property int landing: -1
 
-    // Where a line dropped at a height belongs in the order the layers are drawn in, which runs
-    // the other way round from the way they are listed.
     function placeOfDrop(index) {
         return Math.max(0, list.count - 1 - index);
     }
 
+    background: null
     objectName: "layersPanel"
-
-    Rectangle {
-        anchors.fill: parent
-        color: Theme.surface
-
-        Rectangle {
-            anchors.left: parent.left
-            color: Theme.line
-            height: parent.height
-            width: 1
-        }
-    }
+    padding: 0
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 1
         spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 4
-            Layout.topMargin: 6
+            Layout.leftMargin: Theme.gap
+            Layout.rightMargin: Theme.gap
+            Layout.topMargin: Theme.gap
             spacing: 2
 
-            Label {
+            Item {
                 Layout.fillWidth: true
-                color: palette.placeholderText
-                text: qsTr("Layers")
             }
 
             QuickButton {
                 action: root.actions.addLayer
-                label: qsTr("New layer")
+                display: AbstractButton.IconOnly
+                label: root.actions.addLayer.text
                 objectName: "addLayerButton"
             }
 
             QuickButton {
                 action: root.actions.duplicateLayer
-                label: qsTr("Duplicate layer")
+                display: AbstractButton.IconOnly
+                label: root.actions.duplicateLayer.text
                 objectName: "duplicateLayerButton"
             }
 
             QuickButton {
                 action: root.actions.removeLayer
-                label: qsTr("Delete layer")
+                display: AbstractButton.IconOnly
+                label: root.actions.removeLayer.text
                 objectName: "removeLayerButton"
             }
         }
@@ -79,16 +65,32 @@ Item {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.topMargin: 6
+            Layout.topMargin: Theme.gap
             boundsBehavior: Flickable.StopAtBounds
             clip: true
-            model: root.notebook === null ? null : root.notebook.layers
+            currentIndex: -1
+            keyNavigationEnabled: true
+            model: root.ready ? root.notebook.layers : null
             objectName: "layerList"
             spacing: 2
 
             ScrollBar.vertical: ScrollBar {
             }
-            delegate: Rectangle {
+            displaced: Transition {
+                NumberAnimation {
+                    duration: Theme.quick
+                    easing.type: Theme.ease
+                    properties: "y"
+                }
+            }
+            move: Transition {
+                NumberAnimation {
+                    duration: Theme.quick
+                    easing.type: Theme.ease
+                    properties: "y"
+                }
+            }
+            delegate: ItemDelegate {
                 id: line
 
                 required property int count
@@ -98,35 +100,36 @@ Item {
                 required property string name
                 required property bool shown
                 readonly property bool chosen: line.layerId === root.active
+                property bool renaming: false
 
-                color: line.chosen ? Theme.accentSoft : (hover.hovered ? Theme.base : "transparent")
+                Accessible.name: line.name
                 height: root.lineHeight
                 objectName: "layerLine" + line.index
-                radius: 6
                 width: list.width
+                z: carry.active ? 2 : 1
 
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    color: Theme.accent
-                    radius: 2
-                    visible: line.chosen
-                    width: 3
+                background: Rectangle {
+                    color: line.chosen ? Theme.accentSoft : line.hovered ? Theme.hover : "transparent"
+                    radius: 6
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Theme.quick
+                            easing.type: Theme.ease
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        color: Theme.accent
+                        radius: 2
+                        visible: line.chosen
+                        width: 3
+                    }
                 }
-
-                HoverHandler {
-                    id: hover
-                }
-
-                TapHandler {
-                    onTapped: root.notebook.activeLayer = line.layerId
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 4
+                contentItem: RowLayout {
                     spacing: 2
 
                     ShapeButton {
@@ -152,23 +155,13 @@ Item {
                         spacing: 0
 
                         Label {
-                            id: label
-
                             Layout.fillWidth: true
                             color: line.shown ? palette.windowText : palette.placeholderText
                             elide: Text.ElideRight
+                            font.italic: !line.shown
                             objectName: "layerName" + line.index
                             text: line.name
-                            visible: !rename.visible
-
-                            TapHandler {
-                                onDoubleTapped: {
-                                    rename.text = line.name;
-                                    rename.visible = true;
-                                    rename.forceActiveFocus();
-                                    rename.selectAll();
-                                }
-                            }
+                            visible: !line.renaming
                         }
 
                         TextField {
@@ -176,16 +169,23 @@ Item {
 
                             Layout.fillWidth: true
                             objectName: "layerRename" + line.index
-                            visible: false
+                            text: line.name
+                            visible: line.renaming
 
-                            Keys.onEscapePressed: rename.visible = false
+                            Keys.onEscapePressed: line.renaming = false
                             onAccepted: {
                                 root.notebook.renameLayer(line.layerId, rename.text);
-                                rename.visible = false;
+                                line.renaming = false;
                             }
                             onActiveFocusChanged: {
                                 if (!rename.activeFocus) {
-                                    rename.visible = false;
+                                    line.renaming = false;
+                                }
+                            }
+                            onVisibleChanged: {
+                                if (rename.visible) {
+                                    rename.forceActiveFocus();
+                                    rename.selectAll();
                                 }
                             }
                         }
@@ -193,74 +193,113 @@ Item {
                         Label {
                             color: palette.placeholderText
                             font.pixelSize: Math.round(11 * Theme.scale)
-                            text: line.count === 1 ? qsTr("1 thing") : qsTr("%1 things").arg(line.count)
-                            visible: !rename.visible
-                        }
-                    }
-
-                    // The grip the line is dragged by, so that dragging anywhere else in it is
-                    // free to choose the layer rather than reorder the lot.
-                    Rectangle {
-                        id: grip
-
-                        Layout.preferredHeight: root.lineHeight - 12
-                        Layout.preferredWidth: 14
-                        color: "transparent"
-                        objectName: "layerGrip" + line.index
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 3
-
-                            Repeater {
-                                model: 3
-
-                                Rectangle {
-                                    color: dragging.active ? Theme.accent : Theme.line
-                                    height: 2
-                                    radius: 1
-                                    width: 12
-                                }
-                            }
-                        }
-
-                        HoverHandler {
-                            cursorShape: Qt.SizeVerCursor
-                        }
-
-                        DragHandler {
-                            id: dragging
-
-                            target: null
-                            xAxis.enabled: false
-
-                            onActiveChanged: {
-                                if (dragging.active) {
-                                    return;
-                                }
-                                const steps = Math.round(dragging.activeTranslation.y / root.lineHeight);
-                                if (steps !== 0) {
-                                    root.notebook.moveLayer(line.layerId, root.placeOfDrop(line.index + steps));
-                                }
-                            }
+                            text: line.locked ? qsTr("%n thing(s), locked", "", line.count) : qsTr("%n thing(s)", "", line.count)
+                            visible: !line.renaming
                         }
                     }
                 }
+
+                onClicked: root.notebook.activeLayer = line.layerId
+                onDoubleClicked: line.renaming = true
+                onPressAndHold: lineMenu.popup()
+
+                ReorderHandler {
+                    id: carry
+
+                    index: line.index
+                    list: list
+                    row: line
+
+                    onLandingChanged: root.landing = carry.landing
+                    onMoved: (from, to) => root.notebook.moveLayer(line.layerId, root.placeOfDrop(to))
+                }
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+
+                    onTapped: lineMenu.popup()
+                }
+
+                Menu {
+                    id: lineMenu
+
+                    MenuItem {
+                        text: qsTr("Rename")
+
+                        onTriggered: line.renaming = true
+                    }
+
+                    MenuItem {
+                        objectName: "duplicateLayerItem"
+                        text: qsTr("Duplicate")
+
+                        onTriggered: root.notebook.duplicateLayer(line.layerId)
+                    }
+
+                    MenuItem {
+                        enabled: line.index > 0
+                        text: qsTr("Move up")
+
+                        onTriggered: root.notebook.moveLayer(line.layerId, root.placeOfDrop(line.index - 1))
+                    }
+
+                    MenuItem {
+                        enabled: line.index + 1 < list.count
+                        text: qsTr("Move down")
+
+                        onTriggered: root.notebook.moveLayer(line.layerId, root.placeOfDrop(line.index + 1))
+                    }
+
+                    MenuSeparator {
+                    }
+
+                    MenuItem {
+                        action: root.actions.moveToActiveLayer
+                    }
+
+                    MenuItem {
+                        enabled: list.count > 1
+                        text: qsTr("Delete…")
+
+                        onTriggered: removeDialog.open()
+                    }
+                }
+
+                ConfirmDialog {
+                    id: removeDialog
+
+                    objectName: "removeLayerDialog" + line.index
+                    question: qsTr("“%1” and everything on it will go. This can be undone.").arg(line.name)
+                    title: qsTr("Delete layer")
+
+                    onAccepted: root.notebook.removeLayer(line.layerId)
+                }
+            }
+
+            DropLine {
+                list: list
+                place: root.landing
             }
         }
 
-        // What is picked up can be sent to another layer, which is how a picture is put over a
-        // table or under it.
         Button {
-            Layout.bottomMargin: 6
+            Layout.bottomMargin: Theme.gap
             Layout.fillWidth: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 8
-            enabled: root.actions.hasPicture || root.actions.hasTable || root.actions.hasTextBox
+            Layout.leftMargin: Theme.gap
+            Layout.rightMargin: Theme.gap
+            Layout.topMargin: Theme.gap
+            ToolTip.delay: 600
+            ToolTip.text: qsTr("Send what is picked up to the layer that is drawn in.")
+            ToolTip.visible: hovered
+            action: root.actions.moveToActiveLayer
             objectName: "moveToLayerButton"
-            text: qsTr("Move to This Layer")
-
-            onClicked: root.notebook.movePickedToLayer(root.active)
         }
+    }
+
+    EmptyPanelNote {
+        anchors.centerIn: parent
+        text: qsTr("Open a page to work on its layers.")
+        visible: !root.ready
+        width: parent.width - (Theme.gap * 4)
     }
 }

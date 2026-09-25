@@ -45,17 +45,14 @@ class SettingsViewModel : public QObject {
         int exportScope READ exportScope WRITE setExportScope NOTIFY exportScopeChanged FINAL)
     Q_PROPERTY(bool continuousPages READ continuousPages WRITE setContinuousPages NOTIFY
                    continuousPagesChanged FINAL)
-    Q_PROPERTY(
-        bool showPagePanel READ showPagePanel WRITE setShowPagePanel NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool themeChosen READ themeChosen WRITE setThemeChosen NOTIFY themeChanged FINAL)
     Q_PROPERTY(bool reopenNotebooks READ reopenNotebooks WRITE setReopenNotebooks NOTIFY
                    panelsChanged FINAL)
     Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
-    Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged FINAL)
-    Q_PROPERTY(bool showLayers READ showLayers WRITE setShowLayers NOTIFY panelsChanged FINAL)
-    Q_PROPERTY(int layersWidth READ layersWidth WRITE setLayersWidth NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(
+        bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY reduceMotionChanged FINAL)
     Q_PROPERTY(
         int sectionsHeight READ sectionsHeight WRITE setSectionsHeight NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
@@ -152,10 +149,6 @@ public:
 
     void setContinuousPages(bool continuous);
 
-    [[nodiscard]] bool showPagePanel() const { return m_showPagePanel; }
-
-    static constexpr int kDefaultPanelWidth = 220;
-    static constexpr int kDefaultLayersWidth = 230;
     static constexpr int kDefaultSectionsHeight = 150;
 
     // Whether the notebooks that were open come back the next time, or the reader starts fresh.
@@ -175,28 +168,18 @@ public:
 
     void setShowPages(bool shown);
 
-    [[nodiscard]] int panelWidth() const { return m_panelWidth; }
-
     // The language the reader asked for, or nothing at all to follow the machine.
     [[nodiscard]] QString language() const { return m_language; }
 
-    [[nodiscard]] bool showLayers() const { return m_showLayers; }
-
-    [[nodiscard]] int layersWidth() const { return m_layersWidth; }
-
-    void setPanelWidth(int width);
-
     void setLanguage(const QString& tag);
 
-    void setShowLayers(bool shown);
+    [[nodiscard]] bool reduceMotion() const { return m_reduceMotion; }
 
-    void setLayersWidth(int width);
+    void setReduceMotion(bool reduce);
 
     [[nodiscard]] int sectionsHeight() const { return m_sectionsHeight; }
 
     void setSectionsHeight(int height);
-
-    void setShowPagePanel(bool shown);
 
     [[nodiscard]] qreal customWidth() const;
     void setCustomWidth(qreal millimeters);
@@ -233,6 +216,7 @@ signals:
     void exportScopeChanged();
     void continuousPagesChanged();
     void panelsChanged();
+    void reduceMotionChanged();
 
     void languageChanged();
 
@@ -250,15 +234,12 @@ private:
     int m_exportScope{0};
     int m_theme{0};
     bool m_continuousPages{true};
-    bool m_showPagePanel{false};
     bool m_themeChosen{false};
     bool m_reopenNotebooks{false};
     bool m_showSections{true};
     bool m_showPages{true};
-    int m_panelWidth{kDefaultPanelWidth};
     QString m_language;
-    bool m_showLayers{false};
-    int m_layersWidth{kDefaultLayersWidth};
+    bool m_reduceMotion{false};
     int m_sectionsHeight{kDefaultSectionsHeight};
     ShortcutListModel m_shortcutList;
     QString m_folder;

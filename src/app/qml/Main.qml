@@ -129,12 +129,22 @@ ApplicationWindow {
         value: settings.uiScale
     }
 
+    Binding {
+        property: "stillness"
+        target: Theme
+        value: settings.reduceMotion
+    }
+
     ToolViewModel {
         id: toolState
     }
 
     SettingsViewModel {
         id: settings
+    }
+
+    WorkspaceViewModel {
+        id: workspaceLayout
     }
 
     NotebooksViewModel {
@@ -165,6 +175,7 @@ ApplicationWindow {
         notebooks: notebooks
         settings: settings
         tools: toolState
+        workspace: workspaceLayout
 
         onAboutWanted: aboutDialog.open()
         onLeaveWanted: root.close()
@@ -191,55 +202,21 @@ ApplicationWindow {
         onHintsWanted: hintsDialog.open()
         onImportWanted: importDialog.open()
         onNewNotebookWanted: newNotebookDialog.open()
-        onPageSetupWanted: pageSetupDialog.open()
+        onPageSetupWanted: workspaceLayout.showPanel(Panels.pageSetup)
         onPictureWanted: pictureDialog.open()
         onSettingsWanted: settingsDialog.open()
         onTrashWanted: trashDialog.open()
     }
 
-    SplitView {
-        id: mainSplit
+    WorkspaceView {
+        id: workspace
 
         anchors.fill: parent
-        orientation: Qt.Horizontal
-
-        handle: Item {
-            id: sideHandle
-
-            implicitWidth: 7
-
-            Rectangle {
-                anchors.centerIn: parent
-                color: sideHandle.SplitHandle.pressed || sideHandle.SplitHandle.hovered ? Theme.accent : Theme.line
-                height: parent.height
-                width: sideHandle.SplitHandle.pressed || sideHandle.SplitHandle.hovered ? 3 : 1
-            }
-        }
-
-        ToolPalette {
-            SplitView.maximumWidth: implicitWidth
-            SplitView.minimumWidth: implicitWidth
-            actions: appActions
-        }
-
-        PagesPanel {
-            id: pagesPanel
-
-            SplitView.maximumWidth: 520
-            SplitView.minimumWidth: 140
-            actions: appActions
-            visible: root.notebook !== null && (settings.showSections || settings.showPages)
-
-            Component.onCompleted: SplitView.preferredWidth = settings.panelWidth
-            onWidthChanged: {
-                if (mainSplit.resizing) {
-                    settings.panelWidth = pagesPanel.width;
-                }
-            }
-        }
+        actions: appActions
+        workspace: workspaceLayout
 
         EmptyState {
-            SplitView.fillWidth: true
+            anchors.fill: parent
             actions: appActions
             notebooks: notebooks
             visible: root.notebook === null
@@ -248,7 +225,7 @@ ApplicationWindow {
         InkCanvas {
             id: canvas
 
-            SplitView.fillWidth: true
+            anchors.fill: parent
             enabled: root.notebook !== null && root.notebook.loaded
             deskColor: Theme.desk
             eraseMode: toolState.eraserMode
@@ -270,7 +247,7 @@ ApplicationWindow {
 
             onMenuWanted: at => {
                 if (root.notebook !== null) {
-                    contextMenu.openAt(canvas.mapToItem(mainSplit, at.x, at.y));
+                    contextMenu.openAt(canvas.mapToItem(workspace, at.x, at.y));
                 }
             }
 
@@ -372,34 +349,10 @@ ApplicationWindow {
                 }
             }
         }
-
-        PagePanel {
-            SplitView.maximumWidth: 420
-            SplitView.minimumWidth: 160
-            SplitView.preferredWidth: 220
-            actions: appActions
-            visible: settings.showPagePanel && root.notebook !== null
-        }
-
-        LayersPanel {
-            id: layersPanel
-
-            SplitView.maximumWidth: 420
-            SplitView.minimumWidth: 170
-            actions: appActions
-            visible: settings.showLayers && root.notebook !== null
-
-            Component.onCompleted: SplitView.preferredWidth = settings.layersWidth
-            onWidthChanged: {
-                if (mainSplit.resizing) {
-                    settings.layersWidth = layersPanel.width;
-                }
-            }
-        }
     }
 
     ColourLens {
-        anchors.fill: mainSplit
+        anchors.fill: workspace
         canvas: canvas
         tools: toolState
     }
@@ -408,7 +361,7 @@ ApplicationWindow {
         id: contextMenu
 
         actions: appActions
-        parent: mainSplit
+        parent: workspace
     }
 
     MessageBar {
@@ -489,12 +442,6 @@ ApplicationWindow {
         settings: settings
         tools: toolState
         updates: updates
-    }
-
-    PageSetupDialog {
-        id: pageSetupDialog
-
-        notebook: root.notebook
     }
 
     HintsDialog {

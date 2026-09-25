@@ -66,6 +66,7 @@ phvikapen_collect_icons("${icons_dir}" icon_files
 )
 
 set_source_files_properties(qml/Icons.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(qml/Panels.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_library(phvikapen_ui STATIC)
@@ -107,8 +108,11 @@ qt_add_qml_module(phvikapen_ui
         cpp/ToolViewModel.hpp
         cpp/UpdateViewModel.cpp
         cpp/UpdateViewModel.hpp
+        cpp/WorkspaceViewModel.cpp
+        cpp/WorkspaceViewModel.hpp
     QML_FILES
         qml/Icons.qml
+        qml/Panels.qml
         qml/Theme.qml
         qml/components/AboutDialog.qml
         qml/components/AppDialog.qml
@@ -122,6 +126,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ConfirmDialog.qml
         qml/components/ArrowButton.qml
         qml/components/DropLine.qml
+        qml/components/EmptyPanelNote.qml
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
         qml/components/MenuCommand.qml
@@ -132,13 +137,21 @@ qt_add_qml_module(phvikapen_ui
         qml/components/NewNotebookDialog.qml
         qml/components/NumberField.qml
         qml/components/OptionsBar.qml
-        qml/components/PagePanel.qml
         qml/components/TableBox.qml
         qml/components/TableLayer.qml
         qml/components/PagesPanel.qml
         qml/components/PageLook.qml
         qml/components/PageSetup.qml
-        qml/components/PageSetupDialog.qml
+        qml/components/PageSetupPanel.qml
+        qml/components/PanelBody.qml
+        qml/components/PanelCloseTarget.qml
+        qml/components/PanelDock.qml
+        qml/components/PanelDragState.qml
+        qml/components/PanelDropZone.qml
+        qml/components/PanelFrame.qml
+        qml/components/PanelTab.qml
+        qml/components/ReorderHandler.qml
+        qml/components/WorkspaceView.qml
         qml/components/HintsDialog.qml
         qml/components/PictureLayer.qml
         qml/components/PenSwatch.qml

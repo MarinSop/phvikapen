@@ -195,8 +195,24 @@
         <translation>Izbriši stupac</translation>
     </message>
     <message>
-        <source>Layers Panel</source>
-        <translation>Ploča slojeva</translation>
+        <source>Layers</source>
+        <translation>Slojevi</translation>
+    </message>
+    <message>
+        <source>Contents</source>
+        <translation>Sadržaj</translation>
+    </message>
+    <message>
+        <source>Page Setup</source>
+        <translation>Postavke stranice</translation>
+    </message>
+    <message>
+        <source>Reset Panel Layout</source>
+        <translation>Vrati raspored ploča</translation>
+    </message>
+    <message>
+        <source>Move Selection Here</source>
+        <translation>Premjesti odabrano ovamo</translation>
     </message>
     <message>
         <source>New Layer</source>
@@ -343,10 +359,6 @@
         <translation>Stranice</translation>
     </message>
     <message>
-        <source>Page Setup Panel</source>
-        <translation>Ploča postavki stranice</translation>
-    </message>
-    <message>
         <source>Quit</source>
         <translation>Izlaz</translation>
     </message>
@@ -378,8 +390,12 @@
         <translation>&amp;Prikaz</translation>
     </message>
     <message>
-        <source>Contents Panel</source>
-        <translation>Ploča sadržaja</translation>
+        <source>Panels</source>
+        <translation>Ploče</translation>
+    </message>
+    <message>
+        <source>Contents Panel Shows</source>
+        <translation>Ploča sadržaja prikazuje</translation>
     </message>
     <message>
         <source>&amp;Insert</source>
@@ -660,18 +676,6 @@
 <context>
     <name>LayersPanel</name>
     <message>
-        <source>Layers</source>
-        <translation>Slojevi</translation>
-    </message>
-    <message>
-        <source>New layer</source>
-        <translation>Novi sloj</translation>
-    </message>
-    <message>
-        <source>Duplicate layer</source>
-        <translation>Udvostruči sloj</translation>
-    </message>
-    <message>
         <source>Delete layer</source>
         <translation>Izbriši sloj</translation>
     </message>
@@ -691,17 +695,53 @@
         <source>Lock this layer</source>
         <translation>Zaključaj ovaj sloj</translation>
     </message>
-    <message>
-        <source>1 thing</source>
-        <translation>1 stvar</translation>
+    <message numerus="yes">
+        <source>%n thing(s), locked</source>
+        <translation>
+            <numerusform>%n stvar, zaključano</numerusform>
+            <numerusform>%n stvari, zaključano</numerusform>
+            <numerusform>%n stvari, zaključano</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n thing(s)</source>
+        <translation>
+            <numerusform>%n stvar</numerusform>
+            <numerusform>%n stvari</numerusform>
+            <numerusform>%n stvari</numerusform>
+        </translation>
     </message>
     <message>
-        <source>%1 things</source>
-        <translation>%1 stvari</translation>
+        <source>Rename</source>
+        <translation>Preimenuj</translation>
     </message>
     <message>
-        <source>Move to This Layer</source>
-        <translation>Premjesti na ovaj sloj</translation>
+        <source>Duplicate</source>
+        <translation>Udvostruči</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>Pomakni gore</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>Pomakni dolje</translation>
+    </message>
+    <message>
+        <source>Delete…</source>
+        <translation>Izbriši…</translation>
+    </message>
+    <message>
+        <source>“%1” and everything on it will go. This can be undone.</source>
+        <translation>„%1” i sve na njemu nestaje. Ovo se može poništiti.</translation>
+    </message>
+    <message>
+        <source>Send what is picked up to the layer that is drawn in.</source>
+        <translation>Pošalji ono što je uhvaćeno na sloj u koji se crta.</translation>
+    </message>
+    <message>
+        <source>Open a page to work on its layers.</source>
+        <translation>Otvori stranicu da bi se radilo na njezinim slojevima.</translation>
     </message>
 </context>
 <context>
@@ -1092,13 +1132,6 @@
     </message>
 </context>
 <context>
-    <name>PagePanel</name>
-    <message>
-        <source>Page</source>
-        <translation>Stranicu</translation>
-    </message>
-</context>
-<context>
     <name>PageSetup</name>
     <message>
         <source>Blank</source>
@@ -1154,14 +1187,14 @@
     </message>
 </context>
 <context>
-    <name>PageSetupDialog</name>
-    <message>
-        <source>Page setup</source>
-        <translation>Postavke stranice</translation>
-    </message>
+    <name>PageSetupPanel</name>
     <message>
         <source>The setup belongs to the whole section: every page in it is written on the same paper.</source>
         <translation>Postavke pripadaju cijelom odjeljku: svaka stranica u njemu piše se na istom papiru.</translation>
+    </message>
+    <message>
+        <source>Open a notebook to set its paper up.</source>
+        <translation>Otvori bilježnicu da bi se postavio njezin papir.</translation>
     </message>
 </context>
 <context>
@@ -1203,6 +1236,10 @@
         <translation>Nova stranica</translation>
     </message>
     <message>
+        <source>Page setup</source>
+        <translation>Postavke stranice</translation>
+    </message>
+    <message>
         <source>Delete page</source>
         <translation>Izbriši stranicu</translation>
     </message>
@@ -1217,6 +1254,39 @@
     <message>
         <source>Move “%1” to the deleted pages?</source>
         <translation>Premjestiti „%1“ u izbrisane stranice?</translation>
+    </message>
+</context>
+<context>
+    <name>PanelCloseTarget</name>
+    <message>
+        <source>Drop here to close</source>
+        <translation>Pusti ovdje za zatvaranje</translation>
+    </message>
+</context>
+<context>
+    <name>PanelFrame</name>
+    <message>
+        <source>Close this panel</source>
+        <translation>Zatvori ovu ploču</translation>
+    </message>
+    <message>
+        <source>Add as a tab</source>
+        <translation>Dodaj kao karticu</translation>
+    </message>
+</context>
+<context>
+    <name>Panels</name>
+    <message>
+        <source>Layers</source>
+        <translation>Slojevi</translation>
+    </message>
+    <message>
+        <source>Page Setup</source>
+        <translation>Postavke stranice</translation>
+    </message>
+    <message>
+        <source>Contents</source>
+        <translation>Sadržaj</translation>
     </message>
 </context>
 <context>
@@ -1299,6 +1369,14 @@
     <message>
         <source>Larger marks are easier to hit with the tip of a pen than with a mouse pointer.</source>
         <translation>Veće oznake lakše se pogađaju vrhom pera nego pokazivačem miša.</translation>
+    </message>
+    <message>
+        <source>Less movement</source>
+        <translation>Manje pokreta</translation>
+    </message>
+    <message>
+        <source>Panels, tabs and lists change at once instead of sliding into place.</source>
+        <translation>Ploče, kartice i popisi mijenjaju se odjednom umjesto da klize na mjesto.</translation>
     </message>
     <message>
         <source>One step of the zoom</source>
@@ -1871,6 +1949,25 @@
     </message>
 </context>
 <context>
+    <name>WorkspaceView</name>
+    <message>
+        <source>Left</source>
+        <translation>Lijevo</translation>
+    </message>
+    <message>
+        <source>Right</source>
+        <translation>Desno</translation>
+    </message>
+    <message>
+        <source>Top</source>
+        <translation>Gore</translation>
+    </message>
+    <message>
+        <source>Bottom</source>
+        <translation>Dolje</translation>
+    </message>
+</context>
+<context>
     <name>phvikapen::app::Languages</name>
     <message>
         <source>System language</source>
@@ -1956,12 +2053,28 @@
         <translation>Sloj 1</translation>
     </message>
     <message>
+        <source>“%1” is locked. Unlock it, or work on another layer.</source>
+        <translation>„%1” je zaključan. Otključaj ga ili radi na drugom sloju.</translation>
+    </message>
+    <message>
+        <source>“%1” is hidden. Show it, or work on another layer.</source>
+        <translation>„%1” je skriven. Prikaži ga ili radi na drugom sloju.</translation>
+    </message>
+    <message>
         <source>Layer %1</source>
         <translation>Sloj %1</translation>
     </message>
     <message>
         <source>A page keeps at least one layer.</source>
         <translation>Stranica zadržava najmanje jedan sloj.</translation>
+    </message>
+    <message>
+        <source>“%1” is locked and takes nothing.</source>
+        <translation>„%1” je zaključan i ne prima ništa.</translation>
+    </message>
+    <message>
+        <source>“%1” is hidden and takes nothing.</source>
+        <translation>„%1” je skriven i ne prima ništa.</translation>
     </message>
     <message>
         <source>%1 is not a picture</source>

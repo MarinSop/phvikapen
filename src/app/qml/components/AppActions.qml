@@ -13,6 +13,7 @@ Item {
     required property NotebooksViewModel notebooks
     required property SettingsViewModel settings
     required property ToolViewModel tools
+    required property WorkspaceViewModel workspace
     readonly property InkCanvas canvas: root.notebooks.canvas
     readonly property NotebookViewModel notebook: root.notebooks.current
     readonly property bool hasNotebook: root.notebook !== null && root.notebook.loaded
@@ -351,11 +352,37 @@ Item {
     }
     readonly property Action showLayersPanel: Action {
         checkable: true
-        checked: root.settings.showLayers
+        checked: root.isPanelOpen(Panels.layers)
         shortcut: root.settings.keysFor("showLayers")
-        text: qsTr("Layers Panel")
+        text: qsTr("Layers")
 
-        onTriggered: root.settings.showLayers = !root.settings.showLayers
+        onTriggered: root.workspace.togglePanel(Panels.layers)
+    }
+    readonly property Action showContentsPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.contents)
+        text: qsTr("Contents")
+
+        onTriggered: root.workspace.togglePanel(Panels.contents)
+    }
+    readonly property Action showPageSetupPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.pageSetup)
+        text: qsTr("Page Setup")
+
+        onTriggered: root.workspace.togglePanel(Panels.pageSetup)
+    }
+    readonly property Action resetPanels: Action {
+        text: qsTr("Reset Panel Layout")
+
+        onTriggered: root.workspace.resetWorkspace()
+    }
+    readonly property Action moveToActiveLayer: Action {
+        enabled: root.hasSelection || root.hasTextBox || root.hasPicture || root.hasTable
+        icon.source: Icons.layer
+        text: qsTr("Move Selection Here")
+
+        onTriggered: root.notebook.movePickedToLayer(root.notebook.activeLayer)
     }
     readonly property Action addLayer: Action {
         enabled: root.hasNotebook
@@ -620,14 +647,6 @@ Item {
 
         onTriggered: root.settings.showPages = !root.settings.showPages
     }
-    readonly property Action pagePanel: Action {
-        checkable: true
-        checked: root.settings.showPagePanel
-        shortcut: root.keysFor("pagePanel")
-        text: qsTr("Page Setup Panel")
-
-        onTriggered: root.settings.showPagePanel = !root.settings.showPagePanel
-    }
     readonly property Action quit: Action {
         shortcut: StandardKey.Quit
         text: qsTr("Quit")
@@ -672,6 +691,16 @@ Item {
             }
         }
         return -1;
+    }
+
+    function isPanelOpen(panelId) {
+        const standing = root.workspace.panels;
+        for (let step = 0; step < standing.length; ++step) {
+            if (standing[step].panelId === panelId) {
+                return standing[step].open;
+            }
+        }
+        return false;
     }
 
     function moveLayerBy(steps) {
