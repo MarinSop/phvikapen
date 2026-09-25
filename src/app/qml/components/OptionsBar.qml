@@ -176,20 +176,25 @@ ToolBar {
             }
         }
 
-        // What the eraser takes: the part it is rubbed over, or the whole line at a touch.
-        Repeater {
-            model: root.erases ? 2 : 0
+        // What the eraser takes: the part it is rubbed over, or the whole line at a touch. One
+        // control says which, rather than two buttons that each say half of it.
+        Label {
+            color: palette.placeholderText
+            text: qsTr("Erase")
+            visible: root.erases
+        }
 
-            ShapeButton {
-                required property int index
+        ComboBox {
+            Layout.maximumWidth: 200
+            currentIndex: Math.max(0, root.eraserModes.indexOf(root.tools.eraserMode))
+            model: [qsTr("What it touches"), qsTr("The whole line")]
+            objectName: "eraseModeField"
+            visible: root.erases
+            ToolTip.delay: 600
+            ToolTip.text: qsTr("What the eraser takes away")
+            ToolTip.visible: hovered
 
-                active: root.tools.eraserMode === root.eraserModes[index]
-                icon.source: [Icons.eraser, Icons.eraseWhole][index]
-                label: [qsTr("Rub out what it touches"), qsTr("Take the whole line")][index]
-                objectName: ["erasePartButton", "eraseWholeButton"][index]
-
-                onClicked: root.tools.eraserMode = root.eraserModes[index]
-            }
+            onActivated: index => root.tools.eraserMode = root.eraserModes[index]
         }
 
         ComboBox {

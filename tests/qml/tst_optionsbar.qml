@@ -64,6 +64,30 @@ TestCase {
         box.clicked();
     }
 
+    function test_f_whatTheEraserTakesIsOneControlWithBothModesInIt() {
+        tools.currentTool = ToolViewModel.Eraser;
+        wait(0);
+        const modes = findChild(bar, "eraseModeField");
+
+        verify(modes !== null);
+        verify(modes.visible);
+        compare(modes.count, 2);
+        // What is set is shown back, and choosing the other mode takes.
+        compare(modes.currentIndex, 0);
+
+        modes.activated(1);
+
+        compare(tools.eraserMode, ToolViewModel.WholeStroke);
+        compare(modes.currentIndex, 1);
+
+        modes.activated(0);
+
+        compare(tools.eraserMode, ToolViewModel.Touched);
+        tools.currentTool = ToolViewModel.Pen;
+        wait(0);
+        verify(!modes.visible);
+    }
+
     function test_e_theWidthIsHiddenForToolsThatDrawNothing() {
         tools.currentTool = ToolViewModel.Hand;
         wait(0);

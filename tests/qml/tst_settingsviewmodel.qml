@@ -163,6 +163,48 @@ TestCase {
         later.sectionsHeight = 150;
     }
 
+    function test_k_theLanguageIsRememberedForTheNextTime() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        compare(settings.language, "", "nothing asked for follows the machine");
+
+        settings.language = "hr";
+
+        const later = createTemporaryObject(settingsComponent, testCase);
+        compare(later.language, "hr");
+        later.language = "";
+    }
+
+    function test_l_everyLanguageOnOfferSaysWhatItIsCalled() {
+        const offered = Languages.offered;
+
+        verify(offered.length >= 3);
+        compare(offered[0].tag, "", "the first follows the machine");
+        const tags = offered.map(one => one.tag);
+        verify(tags.includes("en"));
+        verify(tags.includes("hr"));
+        for (const one of offered) {
+            verify(one.name.length > 0);
+        }
+    }
+
+    function test_m_theWordsOfTheApplicationChangeWithTheLanguage() {
+        Languages.speak("hr");
+
+        compare(Languages.spoken, "hr");
+        compare(qsTranslate("AppActions", "Undo"), "Poništi");
+        compare(qsTranslate("LayersPanel", "Layers"), "Slojevi");
+        compare(qsTranslate("Shortcuts", "New notebook"), "Nova bilježnica");
+
+        Languages.speak("en");
+
+        compare(Languages.spoken, "en");
+        // English is what the sources say, so nothing is put in its place.
+        compare(qsTranslate("AppActions", "Undo"), "Undo");
+
+        Languages.speak("");
+    }
+
     name: "SettingsViewModel"
 
     Component {

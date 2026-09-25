@@ -84,8 +84,10 @@ qt_add_qml_module(phvikapen_ui
         cpp/NotebookViewModel.cpp
         cpp/NotebookViewModel.hpp
         cpp/NotebooksViewModel.cpp
+        cpp/Languages.cpp
         cpp/LayerModels.cpp
         cpp/OutlineModels.cpp
+        cpp/Languages.hpp
         cpp/LayerModels.hpp
         cpp/OutlineModels.hpp
         cpp/PageDefaults.cpp
@@ -219,6 +221,20 @@ target_link_libraries(phvikapen
 )
 
 phvikapen_quiet_generated_qml(phvikapen)
+
+# Everything a reader sees is translated. The catalogues sit beside the sources and are built into
+# the application, so another language is one more file and nothing else.
+# The catalogues ride with the library the window is built from rather than with the executable, so
+# that whatever links the window — the application, and the tests of it — can read them.
+qt_add_translations(phvikapen_ui
+    SOURCE_TARGETS
+        phvikapen
+        phvikapen_ui
+    TS_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/i18n/phvikapen_hr.ts"
+    RESOURCE_PREFIX "/i18n"
+    LUPDATE_OPTIONS -no-obsolete -locations none
+)
 
 if(WIN32)
     target_sources(phvikapen PRIVATE brand/phvikapen.rc)

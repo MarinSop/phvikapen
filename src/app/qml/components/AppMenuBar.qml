@@ -193,52 +193,6 @@ MenuBar {
     }
 
     Menu {
-        objectName: "toolsMenu"
-        title: qsTr("&Tools")
-
-        MenuCommand {
-            action: root.actions.selectTool
-        }
-
-        MenuCommand {
-            action: root.actions.handTool
-        }
-
-        MenuCommand {
-            action: root.actions.penTool
-        }
-
-        MenuCommand {
-            action: root.actions.highlighterTool
-        }
-
-        MenuCommand {
-            action: root.actions.shapeTool
-        }
-
-        MenuCommand {
-            action: root.actions.eraserTool
-        }
-
-        MenuCommand {
-            action: root.actions.textTool
-            objectName: "textToolItem"
-        }
-
-        MenuCommand {
-            action: root.actions.colourTool
-        }
-
-        MenuSeparator {
-        }
-
-        MenuCommand {
-            action: root.actions.eraserMode
-            objectName: "eraserModeItem"
-        }
-    }
-
-    Menu {
         objectName: "viewMenu"
         title: qsTr("&View")
 

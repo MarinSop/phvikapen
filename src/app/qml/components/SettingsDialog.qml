@@ -12,6 +12,10 @@ AppDialog {
     required property ToolViewModel tools
     required property UpdateViewModel updates
     readonly property list<int> eraserModes: [ToolViewModel.Touched, ToolViewModel.WholeStroke]
+    // The languages on offer, taken apart so that the list shows the names and sets the tags.
+    readonly property var languageNames: root.languagesAsked.map(one => one.name)
+    readonly property var languagesAsked: Languages.offered
+    readonly property var languageTags: root.languagesAsked.map(one => one.tag)
 
     height: 540
     objectName: "settingsDialog"
@@ -96,6 +100,33 @@ AppDialog {
                     Layout.fillWidth: true
                     color: palette.placeholderText
                     text: Theme.noteOf(root.settings.theme)
+                    wrapMode: Text.WordWrap
+                }
+
+                MenuSeparator {
+                    Layout.fillWidth: true
+                }
+
+                // The language stands beside the theme: both say how the application looks and
+                // reads rather than what it does.
+                Label {
+                    font.bold: true
+                    text: qsTr("Language")
+                }
+
+                ComboBox {
+                    Layout.maximumWidth: 280
+                    currentIndex: Math.max(0, root.languageTags.indexOf(root.settings.language))
+                    model: root.languageNames
+                    objectName: "languageField"
+
+                    onActivated: index => root.settings.language = root.languageTags[index]
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    color: palette.placeholderText
+                    text: qsTr("The change shows at once. What is already written is left as it was.")
                     wrapMode: Text.WordWrap
                 }
 

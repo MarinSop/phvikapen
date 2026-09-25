@@ -36,6 +36,7 @@ constexpr auto kReopenSetting = "session/reopen";
 constexpr auto kSectionsSetting = "view/sections";
 constexpr auto kPagesSetting = "view/pages";
 constexpr auto kPanelWidthSetting = "view/panelWidth";
+constexpr auto kLanguageSetting = "look/language";
 constexpr auto kLayersSetting = "view/layers";
 constexpr auto kLayersWidthSetting = "view/layersWidth";
 constexpr auto kSectionsHeightSetting = "view/sectionsHeight";
@@ -70,6 +71,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_reopenNotebooks = settings.value(kReopenSetting, m_reopenNotebooks).toBool();
     m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
     m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
+    m_language = settings.value(kLanguageSetting, m_language).toString();
     m_showLayers = settings.value(kLayersSetting, m_showLayers).toBool();
     m_layersWidth = std::clamp(settings.value(kLayersWidthSetting, m_layersWidth).toInt(),
                                kNarrowestPanel, kWidestPanel);
@@ -428,6 +430,16 @@ void SettingsViewModel::setPanelWidth(int width) {
     QSettings settings;
     settings.setValue(kPanelWidthSetting, m_panelWidth);
     emit panelsChanged();
+}
+
+void SettingsViewModel::setLanguage(const QString& tag) {
+    if (tag == m_language) {
+        return;
+    }
+    m_language = tag;
+    QSettings settings;
+    settings.setValue(kLanguageSetting, m_language);
+    emit languageChanged();
 }
 
 void SettingsViewModel::setShowLayers(bool shown) {

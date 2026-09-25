@@ -1,7 +1,8 @@
-# Spell checking. Qt macro names look like typos but must never be rewritten.
+# Spell checking. Qt macro names look like typos but must never be rewritten, and the catalogues of
+# translated words are not English at all: a Croatian word is not a misspelt English one.
 
 [default.extend-identifiers]
 Q_INVOKABLE = "Q_INVOKABLE"
 
 [files]
-extend-exclude = ["build/", "*.qsb"]
+extend-exclude = ["build/", "*.qsb", "*.ts"]

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Croatian, and a language to choose in Settings beside the theme. Every word the application shows
+  is translated where it is shown, so the change takes hold at once without restarting, and what is
+  already written is left exactly as it was. Asking for nothing follows the language of the machine.
+  Another language is one catalogue beside the sources and nothing else.
 - Layers. A page holds as many as are wanted, the panel on the right lists them top first, and each
   one can be named, hidden, locked, put down again with a copy of everything on it, carried up or
   down the pile, and taken away with everything standing on it. Whatever is picked up can be sent to
@@ -227,6 +231,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A tool is chosen from the palette down the side, so the menus no longer offer the same list a
+  second time.
+- What the eraser takes is one control saying which of the two it is, rather than two buttons each
+  saying half of it.
+- The two ways of bringing something in are told apart by what they do: Insert ▸ Picture on This
+  Page puts a picture on the page being read, and Insert ▸ Document as New Pages opens a document
+  or picture as pages of its own.
+- Copy as Text, Convert to Text and Solve carry a mark of their own on the bar, which showed empty
+  buttons before, and what was called Work Out is called Solve.
 - Smoothing averages each sample with its neighbours along the line instead of over time, so it
   evens out a shaky hand without pulling the line behind the pen or rounding off what was written.
   Both ends of a stroke stay where the pen was, the setting is gentle at first and strong only near

@@ -101,10 +101,20 @@ ApplicationWindow {
         }
     }
     Component.onCompleted: {
+        Languages.speak(settings.language);
         notebooks.canvas = canvas;
         if (!settings.themeChosen) {
             welcomeDialog.open();
         }
+    }
+
+    // The language the reader asked for is taken up at the start and whenever it changes.
+    Connections {
+        function onLanguageChanged() {
+            Languages.speak(settings.language);
+        }
+
+        target: settings
     }
 
     Binding {

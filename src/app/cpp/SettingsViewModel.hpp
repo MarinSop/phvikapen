@@ -53,6 +53,7 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
     Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged FINAL)
     Q_PROPERTY(bool showLayers READ showLayers WRITE setShowLayers NOTIFY panelsChanged FINAL)
     Q_PROPERTY(int layersWidth READ layersWidth WRITE setLayersWidth NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
@@ -176,11 +177,16 @@ public:
 
     [[nodiscard]] int panelWidth() const { return m_panelWidth; }
 
+    // The language the reader asked for, or nothing at all to follow the machine.
+    [[nodiscard]] QString language() const { return m_language; }
+
     [[nodiscard]] bool showLayers() const { return m_showLayers; }
 
     [[nodiscard]] int layersWidth() const { return m_layersWidth; }
 
     void setPanelWidth(int width);
+
+    void setLanguage(const QString& tag);
 
     void setShowLayers(bool shown);
 
@@ -228,6 +234,8 @@ signals:
     void continuousPagesChanged();
     void panelsChanged();
 
+    void languageChanged();
+
 private:
     void changeStyle(const core::PageStyle& style);
     void applyTheme() const;
@@ -248,6 +256,7 @@ private:
     bool m_showSections{true};
     bool m_showPages{true};
     int m_panelWidth{kDefaultPanelWidth};
+    QString m_language;
     bool m_showLayers{false};
     int m_layersWidth{kDefaultLayersWidth};
     int m_sectionsHeight{kDefaultSectionsHeight};

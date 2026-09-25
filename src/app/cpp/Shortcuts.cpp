@@ -2,6 +2,7 @@
 
 #include <QAbstractListModel>
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QHash>
 #include <QKeySequence>
 #include <QList>
@@ -19,342 +20,343 @@
 namespace phvikapen::app {
 namespace {
 
-// Every command whose key can be changed, with the key it comes with. Built on the first ask,
-// because the names are translated and the strings allocate. A command whose keys differ from one
-// platform to the next names the standard it follows instead of spelling the keys out.
+// Every command whose key can be changed, with the key it comes with. Built on the first ask, and
+// kept, because nothing in it depends on the language: a name is read out of it and translated when
+// it is shown. A command whose keys differ from one platform to the next names the standard it
+// follows instead of spelling the keys out.
 [[nodiscard]] const std::vector<Command>& table() {
     static const std::vector<Command> kCommands{
         Command{
             .id = "newNotebook",
-            .name = QObject::tr("New notebook"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "New notebook"),
             .group = CommandGroup::File,
             .keys = "Ctrl+N",
             .standard = QKeySequence::New,
         },
         Command{
             .id = "closeNotebook",
-            .name = QObject::tr("Close notebook"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Close notebook"),
             .group = CommandGroup::File,
             .keys = "Ctrl+W",
             .standard = QKeySequence::Close,
         },
         Command{
             .id = "save",
-            .name = QObject::tr("Save"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Save"),
             .group = CommandGroup::File,
             .keys = "Ctrl+S",
             .standard = QKeySequence::Save,
         },
         Command{
             .id = "saveCopy",
-            .name = QObject::tr("Save as"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Save as"),
             .group = CommandGroup::File,
             .keys = "Ctrl+Shift+S",
             .standard = QKeySequence::SaveAs,
         },
         Command{
             .id = "exportPdf",
-            .name = QObject::tr("Export as PDF"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Export as PDF"),
             .group = CommandGroup::File,
             .keys = "Ctrl+E",
         },
         Command{
             .id = "pageSetup",
-            .name = QObject::tr("Page setup"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Page setup"),
             .group = CommandGroup::File,
             .keys = "Ctrl+Shift+U",
         },
         Command{
             .id = "settings",
-            .name = QObject::tr("Settings"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Settings"),
             .group = CommandGroup::File,
             .keys = "Ctrl+,",
             .standard = QKeySequence::Preferences,
         },
         Command{
             .id = "undo",
-            .name = QObject::tr("Undo"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Undo"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Z",
             .standard = QKeySequence::Undo,
         },
         Command{
             .id = "redo",
-            .name = QObject::tr("Redo"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Redo"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+Z",
             .standard = QKeySequence::Redo,
         },
         Command{
             .id = "cut",
-            .name = QObject::tr("Cut"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Cut"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+X",
             .standard = QKeySequence::Cut,
         },
         Command{
             .id = "copy",
-            .name = QObject::tr("Copy"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Copy"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+C",
             .standard = QKeySequence::Copy,
         },
         Command{
             .id = "paste",
-            .name = QObject::tr("Paste"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Paste"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+V",
             .standard = QKeySequence::Paste,
         },
         Command{
             .id = "delete",
-            .name = QObject::tr("Delete"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Delete"),
             .group = CommandGroup::Edit,
             .keys = "Del",
         },
         Command{
             .id = "duplicate",
-            .name = QObject::tr("Duplicate"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Duplicate"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+D",
         },
         Command{
             .id = "selectAll",
-            .name = QObject::tr("Select everything on the page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Select everything on the page"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+A",
             .standard = QKeySequence::SelectAll,
         },
         Command{
             .id = "copyAsText",
-            .name = QObject::tr("Copy as text"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Copy as text"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+C",
         },
         Command{
             .id = "convertToText",
-            .name = QObject::tr("Convert to text"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Convert to text"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+R",
         },
         Command{
             .id = "solve",
-            .name = QObject::tr("Work out what was written"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Work out what was written"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+A",
         },
         Command{
             .id = "clearPage",
-            .name = QObject::tr("Clear page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Clear page"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+Del",
         },
         Command{
             .id = "find",
-            .name = QObject::tr("Find in the notebook"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Find in the notebook"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+F",
             .standard = QKeySequence::Find,
         },
         Command{
             .id = "trash",
-            .name = QObject::tr("Deleted pages"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Deleted pages"),
             .group = CommandGroup::Edit,
             .keys = "Ctrl+Shift+T",
         },
         Command{
             .id = "rotateLeft",
-            .name = QObject::tr("Turn left"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Turn left"),
             .group = CommandGroup::Arrange,
             .keys = "Ctrl+[",
         },
         Command{
             .id = "rotateRight",
-            .name = QObject::tr("Turn right"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Turn right"),
             .group = CommandGroup::Arrange,
             .keys = "Ctrl+]",
         },
         Command{
             .id = "resetShape",
-            .name = QObject::tr("Undo turning and sizing"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Undo turning and sizing"),
             .group = CommandGroup::Arrange,
             .keys = "Ctrl+Shift+0",
         },
         Command{
             .id = "layerUp",
-            .name = QObject::tr("Move layer up"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Move layer up"),
             .group = CommandGroup::Arrange,
             .keys = "Ctrl+Shift+]",
         },
         Command{
             .id = "layerDown",
-            .name = QObject::tr("Move layer down"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Move layer down"),
             .group = CommandGroup::Arrange,
             .keys = "Ctrl+Shift+[",
         },
         Command{
             .id = "showLayers",
-            .name = QObject::tr("Layers panel"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Layers panel"),
             .group = CommandGroup::View,
             .keys = "Ctrl+Shift+L",
         },
         Command{
             .id = "zoomIn",
-            .name = QObject::tr("Zoom in"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Zoom in"),
             .group = CommandGroup::View,
             .keys = "Ctrl++",
             .standard = QKeySequence::ZoomIn,
         },
         Command{
             .id = "zoomOut",
-            .name = QObject::tr("Zoom out"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Zoom out"),
             .group = CommandGroup::View,
             .keys = "Ctrl+-",
             .standard = QKeySequence::ZoomOut,
         },
         Command{
             .id = "fitPage",
-            .name = QObject::tr("Fit page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Fit page"),
             .group = CommandGroup::View,
             .keys = "Ctrl+0",
         },
         Command{
             .id = "previousPage",
-            .name = QObject::tr("Previous page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Previous page"),
             .group = CommandGroup::View,
             .keys = "PgUp",
             .standard = QKeySequence::MoveToPreviousPage,
         },
         Command{
             .id = "nextPage",
-            .name = QObject::tr("Next page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Next page"),
             .group = CommandGroup::View,
             .keys = "PgDown",
             .standard = QKeySequence::MoveToNextPage,
         },
         Command{
             .id = "continuousPages",
-            .name = QObject::tr("Pages one below the other"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Pages one below the other"),
             .group = CommandGroup::View,
             .keys = "Ctrl+Shift+B",
         },
         Command{
             .id = "sectionsList",
-            .name = QObject::tr("Sections list"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Sections list"),
             .group = CommandGroup::View,
             .keys = "Ctrl+1",
         },
         Command{
             .id = "pagesList",
-            .name = QObject::tr("Pages list"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Pages list"),
             .group = CommandGroup::View,
             .keys = "Ctrl+2",
         },
         Command{
             .id = "pagePanel",
-            .name = QObject::tr("Page setup panel"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Page setup panel"),
             .group = CommandGroup::View,
             .keys = "Ctrl+3",
         },
         Command{
             .id = "addPage",
-            .name = QObject::tr("New page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "New page"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+Shift+P",
         },
         Command{
             .id = "addSection",
-            .name = QObject::tr("New section"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "New section"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+Shift+N",
         },
         Command{
             .id = "duplicatePage",
-            .name = QObject::tr("Duplicate page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Duplicate page"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+D",
         },
         Command{
             .id = "insertPicture",
-            .name = QObject::tr("Picture on the page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Picture on the page"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+Shift+I",
         },
         Command{
             .id = "insertTable",
-            .name = QObject::tr("Table on the page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Table on the page"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+Shift+G",
         },
         Command{
             .id = "insertEquation",
-            .name = QObject::tr("Sum on the page"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Sum on the page"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+Shift+E",
         },
         Command{
             .id = "import",
-            .name = QObject::tr("Import a PDF or picture"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Import a PDF or picture"),
             .group = CommandGroup::Insert,
             .keys = "Ctrl+I",
         },
         Command{
             .id = "selectTool",
-            .name = QObject::tr("Pick tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Pick tool"),
             .group = CommandGroup::Tools,
             .keys = "V",
         },
         Command{
             .id = "handTool",
-            .name = QObject::tr("Hand tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Hand tool"),
             .group = CommandGroup::Tools,
             .keys = "H",
         },
         Command{
             .id = "penTool",
-            .name = QObject::tr("Pen tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Pen tool"),
             .group = CommandGroup::Tools,
             .keys = "P",
         },
         Command{
             .id = "highlighterTool",
-            .name = QObject::tr("Highlighter tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Highlighter tool"),
             .group = CommandGroup::Tools,
             .keys = "M",
         },
         Command{
             .id = "shapeTool",
-            .name = QObject::tr("Shape tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Shape tool"),
             .group = CommandGroup::Tools,
             .keys = "U",
         },
         Command{
             .id = "eraserTool",
-            .name = QObject::tr("Eraser tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Eraser tool"),
             .group = CommandGroup::Tools,
             .keys = "E",
         },
         Command{
             .id = "eraserMode",
-            .name = QObject::tr("Switch what the eraser takes"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Switch what the eraser takes"),
             .group = CommandGroup::Tools,
             .keys = "Shift+E",
         },
         Command{
             .id = "colourTool",
-            .name = QObject::tr("Color picker tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Color picker tool"),
             .group = CommandGroup::Tools,
             .keys = "K",
         },
         Command{
             .id = "textTool",
-            .name = QObject::tr("Text tool"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Text tool"),
             .group = CommandGroup::Tools,
             .keys = "T",
         },
         Command{
             .id = "hints",
-            .name = QObject::tr("Keys and hints"),
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Keys and hints"),
             .group = CommandGroup::Help,
             .keys = "F1",
         },
@@ -398,6 +400,10 @@ QString defaultKeysOf(const QString& commandId) {
     return command == nullptr ? QString{} : keysOf(*command);
 }
 
+QString nameOf(const Command& command) {
+    return QCoreApplication::translate("Shortcuts", command.name);
+}
+
 QString nameOfGroup(CommandGroup group) {
     switch (group) {
     case CommandGroup::File:
@@ -435,7 +441,7 @@ QVariant ShortcutListModel::data(const QModelIndex& index, int role) const {
         return command.id;
     case Qt::DisplayRole:
     case kNameRole:
-        return command.name;
+        return nameOf(command);
     case kSequenceRole:
         return m_sequences.value(command.id, fallback);
     case kChangedRole:

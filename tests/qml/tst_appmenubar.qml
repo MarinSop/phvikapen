@@ -11,7 +11,8 @@ TestCase {
             titles.push(menuBar.menuAt(i).title.replace("&", ""));
         }
 
-        compare(titles, ["File", "Edit", "Tools", "View", "Insert", "Help"]);
+        // A tool is chosen from the palette down the side, so the menus do not offer them again.
+        compare(titles, ["File", "Edit", "View", "Insert", "Help"]);
     }
 
     function test_b_commandsCarryTheirShortcut() {
@@ -117,7 +118,7 @@ TestCase {
         });
 
         menu.popup(0, 0);
-        wait(0);
+        tryVerify(() => menu.contentItem.contentHeight > 0);
 
         let shown = 0;
         let tall = 0;
@@ -134,23 +135,27 @@ TestCase {
         menu.close();
     }
 
-    function test_y2_theMenuIsNoWiderThanTheLinesItIsShowing() {
+    function test_y2_theMenuIsNoWiderThanTheWidestLineItIsShowing() {
         const menu = createTemporaryObject(contextComponent, testCase, {
             actions: actions
         });
 
         menu.popup(0, 0);
-        wait(0);
+        tryVerify(() => menu.implicitWidth > 0);
 
         let widest = 0;
+        let leftOut = 0;
         for (let i = 0; i < menu.count; ++i) {
             const line = menu.itemAt(i);
             if (line.visible) {
                 widest = Math.max(widest, line.implicitWidth);
+            } else {
+                leftOut += 1;
             }
         }
         verify(widest > 0);
-        compare(menu.contentItem.contentWidth <= widest + menu.leftPadding + menu.rightPadding, true);
+        verify(leftOut > 0, "every line is shown, so there is nothing to prove");
+        verify(menu.implicitWidth <= Math.ceil(widest) + 1, "the menu is " + menu.implicitWidth + " wide for a line of " + widest);
         menu.close();
     }
 

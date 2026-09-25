@@ -205,7 +205,7 @@ Item {
     readonly property Action insertPicture: Action {
         enabled: root.hasNotebook
         shortcut: root.keysFor("insertPicture")
-        text: qsTr("Picture…")
+        text: qsTr("Picture on This Page…")
 
         onTriggered: root.pictureWanted()
     }
@@ -515,7 +515,7 @@ Item {
         enabled: root.hasNotebook
         icon.source: Icons.importDocument
         shortcut: root.keysFor("import")
-        text: qsTr("PDF or Picture…")
+        text: qsTr("Document as New Pages…")
 
         onTriggered: root.importWanted()
     }

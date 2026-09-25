@@ -30,13 +30,18 @@ enum class CommandGroup : std::uint8_t {
 // keyboard and the menu that opens under the pointer.
 struct Command {
     QString id;
-    QString name;
+    // Kept as it was written rather than as it reads, so that changing the language changes what
+    // the reader sees: the table is built once, and a name translated once would stay that way.
+    const char* name{""};
     CommandGroup group{CommandGroup::Edit};
     QString keys;
     QKeySequence::StandardKey standard{QKeySequence::UnknownKey};
 };
 
 [[nodiscard]] std::span<const Command> commands();
+
+// What a command is called, in the language the application is speaking just now.
+[[nodiscard]] QString nameOf(const Command& command);
 
 [[nodiscard]] const Command* commandOf(const QString& commandId);
 
