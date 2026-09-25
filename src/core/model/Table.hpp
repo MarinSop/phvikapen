@@ -109,6 +109,7 @@ struct Table {
 struct PlacedTable {
     std::int64_t ordinal{};
     Table table;
+    Uuid layer{kNilUuid};
 
     friend bool operator==(const PlacedTable&, const PlacedTable&) = default;
 };

@@ -292,6 +292,11 @@ MenuBar {
             action: root.actions.pagePanel
             objectName: "pagePanelItem"
         }
+
+        MenuCommand {
+            action: root.actions.showLayersPanel
+            objectName: "layersPanelItem"
+        }
     }
 
     Menu {

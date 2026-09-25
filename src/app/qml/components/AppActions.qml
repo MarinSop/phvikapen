@@ -349,6 +349,61 @@ Item {
 
         onTriggered: root.notebook.removeColumn(root.notebook.pickedTable, root.columnInHand)
     }
+    readonly property Action showLayersPanel: Action {
+        checkable: true
+        checked: root.settings.showLayers
+        shortcut: root.settings.keysFor("showLayers")
+        text: qsTr("Layers Panel")
+
+        onTriggered: root.settings.showLayers = !root.settings.showLayers
+    }
+    readonly property Action addLayer: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.layerAdd
+        text: qsTr("New Layer")
+
+        onTriggered: root.notebook.addLayer()
+    }
+    readonly property Action duplicateLayer: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.layer
+        text: qsTr("Duplicate Layer")
+
+        onTriggered: root.notebook.duplicateLayer(root.notebook.activeLayer)
+    }
+    readonly property Action removeLayer: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.layerRemove
+        text: qsTr("Delete Layer")
+
+        onTriggered: root.notebook.removeLayer(root.notebook.activeLayer)
+    }
+    readonly property Action layerUp: Action {
+        enabled: root.hasNotebook
+        shortcut: root.pageKeys("layerUp")
+        text: qsTr("Move Layer Up")
+
+        onTriggered: root.moveLayerBy(1)
+    }
+    readonly property Action layerDown: Action {
+        enabled: root.hasNotebook
+        shortcut: root.pageKeys("layerDown")
+        text: qsTr("Move Layer Down")
+
+        onTriggered: root.moveLayerBy(-1)
+    }
+    readonly property Action layerToFront: Action {
+        enabled: root.hasNotebook
+        text: qsTr("Bring Layer to Front")
+
+        onTriggered: root.moveLayerTo(root.notebook.layers.count - 1)
+    }
+    readonly property Action layerToBack: Action {
+        enabled: root.hasNotebook
+        text: qsTr("Send Layer to Back")
+
+        onTriggered: root.moveLayerTo(0)
+    }
     readonly property Action remove: Action {
         enabled: root.hasSelection || root.hasTextBox || root.hasPicture || root.hasTable
         icon.source: Icons.trash
@@ -600,6 +655,32 @@ Item {
             root.closeAsked(index);
         } else {
             root.notebooks.closeNotebook(index);
+        }
+    }
+
+    // Where the layer in hand stands in the order the layers are drawn in, counted from the
+    // bottom, or nothing at all where there is no notebook open.
+    function placeOfLayerInHand() {
+        if (root.notebook === null) {
+            return -1;
+        }
+        const layers = root.notebook.layers;
+        for (let step = 0; step < layers.count; ++step) {
+            if (layers.data(layers.index(step, 0), Qt.UserRole + 1) === root.notebook.activeLayer) {
+                // The panel lists them top first, so counting from the bottom turns it round.
+                return layers.count - 1 - step;
+            }
+        }
+        return -1;
+    }
+
+    function moveLayerBy(steps) {
+        root.moveLayerTo(root.placeOfLayerInHand() + steps);
+    }
+
+    function moveLayerTo(place) {
+        if (root.notebook !== null && root.placeOfLayerInHand() >= 0) {
+            root.notebook.moveLayer(root.notebook.activeLayer, place);
         }
     }
 

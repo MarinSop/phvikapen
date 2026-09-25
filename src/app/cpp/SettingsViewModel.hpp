@@ -53,6 +53,8 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(bool showSections READ showSections WRITE setShowSections NOTIFY panelsChanged FINAL)
     Q_PROPERTY(bool showPages READ showPages WRITE setShowPages NOTIFY panelsChanged FINAL)
     Q_PROPERTY(int panelWidth READ panelWidth WRITE setPanelWidth NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(bool showLayers READ showLayers WRITE setShowLayers NOTIFY panelsChanged FINAL)
+    Q_PROPERTY(int layersWidth READ layersWidth WRITE setLayersWidth NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
         int sectionsHeight READ sectionsHeight WRITE setSectionsHeight NOTIFY panelsChanged FINAL)
     Q_PROPERTY(
@@ -152,6 +154,7 @@ public:
     [[nodiscard]] bool showPagePanel() const { return m_showPagePanel; }
 
     static constexpr int kDefaultPanelWidth = 220;
+    static constexpr int kDefaultLayersWidth = 230;
     static constexpr int kDefaultSectionsHeight = 150;
 
     // Whether the notebooks that were open come back the next time, or the reader starts fresh.
@@ -173,7 +176,15 @@ public:
 
     [[nodiscard]] int panelWidth() const { return m_panelWidth; }
 
+    [[nodiscard]] bool showLayers() const { return m_showLayers; }
+
+    [[nodiscard]] int layersWidth() const { return m_layersWidth; }
+
     void setPanelWidth(int width);
+
+    void setShowLayers(bool shown);
+
+    void setLayersWidth(int width);
 
     [[nodiscard]] int sectionsHeight() const { return m_sectionsHeight; }
 
@@ -237,6 +248,8 @@ private:
     bool m_showSections{true};
     bool m_showPages{true};
     int m_panelWidth{kDefaultPanelWidth};
+    bool m_showLayers{false};
+    int m_layersWidth{kDefaultLayersWidth};
     int m_sectionsHeight{kDefaultSectionsHeight};
     ShortcutListModel m_shortcutList;
     QString m_folder;

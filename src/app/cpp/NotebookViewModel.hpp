@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/cpp/HandwritingReader.hpp"
+#include "app/cpp/LayerModels.hpp"
 #include "app/cpp/OutlineModels.hpp"
 #include "app/cpp/TableModels.hpp"
 #include "app/cpp/TextModels.hpp"
@@ -124,6 +125,8 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(
         QString pickedTable READ pickedTable WRITE setPickedTable NOTIFY pickedTableChanged FINAL)
     Q_PROPERTY(QVariantMap pickedTableBox READ pickedTableBox NOTIFY pickedTableChanged FINAL)
+    Q_PROPERTY(phvikapen::app::LayerListModel* layers READ layers CONSTANT FINAL)
+    Q_PROPERTY(QString activeLayer READ activeLayer WRITE setActiveLayer NOTIFY layersChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -266,6 +269,38 @@ public:
     [[nodiscard]] TextListModel* texts() { return &m_textsModel; }
 
     [[nodiscard]] TableListModel* tables() { return &m_tablesModel; }
+
+    // The layers of the page being read, top first, the way a panel of layers is read.
+    [[nodiscard]] LayerListModel* layers() { return &m_layersModel; }
+
+    // The layer anything new is put on, which is the one the reader has chosen in the panel.
+    [[nodiscard]] QString activeLayer() const { return m_activeLayer; }
+
+    void setActiveLayer(const QString& layerId);
+
+    // A layer put above the one in hand, and one taken away with everything standing on it.
+    Q_INVOKABLE void addLayer();
+
+    Q_INVOKABLE void removeLayer(const QString& layerId);
+
+    // A layer put down again, with a copy of everything that stands on it.
+    Q_INVOKABLE void duplicateLayer(const QString& layerId);
+
+    Q_INVOKABLE void renameLayer(const QString& layerId, const QString& name);
+
+    Q_INVOKABLE void showLayer(const QString& layerId, bool shown);
+
+    Q_INVOKABLE void lockLayer(const QString& layerId, bool locked);
+
+    // A layer carried to another place in the order, counted from the bottom.
+    Q_INVOKABLE void moveLayer(const QString& layerId, int to);
+
+    // One thing on the page carried to another layer, which is how a picture is put over a table
+    // or under it.
+    Q_INVOKABLE void moveToLayer(const QString& thingId, const QString& layerId);
+
+    // Whatever is picked up just now carried to another layer.
+    Q_INVOKABLE void movePickedToLayer(const QString& layerId);
 
     // Which box of text the reader is working on, or nothing when none is.
     [[nodiscard]] QString pickedText() const { return m_pickedText; }
@@ -461,6 +496,8 @@ signals:
     void pickedBoxChanged();
     void pickedPictureChanged();
     void pickedTableChanged();
+
+    void layersChanged();
     void textAdded(const QString& textId);
     void startPageChanged();
     void canvasChanged();
@@ -531,6 +568,7 @@ private:
     struct ThumbnailPicture {
         core::Picture placed;
         QImage picture;
+        core::Uuid layer;
     };
 
     struct ThumbnailWork {
@@ -539,6 +577,7 @@ private:
         std::vector<core::PlacedText> texts;
         std::vector<ThumbnailPicture> pictures;
         std::vector<core::PlacedTable> tables;
+        std::vector<core::Layer> layers;
         QImage media;
     };
 
@@ -631,6 +670,17 @@ private:
     void reshapeTable(const QString& tableId,
                       const std::function<core::Result<core::Table>(core::Table)>& reshaped);
     void publishTables();
+
+    void publishLayers();
+
+    // The layers of the page being read, and the layer anything new is put on.
+    [[nodiscard]] std::vector<core::Layer> layersHere() const;
+
+    [[nodiscard]] core::Uuid layerForNewThings() const;
+
+    [[nodiscard]] core::Uuid layerForNewThings(const core::Page& page) const;
+
+    void changeLayers(std::vector<core::Layer> wanted);
     // What was read as arithmetic, worked out and written beside the hand that asked it.
     void answerWhatWasAsked(const core::Uuid& pageId, std::span<const core::InkWord> words,
                             const QVariantMap& style);
@@ -708,6 +758,8 @@ private:
     TrashListModel m_trashModel;
     TextListModel m_textsModel;
     TableListModel m_tablesModel;
+    LayerListModel m_layersModel;
+    QString m_activeLayer;
     QString m_pickedTable;
     std::map<core::ContentId, QImage> m_pictureImages;
     std::set<core::ContentId> m_wantedPictures;

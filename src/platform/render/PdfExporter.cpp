@@ -4,6 +4,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/id/ContentId.hpp"
 #include "core/model/Asset.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -143,7 +144,11 @@ private:
         if (found->second.isNull()) {
             continue;
         }
-        drawn.push_back(DrawnPicture{.placed = placed.picture, .picture = &found->second});
+        drawn.push_back(DrawnPicture{
+            .placed = placed.picture,
+            .picture = &found->second,
+            .layer = placed.layer,
+        });
     }
     return drawn;
 }
@@ -152,6 +157,48 @@ void setPageSize(QPdfWriter& writer, const core::Rect& area) {
     const QSizeF points{area.width() * kPointsPerPageUnit, area.height() * kPointsPerPageUnit};
     writer.setPageSize(QPageSize{points, QPageSize::Point});
     writer.setPageMargins(QMarginsF{});
+}
+
+// Everything of one page, read out of the notebook so that it can be drawn. The pictures point
+// into the store of what they are made of, which outlives them.
+struct PagePieces {
+    std::vector<core::PlacedStroke> strokes;
+    std::vector<core::PlacedText> texts;
+    std::vector<DrawnPicture> pictures;
+    std::vector<core::PlacedTable> tables;
+    std::vector<core::Layer> layers;
+};
+
+[[nodiscard]] core::Result<PagePieces> piecesOf(const core::NotebookStore& opened,
+                                                const core::Uuid& pageId,
+                                                std::map<core::ContentId, QImage>& pictureImages) {
+    core::Result<std::vector<core::PlacedStroke>> strokes = opened.strokesOfPage(pageId);
+    if (!strokes) {
+        return std::unexpected{strokes.error()};
+    }
+    core::Result<std::vector<core::PlacedText>> texts = opened.textsOfPage(pageId);
+    if (!texts) {
+        return std::unexpected{texts.error()};
+    }
+    const core::Result<std::vector<core::PlacedPicture>> standing = opened.picturesOfPage(pageId);
+    if (!standing) {
+        return std::unexpected{standing.error()};
+    }
+    core::Result<std::vector<core::PlacedTable>> tables = opened.tablesOfPage(pageId);
+    if (!tables) {
+        return std::unexpected{tables.error()};
+    }
+    core::Result<std::vector<core::Layer>> layers = opened.layersOfPage(pageId);
+    if (!layers) {
+        return std::unexpected{layers.error()};
+    }
+    return PagePieces{
+        .strokes = std::move(*strokes),
+        .texts = std::move(*texts),
+        .pictures = picturesOn(opened, *standing, pictureImages),
+        .tables = std::move(*tables),
+        .layers = std::move(*layers),
+    };
 }
 
 }
@@ -187,41 +234,30 @@ core::Result<int> exportNotebookToPdf(const std::filesystem::path& notebook,
     int written = 0;
 
     for (const core::PageInfo& info : pages) {
-        const core::Result<std::vector<core::PlacedStroke>> strokes = opened.strokesOfPage(info.id);
-        if (!strokes) {
-            return std::unexpected{strokes.error()};
+        core::Result<PagePieces> read = piecesOf(opened, info.id, pictureImages);
+        if (!read) {
+            return std::unexpected{read.error()};
         }
-        const core::Result<std::vector<core::PlacedText>> texts = opened.textsOfPage(info.id);
-        if (!texts) {
-            return std::unexpected{texts.error()};
-        }
-        const core::Result<std::vector<core::PlacedPicture>> standing =
-            opened.picturesOfPage(info.id);
-        if (!standing) {
-            return std::unexpected{standing.error()};
-        }
-        const std::vector<DrawnPicture> pictures = picturesOn(opened, *standing, pictureImages);
-        const core::Result<std::vector<core::PlacedTable>> tables = opened.tablesOfPage(info.id);
-        if (!tables) {
-            return std::unexpected{tables.error()};
-        }
+        const PagePieces& pieces = *read;
 
         const PageContents contents{
             .style = info.style,
-            .strokes = *strokes,
-            .texts = *texts,
-            .pictures = pictures,
-            .tables = *tables,
+            .strokes = pieces.strokes,
+            .texts = pieces.texts,
+            .pictures = pieces.pictures,
+            .tables = pieces.tables,
+            .layers = pieces.layers,
             .media = nullptr,
         };
         const core::Rect area = areaFor(contents, options.scope);
         const QImage picture = info.media ? media.imageFor(opened, *info.media, area) : QImage{};
         const PageContents page{
             .style = info.style,
-            .strokes = *strokes,
-            .texts = *texts,
-            .pictures = pictures,
-            .tables = *tables,
+            .strokes = pieces.strokes,
+            .texts = pieces.texts,
+            .pictures = pieces.pictures,
+            .tables = pieces.tables,
+            .layers = pieces.layers,
             .media = picture.isNull() ? nullptr : &picture,
         };
 

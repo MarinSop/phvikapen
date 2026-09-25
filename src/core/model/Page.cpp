@@ -4,6 +4,7 @@
 #include "core/geometry/Rect.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 
@@ -11,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -19,9 +21,11 @@ namespace phvikapen::core {
 Page::Page(const Uuid& id) noexcept : m_id{id} {}
 
 Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts,
-           std::vector<PlacedPicture> pictures, std::vector<PlacedTable> tables)
+           std::vector<PlacedPicture> pictures, std::vector<PlacedTable> tables,
+           std::vector<Layer> layers)
     : m_id{id}, m_strokes{std::move(strokes)}, m_texts{std::move(texts)},
-      m_pictures{std::move(pictures)}, m_tables{std::move(tables)} {
+      m_pictures{std::move(pictures)}, m_tables{std::move(tables)}, m_layers{std::move(layers)} {
+    setLayers(std::move(m_layers));
     std::ranges::stable_sort(m_strokes, {}, &PlacedStroke::ordinal);
     std::ranges::stable_sort(m_texts, {}, &PlacedText::ordinal);
     std::ranges::stable_sort(m_pictures, {}, &PlacedPicture::ordinal);
@@ -127,10 +131,22 @@ const TextBox* Page::textAt(const Uuid& textId) const noexcept {
     return position == m_texts.end() ? nullptr : &position->box;
 }
 
+namespace {
+
+// Nothing on a layer that is hidden or locked can be taken hold of: it is either not there to be
+// seen, or it is being kept still on purpose.
+[[nodiscard]] bool canBeTakenHold(std::span<const Layer> layers, const Uuid& stands) noexcept {
+    const Layer* const found = layerOf(layers, stands);
+    return found == nullptr || isOpenToTheHand(*found);
+}
+
+}
+
 const TextBox* Page::textUnder(Point at) const noexcept {
     for (const PlacedText& placed : std::ranges::reverse_view{m_texts}) {
         const Rect area = areaOf(placed.box);
-        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
+        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
+            && canBeTakenHold(m_layers, placed.layer)) {
             return &placed.box;
         }
     }
@@ -192,7 +208,8 @@ const Table* Page::tableAt(const Uuid& tableId) const noexcept {
 const Table* Page::tableUnder(Point at) const noexcept {
     for (const PlacedTable& placed : std::ranges::reverse_view{m_tables}) {
         const Rect area = areaOf(placed.table);
-        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
+        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
+            && canBeTakenHold(m_layers, placed.layer)) {
             return &placed.table;
         }
     }
@@ -254,7 +271,8 @@ const Picture* Page::pictureAt(const Uuid& pictureId) const noexcept {
 const Picture* Page::pictureUnder(Point at) const noexcept {
     for (const PlacedPicture& placed : std::ranges::reverse_view{m_pictures}) {
         const Rect area = areaOf(placed.picture);
-        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom) {
+        if (at.x >= area.left && at.x <= area.right && at.y >= area.top && at.y <= area.bottom
+            && canBeTakenHold(m_layers, placed.layer)) {
             return &placed.picture;
         }
     }
@@ -272,6 +290,70 @@ std::vector<Uuid> Page::strokesTouchedBy(const EraserSweep& sweep) const {
         }
     }
     return touched;
+}
+
+void Page::setLayers(std::vector<Layer> layers) {
+    m_layers = std::move(layers);
+    if (m_layers.size() > Layer::kMostLayers) {
+        m_layers.resize(Layer::kMostLayers);
+    }
+    // A page always has a layer, so that everything on it has somewhere to stand, whether it was
+    // written down before there were layers or after every one of them was taken away.
+    if (m_layers.empty()) {
+        m_layers.push_back(Layer{.id = m_id, .name = "Layer 1", .shown = true, .locked = false});
+    }
+}
+
+Result<Uuid> Page::moveToLayer(const Uuid& thingId, const Uuid& layerId) {
+    const auto moved = [&layerId](Uuid& layer) {
+        const Uuid stood = layer;
+        layer = layerId;
+        return stood;
+    };
+    for (PlacedStroke& placed : m_strokes) {
+        if (placed.stroke.id() == thingId) {
+            return moved(placed.layer);
+        }
+    }
+    for (PlacedText& placed : m_texts) {
+        if (placed.box.id == thingId) {
+            return moved(placed.layer);
+        }
+    }
+    for (PlacedPicture& placed : m_pictures) {
+        if (placed.picture.id == thingId) {
+            return moved(placed.layer);
+        }
+    }
+    for (PlacedTable& placed : m_tables) {
+        if (placed.table.id == thingId) {
+            return moved(placed.layer);
+        }
+    }
+    return makeError(ErrorCode::NotFound, "the page has nothing of that name on it");
+}
+
+int Page::countOnLayer(const Uuid& layerId) const noexcept {
+    int found = 0;
+    const auto count = [&](const Uuid& layer) {
+        const Layer* const stands = layerOf(m_layers, layer);
+        if (stands != nullptr && stands->id == layerId) {
+            ++found;
+        }
+    };
+    for (const PlacedStroke& placed : m_strokes) {
+        count(placed.layer);
+    }
+    for (const PlacedText& placed : m_texts) {
+        count(placed.layer);
+    }
+    for (const PlacedPicture& placed : m_pictures) {
+        count(placed.layer);
+    }
+    for (const PlacedTable& placed : m_tables) {
+        count(placed.layer);
+    }
+    return found;
 }
 
 }

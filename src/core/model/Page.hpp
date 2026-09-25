@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeHitTest.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Picture.hpp"
 #include "core/model/StrokeGrid.hpp"
 #include "core/model/Table.hpp"
@@ -18,13 +19,15 @@ namespace phvikapen::core {
 struct PlacedStroke {
     std::int64_t ordinal{};
     Stroke stroke;
+    Uuid layer{kNilUuid};
 };
 
 class Page {
 public:
     explicit Page(const Uuid& id) noexcept;
     Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts = {},
-         std::vector<PlacedPicture> pictures = {}, std::vector<PlacedTable> tables = {});
+         std::vector<PlacedPicture> pictures = {}, std::vector<PlacedTable> tables = {},
+         std::vector<Layer> layers = {});
 
     [[nodiscard]] const Uuid& id() const noexcept { return m_id; }
 
@@ -94,12 +97,27 @@ public:
 
     [[nodiscard]] std::vector<PlacedTable> takeAllTables() noexcept;
 
+    // The layers of the page, bottom first. A page always has at least one: everything written
+    // down before there were layers belongs to it.
+    [[nodiscard]] std::span<const Layer> layers() const noexcept { return m_layers; }
+
+    void setLayers(std::vector<Layer> layers);
+
+    // Which layer a thing on the page belongs to, whether it is a stroke of ink, a box of type, a
+    // picture or a table. What comes back is the layer it stood on before, so that the move can be
+    // taken back exactly.
+    [[nodiscard]] Result<Uuid> moveToLayer(const Uuid& thingId, const Uuid& layerId);
+
+    // What stands on a layer, counted so that the panel can say whether one is empty.
+    [[nodiscard]] int countOnLayer(const Uuid& layerId) const noexcept;
+
 private:
     Uuid m_id;
     std::vector<PlacedStroke> m_strokes;
     std::vector<PlacedText> m_texts;
     std::vector<PlacedPicture> m_pictures;
     std::vector<PlacedTable> m_tables;
+    std::vector<Layer> m_layers;
     StrokeGrid m_grid;
 };
 

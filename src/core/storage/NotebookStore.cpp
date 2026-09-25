@@ -211,13 +211,33 @@ constexpr std::string_view kSchemaVersion12 = R"sql(
     ALTER TABLE page_table_cells ADD COLUMN rise INTEGER NOT NULL DEFAULT 0;
 )sql";
 
+// The layers of a page, kept in the order they are drawn, and which layer each thing on the page
+// belongs to. Everything written down before this names no layer at all, which puts it on the
+// bottom one, so a notebook made before there were layers opens with all of it on one.
+constexpr std::string_view kSchemaVersion13 = R"sql(
+    CREATE TABLE page_layers (
+        page_id BLOB NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        id BLOB NOT NULL,
+        ordinal INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        shown INTEGER NOT NULL DEFAULT 1,
+        locked INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (page_id, id)
+    );
+    CREATE INDEX page_layers_by_page ON page_layers (page_id, ordinal);
+    ALTER TABLE strokes ADD COLUMN layer BLOB;
+    ALTER TABLE page_texts ADD COLUMN layer BLOB;
+    ALTER TABLE page_pictures ADD COLUMN layer BLOB;
+    ALTER TABLE page_tables ADD COLUMN layer BLOB;
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2},
     std::pair{3, kSchemaVersion3},   std::pair{4, kSchemaVersion4},
     std::pair{6, kSchemaVersion6},   std::pair{7, kSchemaVersion7},
     std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9},
     std::pair{10, kSchemaVersion10}, std::pair{11, kSchemaVersion11},
-    std::pair{12, kSchemaVersion12},
+    std::pair{12, kSchemaVersion12}, std::pair{13, kSchemaVersion13},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -361,6 +381,7 @@ enum class TextColumn : std::uint8_t {
     LineHeight,
     Marks,
     Formula,
+    Layer,
 };
 
 [[nodiscard]] constexpr int column(TextColumn which) noexcept {
@@ -418,6 +439,7 @@ enum class PictureColumn : std::uint8_t {
     Width,
     Height,
     Turn,
+    Layer,
 };
 
 [[nodiscard]] constexpr int column(PictureColumn which) noexcept {
@@ -440,6 +462,7 @@ enum class PictureColumn : std::uint8_t {
                 .height = static_cast<float>(statement.real(column(PictureColumn::Height))),
                 .turn = static_cast<float>(statement.real(column(PictureColumn::Turn))),
             },
+        .layer = statement.id(column(PictureColumn::Layer)),
     };
 }
 
@@ -488,6 +511,7 @@ enum class TableColumn : std::uint8_t {
     Marks,
     RuleColor,
     RuleWidth,
+    Layer,
 };
 
 [[nodiscard]] constexpr int column(TableColumn which) noexcept {
@@ -543,6 +567,7 @@ struct StoredFace {
                 }),
                 .formula = statement.integer(column(TextColumn::Formula)) != 0,
             },
+        .layer = statement.id(column(TextColumn::Layer)),
     };
 }
 
@@ -574,6 +599,7 @@ struct StoredFace {
     return PlacedTable{
         .ordinal = statement.integer(column(TableColumn::Ordinal)),
         .table = normalized(std::move(table)),
+        .layer = statement.id(column(TableColumn::Layer)),
     };
 }
 
@@ -1102,7 +1128,8 @@ Result<NotebookStore> NotebookStore::open(const std::filesystem::path& path) {
 
 Result<void> NotebookStore::insertStroke(const Uuid& pageId, const PlacedStroke& placed) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        m_database, "INSERT INTO strokes (id, page_id, ordinal, data) VALUES (?, ?, ?, ?);");
+        m_database,
+        "INSERT INTO strokes (id, page_id, ordinal, data, layer) VALUES (?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1112,6 +1139,7 @@ Result<void> NotebookStore::insertStroke(const Uuid& pageId, const PlacedStroke&
              statement->bindId(2, pageId),
              statement->bindInteger(3, placed.ordinal),
              statement->bindBlob(4, data),
+             statement->bindId(5, placed.layer),
          }) {
         if (!bound) {
             return bound;
@@ -1167,7 +1195,7 @@ Result<std::size_t> NotebookStore::removeStrokesOfPage(const Uuid& pageId) {
 
 Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageId) const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        m_database, "SELECT ordinal, data FROM strokes WHERE page_id = ? ORDER BY ordinal;");
+        m_database, "SELECT ordinal, data, layer FROM strokes WHERE page_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1188,8 +1216,11 @@ Result<std::vector<PlacedStroke>> NotebookStore::strokesOfPage(const Uuid& pageI
         if (!stroke) {
             return std::unexpected{stroke.error()};
         }
-        strokes.push_back(
-            PlacedStroke{.ordinal = statement->integer(0), .stroke = std::move(*stroke)});
+        strokes.push_back(PlacedStroke{
+            .ordinal = statement->integer(0),
+            .stroke = std::move(*stroke),
+            .layer = statement->id(2),
+        });
     }
     return strokes;
 }
@@ -1380,8 +1411,8 @@ Result<void> NotebookStore::insertText(const Uuid& pageId, const PlacedText& pla
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
         "INSERT INTO page_texts (id, page_id, ordinal, left_edge, top_edge, width, height, text, "
-        "folded, font, size, color, align, line_height, marks, formula) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+        "folded, font, size, color, align, line_height, marks, formula, layer) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1403,6 +1434,7 @@ Result<void> NotebookStore::insertText(const Uuid& pageId, const PlacedText& pla
         statement->bindReal(14, box.style.lineHeight),
         statement->bindInteger(15, marksOf(box.style)),
         statement->bindInteger(16, box.formula ? 1 : 0),
+        statement->bindId(17, placed.layer),
     });
     if (!bound) {
         return bound;
@@ -1475,7 +1507,7 @@ Result<std::size_t> NotebookStore::removeTextsOfPage(const Uuid& pageId) {
 Result<std::vector<PlacedText>> NotebookStore::textsOfPage(const Uuid& pageId) const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "SELECT id, ordinal, left_edge, top_edge, width, height, text, font, size, "
-                    "color, align, line_height, marks, formula "
+                    "color, align, line_height, marks, formula, layer "
                     "FROM page_texts WHERE page_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};
@@ -1499,7 +1531,8 @@ Result<std::vector<PlacedText>> NotebookStore::textsOfPage(const Uuid& pageId) c
 Result<void> NotebookStore::insertPicture(const Uuid& pageId, const PlacedPicture& placed) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "INSERT INTO page_pictures (id, page_id, ordinal, source, left_edge, "
-                    "top_edge, width, height, turn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
+                    "top_edge, width, height, turn, layer) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1514,6 +1547,7 @@ Result<void> NotebookStore::insertPicture(const Uuid& pageId, const PlacedPictur
         statement->bindReal(7, picture.width),
         statement->bindReal(8, picture.height),
         statement->bindReal(9, picture.turn),
+        statement->bindId(10, placed.layer),
     });
     if (!bound) {
         return bound;
@@ -1577,7 +1611,7 @@ Result<std::size_t> NotebookStore::removePicturesOfPage(const Uuid& pageId) {
 
 Result<std::vector<PlacedPicture>> NotebookStore::picturesOfPage(const Uuid& pageId) const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
-        m_database, "SELECT id, ordinal, source, left_edge, top_edge, width, height, turn "
+        m_database, "SELECT id, ordinal, source, left_edge, top_edge, width, height, turn, layer "
                     "FROM page_pictures WHERE page_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};
@@ -1606,8 +1640,8 @@ Result<void> NotebookStore::insertTable(const Uuid& pageId, const PlacedTable& p
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
         "INSERT INTO page_tables (id, page_id, ordinal, left_edge, top_edge, column_widths, "
-        "row_heights, font, size, color, align, line_height, marks, rule_color, rule_width) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+        "row_heights, font, size, color, align, line_height, marks, rule_color, rule_width, "
+        "layer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
     if (!statement) {
         return std::unexpected{statement.error()};
     }
@@ -1630,6 +1664,7 @@ Result<void> NotebookStore::insertTable(const Uuid& pageId, const PlacedTable& p
         statement->bindInteger(13, marksOf(table.style)),
         statement->bindInteger(14, packed(table.rule)),
         statement->bindReal(15, table.ruleWidth),
+        statement->bindId(16, placed.layer),
     });
     if (!bound) {
         return bound;
@@ -1750,10 +1785,113 @@ Result<std::size_t> NotebookStore::removeTablesOfPage(const Uuid& pageId) {
     return removed;
 }
 
+Result<std::vector<Layer>> NotebookStore::layersOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "SELECT id, name, shown, locked FROM page_layers "
+                                               "WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<Layer> layers;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return layers;
+        }
+        layers.push_back(Layer{
+            .id = statement->id(0),
+            .name = statement->text(1),
+            .shown = statement->integer(2) != 0,
+            .locked = statement->integer(3) != 0,
+        });
+    }
+}
+
+Result<void> NotebookStore::writeLayers(const Uuid& pageId, std::span<const Layer> layers) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    Result<sqlite::Statement> gone =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_layers WHERE page_id = ?;");
+    if (!gone) {
+        return std::unexpected{gone.error()};
+    }
+    if (const Result<void> bound = gone->bindId(1, pageId); !bound) {
+        return bound;
+    }
+    if (const Result<void> cleared = gone->run(); !cleared) {
+        return cleared;
+    }
+
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_layers (page_id, id, ordinal, name, shown, locked) "
+                    "VALUES (?, ?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    for (std::size_t step = 0; step < layers.size(); ++step) {
+        if (const Result<void> ready = statement->reset(); !ready) {
+            return ready;
+        }
+        const Layer& layer = layers[step];
+        const Result<void> bound = bindAll({
+            statement->bindId(1, pageId),
+            statement->bindId(2, layer.id),
+            statement->bindInteger(3, static_cast<std::int64_t>(step)),
+            statement->bindText(4, layer.name),
+            statement->bindInteger(5, layer.shown ? 1 : 0),
+            statement->bindInteger(6, layer.locked ? 1 : 0),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> written = statement->run(); !written) {
+            return written;
+        }
+    }
+    return transaction->commit();
+}
+
+Result<void> NotebookStore::moveToLayer(const Uuid& pageId, const Uuid& thingId,
+                                        const Uuid& layerId) {
+    // A thing of a page is named once across all of them, so whichever table holds it is the one
+    // that answers; the rest change nothing.
+    for (const std::string_view sql : {
+             std::string_view{"UPDATE strokes SET layer = ? WHERE page_id = ? AND id = ?;"},
+             std::string_view{"UPDATE page_texts SET layer = ? WHERE page_id = ? AND id = ?;"},
+             std::string_view{"UPDATE page_pictures SET layer = ? WHERE page_id = ? AND id = ?;"},
+             std::string_view{"UPDATE page_tables SET layer = ? WHERE page_id = ? AND id = ?;"},
+         }) {
+        Result<sqlite::Statement> statement = sqlite::Statement::prepare(m_database, sql);
+        if (!statement) {
+            return std::unexpected{statement.error()};
+        }
+        const Result<void> bound = bindAll({
+            statement->bindId(1, layerId),
+            statement->bindId(2, pageId),
+            statement->bindId(3, thingId),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> moved = statement->run(); !moved) {
+            return moved;
+        }
+    }
+    return {};
+}
+
 Result<std::vector<PlacedTable>> NotebookStore::tablesOfPage(const Uuid& pageId) const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "SELECT id, ordinal, left_edge, top_edge, column_widths, row_heights, font, "
-                    "size, color, align, line_height, marks, rule_color, rule_width "
+                    "size, color, align, line_height, marks, rule_color, rule_width, layer "
                     "FROM page_tables WHERE page_id = ? ORDER BY ordinal;");
     if (!statement) {
         return std::unexpected{statement.error()};

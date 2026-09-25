@@ -123,6 +123,7 @@ Result<void> MoveStrokesCommand::shift(float dx, float dy) {
         moved.push_back(PlacedStroke{
             .ordinal = taken->ordinal,
             .stroke = core::moved(taken->stroke, dx, dy),
+            .layer = taken->layer,
         });
     }
 
@@ -171,6 +172,7 @@ Result<void> TransformStrokesCommand::apply() {
         after.push_back(PlacedStroke{
             .ordinal = taken->ordinal,
             .stroke = transformed(taken->stroke, m_transform),
+            .layer = taken->layer,
         });
         before.push_back(std::move(*taken));
     }
@@ -248,7 +250,11 @@ Result<void> RestyleStrokesCommand::apply() {
         for (const InkSample& sample : taken->stroke.samples()) {
             restyled.append(sample);
         }
-        after.push_back(PlacedStroke{.ordinal = taken->ordinal, .stroke = std::move(restyled)});
+        after.push_back(PlacedStroke{
+            .ordinal = taken->ordinal,
+            .stroke = std::move(restyled),
+            .layer = taken->layer,
+        });
         before.push_back(std::move(*taken));
     }
 

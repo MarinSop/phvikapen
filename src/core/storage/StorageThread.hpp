@@ -4,6 +4,7 @@
 #include "core/id/ContentId.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/model/Asset.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/Picture.hpp"
@@ -28,6 +29,7 @@ struct LoadedPage {
     std::vector<PlacedText> texts;
     std::vector<PlacedPicture> pictures;
     std::vector<PlacedTable> tables;
+    std::vector<Layer> layers;
 };
 
 class StorageThread {

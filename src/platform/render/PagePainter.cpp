@@ -7,6 +7,7 @@
 #include "core/math/Drawing.hpp"
 #include "core/math/Equation.hpp"
 #include "core/math/Reading.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Table.hpp"
@@ -204,10 +205,26 @@ void paintDrawing(QPainter& painter, const core::Drawing& drawing, const core::T
     painter.restore();
 }
 
-void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts) {
+// Which layer is being drawn just now. A page with no layers draws everything in one pass, which
+// is what every page did before there were layers.
+struct LayerPass {
+    std::span<const core::Layer> layers;
+    core::Uuid only;
+    bool everything{false};
+
+    [[nodiscard]] bool holds(const core::Uuid& stands) const {
+        if (everything) {
+            return true;
+        }
+        const core::Layer* const found = core::layerOf(layers, stands);
+        return found != nullptr && found->id == only;
+    }
+};
+
+void paintTexts(QPainter& painter, std::span<const core::PlacedText> texts, const LayerPass& pass) {
     for (const core::PlacedText& placed : texts) {
         const core::TextBox& box = placed.box;
-        if (box.text.empty()) {
+        if (box.text.empty() || !pass.holds(placed.layer)) {
             continue;
         }
         if (box.formula) {
@@ -309,8 +326,12 @@ void paintCell(QPainter& painter, const core::Table& table, const core::TableCel
 
 // Tables stand over the ink, as typed text does, but only their ruling is drawn: what is written
 // by hand inside a box is seen through it, so a table can be ruled first and filled in by hand.
-void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables) {
+void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables,
+                 const LayerPass& pass) {
     for (const core::PlacedTable& placed : tables) {
+        if (!pass.holds(placed.layer)) {
+            continue;
+        }
         const core::Table& table = placed.table;
         paintTableFills(painter, table);
         paintTableRuling(painter, table);
@@ -326,9 +347,13 @@ void paintTables(QPainter& painter, std::span<const core::PlacedTable> tables) {
     }
 }
 
-void paintStrokes(QPainter& painter, std::span<const core::PlacedStroke> strokes) {
+void paintStrokes(QPainter& painter, std::span<const core::PlacedStroke> strokes,
+                  const LayerPass& pass) {
     painter.setPen(Qt::NoPen);
     for (const core::PlacedStroke& placed : strokes) {
+        if (!pass.holds(placed.layer)) {
+            continue;
+        }
         const core::Stroke& stroke = placed.stroke;
         const std::vector<core::Point> outline = core::strokeOutline(stroke);
         if (outline.empty()) {
@@ -381,9 +406,10 @@ core::Rect pageArea(const PageContents& page) {
 
 // Pictures stand over the document a page was made from and under everything written on it, each
 // turned about its own middle.
-void paintPictures(QPainter& painter, std::span<const DrawnPicture> pictures) {
+void paintPictures(QPainter& painter, std::span<const DrawnPicture> pictures,
+                   const LayerPass& pass) {
     for (const DrawnPicture& drawn : pictures) {
-        if (drawn.picture == nullptr || drawn.picture->isNull()) {
+        if (drawn.picture == nullptr || drawn.picture->isNull() || !pass.holds(drawn.layer)) {
             continue;
         }
         const core::Rect where = core::areaOf(drawn.placed);
@@ -413,10 +439,24 @@ void paintPage(QPainter& painter, const PageContents& page, const core::Rect& ar
         painter.drawImage(target, *page.media);
     }
 
-    paintPictures(painter, page.pictures);
-    paintStrokes(painter, page.strokes);
-    paintTables(painter, page.tables);
-    paintTexts(painter, page.texts);
+    // Layer by layer from the bottom up. Within one layer a picture stands under the ink written
+    // over it, and a table or a box of type over both, which is the order a page has always been
+    // drawn in; between layers, everything on a higher one stands over everything on a lower one.
+    const auto drawOne = [&](const LayerPass& pass) {
+        paintPictures(painter, page.pictures, pass);
+        paintStrokes(painter, page.strokes, pass);
+        paintTables(painter, page.tables, pass);
+        paintTexts(painter, page.texts, pass);
+    };
+    if (page.layers.empty()) {
+        drawOne(LayerPass{.layers = page.layers, .only = {}, .everything = true});
+    } else {
+        for (const core::Layer& layer : page.layers) {
+            if (layer.shown) {
+                drawOne(LayerPass{.layers = page.layers, .only = layer.id, .everything = false});
+            }
+        }
+    }
     painter.restore();
 }
 

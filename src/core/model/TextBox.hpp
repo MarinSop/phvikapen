@@ -71,6 +71,7 @@ struct TextBox {
 struct PlacedText {
     std::int64_t ordinal{};
     TextBox box;
+    Uuid layer{kNilUuid};
 
     friend bool operator==(const PlacedText&, const PlacedText&) = default;
 };

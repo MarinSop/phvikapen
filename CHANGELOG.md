@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Layers. A page holds as many as are wanted, the panel on the right lists them top first, and each
+  one can be named, hidden, locked, put down again with a copy of everything on it, carried up or
+  down the pile, and taken away with everything standing on it. Whatever is picked up can be sent to
+  another layer, which is how a picture is put over a table or under it, or a page traced over a
+  drawing that is locked so a resting hand cannot move it. Anything new is put on the layer chosen in
+  the panel. Every one of those changes is one step of undo, and all of it is kept with the notebook.
+  A notebook made before this opens with everything on one layer, looking exactly as it did.
 - A table is worked the way a spreadsheet is worked. One box is taken by tapping it and a stretch by
   dragging across them or holding shift; the strip down the side marks a whole row, the strip along
   the top a whole column, and the knob above the corner the whole table. What is marked out is

@@ -39,4 +39,7 @@ private:
     Bytes m_bytes{};
 };
 
+// The name nothing carries. A thing whose name for something is this one has named nothing at all.
+inline constexpr Uuid kNilUuid{};
+
 }

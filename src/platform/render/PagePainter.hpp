@@ -2,6 +2,7 @@
 
 #include "core/geometry/Rect.hpp"
 #include "core/math/Drawing.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
@@ -20,6 +21,7 @@ namespace phvikapen::platform::render {
 struct DrawnPicture {
     core::Picture placed;
     const QImage* picture{nullptr};
+    core::Uuid layer{core::kNilUuid};
 };
 
 struct PageContents {
@@ -28,6 +30,9 @@ struct PageContents {
     std::span<const core::PlacedText> texts;
     std::span<const DrawnPicture> pictures;
     std::span<const core::PlacedTable> tables;
+    // The layers of the page, bottom first. Nothing at all means the page has none, and everything
+    // on it is drawn in the one order it has always been drawn in.
+    std::span<const core::Layer> layers;
     const QImage* media{nullptr};
 };
 

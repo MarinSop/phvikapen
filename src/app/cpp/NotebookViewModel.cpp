@@ -14,6 +14,7 @@
 #include "core/math/Equation.hpp"
 #include "core/math/Reading.hpp"
 #include "core/model/Asset.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -21,6 +22,7 @@
 #include "core/text/InkWord.hpp"
 #include "core/text/WrittenText.hpp"
 #include "core/undo/BundleCommand.hpp"
+#include "core/undo/LayerCommands.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/PictureCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
@@ -425,7 +427,8 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
     if (!m_pages.contains(pageId)) {
         m_pages.emplace(pageId, std::make_unique<core::Page>(
                                     pageId, std::move(loaded->strokes), std::move(loaded->texts),
-                                    std::move(loaded->pictures), std::move(loaded->tables)));
+                                    std::move(loaded->pictures), std::move(loaded->tables),
+                                    std::move(loaded->layers)));
     }
     if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
         wantPicturesFor(*opened->second);
@@ -638,6 +641,40 @@ namespace {
 [[nodiscard]] QColor asQColor(core::Color color) {
     return color.alpha == 0 ? QColor{}
                             : QColor::fromRgb(color.red, color.green, color.blue, color.alpha);
+}
+
+// The layer one stroke of a page stands on, for the pieces an eraser leaves of it.
+[[nodiscard]] core::Uuid layerOfStroke(const core::Page& page, const core::Uuid& strokeId) {
+    for (const core::PlacedStroke& placed : page.strokes()) {
+        if (placed.stroke.id() == strokeId) {
+            return placed.layer;
+        }
+    }
+    return {};
+}
+
+// How high a thing stands, so that what is handed to the window is in the order it is drawn.
+[[nodiscard]] std::size_t heightOnPage(const core::Page& page, const core::Uuid& stands) {
+    const core::Layer* const found = core::layerOf(page.layers(), stands);
+    return found == nullptr ? 0 : core::placeOfLayer(page.layers(), found->id);
+}
+
+// The boxes of type a page shows, in the order the layers put them. A box on a layer that is not
+// shown is left out altogether.
+[[nodiscard]] std::vector<core::TextBox> shownBoxesOf(const core::Page& page) {
+    std::vector<std::pair<std::size_t, core::TextBox>> standing;
+    for (const core::PlacedText& placed : page.texts()) {
+        if (core::isShownOn(page.layers(), placed.layer)) {
+            standing.emplace_back(heightOnPage(page, placed.layer), placed.box);
+        }
+    }
+    std::ranges::stable_sort(standing, {}, [](const auto& stands) { return stands.first; });
+    std::vector<core::TextBox> boxes;
+    boxes.reserve(standing.size() + 1);
+    for (auto& [height, box] : standing) {
+        boxes.push_back(std::move(box));
+    }
+    return boxes;
 }
 
 [[nodiscard]] core::Color asColor(const QColor& color) {
@@ -873,14 +910,20 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke, int sheet) {
         refreshCanvas();
         return;
     }
-    const core::Result<void> stored = m_history.run(std::make_unique<core::AddStrokeCommand>(
-        page, &*m_storage, core::PlacedStroke{.ordinal = page->nextOrdinal(), .stroke = stroke}));
+    const core::Result<void> stored = m_history.run(
+        std::make_unique<core::AddStrokeCommand>(page, &*m_storage,
+                                                 core::PlacedStroke{
+                                                     .ordinal = page->nextOrdinal(),
+                                                     .stroke = stroke,
+                                                     .layer = layerForNewThings(*page),
+                                                 }));
     if (!stored) {
         reportError(QString::fromStdString(stored.error().message));
         refreshCanvas();
         return;
     }
     emit pageChanged();
+    publishLayers();
     markEdited();
     emit historyChanged();
 }
@@ -1019,7 +1062,11 @@ void NotebookViewModel::finishErasing() {
     std::vector<core::PlacedStroke> pieces;
     for (const auto& [strokeId, left] : m_erasePieces) {
         for (const core::Stroke& piece : left) {
-            pieces.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = piece});
+            pieces.push_back(core::PlacedStroke{
+                .ordinal = ordinal,
+                .stroke = piece,
+                .layer = layerOfStroke(*page, strokeId),
+            });
             ++ordinal;
         }
     }
@@ -1186,7 +1233,11 @@ void NotebookViewModel::copyPage(const core::PageInfo& original,
         for (const core::InkSample& sample : placed.stroke.samples()) {
             fresh.append(sample);
         }
-        core::PlacedStroke made{.ordinal = placed.ordinal, .stroke = std::move(fresh)};
+        core::PlacedStroke made{
+            .ordinal = placed.ordinal,
+            .stroke = std::move(fresh),
+            .layer = placed.layer,
+        };
         std::ignore = page->insert(made);
         copies.push_back(std::move(made));
     }
@@ -1194,7 +1245,11 @@ void NotebookViewModel::copyPage(const core::PageInfo& original,
     std::vector<core::PlacedText> textCopies;
     textCopies.reserve(texts.size());
     for (const core::PlacedText& placed : texts) {
-        core::PlacedText made{.ordinal = placed.ordinal, .box = placed.box};
+        core::PlacedText made{
+            .ordinal = placed.ordinal,
+            .box = placed.box,
+            .layer = placed.layer,
+        };
         made.box.id = m_ids.next();
         std::ignore = page->insertText(made);
         textCopies.push_back(std::move(made));
@@ -1319,6 +1374,7 @@ void NotebookViewModel::finishChange(const core::Result<void>& change,
         reportError(QString::fromStdString(change.error().message));
     }
     forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
+    publishLayers();
     markEdited();
     m_reader.nudge();
     emit historyChanged();
@@ -1362,6 +1418,7 @@ void NotebookViewModel::wantThumbnail(int index) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
         .media = {},
     });
     if (const auto cached = m_pages.find(work->page.id); cached != m_pages.end()) {
@@ -1371,6 +1428,8 @@ void NotebookViewModel::wantThumbnail(int index) {
         work->texts.assign(texts.begin(), texts.end());
         const std::span<const core::PlacedTable> tables = cached->second->tables();
         work->tables.assign(tables.begin(), tables.end());
+        const std::span<const core::Layer> layers = cached->second->layers();
+        work->layers.assign(layers.begin(), layers.end());
         takePictures(*work, cached->second->pictures());
         gatherThumbnail(work);
         return;
@@ -1388,6 +1447,7 @@ void NotebookViewModel::wantThumbnail(int index) {
                                     work->strokes = std::move(loaded->strokes);
                                     work->texts = std::move(loaded->texts);
                                     work->tables = std::move(loaded->tables);
+                                    work->layers = std::move(loaded->layers);
                                     takePictures(*work, loaded->pictures);
                                     gatherThumbnail(work);
                                 },
@@ -1406,8 +1466,11 @@ void NotebookViewModel::takePictures(ThumbnailWork& work,
         if (drawn == m_pictureImages.end()) {
             continue;
         }
-        work.pictures.push_back(
-            ThumbnailPicture{.placed = placed.picture, .picture = drawn->second});
+        work.pictures.push_back(ThumbnailPicture{
+            .placed = placed.picture,
+            .picture = drawn->second,
+            .layer = placed.layer,
+        });
     }
 }
 
@@ -1482,8 +1545,11 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
     std::vector<platform::render::DrawnPicture> pictures;
     pictures.reserve(work.pictures.size());
     for (const ThumbnailPicture& drawn : work.pictures) {
-        pictures.push_back(
-            platform::render::DrawnPicture{.placed = drawn.placed, .picture = &drawn.picture});
+        pictures.push_back(platform::render::DrawnPicture{
+            .placed = drawn.placed,
+            .picture = &drawn.picture,
+            .layer = drawn.layer,
+        });
     }
     const platform::render::PageContents contents{
         .style = work.page.style,
@@ -1491,6 +1557,7 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
         .texts = work.texts,
         .pictures = pictures,
         .tables = work.tables,
+        .layers = work.layers,
         .media = work.media.isNull() ? nullptr : &work.media,
     };
     const core::Rect area = platform::render::pageArea(contents);
@@ -2054,6 +2121,17 @@ void NotebookViewModel::importDocument(const QUrl& fileUrl) {
 std::vector<core::Uuid> NotebookViewModel::setAside() const {
     std::vector<core::Uuid> hidden = m_erasing;
     hidden.insert(hidden.end(), m_previewIds.begin(), m_previewIds.end());
+    // Ink standing on a layer that is not shown is drawn nowhere, on any page that is open.
+    for (const auto& [pageId, page] : m_pages) {
+        if (page == nullptr) {
+            continue;
+        }
+        for (const core::PlacedStroke& placed : page->strokes()) {
+            if (!core::isShownOn(page->layers(), placed.layer)) {
+                hidden.push_back(placed.stroke.id());
+            }
+        }
+    }
     return hidden;
 }
 
@@ -2086,6 +2164,7 @@ void NotebookViewModel::refreshCanvas() {
     }
     publishTexts();
     publishTables();
+    publishLayers();
 }
 
 // The pages of the section stand in one column; the ones that are not read yet are empty sheets
@@ -2113,6 +2192,7 @@ void NotebookViewModel::showColumn() {
     m_canvas->showColumn(views, currentPage(), setAside(), standingIn());
     publishTexts();
     publishTables();
+    publishLayers();
     wantNeighbours();
 }
 
@@ -2176,7 +2256,8 @@ void NotebookViewModel::wantNeighbours() {
                             .emplace(page,
                                      std::make_unique<core::Page>(
                                          page, std::move(loaded->strokes), std::move(loaded->texts),
-                                         std::move(loaded->pictures), std::move(loaded->tables)))
+                                         std::move(loaded->pictures), std::move(loaded->tables),
+                                         std::move(loaded->layers)))
                             .first;
                     wantPicturesFor(*opened->second);
                     refreshCanvas();
@@ -2467,7 +2548,11 @@ void NotebookViewModel::duplicateSelection() {
             fresh.append(sample);
         }
         ids.push_back(fresh.id());
-        copies.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = std::move(fresh)});
+        copies.push_back(core::PlacedStroke{
+            .ordinal = ordinal,
+            .stroke = std::move(fresh),
+            .layer = placed.layer,
+        });
         ++ordinal;
     }
     if (copies.empty()) {
@@ -2635,7 +2720,11 @@ void NotebookViewModel::pasteStrokes() {
             fresh.append(sample);
         }
         ids.push_back(fresh.id());
-        pasted.push_back(core::PlacedStroke{.ordinal = ordinal, .stroke = std::move(fresh)});
+        pasted.push_back(core::PlacedStroke{
+            .ordinal = ordinal,
+            .stroke = std::move(fresh),
+            .layer = layerForNewThings(*page),
+        });
         ++ordinal;
     }
 
@@ -2936,10 +3025,7 @@ void NotebookViewModel::publishTexts() {
             }
             const QRectF where = m_canvas->sheetRect(sheet);
             const QString page = QString::fromStdString(pageId.toString());
-            std::vector<core::TextBox> boxes;
-            for (const core::PlacedText& placed : found->second->texts()) {
-                boxes.push_back(placed.box);
-            }
+            std::vector<core::TextBox> boxes = shownBoxesOf(*found->second);
             if (m_draft && m_draft->page == pageId) {
                 boxes.push_back(m_draft->box);
             }
@@ -3021,8 +3107,12 @@ void NotebookViewModel::settleDraft() {
     core::Page* const page = found->second.get();
     core::StorageThread* const storage = &*m_storage;
     forgetThumbnail(draft.page);
-    runCommand(std::make_unique<core::AddTextCommand>(
-        page, storage, core::PlacedText{.ordinal = page->nextTextOrdinal(), .box = draft.box}));
+    runCommand(std::make_unique<core::AddTextCommand>(page, storage,
+                                                      core::PlacedText{
+                                                          .ordinal = page->nextTextOrdinal(),
+                                                          .box = draft.box,
+                                                          .layer = layerForNewThings(),
+                                                      }));
 }
 
 void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMap& style) {
@@ -3339,17 +3429,25 @@ void NotebookViewModel::publishPictures() {
         if (found == m_pages.end()) {
             continue;
         }
+        // Only the pictures on a layer that is shown, and in the order the layers put them.
+        std::vector<std::pair<std::size_t, const core::PlacedPicture*>> standing;
         for (const core::PlacedPicture& placed : found->second->pictures()) {
-            const auto drawn = m_pictureImages.find(placed.picture.source);
+            if (core::isShownOn(found->second->layers(), placed.layer)) {
+                standing.emplace_back(heightOnPage(*found->second, placed.layer), &placed);
+            }
+        }
+        std::ranges::stable_sort(standing, {}, [](const auto& stands) { return stands.first; });
+        for (const auto& [height, placed] : standing) {
+            const auto drawn = m_pictureImages.find(placed->picture.source);
             if (drawn == m_pictureImages.end()) {
                 continue;
             }
-            const core::Rect area = core::areaOf(placed.picture);
+            const core::Rect area = core::areaOf(placed->picture);
             pieces.push_back(platform::ink::QtInkItem::PicturePiece{
                 .page = pageId,
                 .picture = drawn->second,
                 .area = QRectF{QPointF{area.left, area.top}, QSizeF{area.width(), area.height()}},
-                .turn = placed.picture.turn,
+                .turn = placed->picture.turn,
             });
         }
     }
@@ -3474,8 +3572,12 @@ void NotebookViewModel::answerWhatWasAsked(const core::Uuid& pageId,
     core::Page* const on = found->second.get();
     const core::TextBox box = answerBeside(*asked, core::writtenAnswer(*answer), styleOfMap(style));
     forgetThumbnail(pageId);
-    runCommand(std::make_unique<core::AddTextCommand>(
-        on, storage, core::PlacedText{.ordinal = on->nextTextOrdinal(), .box = box}));
+    runCommand(std::make_unique<core::AddTextCommand>(on, storage,
+                                                      core::PlacedText{
+                                                          .ordinal = on->nextTextOrdinal(),
+                                                          .box = box,
+                                                          .layer = layerForNewThings(),
+                                                      }));
     publishTexts();
     setPickedText(QString::fromStdString(box.id.toString()));
 }
@@ -3508,9 +3610,12 @@ void NotebookViewModel::addTable(int rows, int columns) {
     const QString tableId = QString::fromStdString(table.id.toString());
     core::StorageThread* const storage = &*m_storage;
     forgetThumbnail(page->id());
-    runCommand(std::make_unique<core::AddTableCommand>(
-        page, storage,
-        core::PlacedTable{.ordinal = page->nextTableOrdinal(), .table = std::move(table)}));
+    runCommand(std::make_unique<core::AddTableCommand>(page, storage,
+                                                       core::PlacedTable{
+                                                           .ordinal = page->nextTableOrdinal(),
+                                                           .table = std::move(table),
+                                                           .layer = layerForNewThings(),
+                                                       }));
     publishTables();
     setPickedTable(tableId);
 }
@@ -3931,6 +4036,396 @@ QVariantMap NotebookViewModel::cellSpan(const QString& tableId, int row, int col
     };
 }
 
+namespace {
+
+// A name the window hands back, matched against what the page carries: only the page knows which
+// thing wears which name, because a name goes out as text and comes back as text.
+[[nodiscard]] bool isNamed(const core::Uuid& id, const QString& name) {
+    return QString::fromStdString(id.toString()) == name;
+}
+
+[[nodiscard]] core::Uuid layerNamed(std::span<const core::Layer> layers, const QString& name) {
+    for (const core::Layer& layer : layers) {
+        if (isNamed(layer.id, name)) {
+            return layer.id;
+        }
+    }
+    return {};
+}
+
+[[nodiscard]] core::Uuid thingNamed(const core::Page& page, const QString& name) {
+    for (const core::PlacedStroke& placed : page.strokes()) {
+        if (isNamed(placed.stroke.id(), name)) {
+            return placed.stroke.id();
+        }
+    }
+    for (const core::PlacedText& placed : page.texts()) {
+        if (isNamed(placed.box.id, name)) {
+            return placed.box.id;
+        }
+    }
+    for (const core::PlacedPicture& placed : page.pictures()) {
+        if (isNamed(placed.picture.id, name)) {
+            return placed.picture.id;
+        }
+    }
+    for (const core::PlacedTable& placed : page.tables()) {
+        if (isNamed(placed.table.id, name)) {
+            return placed.table.id;
+        }
+    }
+    return {};
+}
+
+[[nodiscard]] bool standsOn(const core::Page& page, const core::Uuid& stands,
+                            const core::Uuid& layerId) {
+    const core::Layer* const found = core::layerOf(page.layers(), stands);
+    return found != nullptr && found->id == layerId;
+}
+
+[[nodiscard]] core::Stroke copyOf(const core::Stroke& stroke, const core::Uuid& id) {
+    core::Stroke made{id, stroke.style()};
+    for (const core::InkSample& sample : stroke.samples()) {
+        made.append(sample);
+    }
+    return made;
+}
+
+}
+
+std::vector<core::Layer> NotebookViewModel::layersHere() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    const std::span<const core::Layer> standing = page->layers();
+    return {standing.begin(), standing.end()};
+}
+
+core::Uuid NotebookViewModel::layerForNewThings() const {
+    const core::Page* const page = currentPageData();
+    return page == nullptr ? core::Uuid{} : layerForNewThings(*page);
+}
+
+core::Uuid NotebookViewModel::layerForNewThings(const core::Page& page) const {
+    const std::span<const core::Layer> standing = page.layers();
+    for (const core::Layer& layer : standing) {
+        if (isNamed(layer.id, m_activeLayer) && core::isOpenToTheHand(layer)) {
+            return layer.id;
+        }
+    }
+    // Nothing is ever put on a layer that is hidden or locked: the topmost one that will take it
+    // is used instead, which is where a reader would have put it by hand.
+    for (std::size_t step = standing.size(); step > 0; --step) {
+        if (core::isOpenToTheHand(standing[step - 1])) {
+            return standing[step - 1].id;
+        }
+    }
+    return standing.empty() ? core::Uuid{} : standing.back().id;
+}
+
+void NotebookViewModel::changeLayers(std::vector<core::Layer> wanted) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || !m_storage || wanted.empty()) {
+        return;
+    }
+    const auto found = m_pages.find(page->id());
+    if (found == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::ChangeLayersCommand>(found->second.get(), storage,
+                                                           std::move(wanted)));
+    publishLayers();
+    refreshCanvas();
+}
+
+void NotebookViewModel::setActiveLayer(const QString& layerId) {
+    if (layerId == m_activeLayer) {
+        return;
+    }
+    m_activeLayer = layerId;
+    emit layersChanged();
+}
+
+void NotebookViewModel::addLayer() {
+    std::vector<core::Layer> wanted = layersHere();
+    if (wanted.empty() || wanted.size() >= core::Layer::kMostLayers) {
+        return;
+    }
+    const std::size_t above = core::placeOfLayer(wanted, layerNamed(wanted, m_activeLayer));
+    core::Layer made{
+        .id = m_ids.next(),
+        .name = core::freeName(wanted, "Layer " + std::to_string(wanted.size() + 1)),
+        .shown = true,
+        .locked = false,
+    };
+    const QString name = QString::fromStdString(made.id.toString());
+    const std::size_t at = above < wanted.size() ? above + 1 : wanted.size();
+    wanted.insert(std::next(wanted.begin(), static_cast<std::ptrdiff_t>(at)), std::move(made));
+    changeLayers(std::move(wanted));
+    setActiveLayer(name);
+}
+
+void NotebookViewModel::removeLayer(const QString& layerId) {
+    std::vector<core::Layer> wanted = layersHere();
+    if (wanted.size() <= 1) {
+        reportError(tr("A page keeps at least one layer."));
+        return;
+    }
+    const core::Page* const page = currentPageData();
+    const core::Uuid gone = layerNamed(wanted, layerId);
+    const std::size_t at = core::placeOfLayer(wanted, gone);
+    if (page == nullptr || at >= wanted.size() || !m_storage) {
+        return;
+    }
+    const auto found = m_pages.find(page->id());
+    if (found == m_pages.end()) {
+        return;
+    }
+    core::Page* const here = found->second.get();
+    core::StorageThread* const storage = &*m_storage;
+
+    // Everything standing on the layer goes with it, and all of it in one step, so that one undo
+    // brings the layer and its whole contents back.
+    std::vector<std::unique_ptr<core::ICommand>> steps;
+    std::vector<core::Uuid> strokes;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (standsOn(*page, placed.layer, gone)) {
+            strokes.push_back(placed.stroke.id());
+        }
+    }
+    if (!strokes.empty()) {
+        steps.push_back(
+            std::make_unique<core::EraseStrokesCommand>(here, storage, std::move(strokes)));
+    }
+    for (const core::PlacedText& placed : page->texts()) {
+        if (standsOn(*page, placed.layer, gone)) {
+            steps.push_back(
+                std::make_unique<core::RemoveTextCommand>(here, storage, placed.box.id));
+        }
+    }
+    for (const core::PlacedPicture& placed : page->pictures()) {
+        if (standsOn(*page, placed.layer, gone)) {
+            steps.push_back(
+                std::make_unique<core::RemovePictureCommand>(here, storage, placed.picture.id));
+        }
+    }
+    for (const core::PlacedTable& placed : page->tables()) {
+        if (standsOn(*page, placed.layer, gone)) {
+            steps.push_back(
+                std::make_unique<core::RemoveTableCommand>(here, storage, placed.table.id));
+        }
+    }
+    wanted.erase(std::next(wanted.begin(), static_cast<std::ptrdiff_t>(at)));
+    const QString left = QString::fromStdString(wanted.back().id.toString());
+    steps.push_back(std::make_unique<core::ChangeLayersCommand>(here, storage, wanted));
+
+    forgetThumbnail(page->id());
+    setPickedTable({});
+    setPickedPicture({});
+    setPickedText({});
+    runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+    setActiveLayer(left);
+    publishLayers();
+    refreshCanvas();
+}
+
+void NotebookViewModel::duplicateLayer(const QString& layerId) {
+    std::vector<core::Layer> wanted = layersHere();
+    const core::Page* const page = currentPageData();
+    const core::Uuid from = layerNamed(wanted, layerId);
+    const std::size_t at = core::placeOfLayer(wanted, from);
+    if (page == nullptr || at >= wanted.size() || wanted.size() >= core::Layer::kMostLayers
+        || !m_storage) {
+        return;
+    }
+    const auto found = m_pages.find(page->id());
+    if (found == m_pages.end()) {
+        return;
+    }
+    core::Page* const here = found->second.get();
+    core::StorageThread* const storage = &*m_storage;
+
+    core::Layer made{
+        .id = m_ids.next(),
+        .name = core::freeName(wanted, wanted[at].name),
+        .shown = wanted[at].shown,
+        .locked = false,
+    };
+    const core::Uuid onto = made.id;
+    const QString name = QString::fromStdString(onto.toString());
+    wanted.insert(std::next(wanted.begin(), static_cast<std::ptrdiff_t>(at + 1)), std::move(made));
+
+    // The layer and everything put down again on it go in as one step.
+    std::vector<std::unique_ptr<core::ICommand>> steps;
+    steps.push_back(std::make_unique<core::ChangeLayersCommand>(here, storage, wanted));
+
+    std::vector<core::PlacedStroke> strokes;
+    std::int64_t ordinal = page->nextOrdinal();
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (standsOn(*page, placed.layer, from)) {
+            strokes.push_back(core::PlacedStroke{
+                .ordinal = ordinal++,
+                .stroke = copyOf(placed.stroke, m_ids.next()),
+                .layer = onto,
+            });
+        }
+    }
+    if (!strokes.empty()) {
+        steps.push_back(
+            std::make_unique<core::AddStrokesCommand>(here, storage, std::move(strokes)));
+    }
+    std::int64_t textOrdinal = page->nextTextOrdinal();
+    for (const core::PlacedText& placed : page->texts()) {
+        if (standsOn(*page, placed.layer, from)) {
+            core::TextBox box = placed.box;
+            box.id = m_ids.next();
+            steps.push_back(std::make_unique<core::AddTextCommand>(
+                here, storage,
+                core::PlacedText{.ordinal = textOrdinal++, .box = std::move(box), .layer = onto}));
+        }
+    }
+    std::int64_t pictureOrdinal = page->nextPictureOrdinal();
+    for (const core::PlacedPicture& placed : page->pictures()) {
+        if (standsOn(*page, placed.layer, from)) {
+            core::Picture picture = placed.picture;
+            picture.id = m_ids.next();
+            steps.push_back(
+                std::make_unique<core::AddPictureCommand>(here, storage,
+                                                          core::PlacedPicture{
+                                                              .ordinal = pictureOrdinal++,
+                                                              .picture = picture,
+                                                              .layer = onto,
+                                                          }));
+        }
+    }
+    std::int64_t tableOrdinal = page->nextTableOrdinal();
+    for (const core::PlacedTable& placed : page->tables()) {
+        if (standsOn(*page, placed.layer, from)) {
+            core::Table table = placed.table;
+            table.id = m_ids.next();
+            steps.push_back(std::make_unique<core::AddTableCommand>(here, storage,
+                                                                    core::PlacedTable{
+                                                                        .ordinal = tableOrdinal++,
+                                                                        .table = std::move(table),
+                                                                        .layer = onto,
+                                                                    }));
+        }
+    }
+
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+    setActiveLayer(name);
+    publishLayers();
+    refreshCanvas();
+}
+
+void NotebookViewModel::renameLayer(const QString& layerId, const QString& name) {
+    std::vector<core::Layer> wanted = layersHere();
+    const std::size_t at = core::placeOfLayer(wanted, layerNamed(wanted, layerId));
+    const std::string asked = name.trimmed().toStdString();
+    if (at >= wanted.size() || asked.empty() || wanted[at].name == asked) {
+        return;
+    }
+    const core::Layer standing = wanted[at];
+    wanted.erase(std::next(wanted.begin(), static_cast<std::ptrdiff_t>(at)));
+    core::Layer renamed = standing;
+    renamed.name = core::freeName(wanted, asked);
+    wanted.insert(std::next(wanted.begin(), static_cast<std::ptrdiff_t>(at)), std::move(renamed));
+    changeLayers(std::move(wanted));
+}
+
+void NotebookViewModel::showLayer(const QString& layerId, bool shown) {
+    std::vector<core::Layer> wanted = layersHere();
+    const std::size_t at = core::placeOfLayer(wanted, layerNamed(wanted, layerId));
+    if (at >= wanted.size() || wanted[at].shown == shown) {
+        return;
+    }
+    wanted[at].shown = shown;
+    changeLayers(std::move(wanted));
+}
+
+void NotebookViewModel::lockLayer(const QString& layerId, bool locked) {
+    std::vector<core::Layer> wanted = layersHere();
+    const std::size_t at = core::placeOfLayer(wanted, layerNamed(wanted, layerId));
+    if (at >= wanted.size() || wanted[at].locked == locked) {
+        return;
+    }
+    wanted[at].locked = locked;
+    changeLayers(std::move(wanted));
+}
+
+void NotebookViewModel::moveLayer(const QString& layerId, int to) {
+    const std::vector<core::Layer> standing = layersHere();
+    const std::size_t from = core::placeOfLayer(standing, layerNamed(standing, layerId));
+    if (from >= standing.size() || to < 0 || static_cast<std::size_t>(to) >= standing.size()) {
+        return;
+    }
+    std::vector<core::Layer> wanted =
+        core::withLayerMoved(standing, from, static_cast<std::size_t>(to));
+    if (wanted == standing) {
+        return;
+    }
+    changeLayers(std::move(wanted));
+}
+
+void NotebookViewModel::moveToLayer(const QString& thingId, const QString& layerId) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || !m_storage) {
+        return;
+    }
+    const core::Uuid thing = thingNamed(*page, thingId);
+    const core::Uuid onto = layerNamed(page->layers(), layerId);
+    if (thing.isNil() || onto.isNil()) {
+        return;
+    }
+    const auto found = m_pages.find(page->id());
+    if (found == m_pages.end()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(
+        std::make_unique<core::MoveToLayerCommand>(found->second.get(), storage, thing, onto));
+    publishLayers();
+    refreshCanvas();
+}
+
+void NotebookViewModel::movePickedToLayer(const QString& layerId) {
+    if (!m_pickedTable.isEmpty()) {
+        moveToLayer(m_pickedTable, layerId);
+        return;
+    }
+    if (!m_pickedPicture.isEmpty()) {
+        moveToLayer(m_pickedPicture, layerId);
+        return;
+    }
+    if (!m_pickedText.isEmpty()) {
+        moveToLayer(m_pickedText, layerId);
+    }
+}
+
+void NotebookViewModel::publishLayers() {
+    std::vector<LayerItem> items;
+    const core::Page* const page = currentPageData();
+    if (page != nullptr) {
+        const std::span<const core::Layer> standing = page->layers();
+        items.reserve(standing.size());
+        // Top first, the way a panel of layers is read.
+        for (std::size_t step = standing.size(); step > 0; --step) {
+            const core::Layer& layer = standing[step - 1];
+            items.push_back(itemOfLayer(layer, page->countOnLayer(layer.id)));
+        }
+        if (layerNamed(standing, m_activeLayer).isNil() && !standing.empty()) {
+            m_activeLayer = QString::fromStdString(standing.back().id.toString());
+        }
+    }
+    m_layersModel.setItems(std::move(items));
+    emit layersChanged();
+}
+
 void NotebookViewModel::publishTables() {
     std::vector<TableItem> items;
     if (!m_canvas.isNull()) {
@@ -3943,14 +4438,22 @@ void NotebookViewModel::publishTables() {
             }
             const QRectF where = m_canvas->sheetRect(sheet);
             const QString page = QString::fromStdString(pageId.toString());
+            std::vector<std::pair<std::size_t, const core::Table*>> standing;
             for (const core::PlacedTable& placed : found->second->tables()) {
-                items.push_back(itemOfTable(
-                    placed.table, TablePlace{
-                                      .pageId = page,
-                                      .columnX = where.x() + static_cast<qreal>(placed.table.at.x),
-                                      .columnY = where.y() + static_cast<qreal>(placed.table.at.y),
-                                      .sheet = sheet,
-                                  }));
+                if (core::isShownOn(found->second->layers(), placed.layer)) {
+                    standing.emplace_back(heightOnPage(*found->second, placed.layer),
+                                          &placed.table);
+                }
+            }
+            std::ranges::stable_sort(standing, {}, [](const auto& stands) { return stands.first; });
+            for (const auto& [height, table] : standing) {
+                items.push_back(
+                    itemOfTable(*table, TablePlace{
+                                            .pageId = page,
+                                            .columnX = where.x() + static_cast<qreal>(table->at.x),
+                                            .columnY = where.y() + static_cast<qreal>(table->at.y),
+                                            .sheet = sheet,
+                                        }));
             }
         }
     }
@@ -4010,9 +4513,12 @@ void NotebookViewModel::addPicture(const QUrl& fileUrl) {
     m_pictureImages.insert_or_assign(source, picture);
     core::StorageThread* const storage = &*m_storage;
     forgetThumbnail(page->id());
-    runCommand(std::make_unique<core::AddPictureCommand>(
-        page, storage,
-        core::PlacedPicture{.ordinal = page->nextPictureOrdinal(), .picture = placed}));
+    runCommand(std::make_unique<core::AddPictureCommand>(page, storage,
+                                                         core::PlacedPicture{
+                                                             .ordinal = page->nextPictureOrdinal(),
+                                                             .picture = placed,
+                                                             .layer = layerForNewThings(),
+                                                         }));
     publishPictures();
     setPickedPicture(QString::fromStdString(placed.id.toString()));
 }
@@ -4066,8 +4572,12 @@ void NotebookViewModel::convertSelectionToText(QVariantMap style) {
 
         std::vector<std::unique_ptr<core::ICommand>> steps;
         steps.push_back(std::make_unique<core::EraseStrokesCommand>(on, &*m_storage, picked));
-        steps.push_back(std::make_unique<core::AddTextCommand>(
-            on, &*m_storage, core::PlacedText{.ordinal = on->nextTextOrdinal(), .box = box}));
+        steps.push_back(std::make_unique<core::AddTextCommand>(on, &*m_storage,
+                                                               core::PlacedText{
+                                                                   .ordinal = on->nextTextOrdinal(),
+                                                                   .box = box,
+                                                                   .layer = layerForNewThings(),
+                                                               }));
         forgetThumbnail(pageId);
         m_canvas->clearSelection();
         runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));

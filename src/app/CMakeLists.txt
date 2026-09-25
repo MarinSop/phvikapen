@@ -84,7 +84,9 @@ qt_add_qml_module(phvikapen_ui
         cpp/NotebookViewModel.cpp
         cpp/NotebookViewModel.hpp
         cpp/NotebooksViewModel.cpp
+        cpp/LayerModels.cpp
         cpp/OutlineModels.cpp
+        cpp/LayerModels.hpp
         cpp/OutlineModels.hpp
         cpp/PageDefaults.cpp
         cpp/PageDefaults.hpp
@@ -121,6 +123,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
         qml/components/MenuCommand.qml
+        qml/components/LayersPanel.qml
         qml/components/MenuLine.qml
         qml/components/MessageBar.qml
         qml/components/NotebookTabs.qml

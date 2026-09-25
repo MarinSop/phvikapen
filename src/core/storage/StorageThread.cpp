@@ -89,11 +89,17 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(std::unexpected{tables.error()});
             return;
         }
+        Result<std::vector<Layer>> layers = m_store->layersOfPage(pageId);
+        if (!layers) {
+            onLoaded(std::unexpected{layers.error()});
+            return;
+        }
         onLoaded(LoadedPage{
             .strokes = std::move(*strokes),
             .texts = std::move(*texts),
             .pictures = std::move(*pictures),
             .tables = std::move(*tables),
+            .layers = std::move(*layers),
         });
     });
 }

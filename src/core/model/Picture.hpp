@@ -30,6 +30,7 @@ struct Picture {
 struct PlacedPicture {
     std::int64_t ordinal{};
     Picture picture;
+    Uuid layer{kNilUuid};
 
     friend bool operator==(const PlacedPicture&, const PlacedPicture&) = default;
 };

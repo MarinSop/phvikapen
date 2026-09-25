@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
@@ -81,6 +82,7 @@ TEST(PagePainterTest, AFixedPageIsAsLargeAsItsPaper) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -101,6 +103,7 @@ TEST(PagePainterTest, AnInfinitePageIsAsLargeAsWhatWasWrittenOnIt) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -118,6 +121,7 @@ TEST(PagePainterTest, AnEmptyInfinitePageFallsBackToASheetOfPaper) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const core::Rect area = pageArea(page);
@@ -136,6 +140,7 @@ TEST(PagePainterTest, TheSheetIsWhiteAndTheInkIsWhereItWasWritten) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -152,6 +157,7 @@ TEST(PagePainterTest, RuledPaperGetsItsLinesAndItsMargin) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
@@ -168,6 +174,7 @@ TEST(PagePainterTest, BlankPaperStaysBlank) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, pageArea(page));
@@ -206,6 +213,7 @@ TEST(PagePainterTest, TypedTextIsPrintedWhereItSits) {
         .texts = texts,
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -221,6 +229,7 @@ TEST(PagePainterTest, APageWithoutTypedTextPrintsNone) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -254,12 +263,138 @@ TEST(PagePainterTest, APictureIsDrawnOverThePaperAndUnderTheInk) {
         .texts = {},
         .pictures = pictures,
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
 
     EXPECT_EQ(sheet.pixelColor(60, 130), QColor(255, 0, 0));
     EXPECT_EQ(sheet.pixelColor(100, 60), QColor(0, 255, 0));
+}
+
+[[nodiscard]] core::Layer layerNamed(std::uint8_t mark, const std::string& name, bool shown) {
+    core::Uuid::Bytes bytes{};
+    bytes.front() = mark;
+    return core::Layer{.id = core::Uuid{bytes}, .name = name, .shown = shown, .locked = false};
+}
+
+TEST(PagePainterTest, ALayerAboveAnotherIsDrawnOverIt) {
+    QImage red{8, 8, QImage::Format_ARGB32_Premultiplied};
+    red.fill(QColor{255, 0, 0});
+    const std::array layers{
+        layerNamed(1, "Under", true),
+        layerNamed(2, "Over", true),
+    };
+    const std::vector<core::PlacedStroke> strokes{
+        line(core::Color{.green = 255}, 8.0F, 8.0F, 190.0F, 130.0F),
+    };
+    const std::array pictures{
+        DrawnPicture{
+            .placed =
+                core::Picture{
+                    .id = {},
+                    .source = {},
+                    .at = core::Point{.x = 20.0F, .y = 100.0F},
+                    .width = 80.0F,
+                    .height = 60.0F,
+                    .turn = 0.0F,
+                },
+            .picture = &red,
+            .layer = layers[1].id,
+        },
+    };
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = strokes,
+        .texts = {},
+        .pictures = pictures,
+        .tables = {},
+        .layers = layers,
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    // The ink runs right through where the picture stands, and the picture is on the layer above,
+    // so the picture covers it there and nowhere else.
+    EXPECT_EQ(sheet.pixelColor(60, 130), QColor(255, 0, 0));
+    EXPECT_EQ(sheet.pixelColor(150, 130), QColor(0, 255, 0));
+}
+
+TEST(PagePainterTest, ALayerBelowAnotherIsDrawnUnderIt) {
+    QImage red{8, 8, QImage::Format_ARGB32_Premultiplied};
+    red.fill(QColor{255, 0, 0});
+    const std::array layers{
+        layerNamed(1, "Under", true),
+        layerNamed(2, "Over", true),
+    };
+    const std::vector<core::PlacedStroke> strokes{
+        core::PlacedStroke{
+            .ordinal = 0,
+            .stroke = line(core::Color{.green = 255}, 8.0F, 8.0F, 190.0F, 130.0F).stroke,
+            .layer = layers[1].id,
+        },
+    };
+    const std::array pictures{
+        DrawnPicture{
+            .placed =
+                core::Picture{
+                    .id = {},
+                    .source = {},
+                    .at = core::Point{.x = 20.0F, .y = 100.0F},
+                    .width = 80.0F,
+                    .height = 60.0F,
+                    .turn = 0.0F,
+                },
+            .picture = &red,
+            .layer = layers[0].id,
+        },
+    };
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = strokes,
+        .texts = {},
+        .pictures = pictures,
+        .tables = {},
+        .layers = layers,
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    // The same two things, the other way round: now the ink is drawn over the picture.
+    EXPECT_EQ(sheet.pixelColor(60, 130), QColor(0, 255, 0));
+}
+
+TEST(PagePainterTest, NothingOnALayerThatIsNotShownIsDrawn) {
+    QImage red{8, 8, QImage::Format_ARGB32_Premultiplied};
+    red.fill(QColor{255, 0, 0});
+    const std::array layers{layerNamed(1, "Hidden", false)};
+    const std::array pictures{
+        DrawnPicture{
+            .placed =
+                core::Picture{
+                    .id = {},
+                    .source = {},
+                    .at = core::Point{.x = 20.0F, .y = 100.0F},
+                    .width = 80.0F,
+                    .height = 60.0F,
+                    .turn = 0.0F,
+                },
+            .picture = &red,
+            .layer = layers.front().id,
+        },
+    };
+    const PageContents page{
+        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+        .strokes = {},
+        .texts = {},
+        .pictures = pictures,
+        .tables = {},
+        .layers = layers,
+    };
+
+    const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
+
+    EXPECT_FALSE(hasColorNear(sheet, QColor{255, 0, 0}));
 }
 
 TEST(PagePainterTest, APageWithoutPicturesPrintsNone) {
@@ -269,6 +404,7 @@ TEST(PagePainterTest, APageWithoutPicturesPrintsNone) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, core::Rect{.right = 200.0F, .bottom = 200.0F});
@@ -299,10 +435,24 @@ TEST(PagePainterTest, ATurnedPictureLeavesTheCornersOfItsUprightBoxBare) {
     const core::PageStyle style{.paper = core::Paper::A5, .background = core::Background::Blank};
 
     const QImage flat = paint(
-        PageContents{.style = style, .strokes = {}, .texts = {}, .pictures = upright, .tables = {}},
+        PageContents{
+            .style = style,
+            .strokes = {},
+            .texts = {},
+            .pictures = upright,
+            .tables = {},
+            .layers = {},
+        },
         area);
     const QImage spun = paint(
-        PageContents{.style = style, .strokes = {}, .texts = {}, .pictures = turned, .tables = {}},
+        PageContents{
+            .style = style,
+            .strokes = {},
+            .texts = {},
+            .pictures = turned,
+            .tables = {},
+            .layers = {},
+        },
         area);
 
     EXPECT_EQ(flat.pixelColor(45, 45), QColor(255, 0, 0));
@@ -334,6 +484,7 @@ TEST(PagePainterTest, ATableIsRuledInItsOwnColourAndItsBoxesAreLeftEmpty) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -353,6 +504,7 @@ TEST(PagePainterTest, WordsTypedIntoABoxAreDrawnInThatBoxAndNoOther) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -378,6 +530,7 @@ TEST(PagePainterTest, ABoxGivenAColourIsFilledWithItAndTheRestAreLeftClear) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -404,6 +557,7 @@ TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnThere) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -439,6 +593,7 @@ TEST(PagePainterTest, AJoinedBoxIsNeverRuledThroughTheMiddle) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -467,7 +622,7 @@ TEST(PagePainterTest, ASumIsDrawnWithTheBarOfItsFraction) {
                     .width = 120.0F,
                     .height = 60.0F,
                     .text = "1/2",
-                    .style = core::TextStyle{.size = 24.0F},
+                    .style = core::TextStyle{.font = {}, .size = 24.0F},
                     .formula = true,
                 },
         },
@@ -479,6 +634,7 @@ TEST(PagePainterTest, ASumIsDrawnWithTheBarOfItsFraction) {
         .texts = texts,
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -507,7 +663,7 @@ TEST(PagePainterTest, WhatIsNoSumIsWrittenOutAsItWasTyped) {
                     .width = 160.0F,
                     .height = 40.0F,
                     .text = "1/2 +",
-                    .style = core::TextStyle{.size = 24.0F},
+                    .style = core::TextStyle{.font = {}, .size = 24.0F},
                     .formula = true,
                 },
         },
@@ -519,6 +675,7 @@ TEST(PagePainterTest, WhatIsNoSumIsWrittenOutAsItWasTyped) {
         .texts = texts,
         .pictures = {},
         .tables = {},
+        .layers = {},
     };
 
     EXPECT_TRUE(drawnFormula(texts.front().box.text, texts.front().box.style).glyphs.empty());
@@ -540,6 +697,7 @@ TEST(PagePainterTest, HandwritingInsideABoxIsSeenThroughTheTable) {
         .texts = {},
         .pictures = {},
         .tables = tables,
+        .layers = {},
     };
 
     const QImage sheet = paint(page, area);
@@ -561,6 +719,7 @@ TEST(PagePainterTest, AnImportedPageIsDrawnUnderTheInk) {
         .texts = {},
         .pictures = {},
         .tables = {},
+        .layers = {},
         .media = &media,
     };
 

@@ -30,6 +30,160 @@ TestCase {
         mouseRelease(canvas, fromX + 40, fromY + 20);
     }
 
+    function layerNames(notebook) {
+        const names = [];
+        for (let step = 0; step < notebook.layers.count; ++step) {
+            names.push(notebook.layers.data(notebook.layers.index(step, 0), Qt.UserRole + 2));
+        }
+        return names;
+    }
+
+    function layerIdAt(notebook, row) {
+        return notebook.layers.data(notebook.layers.index(row, 0), Qt.UserRole + 1);
+    }
+
+    function test_aPageAlwaysHasOneLayerToStandThingsOn() {
+        const notebook = openNotebook(newNotebookPath());
+
+        compare(notebook.layers.count, 1);
+        verify(notebook.activeLayer !== "");
+        compare(layerIdAt(notebook, 0), notebook.activeLayer);
+    }
+
+    function test_aLayerIsAddedRenamedHiddenAndLocked() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addLayer();
+
+        compare(notebook.layers.count, 2);
+        // The panel lists them top first, so the new one stands at the head.
+        compare(layerIdAt(notebook, 0), notebook.activeLayer);
+
+        notebook.renameLayer(notebook.activeLayer, "Tracing");
+
+        compare(layerNames(notebook)[0], "Tracing");
+
+        notebook.showLayer(notebook.activeLayer, false);
+        compare(notebook.layers.data(notebook.layers.index(0, 0), Qt.UserRole + 3), false);
+
+        notebook.lockLayer(notebook.activeLayer, true);
+        compare(notebook.layers.data(notebook.layers.index(0, 0), Qt.UserRole + 4), true);
+    }
+
+    function test_aLayerIsCarriedUpAndDownTheOrder() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.renameLayer(notebook.activeLayer, "Paper");
+        notebook.addLayer();
+        notebook.renameLayer(notebook.activeLayer, "Notes");
+
+        compare(layerNames(notebook), ["Notes", "Paper"]);
+
+        // Counting from the bottom, so nought is the foot of the pile.
+        notebook.moveLayer(notebook.activeLayer, 0);
+
+        compare(layerNames(notebook), ["Paper", "Notes"]);
+    }
+
+    function test_aPageKeepsAtLeastOneLayer() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.removeLayer(notebook.activeLayer);
+
+        compare(notebook.layers.count, 1);
+    }
+
+    function test_whatIsDrawnStandsOnTheLayerInHand() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addLayer();
+        const notes = notebook.activeLayer;
+
+        draw(notebook, 40, 40);
+
+        compare(notebook.strokeCount, 1);
+        compare(notebook.layers.data(notebook.layers.index(0, 0), Qt.UserRole + 5), 1);
+        compare(notebook.layers.data(notebook.layers.index(1, 0), Qt.UserRole + 5), 0);
+        compare(notes, notebook.activeLayer);
+    }
+
+    function test_aLayerTakenAwayTakesWhatStandsOnItAndOneUndoBringsBothBack() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addLayer();
+        draw(notebook, 40, 40);
+        compare(notebook.strokeCount, 1);
+
+        notebook.removeLayer(notebook.activeLayer);
+
+        compare(notebook.layers.count, 1);
+        compare(notebook.strokeCount, 0);
+
+        notebook.undo();
+
+        compare(notebook.layers.count, 2);
+        compare(notebook.strokeCount, 1);
+    }
+
+    function test_aLayerPutDownAgainBringsACopyOfWhatStoodOnIt() {
+        const notebook = openNotebook(newNotebookPath());
+        draw(notebook, 40, 40);
+        compare(notebook.strokeCount, 1);
+
+        notebook.duplicateLayer(layerIdAt(notebook, 0));
+
+        compare(notebook.layers.count, 2);
+        compare(notebook.strokeCount, 2);
+        compare(notebook.layers.data(notebook.layers.index(0, 0), Qt.UserRole + 5), 1);
+        compare(notebook.layers.data(notebook.layers.index(1, 0), Qt.UserRole + 5), 1);
+    }
+
+    function test_aTableIsCarriedFromOneLayerToAnother() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const tableId = notebook.pickedTable;
+        notebook.addLayer();
+        const notes = notebook.activeLayer;
+
+        notebook.moveToLayer(tableId, notes);
+
+        compare(notebook.layers.data(notebook.layers.index(0, 0), Qt.UserRole + 5), 1);
+        compare(notebook.layers.data(notebook.layers.index(1, 0), Qt.UserRole + 5), 0);
+
+        notebook.undo();
+
+        compare(notebook.layers.data(notebook.layers.index(1, 0), Qt.UserRole + 5), 1);
+    }
+
+    function test_nothingOnALockedLayerCanBeTakenHoldOf() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addTable(2, 2);
+        const box = notebook.pickedTableBox;
+        const at = Qt.point(box.columnX + 4, box.columnY + 4);
+        verify(notebook.tableUnder(at.x, at.y) !== "");
+
+        notebook.lockLayer(notebook.activeLayer, true);
+
+        compare(notebook.tableUnder(at.x, at.y), "");
+
+        notebook.lockLayer(notebook.activeLayer, false);
+
+        verify(notebook.tableUnder(at.x, at.y) !== "");
+    }
+
+    function test_theLayersOfAPageComeBackWhenTheNotebookIsOpenedAgain() {
+        const path = newNotebookPath();
+        const notebook = openNotebook(path);
+        notebook.addLayer();
+        notebook.renameLayer(notebook.activeLayer, "Tracing");
+        notebook.showLayer(notebook.activeLayer, false);
+        notebook.save();
+        wait(200);
+
+        const again = openNotebook(path);
+
+        tryCompare(again.layers, "count", 2);
+        compare(layerNames(again)[0], "Tracing");
+        compare(again.layers.data(again.layers.index(0, 0), Qt.UserRole + 3), false);
+    }
+
     function test_drawnStrokesCanBeUndoneAndRedone() {
         const notebook = openNotebook(newNotebookPath());
         verify(!notebook.canUndo);

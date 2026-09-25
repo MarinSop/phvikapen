@@ -36,6 +36,8 @@ constexpr auto kReopenSetting = "session/reopen";
 constexpr auto kSectionsSetting = "view/sections";
 constexpr auto kPagesSetting = "view/pages";
 constexpr auto kPanelWidthSetting = "view/panelWidth";
+constexpr auto kLayersSetting = "view/layers";
+constexpr auto kLayersWidthSetting = "view/layersWidth";
 constexpr auto kSectionsHeightSetting = "view/sectionsHeight";
 constexpr int kNarrowestPanel = 140;
 constexpr int kWidestPanel = 520;
@@ -68,6 +70,9 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_reopenNotebooks = settings.value(kReopenSetting, m_reopenNotebooks).toBool();
     m_showSections = settings.value(kSectionsSetting, m_showSections).toBool();
     m_showPages = settings.value(kPagesSetting, m_showPages).toBool();
+    m_showLayers = settings.value(kLayersSetting, m_showLayers).toBool();
+    m_layersWidth = std::clamp(settings.value(kLayersWidthSetting, m_layersWidth).toInt(),
+                               kNarrowestPanel, kWidestPanel);
     m_panelWidth = std::clamp(settings.value(kPanelWidthSetting, m_panelWidth).toInt(),
                               kNarrowestPanel, kWidestPanel);
     m_sectionsHeight = std::clamp(settings.value(kSectionsHeightSetting, m_sectionsHeight).toInt(),
@@ -422,6 +427,27 @@ void SettingsViewModel::setPanelWidth(int width) {
     m_panelWidth = wanted;
     QSettings settings;
     settings.setValue(kPanelWidthSetting, m_panelWidth);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setShowLayers(bool shown) {
+    if (shown == m_showLayers) {
+        return;
+    }
+    m_showLayers = shown;
+    QSettings settings;
+    settings.setValue(kLayersSetting, m_showLayers);
+    emit panelsChanged();
+}
+
+void SettingsViewModel::setLayersWidth(int width) {
+    const int wanted = std::clamp(width, kNarrowestPanel, kWidestPanel);
+    if (wanted == m_layersWidth) {
+        return;
+    }
+    m_layersWidth = wanted;
+    QSettings settings;
+    settings.setValue(kLayersWidthSetting, m_layersWidth);
     emit panelsChanged();
 }
 

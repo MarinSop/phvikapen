@@ -3,6 +3,7 @@
 #include "core/Error.hpp"
 #include "core/id/Uuid.hpp"
 #include "core/model/Asset.hpp"
+#include "core/model/Layer.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -23,7 +24,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 12;
+inline constexpr int kNotebookSchemaVersion = 13;
 
 struct TrashedItem {
     Uuid id;
@@ -79,6 +80,17 @@ public:
     [[nodiscard]] Result<void> removeTable(const Uuid& pageId, const Uuid& tableId);
     [[nodiscard]] Result<std::size_t> removeTablesOfPage(const Uuid& pageId);
     [[nodiscard]] Result<std::vector<PlacedTable>> tablesOfPage(const Uuid& pageId) const;
+
+    // The layers of a page, bottom first. A page written down before there were layers has none,
+    // and everything on it stands on the one it is given when it is read.
+    [[nodiscard]] Result<std::vector<Layer>> layersOfPage(const Uuid& pageId) const;
+
+    // The layers of a page as they now stand, in place of whatever was written down before.
+    [[nodiscard]] Result<void> writeLayers(const Uuid& pageId, std::span<const Layer> layers);
+
+    // Which layer one thing standing on a page belongs to.
+    [[nodiscard]] Result<void> moveToLayer(const Uuid& pageId, const Uuid& thingId,
+                                           const Uuid& layerId);
 
     [[nodiscard]] Result<NotebookOutline> readOutline() const;
 

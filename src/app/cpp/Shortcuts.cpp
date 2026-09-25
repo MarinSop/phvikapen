@@ -181,6 +181,24 @@ namespace {
             .keys = "Ctrl+Shift+0",
         },
         Command{
+            .id = "layerUp",
+            .name = QObject::tr("Move layer up"),
+            .group = CommandGroup::Arrange,
+            .keys = "Ctrl+Shift+]",
+        },
+        Command{
+            .id = "layerDown",
+            .name = QObject::tr("Move layer down"),
+            .group = CommandGroup::Arrange,
+            .keys = "Ctrl+Shift+[",
+        },
+        Command{
+            .id = "showLayers",
+            .name = QObject::tr("Layers panel"),
+            .group = CommandGroup::View,
+            .keys = "Ctrl+Shift+L",
+        },
+        Command{
             .id = "zoomIn",
             .name = QObject::tr("Zoom in"),
             .group = CommandGroup::View,

@@ -370,6 +370,22 @@ ApplicationWindow {
             actions: appActions
             visible: settings.showPagePanel && root.notebook !== null
         }
+
+        LayersPanel {
+            id: layersPanel
+
+            SplitView.maximumWidth: 420
+            SplitView.minimumWidth: 170
+            actions: appActions
+            visible: settings.showLayers && root.notebook !== null
+
+            Component.onCompleted: SplitView.preferredWidth = settings.layersWidth
+            onWidthChanged: {
+                if (mainSplit.resizing) {
+                    settings.layersWidth = layersPanel.width;
+                }
+            }
+        }
     }
 
     ColourLens {
