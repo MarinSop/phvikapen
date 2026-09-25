@@ -351,6 +351,69 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_aSumThatIsTypedIsWorkedOutInPlace() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const sheet = notebook.canvas.sheetRect(0);
+        notebook.addTextAt(sheet.x + 40, sheet.y + 40, tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "12 + 7 =", 24);
+        notebook.pickedText = textId;
+
+        notebook.solveSelection(tools.textStyle);
+
+        compare(notebook.errorMessage, "");
+        compare(notebook.wordsOf(textId), "12 + 7 = 19");
+
+        notebook.undo();
+
+        compare(notebook.wordsOf(textId), "12 + 7 =");
+    }
+
+    function test_aSumWithoutAnEqualsSignGetsOne() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const sheet = notebook.canvas.sheetRect(0);
+        notebook.addTextAt(sheet.x + 40, sheet.y + 40, tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "2(3+4)", 24);
+        notebook.pickedText = textId;
+
+        notebook.solveSelection(tools.textStyle);
+
+        compare(notebook.wordsOf(textId), "2(3+4) = 14");
+    }
+
+    function test_whatIsNoSumIsRefusedAndLeftAlone() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const sheet = notebook.canvas.sheetRect(0);
+        notebook.addTextAt(sheet.x + 40, sheet.y + 40, tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "shopping list", 24);
+        notebook.pickedText = textId;
+
+        notebook.solveSelection(tools.textStyle);
+
+        verify(notebook.errorMessage !== "");
+        compare(notebook.wordsOf(textId), "shopping list");
+    }
+
+    function test_aSumDividedByNothingIsRefusedPlainly() {
+        const notebook = openNotebook(newNotebookPath());
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const sheet = notebook.canvas.sheetRect(0);
+        notebook.addTextAt(sheet.x + 40, sheet.y + 40, tools.textStyle);
+        const textId = notebook.pickedText;
+        notebook.finishText(textId, "5 : 0", 24);
+        notebook.pickedText = textId;
+
+        notebook.solveSelection(tools.textStyle);
+
+        verify(notebook.errorMessage !== "");
+        compare(notebook.wordsOf(textId), "5 : 0");
+    }
+
     function test_whetherThisMachineReadsHandwritingIsSaidPlainly() {
         const notebook = openNotebook(newNotebookPath());
 
@@ -1525,6 +1588,13 @@ TestCase {
         id: notebookComponent
 
         NotebookViewModel {
+        }
+    }
+
+    Component {
+        id: toolsComponent
+
+        ToolViewModel {
         }
     }
 }

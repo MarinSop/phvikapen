@@ -57,6 +57,12 @@ Menu {
         visible: root.onSelection
     }
 
+    MenuCommand {
+        action: root.actions.solve
+        objectName: "contextSolve"
+        visible: root.onSelection
+    }
+
     MenuSeparator {
         visible: root.onSelection
     }

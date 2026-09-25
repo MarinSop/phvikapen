@@ -131,6 +131,11 @@ MenuBar {
         }
 
         MenuCommand {
+            action: root.actions.solve
+            objectName: "solveItem"
+        }
+
+        MenuCommand {
             action: root.actions.paste
         }
 

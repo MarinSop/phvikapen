@@ -138,6 +138,12 @@ namespace {
             .keys = "Ctrl+Shift+R",
         },
         Command{
+            .id = "solve",
+            .name = QObject::tr("Work out what was written"),
+            .group = CommandGroup::Edit,
+            .keys = "Ctrl+Shift+A",
+        },
+        Command{
             .id = "clearPage",
             .name = QObject::tr("Clear page"),
             .group = CommandGroup::Edit,

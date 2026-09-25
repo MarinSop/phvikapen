@@ -194,14 +194,16 @@ written so that all of them can share it. They are listed in the order they are 
   is join two boxes into one, wear a different face in one box than in another, or have one column
   pulled wider than the rest: sizing gives every column and row the same share. Joining is the one
   readers ask for first, and the shape that is written down leaves room for it.
-- **Equations, and answering handwritten sums.** Handwriting is already read into words on Windows;
-  reading it into an equation is another matter, and the reader the platform carries does not do it.
-  The shape it should take is a chain that is not tied together: strokes are read into an equation,
-  the equation is kept as a structure rather than as a picture, something works it out, and the
-  answer goes back on the page as text. Each link can then be changed on its own. What is unsettled
-  is what reads the handwriting and what does the arithmetic: the platform reader is not enough for
-  either, so this needs a decision about a library, which needs an ADR of its own, and it is why
-  this is last rather than first.
+- **Mathematics that is not written on one line.** A sum written across is read, worked out and
+  answered. A fraction written as one number over another, a power written small and raised, a root
+  drawn over what it covers and anything else arranged in two dimensions are not read, because the
+  reader the platform carries reads a line of characters. That needs a recognizer built for
+  mathematics, which is a dependency and needs a decision of its own written down. Nothing else in
+  the chain moves when it comes: it replaces the first link only.
+- **Solving for an unknown.** Only arithmetic is answered. An equation with an x in it to be solved
+  for is what a student most wants, and it works on the same structure that is already kept. It is
+  held up by the reading, not by the working out: a letter x is read as a times sign, because
+  multiplication is what people write far more often.
 
 ## Verification that needs the target device or a real run
 

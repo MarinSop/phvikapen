@@ -97,6 +97,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first — a letter l is a one, a letter O a nought, a letter x a times sign, a colon a division and
   a comma a decimal point — and whatever follows an equals sign is dropped. An answer that cannot be
   reached is refused plainly rather than handed back as nonsense.
+- Work Out, from the Edit menu, the menu under the pointer, or on Ctrl+Shift+A. Pick a sum written
+  by hand with the loop and the answer is written beside it, at about the size of the hand that
+  wrote it, with the handwriting left where it is. A sum that is typed is worked out in the box it
+  was typed in, and that works on every machine, where reading handwriting needs one that can. One
+  step of undo takes the answer back.
 
 ### Fixed
 

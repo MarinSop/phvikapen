@@ -10,6 +10,9 @@
 #include "core/ink/StrokeEraser.hpp"
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/ink/StrokeSelection.hpp"
+#include "core/math/Answer.hpp"
+#include "core/math/Equation.hpp"
+#include "core/math/Reading.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
@@ -82,6 +85,31 @@ constexpr qreal kNewTextWidth = core::TextBox::kDefaultWidth;
 // is left over.
 constexpr qreal kTableShare = 0.8;
 constexpr qreal kHalfway = 0.5;
+// How far the answer to a sum stands from the writing it answers, and how wide a letter of it is
+// reckoned to be, so that the box it goes in holds what it says.
+constexpr float kAnswerGap = 10.0F;
+constexpr float kLetterWidth = 0.62F;
+constexpr std::size_t kRoomAroundAnswer = 2;
+
+// The chain from what was read to what it comes to: put right, read into a structure, worked out.
+[[nodiscard]] core::Result<double> workedOut(const std::string& written) {
+    const core::Result<core::Equation> equation = core::equationOf(core::tidied(written));
+    if (!equation) {
+        return std::unexpected{equation.error()};
+    }
+    return core::answerOf(*equation);
+}
+
+// A sum and its answer as one line, with an equals sign between them where the sum has none of
+// its own.
+[[nodiscard]] std::string saidWith(std::string asked, const std::string& answer) {
+    const std::size_t last = asked.find_last_not_of(" \t\n\r");
+    const bool hasEquals = last != std::string::npos && asked[last] == '=';
+    asked.append(hasEquals ? " " : " = ");
+    asked.append(answer);
+    return asked;
+}
+
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
 constexpr int kPagesAround = 3;
@@ -3300,6 +3328,105 @@ void NotebookViewModel::publishPictures() {
         }
     }
     m_canvas->showPictures(pieces);
+}
+
+void NotebookViewModel::solveWhatIsTyped() {
+    const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(m_pickedText);
+    if (!found) {
+        return;
+    }
+    const core::Result<double> answer = workedOut(found->second.text);
+    if (!answer) {
+        reportError(QString::fromStdString(answer.error().message));
+        return;
+    }
+    core::TextBox box = found->second;
+    box.text = saidWith(box.text, core::writtenAnswer(*answer));
+    changeText(found->first, std::move(box));
+}
+
+// The answer to a sum, written where it belongs: beside the hand that asked it, at about the size
+// that hand wrote in, and with an equals sign in front where the writing has none of its own.
+core::TextBox NotebookViewModel::answerBeside(const core::TextBlock& asked,
+                                              const std::string& answer, core::TextStyle face) {
+    face.size = asked.size;
+    const bool hasEquals = asked.text.contains('=');
+    const std::string said = hasEquals ? answer : "= " + answer;
+    const float wide = static_cast<float>(said.size() + kRoomAroundAnswer)
+                       * core::pageUnitsOfPoints(face.size) * kLetterWidth;
+    return core::normalized(core::TextBox{
+        .id = m_ids.next(),
+        .at =
+            core::Point{
+                .x = asked.area.right + kAnswerGap,
+                .y = asked.area.top,
+            },
+        .width = wide,
+        .height = asked.area.height(),
+        .text = said,
+        .style = std::move(face),
+    });
+}
+
+void NotebookViewModel::solveSelection(QVariantMap style) {
+    // A sum that is typed is worked out wherever the application runs; one that is written by hand
+    // needs a machine that can read handwriting.
+    if (!m_pickedText.isEmpty()) {
+        solveWhatIsTyped();
+        return;
+    }
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !m_storage) {
+        return;
+    }
+    const std::vector<core::Uuid> picked = m_canvas->selection();
+    std::vector<core::Stroke> written;
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            written.push_back(placed.stroke);
+        }
+    }
+    if (written.empty()) {
+        return;
+    }
+
+    const core::Uuid pageId = m_currentPage;
+    m_reader.readSoon(std::move(written), [this, style = std::move(style),
+                                           pageId](core::Result<std::vector<core::InkWord>> words) {
+        if (!words) {
+            reportError(QString::fromStdString(words.error().message));
+            return;
+        }
+        answerWhatWasAsked(pageId, *words, style);
+    });
+}
+
+void NotebookViewModel::answerWhatWasAsked(const core::Uuid& pageId,
+                                           std::span<const core::InkWord> words,
+                                           const QVariantMap& style) {
+    const std::optional<core::TextBlock> asked = core::textOf(words);
+    if (!asked) {
+        reportError(tr("Nothing there could be read"));
+        return;
+    }
+    const core::Result<double> answer = workedOut(asked->text);
+    if (!answer) {
+        reportError(QString::fromStdString(answer.error().message));
+        return;
+    }
+
+    const auto found = m_pages.find(pageId);
+    if (found == m_pages.end() || !m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    core::Page* const on = found->second.get();
+    const core::TextBox box = answerBeside(*asked, core::writtenAnswer(*answer), styleOfMap(style));
+    forgetThumbnail(pageId);
+    runCommand(std::make_unique<core::AddTextCommand>(
+        on, storage, core::PlacedText{.ordinal = on->nextTextOrdinal(), .box = box}));
+    publishTexts();
+    setPickedText(QString::fromStdString(box.id.toString()));
 }
 
 void NotebookViewModel::addTable(int rows, int columns) {

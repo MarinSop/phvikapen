@@ -23,6 +23,7 @@
 #include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/StorageThread.hpp"
+#include "core/text/WrittenText.hpp"
 #include "core/undo/UndoStack.hpp"
 #include "platform/ink/IInkBackend.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
@@ -51,6 +52,7 @@
 #include <optional>
 #include <set>
 #include <span>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -295,6 +297,10 @@ public:
 
     // Read what is picked and put it on the page as text, taking the handwriting away.
     Q_INVOKABLE void convertSelectionToText(QVariantMap style);
+
+    // Read what is picked as arithmetic, work it out, and write the answer beside it. The
+    // handwriting stays where it is.
+    Q_INVOKABLE void solveSelection(QVariantMap style);
 
     // Put a picture from a file on the page being read, as large as it fits.
     Q_INVOKABLE void addPicture(const QUrl& fileUrl);
@@ -557,6 +563,12 @@ private:
     void reshapeTable(const QString& tableId,
                       const std::function<core::Result<core::Table>(core::Table)>& reshaped);
     void publishTables();
+    // What was read as arithmetic, worked out and written beside the hand that asked it.
+    void answerWhatWasAsked(const core::Uuid& pageId, std::span<const core::InkWord> words,
+                            const QVariantMap& style);
+    void solveWhatIsTyped();
+    [[nodiscard]] core::TextBox answerBeside(const core::TextBlock& asked,
+                                             const std::string& answer, core::TextStyle face);
     void readKeptAt();
     [[nodiscard]] bool writeTo(const QString& path);
     void refreshCanvas();

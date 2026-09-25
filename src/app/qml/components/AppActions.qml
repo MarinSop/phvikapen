@@ -168,6 +168,13 @@ Item {
 
         onTriggered: root.notebook.convertSelectionToText(root.tools.textStyle)
     }
+    readonly property Action solve: Action {
+        enabled: root.hasTextBox || (root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting)
+        shortcut: root.pageKeys("solve")
+        text: qsTr("Work Out")
+
+        onTriggered: root.notebook.solveSelection(root.tools.textStyle)
+    }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
         icon.source: Icons.paste
