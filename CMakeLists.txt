@@ -35,7 +35,7 @@ endif()
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 
 find_package(Qt6 6.11 REQUIRED
-    COMPONENTS Core Gui GuiPrivate LinguistTools Quick QuickControls2 QuickTest
+    COMPONENTS Core Gui GuiPrivate LinguistTools Multimedia Quick QuickControls2 QuickTest
                ShaderTools Svg
 )
 qt_standard_project_setup(REQUIRES 6.11)

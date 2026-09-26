@@ -15,6 +15,7 @@ Item {
     required property ToolViewModel tools
     required property WorkspaceViewModel workspace
     required property MathViewModel maths
+    required property RecordingViewModel sound
     required property TimeKeeperViewModel timeKeeper
     readonly property InkCanvas canvas: root.notebooks.canvas
     readonly property NotebookViewModel notebook: root.notebooks.current
@@ -402,6 +403,36 @@ Item {
 
         onTriggered: root.workspace.togglePanel(Panels.time)
     }
+    readonly property Action showSoundPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.sound)
+        icon.source: Icons.microphone
+        shortcut: root.settings.keysFor("soundPanel")
+        text: qsTr("Recordings")
+
+        onTriggered: root.workspace.togglePanel(Panels.sound)
+    }
+    readonly property Action recordSound: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.microphone
+        text: root.sound.recording ? qsTr("Stop Recording") : qsTr("Record Audio")
+
+        onTriggered: {
+            root.workspace.showPanel(Panels.sound);
+            if (root.sound.recording) {
+                root.sound.stopRecording();
+            } else {
+                root.sound.startRecording();
+            }
+        }
+    }
+    readonly property Action playFromHere: Action {
+        enabled: root.momentOfWhatIsPicked() >= 0
+        icon.source: Icons.play
+        text: qsTr("Play From Here")
+
+        onTriggered: root.sound.playFromThing(root.whatIsPicked())
+    }
     readonly property Action resetPanels: Action {
         text: qsTr("Reset Panel Layout")
 
@@ -705,6 +736,25 @@ Item {
             }
         }
         return -1;
+    }
+
+    // What the reader has hold of, whichever kind of thing it is.
+    function whatIsPicked() {
+        if (root.notebook === null) {
+            return "";
+        }
+        if (root.notebook.pickedText !== "") {
+            return root.notebook.pickedText;
+        }
+        if (root.notebook.pickedPicture !== "") {
+            return root.notebook.pickedPicture;
+        }
+        return root.notebook.pickedTable;
+    }
+
+    function momentOfWhatIsPicked() {
+        const thing = root.whatIsPicked();
+        return thing === "" || root.notebook === null ? -1 : root.notebook.momentOf(thing);
     }
 
     function copyToClipboard(text) {

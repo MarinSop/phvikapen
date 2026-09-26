@@ -180,10 +180,17 @@ ApplicationWindow {
         id: timeKeeper
     }
 
+    RecordingViewModel {
+        id: recordings
+
+        notebook: notebooks.current
+    }
+
     AppActions {
         id: appActions
 
         maths: maths
+        sound: recordings
         timeKeeper: timeKeeper
         notebooks: notebooks
         settings: settings

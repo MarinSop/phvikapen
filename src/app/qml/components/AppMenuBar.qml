@@ -261,6 +261,11 @@ MenuBar {
                 objectName: "timePanelItem"
             }
 
+            MenuCommand {
+                action: root.actions.showSoundPanel
+                objectName: "soundPanelItem"
+            }
+
             MenuSeparator {
             }
 

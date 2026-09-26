@@ -3,6 +3,7 @@
 #include "app/cpp/HandwritingReader.hpp"
 #include "app/cpp/LayerModels.hpp"
 #include "app/cpp/OutlineModels.hpp"
+#include "app/cpp/RecordingModels.hpp"
 #include "app/cpp/TableModels.hpp"
 #include "app/cpp/TextModels.hpp"
 #include "core/Error.hpp"
@@ -126,6 +127,12 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
         QString pickedTable READ pickedTable WRITE setPickedTable NOTIFY pickedTableChanged FINAL)
     Q_PROPERTY(QVariantMap pickedTableBox READ pickedTableBox NOTIFY pickedTableChanged FINAL)
     Q_PROPERTY(phvikapen::app::LayerListModel* layers READ layers CONSTANT FINAL)
+    Q_PROPERTY(phvikapen::app::RecordingListModel* recordings READ recordings CONSTANT FINAL)
+    Q_PROPERTY(phvikapen::app::SayingListModel* sayings READ sayings CONSTANT FINAL)
+    Q_PROPERTY(QString shownRecording READ shownRecording WRITE showRecording NOTIFY
+                   recordingsChanged FINAL)
+    Q_PROPERTY(int shownReading READ shownReading NOTIFY recordingsChanged FINAL)
+    Q_PROPERTY(QString shownTrouble READ shownTrouble NOTIFY recordingsChanged FINAL)
     Q_PROPERTY(QString activeLayer READ activeLayer WRITE setActiveLayer NOTIFY layersChanged FINAL)
 
 public:
@@ -274,6 +281,61 @@ public:
 
     // The layers of the page being read, top first, the way a panel of layers is read.
     [[nodiscard]] LayerListModel* layers() { return &m_layersModel; }
+
+    // The recordings made on the page being read, oldest first.
+    [[nodiscard]] RecordingListModel* recordings() { return &m_recordingsModel; }
+
+    // What was said in the recording being shown, run by run.
+    [[nodiscard]] SayingListModel* sayings() { return &m_sayingsModel; }
+
+    [[nodiscard]] QString shownRecording() const { return m_shownRecording; }
+
+    Q_INVOKABLE void showRecording(const QString& recordingId);
+
+    // How far the reading of the recording being shown has got, and why it could not be done.
+    [[nodiscard]] int shownReading() const;
+    [[nodiscard]] QString shownTrouble() const;
+
+    // A recording begun: it is put on the page at once, with no sound in it yet, so that
+    // everything written from now on can be tied to it. Its name comes back.
+    Q_INVOKABLE QString beginRecording();
+
+    // The sound of a recording that was begun, kept with the page it was made on. The sound goes
+    // into the assets of the notebook, by what it contains, like every other run of bytes.
+    Q_INVOKABLE void keepRecording(const QString& recordingId, const QByteArray& sound,
+                                   qint64 length);
+
+    // A recording that was begun and came to nothing, taken off the page again.
+    Q_INVOKABLE void giveUpRecording(const QString& recordingId);
+
+    Q_INVOKABLE void renameRecording(const QString& recordingId, const QString& name);
+
+    Q_INVOKABLE void removeRecording(const QString& recordingId);
+
+    // Asks for the sound of a recording. It comes back through `soundReady`, because it is read
+    // from the notebook away from the window.
+    Q_INVOKABLE void wantSound(const QString& recordingId);
+
+    // While a recording runs, everything put on the page is tied to the moment it was put there.
+    // An empty name says nothing is being recorded.
+    Q_INVOKABLE void markFrom(const QString& recordingId, qint64 at);
+
+    // Where in a recording a thing on the page was written, or -1 where it was not written while
+    // anything was being recorded.
+    Q_INVOKABLE [[nodiscard]] qint64 momentOf(const QString& thingId) const;
+
+    // Which recording a thing on the page was written during, empty where there is none.
+    Q_INVOKABLE [[nodiscard]] QString recordingOf(const QString& thingId) const;
+
+    // What was on the page at a moment in a recording, so that playing can show what was being
+    // written about. Empty where nothing had been written yet.
+    Q_INVOKABLE [[nodiscard]] QString thingWrittenAt(const QString& recordingId, qint64 at) const;
+
+    // What was said in a recording, in place of whatever was written down before.
+    Q_INVOKABLE void keepSayings(const QString& recordingId, const QVariantList& sayings,
+                                 const QString& language);
+
+    Q_INVOKABLE void markReading(const QString& recordingId, int reading, const QString& trouble);
 
     // The layer anything new is put on, which is the one the reader has chosen in the panel.
     [[nodiscard]] QString activeLayer() const { return m_activeLayer; }
@@ -494,6 +556,9 @@ public:
     Q_INVOKABLE void renameSection(int index, const QString& title);
 
 signals:
+    void recordingsChanged();
+    void soundReady(const QString& recordingId, const QByteArray& sound);
+    void soundMissing(const QString& recordingId);
     void notebookPathChanged();
     void readingChanged();
     void found(const QVariantList& words);
@@ -682,6 +747,10 @@ private:
     void publishTables();
 
     void publishLayers();
+    void publishRecordings();
+    // The moment a thing was put on the page, where a recording is running.
+    void noteTheMoment(const core::Uuid& thing);
+    [[nodiscard]] const core::Recording* recordingNamed(const QString& recordingId) const;
 
     // The layers of the page being read, and the layer anything new is put on.
     [[nodiscard]] std::vector<core::Layer> layersHere() const;
@@ -774,6 +843,11 @@ private:
     std::map<core::Uuid, core::Viewport> m_views;
     std::map<core::Uuid, int> m_thumbnails;
     std::map<core::Uuid, int> m_layerPreviews;
+    RecordingListModel m_recordingsModel;
+    SayingListModel m_sayingsModel;
+    QString m_shownRecording;
+    core::Uuid m_markingInto;
+    qint64 m_markingAt{0};
     int m_thumbnailRevision{0};
     std::vector<core::Stroke> m_clipboard;
     std::vector<core::TrashedItem> m_trashed;

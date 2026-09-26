@@ -268,4 +268,14 @@ Menu {
         objectName: "contextDelete"
         visible: root.onSelection || root.onText || root.onTable
     }
+
+    MenuLine {
+        visible: root.actions.playFromHere.enabled
+    }
+
+    MenuCommand {
+        action: root.actions.playFromHere
+        objectName: "contextPlayFromHere"
+        visible: root.actions.playFromHere.enabled
+    }
 }

@@ -217,6 +217,16 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **Nothing reads a recording back as words yet.** The whole path is there — asking, the state
+  while it runs, what comes back, keeping it, tapping a line to move the playing, and saying
+  plainly when it fails — but no machine carries a reader behind it, so every reading fails with
+  that reason. A reader for Windows, the way handwriting has one, is what is missing.
+- **A mark is as fine as a thing on the page, not as fine as a word.** A box of type typed over
+  four minutes carries the moment it was begun. Marking inside the words is the thing that would
+  not survive the words being corrected.
+- **A recording cannot be trimmed, joined or taken out on its own.** It is made, played, renamed
+  and taken away, and the sound lives in the notebook file, so a long recording makes a large
+  notebook and only deleting it gets the room back.
 - **A countdown that reaches nothing is seen but not heard.** The panel flashes, the bar says so
   and the reading turns colour, but nothing sounds, because the application has no way of making a
   noise yet.

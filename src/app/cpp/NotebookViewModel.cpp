@@ -441,10 +441,13 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
         return;
     }
     if (!m_pages.contains(pageId)) {
-        m_pages.emplace(pageId, std::make_unique<core::Page>(
-                                    pageId, std::move(loaded->strokes), std::move(loaded->texts),
-                                    std::move(loaded->pictures), std::move(loaded->tables),
-                                    layersOrOne(std::move(loaded->layers))));
+        auto made = std::make_unique<core::Page>(
+            pageId, std::move(loaded->strokes), std::move(loaded->texts),
+            std::move(loaded->pictures), std::move(loaded->tables),
+            layersOrOne(std::move(loaded->layers)));
+        made->setRecordings(std::move(loaded->recordings));
+        made->setMarks(std::move(loaded->marks));
+        m_pages.emplace(pageId, std::move(made));
     }
     if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
         wantPicturesFor(*opened->second);
@@ -942,6 +945,7 @@ void NotebookViewModel::storeStroke(const core::Stroke& stroke, int sheet) {
         refreshCanvas();
         return;
     }
+    noteTheMoment(stroke.id());
     emit pageChanged();
     publishLayers();
     markEdited();
@@ -2279,6 +2283,7 @@ void NotebookViewModel::refreshCanvas() {
     publishTexts();
     publishTables();
     publishLayers();
+    publishRecordings();
 }
 
 // The pages of the section stand in one column; the ones that are not read yet are empty sheets
@@ -2307,6 +2312,7 @@ void NotebookViewModel::showColumn() {
     publishTexts();
     publishTables();
     publishLayers();
+    publishRecordings();
     wantNeighbours();
 }
 
@@ -3305,11 +3311,13 @@ void NotebookViewModel::finishText(const QString& textId, const QString& text, q
     }
     box.text = wanted;
     box.height = tall;
+    const core::Uuid boxId = box.id;
     changeText(found->first, std::move(box));
     if (draft) {
         settleDraft();
         publishTexts();
     }
+    noteTheMoment(boxId);
 }
 
 void NotebookViewModel::placeText(const QString& textId, qreal columnX, qreal columnY, qreal width,
@@ -3744,6 +3752,7 @@ void NotebookViewModel::addTable(int rows, int columns) {
     table = core::normalized(std::move(table));
 
     const QString tableId = QString::fromStdString(table.id.toString());
+    const core::Uuid madeTable = table.id;
     core::StorageThread* const storage = &*m_storage;
     forgetThumbnail(page->id());
     runCommand(std::make_unique<core::AddTableCommand>(page, storage,
@@ -3752,6 +3761,7 @@ void NotebookViewModel::addTable(int rows, int columns) {
                                                            .table = std::move(table),
                                                            .layer = layerForNewThings(),
                                                        }));
+    noteTheMoment(madeTable);
     publishTables();
     setPickedTable(tableId);
 }
@@ -4644,6 +4654,384 @@ void NotebookViewModel::movePickedToLayer(const QString& layerId) {
     refreshCanvas();
 }
 
+const core::Recording* NotebookViewModel::recordingNamed(const QString& recordingId) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return nullptr;
+    }
+    for (const core::Recording& made : page->recordings()) {
+        if (isNamed(made.id, recordingId)) {
+            return &made;
+        }
+    }
+    return nullptr;
+}
+
+void NotebookViewModel::publishRecordings() {
+    std::vector<RecordingItem> items;
+    std::vector<SayingItem> sayings;
+    const core::Page* const page = currentPageData();
+    if (page != nullptr) {
+        const std::span<const core::Recording> made = page->recordings();
+        const std::span<const core::Mark> marks = page->marks();
+        items.reserve(made.size());
+        for (const core::Recording& recording : made) {
+            int tied = 0;
+            for (const core::Mark& mark : marks) {
+                if (mark.recording == recording.id) {
+                    ++tied;
+                }
+            }
+            items.push_back(itemOfRecording(recording, tied));
+        }
+        if (!m_shownRecording.isEmpty()
+            && std::ranges::none_of(made, [this](const core::Recording& recording) {
+                   return isNamed(recording.id, m_shownRecording);
+               })) {
+            m_shownRecording.clear();
+        }
+        if (m_shownRecording.isEmpty() && !made.empty()) {
+            m_shownRecording = QString::fromStdString(made.back().id.toString());
+        }
+        for (const core::Recording& recording : made) {
+            if (!isNamed(recording.id, m_shownRecording)) {
+                continue;
+            }
+            sayings.reserve(recording.said.sayings.size());
+            for (const core::Saying& saying : recording.said.sayings) {
+                sayings.push_back(SayingItem{
+                    .from = saying.from,
+                    .to = saying.to,
+                    .text = QString::fromStdString(saying.text),
+                });
+            }
+        }
+    } else {
+        m_shownRecording.clear();
+    }
+    m_recordingsModel.setItems(std::move(items));
+    m_sayingsModel.setItems(std::move(sayings));
+    emit recordingsChanged();
+}
+
+void NotebookViewModel::showRecording(const QString& recordingId) {
+    if (recordingId == m_shownRecording) {
+        return;
+    }
+    m_shownRecording = recordingId;
+    publishRecordings();
+}
+
+QString NotebookViewModel::beginRecording() {
+    core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        reportError(tr("There is no page to record on."));
+        return {};
+    }
+    core::Recording made;
+    made.id = m_ids.next();
+    made.madeAt = QDateTime::currentMSecsSinceEpoch();
+    made.name = core::plainRecordingName(made.madeAt);
+    const core::Uuid recordingId = made.id;
+    if (const core::Result<void> put = page->addRecording(std::move(made)); !put) {
+        reportError(QString::fromStdString(put.error().message));
+        return {};
+    }
+    m_shownRecording = QString::fromStdString(recordingId.toString());
+    publishRecordings();
+    return m_shownRecording;
+}
+
+int NotebookViewModel::shownReading() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_shownRecording.isEmpty()) {
+        return static_cast<int>(core::Reading::Unasked);
+    }
+    for (const core::Recording& made : page->recordings()) {
+        if (isNamed(made.id, m_shownRecording)) {
+            return static_cast<int>(made.said.reading);
+        }
+    }
+    return static_cast<int>(core::Reading::Unasked);
+}
+
+QString NotebookViewModel::shownTrouble() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_shownRecording.isEmpty()) {
+        return {};
+    }
+    for (const core::Recording& made : page->recordings()) {
+        if (isNamed(made.id, m_shownRecording)) {
+            return QString::fromStdString(made.said.trouble);
+        }
+    }
+    return {};
+}
+
+void NotebookViewModel::keepRecording(const QString& recordingId, const QByteArray& sound,
+                                      qint64 length) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr || sound.isEmpty() || !m_storage) {
+        giveUpRecording(recordingId);
+        reportError(tr("This recording could not be kept."));
+        return;
+    }
+    core::Asset asset{
+        .id = hashOf(sound),
+        .kind = core::AssetKind::Sound,
+        .name = "recording.m4a",
+        .data = toBytes(sound),
+    };
+    const core::ContentId held = asset.id;
+    m_storage->submit([asset = std::move(asset)](core::NotebookStore& store) {
+        return store.insertAsset(asset);
+    });
+
+    core::Recording kept = *made;
+    kept.sound = held;
+    kept.length = std::max<qint64>(0, length);
+    kept = core::normalized(std::move(kept));
+    const core::Uuid recordingUuid = kept.id;
+    if (const core::Result<void> changed = page->changeRecording(recordingUuid, kept); !changed) {
+        return;
+    }
+    const core::Uuid pageId = page->id();
+    m_storage->submit(
+        [pageId, kept](core::NotebookStore& store) { return store.insertRecording(pageId, kept); });
+    for (const core::Mark& mark : page->marks()) {
+        if (mark.recording != recordingUuid) {
+            continue;
+        }
+        m_storage->submit(
+            [pageId, mark](core::NotebookStore& store) { return store.markThing(pageId, mark); });
+    }
+    publishRecordings();
+}
+
+void NotebookViewModel::giveUpRecording(const QString& recordingId) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr) {
+        return;
+    }
+    const core::Result<core::Recording> taken = page->removeRecording(made->id);
+    if (!taken) {
+        return;
+    }
+    if (isNamed(taken->id, m_shownRecording)) {
+        m_shownRecording.clear();
+    }
+    publishRecordings();
+}
+
+void NotebookViewModel::renameRecording(const QString& recordingId, const QString& name) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr) {
+        return;
+    }
+    const std::string wanted = name.trimmed().toStdString();
+    if (wanted.empty() || wanted == made->name) {
+        return;
+    }
+    core::Recording kept = *made;
+    kept.name = wanted;
+    kept = core::normalized(std::move(kept));
+    if (const core::Result<void> changed = page->changeRecording(kept.id, kept); !changed) {
+        return;
+    }
+    if (m_storage) {
+        m_storage->submit(
+            [kept](core::NotebookStore& store) { return store.updateRecording(kept); });
+    }
+    publishRecordings();
+}
+
+void NotebookViewModel::removeRecording(const QString& recordingId) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr) {
+        return;
+    }
+    const core::Uuid gone = made->id;
+    if (const core::Result<core::Recording> taken = page->removeRecording(gone); !taken) {
+        reportError(QString::fromStdString(taken.error().message));
+        return;
+    }
+    if (m_storage) {
+        m_storage->submit(
+            [gone](core::NotebookStore& store) { return store.removeRecording(gone); });
+    }
+    if (isNamed(gone, m_shownRecording)) {
+        m_shownRecording.clear();
+    }
+    publishRecordings();
+}
+
+void NotebookViewModel::wantSound(const QString& recordingId) {
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (made == nullptr || !m_storage) {
+        emit soundMissing(recordingId);
+        return;
+    }
+    const std::uint64_t opening = m_opening;
+    const core::ContentId held = made->sound;
+    m_storage->loadAsset(held, [this, opening, recordingId](core::Result<core::Asset> asset) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opening, recordingId, asset = std::move(asset)] {
+                if (opening != m_opening) {
+                    return;
+                }
+                if (!asset) {
+                    emit soundMissing(recordingId);
+                    return;
+                }
+                QByteArray sound;
+                sound.resize(static_cast<qsizetype>(asset->data.size()));
+                for (std::size_t step = 0; step < asset->data.size(); ++step) {
+                    sound[static_cast<qsizetype>(step)] = static_cast<char>(asset->data[step]);
+                }
+                emit soundReady(recordingId, sound);
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void NotebookViewModel::markFrom(const QString& recordingId, qint64 at) {
+    const core::Recording* const made = recordingNamed(recordingId);
+    m_markingInto = made == nullptr ? core::Uuid{} : made->id;
+    m_markingAt = std::max<qint64>(0, at);
+}
+
+void NotebookViewModel::noteTheMoment(const core::Uuid& thing) {
+    if (m_markingInto.isNil() || thing.isNil()) {
+        return;
+    }
+    core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return;
+    }
+    const core::Mark mark{.recording = m_markingInto, .thing = thing, .at = m_markingAt};
+    if (const core::Result<void> tied = page->addMark(mark); !tied) {
+        return;
+    }
+    if (m_storage) {
+        const core::Uuid pageId = page->id();
+        m_storage->submit(
+            [pageId, mark](core::NotebookStore& store) { return store.markThing(pageId, mark); });
+    }
+    publishRecordings();
+}
+
+qint64 NotebookViewModel::momentOf(const QString& thingId) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return -1;
+    }
+    for (const core::Mark& mark : page->marks()) {
+        if (isNamed(mark.thing, thingId)) {
+            return mark.at;
+        }
+    }
+    return -1;
+}
+
+QString NotebookViewModel::recordingOf(const QString& thingId) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    for (const core::Mark& mark : page->marks()) {
+        if (isNamed(mark.thing, thingId)) {
+            return QString::fromStdString(mark.recording.toString());
+        }
+    }
+    return {};
+}
+
+QString NotebookViewModel::thingWrittenAt(const QString& recordingId, qint64 at) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    for (const core::Recording& made : page->recordings()) {
+        if (!isNamed(made.id, recordingId)) {
+            continue;
+        }
+        const core::Mark* const mark = core::markAt(page->marks(), made.id, at);
+        return mark == nullptr ? QString{} : QString::fromStdString(mark->thing.toString());
+    }
+    return {};
+}
+
+void NotebookViewModel::keepSayings(const QString& recordingId, const QVariantList& sayings,
+                                    const QString& language) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr) {
+        return;
+    }
+    std::vector<core::Saying> runs;
+    runs.reserve(static_cast<std::size_t>(sayings.size()));
+    for (const QVariant& held : sayings) {
+        const QVariantMap said = held.toMap();
+        const QString words = said.value(QStringLiteral("text")).toString().trimmed();
+        if (words.isEmpty()) {
+            continue;
+        }
+        runs.push_back(core::Saying{
+            .from = std::max<qint64>(0, said.value(QStringLiteral("from")).toLongLong()),
+            .to = std::max<qint64>(0, said.value(QStringLiteral("to")).toLongLong()),
+            .text = words.toStdString(),
+        });
+    }
+    core::Said said;
+    said.sayings = runs;
+    said.reading = runs.empty() ? core::Reading::Failed : core::Reading::Read;
+    said.language = language.toStdString();
+    said.trouble = runs.empty() ? "nothing could be made out" : std::string{};
+    const core::Uuid recordingUuid = made->id;
+    if (const core::Result<void> kept = page->setSaid(recordingUuid, std::move(said)); !kept) {
+        return;
+    }
+    const core::Recording* const now = recordingNamed(recordingId);
+    if (m_storage && now != nullptr) {
+        m_storage->submit([kept = *now, runs](core::NotebookStore& store) {
+            if (const core::Result<void> written = store.writeSayings(kept.id, runs); !written) {
+                return written;
+            }
+            return store.updateRecording(kept);
+        });
+    }
+    publishRecordings();
+}
+
+void NotebookViewModel::markReading(const QString& recordingId, int reading,
+                                    const QString& trouble) {
+    core::Page* const page = currentPageData();
+    const core::Recording* const made = recordingNamed(recordingId);
+    if (page == nullptr || made == nullptr) {
+        return;
+    }
+    core::Said said = made->said;
+    said.reading = reading >= 0 && reading <= static_cast<int>(core::Reading::Failed)
+                       ? static_cast<core::Reading>(reading)
+                       : core::Reading::Unasked;
+    said.trouble = trouble.toStdString();
+    const core::Uuid recordingUuid = made->id;
+    if (const core::Result<void> kept = page->setSaid(recordingUuid, std::move(said)); !kept) {
+        return;
+    }
+    const core::Recording* const now = recordingNamed(recordingId);
+    if (m_storage && now != nullptr) {
+        m_storage->submit(
+            [kept = *now](core::NotebookStore& store) { return store.updateRecording(kept); });
+    }
+    publishRecordings();
+}
+
 void NotebookViewModel::publishLayers() {
     std::vector<LayerItem> items;
     const core::Page* const page = currentPageData();
@@ -4755,6 +5143,7 @@ void NotebookViewModel::addPicture(const QUrl& fileUrl) {
 
     m_pictureImages.insert_or_assign(source, picture);
     core::StorageThread* const storage = &*m_storage;
+    noteTheMoment(placed.id);
     forgetThumbnail(page->id());
     runCommand(std::make_unique<core::AddPictureCommand>(page, storage,
                                                          core::PlacedPicture{

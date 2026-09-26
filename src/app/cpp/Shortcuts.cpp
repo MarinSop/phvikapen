@@ -259,6 +259,12 @@ namespace {
             .keys = "Ctrl+Shift+M",
         },
         Command{
+            .id = "soundPanel",
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Recordings panel"),
+            .group = CommandGroup::View,
+            .keys = "Ctrl+5",
+        },
+        Command{
             .id = "timePanel",
             .name = QT_TRANSLATE_NOOP("Shortcuts", "Time panel"),
             .group = CommandGroup::View,

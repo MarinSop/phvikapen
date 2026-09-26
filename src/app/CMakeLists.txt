@@ -18,6 +18,9 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     export
     cog
     stopwatch
+    microphone
+    play
+    pause
     chevron-left
     chevron-right
     zoom-in
@@ -97,6 +100,10 @@ qt_add_qml_module(phvikapen_ui
         cpp/LayerModels.hpp
         cpp/OutlineModels.hpp
         cpp/PageDefaults.cpp
+        cpp/RecordingModels.cpp
+        cpp/RecordingViewModel.cpp
+        cpp/RecordingViewModel.hpp
+        cpp/RecordingModels.hpp
         cpp/PageDefaults.hpp
         cpp/SettingsViewModel.cpp
         cpp/TableModels.cpp
@@ -167,6 +174,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PictureLayer.qml
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
+        qml/components/RecordingPanel.qml
+        qml/components/TranscriptView.qml
         qml/components/SettingsDialog.qml
         qml/components/SelectionLayer.qml
         qml/components/SettingsPage.qml

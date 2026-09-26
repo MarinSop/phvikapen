@@ -11,6 +11,7 @@ QtObject {
     readonly property string pageSetup: "pageSetup"
     readonly property string pages: "pages"
     readonly property string sections: "sections"
+    readonly property string sound: "sound"
     readonly property string time: "time"
 
     function titleOf(panelId, spoken) {
@@ -23,6 +24,8 @@ QtObject {
             return qsTr("Page Setup");
         case root.sections:
             return qsTr("Sections");
+        case root.sound:
+            return qsTr("Recordings");
         case root.time:
             return qsTr("Time");
         default:
@@ -36,6 +39,8 @@ QtObject {
             return Icons.layer;
         case root.maths:
             return Icons.solve;
+        case root.sound:
+            return Icons.microphone;
         case root.time:
             return Icons.time;
         case root.pageSetup:

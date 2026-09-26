@@ -8,12 +8,14 @@ configure_file(update/Feed.hpp.in "${generated_dir}/platform/update/Feed.hpp" @O
 
 target_sources(phvikapen_platform
     PRIVATE
+        audio/QtSound.cpp
         ink/qt/QtInkItem.cpp
         ink/qt/QtInkRenderer.cpp
         ink/qt/QtInkRenderer.hpp
         pdf/PdfRenderer.cpp
         pdf/PdfiumDocument.cpp
         render/PagePainter.cpp
+        speech/NoSpeech.cpp
         render/PdfExporter.cpp
         update/StartupHook.cpp
         update/VelopackUpdater.cpp
@@ -23,6 +25,8 @@ target_sources(phvikapen_platform
             "${PROJECT_SOURCE_DIR}/src"
             "${generated_dir}"
         FILES
+            audio/ISound.hpp
+            audio/QtSound.hpp
             ink/IInkBackend.hpp
             ink/qt/QtInkItem.hpp
             pdf/IPdfDocument.hpp
@@ -31,6 +35,7 @@ target_sources(phvikapen_platform
             render/PagePainter.hpp
             render/PdfExporter.hpp
             render/PaperLook.hpp
+            speech/ISpeech.hpp
             text/IHandwriting.hpp
             update/IUpdater.hpp
             update/StartupHook.hpp
@@ -71,6 +76,7 @@ endif()
 target_link_libraries(phvikapen_platform
     PUBLIC
         PhvikaPen::core
+        Qt6::Multimedia
         Qt6::Quick
     PRIVATE
         Qt6::GuiPrivate

@@ -211,6 +211,22 @@
         <translation>Vrijeme</translation>
     </message>
     <message>
+        <source>Recordings</source>
+        <translation>Snimke</translation>
+    </message>
+    <message>
+        <source>Stop Recording</source>
+        <translation>Zaustavi snimanje</translation>
+    </message>
+    <message>
+        <source>Record Audio</source>
+        <translation>Snimi zvuk</translation>
+    </message>
+    <message>
+        <source>Play From Here</source>
+        <translation>Pusti odavde</translation>
+    </message>
+    <message>
         <source>Reset Panel Layout</source>
         <translation>Vrati raspored ploča</translation>
     </message>
@@ -1403,6 +1419,10 @@
         <translation>Odjeljci</translation>
     </message>
     <message>
+        <source>Recordings</source>
+        <translation>Snimke</translation>
+    </message>
+    <message>
         <source>Time</source>
         <translation>Vrijeme</translation>
     </message>
@@ -1440,6 +1460,65 @@
     <message>
         <source>Help</source>
         <translation>Pomoć</translation>
+    </message>
+</context>
+<context>
+    <name>RecordingPanel</name>
+    <message>
+        <source>Dismiss</source>
+        <translation>Odbaci</translation>
+    </message>
+    <message>
+        <source>Record</source>
+        <translation>Snimaj</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>Nastavi</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pauziraj</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Zaustavi</translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation>Pusti</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 · %n note(s)</source>
+        <translation>
+            <numerusform>%1 · %n bilješka</numerusform>
+            <numerusform>%1 · %n bilješke</numerusform>
+            <numerusform>%1 · %n bilješki</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Recording…</source>
+        <translation>Snima se…</translation>
+    </message>
+    <message>
+        <source>Delete recording</source>
+        <translation>Izbriši snimku</translation>
+    </message>
+    <message>
+        <source>Position in the recording</source>
+        <translation>Položaj u snimci</translation>
+    </message>
+    <message>
+        <source>Stop playing</source>
+        <translation>Zaustavi reprodukciju</translation>
+    </message>
+    <message>
+        <source>Open a page to record on it.</source>
+        <translation>Otvori stranicu da na njoj snimaš.</translation>
+    </message>
+    <message>
+        <source>“%1” and everything tied to it will go. This cannot be undone.</source>
+        <translation>“%1” i sve vezano uz nju nestaje. Ovo se ne može poništiti.</translation>
     </message>
 </context>
 <context>
@@ -1934,6 +2013,10 @@
         <translation>Ploča s matematikom</translation>
     </message>
     <message>
+        <source>Recordings panel</source>
+        <translation>Ploča sa snimkama</translation>
+    </message>
+    <message>
         <source>Time panel</source>
         <translation>Ploča s vremenom</translation>
     </message>
@@ -2113,6 +2196,49 @@
     <message>
         <source>%1m</source>
         <translation>%1 min</translation>
+    </message>
+</context>
+<context>
+    <name>TranscriptView</name>
+    <message>
+        <source>Reading what was said…</source>
+        <translation>Čitam što je rečeno…</translation>
+    </message>
+    <message>
+        <source>Read</source>
+        <translation>Pročitano</translation>
+    </message>
+    <message>
+        <source>It could not be read</source>
+        <translation>Nije se moglo pročitati</translation>
+    </message>
+    <message>
+        <source>Not read yet</source>
+        <translation>Još nije pročitano</translation>
+    </message>
+    <message>
+        <source>Try again</source>
+        <translation>Pokušaj ponovno</translation>
+    </message>
+    <message>
+        <source>Read it back</source>
+        <translation>Pročitaj snimku</translation>
+    </message>
+    <message>
+        <source>What was said</source>
+        <translation>Što je rečeno</translation>
+    </message>
+    <message>
+        <source>At %1, %2</source>
+        <translation>U %1, %2</translation>
+    </message>
+    <message>
+        <source>Nothing has been read back yet.</source>
+        <translation>Još ništa nije pročitano.</translation>
+    </message>
+    <message>
+        <source>This machine cannot read a recording back as words.</source>
+        <translation>Ovo računalo ne može snimku pročitati kao riječi.</translation>
     </message>
 </context>
 <context>
@@ -2357,6 +2483,14 @@
         <translation>„%1” je skriven i ne prima ništa.</translation>
     </message>
     <message>
+        <source>There is no page to record on.</source>
+        <translation>Nema stranice na kojoj bi se snimalo.</translation>
+    </message>
+    <message>
+        <source>This recording could not be kept.</source>
+        <translation>Ova snimka nije mogla biti spremljena.</translation>
+    </message>
+    <message>
         <source>%1 is not a picture</source>
         <translation>%1 nije slika</translation>
     </message>
@@ -2378,6 +2512,29 @@
     <message>
         <source>Could not delete %1</source>
         <translation>Nije moguće izbrisati %1</translation>
+    </message>
+</context>
+<context>
+    <name>phvikapen::app::RecordingViewModel</name>
+    <message>
+        <source>This machine cannot read a recording back as words.</source>
+        <translation>Ovo računalo ne može snimku pročitati kao riječi.</translation>
+    </message>
+    <message>
+        <source>This recording could not be found in the notebook.</source>
+        <translation>Ova snimka nije pronađena u bilježnici.</translation>
+    </message>
+    <message>
+        <source>This machine has nothing to listen with.</source>
+        <translation>Ovo računalo nema čime slušati.</translation>
+    </message>
+    <message>
+        <source>Open a page before recording.</source>
+        <translation>Otvori stranicu prije snimanja.</translation>
+    </message>
+    <message>
+        <source>There is no page to record on.</source>
+        <translation>Nema stranice na kojoj bi se snimalo.</translation>
     </message>
 </context>
 </TS>
