@@ -379,6 +379,77 @@ void Page::forgetMarksOfThing(const Uuid& thing) {
     std::erase_if(m_marks, [&thing](const Mark& mark) { return mark.thing == thing; });
 }
 
+std::int64_t Page::nextLinkOrdinal() const noexcept {
+    return m_links.empty() ? 0 : m_links.back().ordinal + 1;
+}
+
+Result<void> Page::insertLink(PlacedLink placed) {
+    const bool taken = std::ranges::any_of(
+        m_links, [&placed](const PlacedLink& kept) { return kept.link.id == placed.link.id; });
+    if (taken) {
+        return makeError(ErrorCode::InvalidArgument, "the page already holds that link");
+    }
+    placed.link = normalized(std::move(placed.link));
+    const auto position =
+        std::ranges::lower_bound(m_links, placed.ordinal, {}, &PlacedLink::ordinal);
+    if (position != m_links.end() && position->ordinal == placed.ordinal) {
+        return makeError(ErrorCode::InvalidArgument, "another link already has that place");
+    }
+    m_links.insert(position, std::move(placed));
+    return {};
+}
+
+Result<PlacedLink> Page::removeLink(const Uuid& linkId) {
+    const auto found =
+        std::ranges::find(m_links, linkId, [](const PlacedLink& kept) { return kept.link.id; });
+    if (found == m_links.end()) {
+        return makeError(ErrorCode::NotFound, "there is no such link on this page");
+    }
+    PlacedLink gone = std::move(*found);
+    m_links.erase(found);
+    return gone;
+}
+
+Result<void> Page::replaceLink(Link link) {
+    const auto found =
+        std::ranges::find(m_links, link.id, [](const PlacedLink& kept) { return kept.link.id; });
+    if (found == m_links.end()) {
+        return makeError(ErrorCode::NotFound, "there is no such link on this page");
+    }
+    found->link = normalized(std::move(link));
+    return {};
+}
+
+const Link* Page::linkAt(const Uuid& linkId) const noexcept {
+    const auto found =
+        std::ranges::find(m_links, linkId, [](const PlacedLink& kept) { return kept.link.id; });
+    return found == m_links.end() ? nullptr : &found->link;
+}
+
+const Link* Page::linkUnder(Point at) const noexcept {
+    const Link* found = nullptr;
+    for (const PlacedLink& placed : m_links) {
+        const Rect area = areaOf(placed.link);
+        if (at.x < area.left || at.x > area.right || at.y < area.top || at.y > area.bottom) {
+            continue;
+        }
+        if (!isOpenToTheHand(m_layers, placed.layer)) {
+            continue;
+        }
+        found = &placed.link;
+    }
+    return found;
+}
+
+void Page::setLinks(std::vector<PlacedLink> links) {
+    m_links = std::move(links);
+    std::ranges::stable_sort(m_links, {}, &PlacedLink::ordinal);
+}
+
+std::vector<PlacedLink> Page::takeAllLinks() noexcept {
+    return std::exchange(m_links, {});
+}
+
 Result<Uuid> Page::moveToLayer(const Uuid& thingId, const Uuid& layerId) {
     const auto moved = [&layerId](Uuid& layer) {
         const Uuid stood = layer;

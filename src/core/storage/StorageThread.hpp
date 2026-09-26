@@ -5,6 +5,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Layer.hpp"
+#include "core/model/Link.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/Picture.hpp"
@@ -33,6 +34,7 @@ struct LoadedPage {
     std::vector<Layer> layers;
     std::vector<Recording> recordings;
     std::vector<Mark> marks;
+    std::vector<PlacedLink> links;
 };
 
 class StorageThread {

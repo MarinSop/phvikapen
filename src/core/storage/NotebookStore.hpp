@@ -4,6 +4,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Layer.hpp"
+#include "core/model/Link.hpp"
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
@@ -25,7 +26,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 14;
+inline constexpr int kNotebookSchemaVersion = 15;
 
 struct TrashedItem {
     Uuid id;
@@ -81,6 +82,11 @@ public:
     [[nodiscard]] Result<void> removeTable(const Uuid& pageId, const Uuid& tableId);
     [[nodiscard]] Result<std::size_t> removeTablesOfPage(const Uuid& pageId);
     [[nodiscard]] Result<std::vector<PlacedTable>> tablesOfPage(const Uuid& pageId) const;
+
+    [[nodiscard]] Result<void> insertLink(const Uuid& pageId, const PlacedLink& placed);
+    [[nodiscard]] Result<void> updateLink(const Uuid& pageId, const Link& link);
+    [[nodiscard]] Result<void> removeLink(const Uuid& pageId, const Uuid& linkId);
+    [[nodiscard]] Result<std::vector<PlacedLink>> linksOfPage(const Uuid& pageId) const;
 
     [[nodiscard]] Result<void> insertRecording(const Uuid& pageId, const Recording& recording);
     [[nodiscard]] Result<void> updateRecording(const Recording& recording);

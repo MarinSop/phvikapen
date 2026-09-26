@@ -104,6 +104,11 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(std::unexpected{marks.error()});
             return;
         }
+        Result<std::vector<PlacedLink>> links = m_store->linksOfPage(pageId);
+        if (!links) {
+            onLoaded(std::unexpected{links.error()});
+            return;
+        }
         onLoaded(LoadedPage{
             .strokes = std::move(*strokes),
             .texts = std::move(*texts),
@@ -112,6 +117,7 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             .layers = std::move(*layers),
             .recordings = std::move(*recordings),
             .marks = std::move(*marks),
+            .links = std::move(*links),
         });
     });
 }

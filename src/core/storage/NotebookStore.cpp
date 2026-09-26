@@ -267,6 +267,26 @@ constexpr std::string_view kSchemaVersion14 = R"sql(
     CREATE INDEX recording_sayings_by_word ON recording_sayings (folded);
 )sql";
 
+// Patches of a page that take the reader somewhere else: to another page of the notebook, named
+// by what it is rather than by what it is called, or out of the application altogether.
+constexpr std::string_view kSchemaVersion15 = R"sql(
+    CREATE TABLE page_links (
+        id        BLOB PRIMARY KEY NOT NULL,
+        page_id   BLOB NOT NULL REFERENCES pages (id) ON DELETE CASCADE,
+        ordinal   INTEGER NOT NULL,
+        left_edge REAL NOT NULL,
+        top_edge  REAL NOT NULL,
+        width     REAL NOT NULL,
+        height    REAL NOT NULL,
+        kind      INTEGER NOT NULL,
+        goes_to   BLOB,
+        where_to  TEXT NOT NULL DEFAULT '',
+        label     TEXT NOT NULL DEFAULT '',
+        layer     BLOB
+    );
+    CREATE UNIQUE INDEX page_links_by_page ON page_links (page_id, ordinal);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2},
     std::pair{3, kSchemaVersion3},   std::pair{4, kSchemaVersion4},
@@ -274,7 +294,7 @@ constexpr std::array kMigrations{
     std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9},
     std::pair{10, kSchemaVersion10}, std::pair{11, kSchemaVersion11},
     std::pair{12, kSchemaVersion12}, std::pair{13, kSchemaVersion13},
-    std::pair{14, kSchemaVersion14},
+    std::pair{14, kSchemaVersion14}, std::pair{15, kSchemaVersion15},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -535,6 +555,50 @@ enum class RecordingColumn : std::uint8_t {
     made.said.language = statement.text(column(RecordingColumn::Language));
     made.said.trouble = statement.text(column(RecordingColumn::Trouble));
     return made;
+}
+
+enum class LinkColumn : std::uint8_t {
+    Id,
+    Ordinal,
+    Left,
+    Top,
+    Width,
+    Height,
+    Kind,
+    GoesTo,
+    WhereTo,
+    Label,
+    Layer,
+};
+
+[[nodiscard]] constexpr int column(LinkColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+[[nodiscard]] LinkKind toLinkKind(std::int64_t value) noexcept {
+    return value == static_cast<std::int64_t>(LinkKind::Web) ? LinkKind::Web : LinkKind::Page;
+}
+
+[[nodiscard]] PlacedLink linkFrom(const sqlite::Statement& statement) {
+    return PlacedLink{
+        .ordinal = statement.integer(column(LinkColumn::Ordinal)),
+        .link =
+            Link{
+                .id = statement.id(column(LinkColumn::Id)),
+                .at =
+                    Point{
+                        .x = static_cast<float>(statement.real(column(LinkColumn::Left))),
+                        .y = static_cast<float>(statement.real(column(LinkColumn::Top))),
+                    },
+                .width = static_cast<float>(statement.real(column(LinkColumn::Width))),
+                .height = static_cast<float>(statement.real(column(LinkColumn::Height))),
+                .kind = toLinkKind(statement.integer(column(LinkColumn::Kind))),
+                .page = statement.id(column(LinkColumn::GoesTo)),
+                .where = statement.text(column(LinkColumn::WhereTo)),
+                .label = statement.text(column(LinkColumn::Label)),
+            },
+        .layer = statement.id(column(LinkColumn::Layer)),
+    };
 }
 
 constexpr unsigned int kByteBits = 8U;
@@ -2053,6 +2117,99 @@ Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
         }
     }
     return transaction->commit();
+}
+
+Result<void> NotebookStore::insertLink(const Uuid& pageId, const PlacedLink& placed) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_links (id, page_id, ordinal, left_edge, top_edge, width, "
+                    "height, kind, goes_to, where_to, label, layer) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Link& link = placed.link;
+    const Result<void> bound = bindAll({
+        statement->bindId(1, link.id),
+        statement->bindId(2, pageId),
+        statement->bindInteger(3, placed.ordinal),
+        statement->bindReal(4, link.at.x),
+        statement->bindReal(5, link.at.y),
+        statement->bindReal(6, link.width),
+        statement->bindReal(7, link.height),
+        statement->bindInteger(8, static_cast<std::int64_t>(link.kind)),
+        statement->bindId(9, link.page),
+        statement->bindText(10, link.where),
+        statement->bindText(11, link.label),
+        statement->bindId(12, placed.layer),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::updateLink(const Uuid& pageId, const Link& link) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE page_links SET left_edge = ?, top_edge = ?, width = ?, height = ?, "
+                    "kind = ?, goes_to = ?, where_to = ?, label = ? WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindReal(1, link.at.x),
+        statement->bindReal(2, link.at.y),
+        statement->bindReal(3, link.width),
+        statement->bindReal(4, link.height),
+        statement->bindInteger(5, static_cast<std::int64_t>(link.kind)),
+        statement->bindId(6, link.page),
+        statement->bindText(7, link.where),
+        statement->bindText(8, link.label),
+        statement->bindId(9, pageId),
+        statement->bindId(10, link.id),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::removeLink(const Uuid& pageId, const Uuid& linkId) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "DELETE FROM page_links WHERE page_id = ? AND id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, pageId),
+        statement->bindId(2, linkId),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<std::vector<PlacedLink>> NotebookStore::linksOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT id, ordinal, left_edge, top_edge, width, height, kind, goes_to, "
+                    "where_to, label, layer FROM page_links WHERE page_id = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<PlacedLink> links;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return links;
+        }
+        links.push_back(linkFrom(*statement));
+    }
 }
 
 Result<void> NotebookStore::insertRecording(const Uuid& pageId, const Recording& recording) {

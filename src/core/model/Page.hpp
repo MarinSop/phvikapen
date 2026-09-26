@@ -5,6 +5,7 @@
 #include "core/ink/Stroke.hpp"
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Layer.hpp"
+#include "core/model/Link.hpp"
 #include "core/model/Picture.hpp"
 #include "core/model/Recording.hpp"
 #include "core/model/StrokeGrid.hpp"
@@ -99,6 +100,27 @@ public:
 
     [[nodiscard]] std::vector<PlacedTable> takeAllTables() noexcept;
 
+    // The patches of the page that take a reader somewhere else.
+    [[nodiscard]] std::span<const PlacedLink> links() const noexcept { return m_links; }
+
+    [[nodiscard]] std::int64_t nextLinkOrdinal() const noexcept;
+
+    [[nodiscard]] Result<void> insertLink(PlacedLink placed);
+
+    [[nodiscard]] Result<PlacedLink> removeLink(const Uuid& linkId);
+
+    [[nodiscard]] Result<void> replaceLink(Link link);
+
+    [[nodiscard]] const Link* linkAt(const Uuid& linkId) const noexcept;
+
+    // The link a tap lands on: the last one put down, where several lie over one another, and
+    // never one on a layer that is hidden or held still.
+    [[nodiscard]] const Link* linkUnder(Point at) const noexcept;
+
+    [[nodiscard]] std::vector<PlacedLink> takeAllLinks() noexcept;
+
+    void setLinks(std::vector<PlacedLink> links);
+
     // The layers of the page, bottom first. A page always has at least one: everything written
     // down before there were layers belongs to it.
     [[nodiscard]] std::span<const Layer> layers() const noexcept { return m_layers; }
@@ -157,6 +179,7 @@ private:
     std::vector<Layer> m_layers;
     std::vector<Recording> m_recordings;
     std::vector<Mark> m_marks;
+    std::vector<PlacedLink> m_links;
     StrokeGrid m_grid;
 };
 

@@ -32,6 +32,7 @@ target_sources(phvikapen_core
         math/Reading.cpp
         math/Solving.cpp
         model/Layer.cpp
+        model/Link.cpp
         model/Outline.cpp
         model/Page.cpp
         model/PageStyle.cpp
@@ -49,6 +50,7 @@ target_sources(phvikapen_core
         text/WrittenText.cpp
         undo/BundleCommand.cpp
         undo/LayerCommands.cpp
+        undo/LinkCommands.cpp
         undo/OutlineCommands.cpp
         undo/PictureCommands.cpp
         undo/StrokeCommands.cpp
@@ -88,6 +90,7 @@ target_sources(phvikapen_core
             math/Solving.hpp
             model/Asset.hpp
             model/Layer.hpp
+            model/Link.hpp
             model/Outline.hpp
             model/Page.hpp
             model/PageStyle.hpp
@@ -104,6 +107,7 @@ target_sources(phvikapen_core
             text/WrittenText.hpp
             undo/BundleCommand.hpp
             undo/LayerCommands.hpp
+            undo/LinkCommands.hpp
             undo/OutlineCommands.hpp
             undo/PictureCommands.hpp
             undo/StrokeCommands.hpp
