@@ -29,6 +29,7 @@
 #include "core/undo/UndoStack.hpp"
 #include "platform/ink/IInkBackend.hpp"
 #include "platform/ink/qt/QtInkItem.hpp"
+#include "platform/ocr/IReadPicture.hpp"
 #include "platform/pdf/PdfRenderer.hpp"
 #include "platform/render/PdfExporter.hpp"
 
@@ -459,6 +460,19 @@ public:
     // Put a picture from a file on the page being read, as large as it fits.
     Q_INVOKABLE void addPicture(const QUrl& fileUrl);
 
+    // Whether this machine can read the words in a picture at all.
+    Q_INVOKABLE [[nodiscard]] bool canReadPictures() const;
+
+    // Reads the words in a picture. What comes back arrives through `pictureRead`, because
+    // reading takes long enough that nothing may wait for it. Asking again for a picture already
+    // read hands back what was read before.
+    Q_INVOKABLE void readPicture(const QString& pictureId, const QString& language);
+
+    // What was read out of a picture before, empty where it has not been read.
+    Q_INVOKABLE [[nodiscard]] QString wordsInPicture(const QString& pictureId) const;
+
+    Q_INVOKABLE void forgetWordsInPicture(const QString& pictureId);
+
     [[nodiscard]] QString pickedPicture() const { return m_pickedPicture; }
 
     void setPickedPicture(const QString& pictureId);
@@ -605,6 +619,9 @@ public:
 signals:
     void recordingsChanged();
     void linksChanged();
+    void pictureRead(const QString& pictureId, const QString& words);
+    void pictureUnread(const QString& pictureId, const QString& why);
+    void readingPicture(const QString& pictureId);
     // A link goes somewhere outside the application, and the window is to open it.
     void goingOut(const QUrl& where);
     void soundReady(const QString& recordingId, const QByteArray& sound);
@@ -800,6 +817,12 @@ private:
     void publishRecordings();
     void publishLinks();
     [[nodiscard]] const core::Link* linkNamed(const QString& linkId) const;
+    void readWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+                             std::uint64_t opening, const QString& language,
+                             core::Result<core::Asset> asset);
+    void hearWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+                             std::uint64_t opening,
+                             core::Result<std::vector<platform::ocr::Found>> found);
     [[nodiscard]] std::optional<core::Rect> areaOfPickedInk(const core::Page& page) const;
     [[nodiscard]] std::optional<core::Rect> areaOfPickedThing(const core::Page& page) const;
     // The moment a thing was put on the page, where a recording is running.
@@ -897,6 +920,11 @@ private:
     std::map<core::Uuid, core::Viewport> m_views;
     std::map<core::Uuid, int> m_thumbnails;
     std::map<core::Uuid, int> m_layerPreviews;
+    // What has been read out of the pictures on this page. It is worked out again whenever it is
+    // wanted after the notebook is closed, because it is made from the picture rather than
+    // written by the reader.
+    std::map<core::Uuid, QString> m_pictureWords;
+    std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;
     QString m_shownRecording;

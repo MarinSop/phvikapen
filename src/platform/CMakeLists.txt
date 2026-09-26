@@ -35,6 +35,7 @@ target_sources(phvikapen_platform
             render/PagePainter.hpp
             render/PdfExporter.hpp
             render/PaperLook.hpp
+            ocr/IReadPicture.hpp
             speech/ISpeech.hpp
             text/IHandwriting.hpp
             update/IUpdater.hpp
@@ -71,6 +72,18 @@ if(WIN32)
     target_link_libraries(phvikapen_platform PRIVATE Microsoft::CppWinRT)
 else()
     target_sources(phvikapen_platform PRIVATE text/NoHandwriting.cpp)
+endif()
+
+# The words in a picture are read by whatever the machine carries. macOS carries one; everywhere
+# else the application says it cannot read any.
+if(APPLE)
+    target_sources(phvikapen_platform PRIVATE ocr/AppleReadPicture.mm)
+    set_source_files_properties(ocr/AppleReadPicture.mm PROPERTIES LANGUAGE OBJCXX)
+    target_link_libraries(phvikapen_platform PRIVATE
+        "-framework Vision" "-framework CoreGraphics" "-framework ImageIO"
+        "-framework Foundation")
+else()
+    target_sources(phvikapen_platform PRIVATE ocr/NoReadPicture.cpp)
 endif()
 
 target_link_libraries(phvikapen_platform

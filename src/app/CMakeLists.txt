@@ -179,6 +179,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/WorkspaceView.qml
         qml/components/HintsDialog.qml
         qml/components/PictureLayer.qml
+        qml/components/PictureTextDialog.qml
         qml/components/PenSwatch.qml
         qml/components/QuickButton.qml
         qml/components/RecordingPanel.qml

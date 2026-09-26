@@ -429,6 +429,13 @@ Item {
             }
         }
     }
+    readonly property Action readPicture: Action {
+        enabled: root.hasPicture && root.notebook.canReadPictures()
+        icon.source: Icons.toText
+        text: qsTr("Extract Text…")
+
+        onTriggered: root.pictureTextWanted(root.notebook.pickedPicture)
+    }
     readonly property Action addLink: Action {
         enabled: root.hasNotebook
         icon.source: Icons.link
@@ -752,6 +759,7 @@ Item {
     signal settingsWanted
     signal findWanted
     signal trashWanted
+    signal pictureTextWanted(string pictureId)
     signal linkWanted
     signal linkChangeWanted(string linkId)
 

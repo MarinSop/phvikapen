@@ -223,6 +223,10 @@
         <translation>Snimi zvuk</translation>
     </message>
     <message>
+        <source>Extract Text…</source>
+        <translation>Izvuci tekst…</translation>
+    </message>
+    <message>
         <source>Add Link…</source>
         <translation>Dodaj poveznicu…</translation>
     </message>
@@ -1585,6 +1589,37 @@
     </message>
 </context>
 <context>
+    <name>PictureTextDialog</name>
+    <message>
+        <source>Text in this picture</source>
+        <translation>Tekst na ovoj slici</translation>
+    </message>
+    <message>
+        <source>Reading the picture…</source>
+        <translation>Čitam sliku…</translation>
+    </message>
+    <message>
+        <source>Read</source>
+        <translation>Pročitano</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Kopiraj</translation>
+    </message>
+    <message>
+        <source>Put on the page</source>
+        <translation>Stavi na stranicu</translation>
+    </message>
+    <message>
+        <source>Try again</source>
+        <translation>Pokušaj ponovno</translation>
+    </message>
+    <message>
+        <source>The picture itself is not changed.</source>
+        <translation>Sama slika se ne mijenja.</translation>
+    </message>
+</context>
+<context>
     <name>QObject</name>
     <message>
         <source>File</source>
@@ -2673,6 +2708,26 @@
     <message>
         <source>This recording could not be kept.</source>
         <translation>Ova snimka nije mogla biti spremljena.</translation>
+    </message>
+    <message>
+        <source>There are no words to be found in this picture.</source>
+        <translation>Na ovoj slici nema riječi.</translation>
+    </message>
+    <message>
+        <source>This machine cannot read the words in a picture.</source>
+        <translation>Ovo računalo ne može čitati riječi sa slike.</translation>
+    </message>
+    <message>
+        <source>There is no page to read a picture on.</source>
+        <translation>Nema stranice na kojoj bi se slika čitala.</translation>
+    </message>
+    <message>
+        <source>This picture is not on the page.</source>
+        <translation>Ove slike nema na stranici.</translation>
+    </message>
+    <message>
+        <source>This picture could not be read from the notebook.</source>
+        <translation>Ova slika nije mogla biti pročitana iz bilježnice.</translation>
     </message>
     <message>
         <source>That page is not in this notebook.</source>

@@ -217,6 +217,12 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **Only macOS reads the words in a picture.** Windows carries a reader of its own and it is one
+  file against the interface that is already there; until it is written, Windows says plainly that
+  it cannot read one.
+- **What is read out of a picture is not written into the notebook.** It is held while the notebook
+  is open and worked out again afterwards, so reading a large picture in two sittings costs twice,
+  and searching a notebook does not reach the words in its pictures.
 - **A picture is not kept in an element.** Ink, words and tables are. A picture is named by what
   it contains rather than carried with the page, so keeping one means carrying its bytes from the
   library into the notebook it is put in, and that is not written yet.

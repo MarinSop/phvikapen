@@ -273,6 +273,12 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.readPicture
+        objectName: "contextReadPicture"
+        visible: root.actions.hasPicture
+    }
+
+    MenuCommand {
         action: root.actions.keepAsElement
         objectName: "contextKeepAsElement"
         visible: root.actions.keepAsElement.enabled

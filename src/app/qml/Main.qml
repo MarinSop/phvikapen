@@ -206,6 +206,7 @@ ApplicationWindow {
 
         onAboutWanted: aboutDialog.open()
         onLinkWanted: linkDialog.makeOne()
+        onPictureTextWanted: pictureId => pictureTextDialog.readFrom(pictureId)
         onLinkChangeWanted: linkId => {
             if (root.notebook === null) {
                 return;
@@ -411,6 +412,12 @@ ApplicationWindow {
 
     LinkDialog {
         id: linkDialog
+
+        actions: appActions
+    }
+
+    PictureTextDialog {
+        id: pictureTextDialog
 
         actions: appActions
     }
