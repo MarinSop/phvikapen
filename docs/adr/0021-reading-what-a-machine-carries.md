@@ -6,6 +6,9 @@ Date: 2026-09-26
 
 Accepted
 
+Extended by [0022](0022-reading-a-recording-back-as-words.md), which fills in the reader for
+recordings on macOS.
+
 ## Context
 
 Three kinds of reading are wanted, and they are the same kind of problem three times: reading

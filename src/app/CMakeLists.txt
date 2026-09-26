@@ -318,6 +318,11 @@ set_target_properties(phvikapen PROPERTIES
     MACOSX_BUNDLE TRUE
     MACOSX_BUNDLE_GUI_IDENTIFIER app.phvikapen.PhvikaPen
     MACOSX_BUNDLE_BUNDLE_NAME PhvikaPen
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+    # The microphone and the speech reader are only reachable where the bundle says why they are
+    # wanted; without these lines macOS stops the whole application rather than the recording.
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist.in"
     MACOSX_BUNDLE_ICON_FILE PhvikaPen.icns
     # Own directory: on Windows, shared output makes parallel DLL copying collide.
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"

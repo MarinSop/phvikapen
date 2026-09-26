@@ -92,4 +92,15 @@ inline constexpr std::size_t kNoSaying = static_cast<std::size_t>(-1);
 // written while anything was being recorded.
 [[nodiscard]] const Mark* markOfThing(std::span<const Mark> marks, const Uuid& thing) noexcept;
 
+// How long a silence has to run before what follows is a new line rather than the same one.
+inline constexpr std::int64_t kPause = 700;
+
+// How long a line may grow before it is broken, so that no line runs off the panel it is shown in.
+inline constexpr std::size_t kLongestLine = 140;
+
+// A reader hands back one run per word, which is right for moving through a recording and too fine
+// to read. This gathers words spoken together into lines, breaking at a silence, at a full stop and
+// where a line has grown too long. A line begins the moment its first word was said.
+[[nodiscard]] std::vector<Saying> linesOf(std::span<const Saying> words);
+
 }

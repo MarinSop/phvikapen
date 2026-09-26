@@ -162,5 +162,97 @@ TEST(RecordingTest, ARecordingWithNoNameOfItsOwnIsNamedAfterWhenItWasMade) {
     EXPECT_NE(named.find("1970"), std::string::npos);
 }
 
+TEST(SayingTest, WordsSpokenTogetherAreGatheredIntoOneLine) {
+    const std::array<Saying, 3> words{
+        Saying{.from = 0, .to = 300, .text = "the"},
+        Saying{.from = 320, .to = 700, .text = "budget"},
+        Saying{.from = 720, .to = 1100, .text = "meeting"},
+    };
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_EQ(lines.size(), 1U);
+    EXPECT_EQ(lines.front().text, "the budget meeting");
+    EXPECT_EQ(lines.front().from, 0);
+    EXPECT_EQ(lines.front().to, 1100);
+}
+
+TEST(SayingTest, ASilenceBreaksALine) {
+    const std::array<Saying, 3> words{
+        Saying{.from = 0, .to = 300, .text = "one"},
+        Saying{.from = 320, .to = 600, .text = "two"},
+        Saying{.from = 4000, .to = 4300, .text = "three"},
+    };
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_EQ(lines.size(), 2U);
+    EXPECT_EQ(lines[0].text, "one two");
+    EXPECT_EQ(lines[1].text, "three");
+    EXPECT_EQ(lines[1].from, 4000);
+}
+
+TEST(SayingTest, AFullStopBreaksALine) {
+    const std::array<Saying, 3> words{
+        Saying{.from = 0, .to = 300, .text = "done."},
+        Saying{.from = 310, .to = 600, .text = "next"},
+        Saying{.from = 610, .to = 900, .text = "one"},
+    };
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_EQ(lines.size(), 2U);
+    EXPECT_EQ(lines[0].text, "done.");
+    EXPECT_EQ(lines[1].text, "next one");
+}
+
+TEST(SayingTest, ALineThatHasGrownTooLongIsBroken) {
+    std::vector<Saying> words;
+    for (std::int64_t step = 0; step < 40; ++step) {
+        const std::int64_t at = step * 100;
+        words.push_back(Saying{.from = at, .to = at + 90, .text = "word"});
+    }
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_GT(lines.size(), 1U);
+    for (const Saying& line : lines) {
+        EXPECT_LE(line.text.size(), kLongestLine + std::string{"word"}.size() + 1U);
+    }
+}
+
+TEST(SayingTest, WordsWithNothingSaidInThemAreLeftOut) {
+    const std::array<Saying, 3> words{
+        Saying{.from = 0, .to = 100, .text = ""},
+        Saying{.from = 110, .to = 300, .text = "here"},
+        Saying{.from = 310, .to = 500, .text = ""},
+    };
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_EQ(lines.size(), 1U);
+    EXPECT_EQ(lines.front().text, "here");
+}
+
+TEST(SayingTest, NothingHeardMakesNoLines) {
+    EXPECT_TRUE(linesOf({}).empty());
+}
+
+TEST(SayingTest, EveryLineCanBeFoundAgainByTheMomentItWasSaid) {
+    const std::array<Saying, 4> words{
+        Saying{.from = 0, .to = 300, .text = "first"},
+        Saying{.from = 320, .to = 600, .text = "line."},
+        Saying{.from = 5000, .to = 5300, .text = "second"},
+        Saying{.from = 5320, .to = 5600, .text = "line"},
+    };
+
+    const std::vector<Saying> lines = linesOf(words);
+
+    ASSERT_EQ(lines.size(), 2U);
+    EXPECT_EQ(sayingAt(lines, 100), 0U);
+    EXPECT_EQ(sayingAt(lines, 5400), 1U);
+    EXPECT_EQ(sayingAt(lines, 3000), kNoSaying);
+}
+
 }
 }

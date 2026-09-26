@@ -15,7 +15,6 @@ target_sources(phvikapen_platform
         pdf/PdfRenderer.cpp
         pdf/PdfiumDocument.cpp
         render/PagePainter.cpp
-        speech/NoSpeech.cpp
         render/PdfExporter.cpp
         update/StartupHook.cpp
         update/VelopackUpdater.cpp
@@ -74,16 +73,18 @@ else()
     target_sources(phvikapen_platform PRIVATE text/NoHandwriting.cpp)
 endif()
 
-# The words in a picture are read by whatever the machine carries. macOS carries one; everywhere
-# else the application says it cannot read any.
+# The words in a picture and the words in a recording are read by whatever the machine carries.
+# macOS carries both; everywhere else the application says plainly that it cannot read them.
 if(APPLE)
-    target_sources(phvikapen_platform PRIVATE ocr/AppleReadPicture.mm)
-    set_source_files_properties(ocr/AppleReadPicture.mm PROPERTIES LANGUAGE OBJCXX)
+    target_sources(phvikapen_platform PRIVATE ocr/AppleReadPicture.mm speech/AppleSpeech.mm)
+    set_source_files_properties(ocr/AppleReadPicture.mm speech/AppleSpeech.mm
+        PROPERTIES LANGUAGE OBJCXX)
+    set_source_files_properties(speech/AppleSpeech.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     target_link_libraries(phvikapen_platform PRIVATE
         "-framework Vision" "-framework CoreGraphics" "-framework ImageIO"
-        "-framework Foundation")
+        "-framework Speech" "-framework Foundation")
 else()
-    target_sources(phvikapen_platform PRIVATE ocr/NoReadPicture.cpp)
+    target_sources(phvikapen_platform PRIVATE ocr/NoReadPicture.cpp speech/NoSpeech.cpp)
 endif()
 
 target_link_libraries(phvikapen_platform

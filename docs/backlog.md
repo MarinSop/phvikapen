@@ -233,10 +233,15 @@ written so that all of them can share it. They are listed in the order they are 
   about one notebook.
 - **A link is a rectangle.** It cannot follow the shape of a line of handwriting that wraps, so a
   link over two lines covers the space between them as well.
-- **Nothing reads a recording back as words yet.** The whole path is there — asking, the state
-  while it runs, what comes back, keeping it, tapping a line to move the playing, and saying
-  plainly when it fails — but no machine carries a reader behind it, so every reading fails with
-  that reason. A reader for Windows, the way handwriting has one, is what is missing.
+- **Only macOS reads a recording back as words.** Windows carries a reader of its own and it is one
+  file against the same interface; until it is there, a reading on Windows fails with that reason
+  rather than coming back empty.
+- **A transcript is as fine as a line, not as fine as a word.** The reader gives a moment for every
+  word, and words spoken together are gathered into lines at a pause or a full stop. Tapping moves
+  the playing to a line; a word inside one cannot be tapped on its own.
+- **A reading is not tested against a real recording by the test suite.** Reading needs the
+  person's permission and a bundle that asks for it, so the tests cover gathering words into lines
+  and the refusals, and the reading itself is tried by hand.
 - **A mark is as fine as a thing on the page, not as fine as a word.** A box of type typed over
   four minutes carries the moment it was begun. Marking inside the words is the thing that would
   not survive the words being corrected.

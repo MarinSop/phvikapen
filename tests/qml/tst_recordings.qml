@@ -266,6 +266,34 @@ TestCase {
         sound.notebook = null;
     }
 
+    function test_aMachineThatReadsSpeechNamesTheLanguagesItReads() {
+        if (!sound.canRead) {
+            compare(sound.languages.length, 0, "a machine that reads nothing names no language");
+            return;
+        }
+        verify(sound.languages.length > 0, "the reader named no language at all");
+        verify(sound.languages.indexOf("") < 0, "a language with no name was listed");
+    }
+
+    function test_aReadingThatCannotBeAskedForIsMarkedFailedRatherThanLeftWaiting() {
+        const notebook = openNotebook(newNotebookPath());
+        sound.notebook = notebook;
+        const id = notebook.beginRecording();
+        notebook.keepRecording(id, soundOfFourBytes(), 1000);
+        notebook.shownRecording = id;
+
+        sound.readWhatWasSaid(id, "");
+
+        // Either the reader takes it on, or it refuses with a reason. What it may never do is
+        // leave the recording waiting to be read with nobody reading it.
+        tryVerify(() => sound.readingNow === "", 8000, "the reading was never let go of");
+        tryVerify(() => notebook.shownReading === 2 || notebook.shownReading === 3, 8000);
+        if (notebook.shownReading === 3) {
+            verify(notebook.shownTrouble !== "", "nothing was said about why it could not be read");
+        }
+        sound.notebook = null;
+    }
+
     height: 400
     name: "Recordings"
     visible: true

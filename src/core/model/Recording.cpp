@@ -11,8 +11,25 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace phvikapen::core {
+namespace {
+
+[[nodiscard]] bool endsALine(const std::string& said) noexcept {
+    if (said.empty()) {
+        return false;
+    }
+    const char last = said.back();
+    return last == '.' || last == '?' || last == '!';
+}
+
+[[nodiscard]] bool startsALine(const Saying& before, std::int64_t from) noexcept {
+    return from - before.to > kPause || before.text.size() >= kLongestLine
+           || endsALine(before.text);
+}
+
+}
 
 Recording normalized(Recording recording) {
     recording.length = std::max<std::int64_t>(0, recording.length);
@@ -53,6 +70,28 @@ const Mark* markAt(std::span<const Mark> marks, const Uuid& recording, std::int6
 const Mark* markOfThing(std::span<const Mark> marks, const Uuid& thing) noexcept {
     const auto found = std::ranges::find(marks, thing, &Mark::thing);
     return found == marks.end() ? nullptr : &*found;
+}
+
+std::vector<Saying> linesOf(std::span<const Saying> words) {
+    std::vector<Saying> lines;
+    for (const Saying& word : words) {
+        if (word.text.empty()) {
+            continue;
+        }
+        if (lines.empty() || startsALine(lines.back(), word.from)) {
+            lines.push_back(Saying{
+                .from = word.from,
+                .to = std::max(word.from, word.to),
+                .text = word.text,
+            });
+            continue;
+        }
+        Saying& line = lines.back();
+        line.text += ' ';
+        line.text += word.text;
+        line.to = std::max(line.to, word.to);
+    }
+    return lines;
 }
 
 }
