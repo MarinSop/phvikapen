@@ -172,9 +172,14 @@ ApplicationWindow {
         onUpdateFound: updateDialog.offer()
     }
 
+    MathViewModel {
+        id: maths
+    }
+
     AppActions {
         id: appActions
 
+        maths: maths
         notebooks: notebooks
         settings: settings
         tools: toolState
@@ -319,7 +324,9 @@ ApplicationWindow {
             TextLayer {
                 anchors.fill: parent
                 canvas: canvas
+                maths: maths
                 notebook: root.notebook
+                settings: settings
                 tools: toolState
                 visible: root.notebook !== null
             }

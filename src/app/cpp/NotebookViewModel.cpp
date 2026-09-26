@@ -3266,6 +3266,27 @@ void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMa
     emit textAdded(textId);
 }
 
+void NotebookViewModel::writeDown(const QString& said, const QVariantMap& style, bool formula) {
+    const QString words = said.trimmed();
+    if (words.isEmpty() || m_canvas.isNull()) {
+        return;
+    }
+    const QRectF sheet = m_canvas->sheetRect(sheetOfPage(m_currentPage));
+    const core::Rect visible = m_canvas->visibleOnPage();
+    addTextAt(sheet.x() + kEquationInset,
+              sheet.y() + static_cast<qreal>(visible.top)
+                  + (static_cast<qreal>(visible.height()) * kHalfway),
+              style);
+    const QString textId = m_pickedText;
+    if (textId.isEmpty()) {
+        return;
+    }
+    if (formula) {
+        markAsFormula(textId);
+    }
+    finishText(textId, words, 0.0);
+}
+
 void NotebookViewModel::finishText(const QString& textId, const QString& text, qreal height) {
     const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
     if (!found) {

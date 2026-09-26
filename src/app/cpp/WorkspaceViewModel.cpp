@@ -37,6 +37,7 @@ constexpr std::array kKnownPanels{
     KnownPanel{.id = "pages", .openAtFirst = true},
     KnownPanel{.id = "layers", .openAtFirst = false},
     KnownPanel{.id = "pageSetup", .openAtFirst = false},
+    KnownPanel{.id = "maths", .openAtFirst = false},
 };
 
 [[nodiscard]] bool isKnownPanel(const QString& panelId) noexcept {

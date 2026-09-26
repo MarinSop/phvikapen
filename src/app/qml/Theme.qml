@@ -82,6 +82,10 @@ QtObject {
     readonly property color line: root.current.line
     readonly property color accent: root.current.accent
     readonly property color accentText: "#ffffff"
+    // What went wrong, and what went right: the same two colours wherever the window has to say so.
+    readonly property color warning: root.dark ? "#ff9f6b" : "#b24b12"
+    readonly property color warningSoft: Qt.rgba(root.warning.r, root.warning.g, root.warning.b, root.dark ? 0.22 : 0.14)
+    readonly property color good: root.dark ? "#5fd38d" : "#1c7a45"
     readonly property color accentSoft: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, root.dark ? 0.26 : 0.16)
     readonly property color hover: Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
 

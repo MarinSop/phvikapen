@@ -203,6 +203,10 @@
         <translation>Postavke stranice</translation>
     </message>
     <message>
+        <source>Maths</source>
+        <translation>Matematika</translation>
+    </message>
+    <message>
         <source>Reset Panel Layout</source>
         <translation>Vrati raspored ploča</translation>
     </message>
@@ -800,6 +804,69 @@
     </message>
 </context>
 <context>
+    <name>MathPanel</name>
+    <message>
+        <source>Everything brought to one side</source>
+        <translation>Sve prebačeno na jednu stranu</translation>
+    </message>
+    <message>
+        <source>Divided both sides by %1</source>
+        <translation>Obje strane podijeljene s %1</translation>
+    </message>
+    <message>
+        <source>Used the formula for a square</source>
+        <translation>Upotrijebljena formula za kvadratnu jednadžbu</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>Rješenje</translation>
+    </message>
+    <message>
+        <source>Equation</source>
+        <translation>Jednadžba</translation>
+    </message>
+    <message>
+        <source>2x + 5 = 15</source>
+        <translation>2x + 5 = 15</translation>
+    </message>
+    <message>
+        <source>True whatever %1 stands for</source>
+        <translation>Vrijedi za svaki %1</translation>
+    </message>
+    <message>
+        <source>Two letters, so there is a curve rather than one answer.</source>
+        <translation>Dva slova, pa postoji krivulja umjesto jednog rješenja.</translation>
+    </message>
+    <message>
+        <source>Type a sum or an equation.</source>
+        <translation>Upiši račun ili jednadžbu.</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Kopiraj</translation>
+    </message>
+    <message>
+        <source>Put on the page</source>
+        <translation>Stavi na stranicu</translation>
+    </message>
+    <message>
+        <source>Working</source>
+        <translation>Postupak</translation>
+    </message>
+    <message>
+        <source>Fit</source>
+        <translation>Prilagodi</translation>
+    </message>
+    <message>
+        <source>Closer</source>
+        <translation>Bliže</translation>
+    </message>
+    <message>
+        <source>Further</source>
+        <translation>Dalje</translation>
+    </message>
+</context>
+<context>
     <name>NewNotebookDialog</name>
     <message>
         <source>Blank</source>
@@ -1310,6 +1377,10 @@
     <message>
         <source>Layers</source>
         <translation>Slojevi</translation>
+    </message>
+    <message>
+        <source>Maths</source>
+        <translation>Matematika</translation>
     </message>
     <message>
         <source>Page Setup</source>
@@ -1841,6 +1912,10 @@
     <message>
         <source>Pages list</source>
         <translation>Popis stranica</translation>
+    </message>
+    <message>
+        <source>Maths panel</source>
+        <translation>Ploča s matematikom</translation>
     </message>
     <message>
         <source>Page setup panel</source>

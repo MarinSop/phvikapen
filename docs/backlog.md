@@ -217,6 +217,14 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **An equation with more than one letter is drawn but not solved.** A statement with two letters
+  is a curve, and the curve is drawn; solving one of them in terms of the other, and solving two
+  equations together, both need rearranging rather than gathering into powers.
+- **A curve is drawn in the window, not on the page.** The graph is looked at beside the notes
+  rather than standing among them. Putting one on a page means drawing it the way a sum is drawn
+  and keeping it as something the page holds.
+- **A power higher than a square is not solved.** Gathering into powers reaches a straight line and
+  a square exactly; a cube needs either rearranging or hunting for the answer by halves.
 - **Mathematics that is not written on one line.** A sum written across is read, worked out and
   answered. A fraction written as one number over another, a power written small and raised, a root
   drawn over what it covers and anything else arranged in two dimensions are not read, because the

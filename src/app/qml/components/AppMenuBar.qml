@@ -251,6 +251,11 @@ MenuBar {
                 objectName: "pageSetupPanelItem"
             }
 
+            MenuCommand {
+                action: root.actions.showMathsPanel
+                objectName: "mathsPanelItem"
+            }
+
             MenuSeparator {
             }
 

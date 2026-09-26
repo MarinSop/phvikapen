@@ -34,6 +34,7 @@ constexpr auto kThemeChosenSetting = "look/chosen";
 constexpr auto kReopenSetting = "session/reopen";
 constexpr auto kLanguageSetting = "look/language";
 constexpr auto kReduceMotionSetting = "look/reduceMotion";
+constexpr auto kQuickMathsSetting = "writing/quickMaths";
 constexpr int kExportScopes = 3;
 constexpr float kOwnPaperWidth = core::millimeters(210.0F);
 constexpr float kOwnPaperHeight = core::millimeters(297.0F);
@@ -61,6 +62,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
     m_reopenNotebooks = settings.value(kReopenSetting, m_reopenNotebooks).toBool();
     m_language = settings.value(kLanguageSetting, m_language).toString();
     m_reduceMotion = settings.value(kReduceMotionSetting, m_reduceMotion).toBool();
+    m_quickMaths = settings.value(kQuickMathsSetting, m_quickMaths).toBool();
     m_usePressure = settings.value(kPressureSetting, m_usePressure).toBool();
     m_holdForMenu = settings.value(kHoldMenuSetting, m_holdForMenu).toBool();
     m_zoomStep = std::clamp(settings.value(kZoomStepSetting, m_zoomStep).toDouble(),
@@ -380,6 +382,16 @@ void SettingsViewModel::setLanguage(const QString& tag) {
     QSettings settings;
     settings.setValue(kLanguageSetting, m_language);
     emit languageChanged();
+}
+
+void SettingsViewModel::setQuickMaths(bool quick) {
+    if (quick == m_quickMaths) {
+        return;
+    }
+    m_quickMaths = quick;
+    QSettings settings;
+    settings.setValue(kQuickMathsSetting, m_quickMaths);
+    emit quickMathsChanged();
 }
 
 void SettingsViewModel::setReduceMotion(bool reduce) {

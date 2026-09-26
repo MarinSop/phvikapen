@@ -14,6 +14,7 @@ Item {
     required property SettingsViewModel settings
     required property ToolViewModel tools
     required property WorkspaceViewModel workspace
+    required property MathViewModel maths
     readonly property InkCanvas canvas: root.notebooks.canvas
     readonly property NotebookViewModel notebook: root.notebooks.current
     readonly property bool hasNotebook: root.notebook !== null && root.notebook.loaded
@@ -193,7 +194,7 @@ Item {
         shortcut: root.pageKeys("solve")
         text: qsTr("Solve")
 
-        onTriggered: root.notebook.solveSelection(root.tools.textStyle)
+        onTriggered: root.solveWhatIsPicked()
     }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
@@ -381,6 +382,15 @@ Item {
         text: qsTr("Page Setup")
 
         onTriggered: root.workspace.togglePanel(Panels.pageSetup)
+    }
+    readonly property Action showMathsPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.maths)
+        icon.source: Icons.solve
+        shortcut: root.settings.keysFor("mathsPanel")
+        text: qsTr("Maths")
+
+        onTriggered: root.workspace.togglePanel(Panels.maths)
     }
     readonly property Action resetPanels: Action {
         text: qsTr("Reset Panel Layout")
@@ -685,6 +695,26 @@ Item {
             }
         }
         return -1;
+    }
+
+    function copyToClipboard(text) {
+        Clipboard.put(text);
+    }
+
+    // A sum with nothing unknown in it is answered where it stands. One with a letter in it is an
+    // equation to be solved, and that is what the maths panel is for.
+    function solveWhatIsPicked() {
+        const said = root.hasTextBox ? root.notebook.wordsOf(root.notebook.pickedText) : "";
+        if (said !== "" && /[A-Za-z]/.test(said.replace(/sqrt/g, ""))) {
+            root.askMaths(said);
+            return;
+        }
+        root.notebook.solveSelection(root.tools.textStyle);
+    }
+
+    function askMaths(said) {
+        root.maths.ask(said);
+        root.workspace.showPanel(Panels.maths);
     }
 
     function isPanelOpen(panelId) {

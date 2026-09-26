@@ -253,6 +253,12 @@ namespace {
             .keys = "Ctrl+2",
         },
         Command{
+            .id = "mathsPanel",
+            .name = QT_TRANSLATE_NOOP("Shortcuts", "Maths panel"),
+            .group = CommandGroup::View,
+            .keys = "Ctrl+Shift+M",
+        },
+        Command{
             .id = "pagePanel",
             .name = QT_TRANSLATE_NOOP("Shortcuts", "Page setup panel"),
             .group = CommandGroup::View,

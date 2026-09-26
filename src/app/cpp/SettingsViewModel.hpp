@@ -51,6 +51,7 @@ class SettingsViewModel : public QObject {
     Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged FINAL)
     Q_PROPERTY(
         bool reduceMotion READ reduceMotion WRITE setReduceMotion NOTIFY reduceMotionChanged FINAL)
+    Q_PROPERTY(bool quickMaths READ quickMaths WRITE setQuickMaths NOTIFY quickMathsChanged FINAL)
     Q_PROPERTY(
         qreal customWidth READ customWidth WRITE setCustomWidth NOTIFY pageStyleChanged FINAL)
     Q_PROPERTY(
@@ -163,6 +164,11 @@ public:
 
     void setReduceMotion(bool reduce);
 
+    // Whether a sum typed with an equals sign at the end is worked out as it is typed.
+    [[nodiscard]] bool quickMaths() const { return m_quickMaths; }
+
+    void setQuickMaths(bool quick);
+
     [[nodiscard]] qreal customWidth() const;
     void setCustomWidth(qreal millimeters);
     [[nodiscard]] qreal customHeight() const;
@@ -199,6 +205,7 @@ signals:
     void continuousPagesChanged();
     void panelsChanged();
     void reduceMotionChanged();
+    void quickMathsChanged();
 
     void languageChanged();
 
@@ -220,6 +227,7 @@ private:
     bool m_reopenNotebooks{false};
     QString m_language;
     bool m_reduceMotion{false};
+    bool m_quickMaths{true};
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};

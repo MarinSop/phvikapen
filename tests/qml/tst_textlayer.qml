@@ -148,7 +148,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -170,7 +172,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         tools.textBold = true;
@@ -193,7 +197,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -217,7 +223,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -242,7 +250,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const first = placeOnPage(notebook, 40, 60);
@@ -267,7 +277,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -287,7 +299,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -320,7 +334,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -344,7 +360,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -367,7 +385,9 @@ TestCase {
         tools.currentTool = ToolViewModel.Text;
         const layer = createTemporaryObject(layerComponent, testCase, {
             canvas: notebook.canvas,
+            maths: maths,
             notebook: notebook,
+            settings: settings,
             tools: tools
         });
         const at = placeOnPage(notebook, 40, 60);
@@ -470,6 +490,14 @@ TestCase {
 
         NotebookViewModel {
         }
+    }
+
+    MathViewModel {
+        id: maths
+    }
+
+    SettingsViewModel {
+        id: settings
     }
 
     Component {

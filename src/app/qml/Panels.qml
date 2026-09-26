@@ -7,6 +7,7 @@ QtObject {
     id: root
 
     readonly property string layers: "layers"
+    readonly property string maths: "maths"
     readonly property string pageSetup: "pageSetup"
     readonly property string pages: "pages"
     readonly property string sections: "sections"
@@ -15,6 +16,8 @@ QtObject {
         switch (panelId) {
         case root.layers:
             return qsTr("Layers");
+        case root.maths:
+            return qsTr("Maths");
         case root.pageSetup:
             return qsTr("Page Setup");
         case root.sections:
@@ -28,6 +31,8 @@ QtObject {
         switch (panelId) {
         case root.layers:
             return Icons.layer;
+        case root.maths:
+            return Icons.solve;
         case root.pageSetup:
             return Icons.settings;
         default:

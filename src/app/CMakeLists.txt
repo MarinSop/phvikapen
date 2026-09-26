@@ -82,6 +82,10 @@ qt_add_qml_module(phvikapen_ui
         cpp/HandwritingReader.cpp
         cpp/HandwritingReader.hpp
         cpp/InkCanvasForeign.hpp
+        cpp/Clipboard.cpp
+        cpp/Clipboard.hpp
+        cpp/MathViewModel.cpp
+        cpp/MathViewModel.hpp
         cpp/NotebookViewModel.cpp
         cpp/NotebookViewModel.hpp
         cpp/NotebooksViewModel.cpp
@@ -130,6 +134,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
         qml/components/FloatingPanel.qml
+        qml/components/MathGraph.qml
+        qml/components/MathPanel.qml
         qml/components/MenuCommand.qml
         qml/components/LayersPanel.qml
         qml/components/MenuLine.qml

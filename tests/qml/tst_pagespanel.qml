@@ -91,9 +91,14 @@ TestCase {
         directory: temporaryDirectory + "/panel"
     }
 
+    MathViewModel {
+        id: maths
+    }
+
     AppActions {
         id: actions
 
+        maths: maths
         notebooks: notebooks
         settings: settings
         tools: tools

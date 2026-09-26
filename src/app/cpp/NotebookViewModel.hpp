@@ -316,6 +316,10 @@ public:
     // Put an empty box where the reader tapped, in the coordinates of the column of sheets.
     Q_INVOKABLE void addTextAt(qreal columnX, qreal columnY, const QVariantMap& style);
 
+    // Words put on the page in the middle of what is being looked at, settled at once rather than
+    // left to be typed into: what the parts of the window that make words of their own hand over.
+    Q_INVOKABLE void writeDown(const QString& said, const QVariantMap& style, bool formula);
+
     // What a box says once the reader stops typing; a box left empty is dropped.
     Q_INVOKABLE void finishText(const QString& textId, const QString& text, qreal height);
 
