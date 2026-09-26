@@ -35,6 +35,12 @@ has to be rewritten, and a notebook made by an older version opens with all of i
 layer, looking exactly as it did. Because the promise is the page's own, no caller can hand out a
 page with nowhere to write.
 
+**A layer carries a small picture of what stands on it alone.** It is drawn the way the small
+picture of a page is drawn, over the same paper and framed by the same area, with every layer but
+that one hidden, so the pictures of a page's layers line up with one another and with the page. It
+is drawn only when a line asks for it, and it is forgotten whenever the picture of the page is, so
+it never shows what is no longer there.
+
 **A layer that is not shown is drawn nowhere**: not on the paper, not in what is printed, not in
 the small picture of the page. **A layer that is locked is drawn but cannot be touched**: nothing
 on it answers a tap, so it cannot be picked up, moved or taken away by accident.

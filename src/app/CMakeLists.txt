@@ -139,6 +139,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/OptionsBar.qml
         qml/components/TableBox.qml
         qml/components/TableLayer.qml
+        qml/components/PageOptionsMenu.qml
         qml/components/PagesPanel.qml
         qml/components/PageLook.qml
         qml/components/PageSetup.qml

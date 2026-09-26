@@ -728,10 +728,6 @@
         <translation>„%1” i sve na njemu nestaje. Ovo se može poništiti.</translation>
     </message>
     <message>
-        <source>Send what is picked up to the layer that is drawn in.</source>
-        <translation>Pošalji ono što je uhvaćeno na sloj u koji se crta.</translation>
-    </message>
-    <message>
         <source>Open a page to work on its layers.</source>
         <translation>Otvori stranicu da bi se radilo na njezinim slojevima.</translation>
     </message>
@@ -1124,6 +1120,89 @@
     </message>
 </context>
 <context>
+    <name>PageOptionsMenu</name>
+    <message>
+        <source>Blank</source>
+        <translation>Prazno</translation>
+    </message>
+    <message>
+        <source>Lined</source>
+        <translation>Crte</translation>
+    </message>
+    <message>
+        <source>Squares</source>
+        <translation>Kvadratići</translation>
+    </message>
+    <message>
+        <source>Dots</source>
+        <translation>Točkice</translation>
+    </message>
+    <message>
+        <source>Infinite</source>
+        <translation>Beskonačno</translation>
+    </message>
+    <message>
+        <source>A3</source>
+        <translation>A3</translation>
+    </message>
+    <message>
+        <source>A4</source>
+        <translation>A4</translation>
+    </message>
+    <message>
+        <source>A5</source>
+        <translation>A5</translation>
+    </message>
+    <message>
+        <source>Letter</source>
+        <translation>Letter</translation>
+    </message>
+    <message>
+        <source>Legal</source>
+        <translation>Legal</translation>
+    </message>
+    <message>
+        <source>Own size</source>
+        <translation>Vlastita veličina</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Preimenuj</translation>
+    </message>
+    <message>
+        <source>Duplicate</source>
+        <translation>Udvostruči</translation>
+    </message>
+    <message>
+        <source>Move up</source>
+        <translation>Pomakni gore</translation>
+    </message>
+    <message>
+        <source>Move down</source>
+        <translation>Pomakni dolje</translation>
+    </message>
+    <message>
+        <source>Paper of this section</source>
+        <translation>Papir ovog odjeljka</translation>
+    </message>
+    <message>
+        <source>Background</source>
+        <translation>Podloga</translation>
+    </message>
+    <message>
+        <source>Landscape</source>
+        <translation>Položeno</translation>
+    </message>
+    <message>
+        <source>More page setup…</source>
+        <translation>Više postavki stranice…</translation>
+    </message>
+    <message>
+        <source>Delete…</source>
+        <translation>Izbriši…</translation>
+    </message>
+</context>
+<context>
     <name>PageSetup</name>
     <message>
         <source>Blank</source>
@@ -1192,20 +1271,8 @@
 <context>
     <name>PagesPanel</name>
     <message>
-        <source>Rename</source>
-        <translation>Preimenuj</translation>
-    </message>
-    <message>
-        <source>Move up</source>
-        <translation>Pomakni gore</translation>
-    </message>
-    <message>
-        <source>Move down</source>
-        <translation>Pomakni dolje</translation>
-    </message>
-    <message>
-        <source>Delete…</source>
-        <translation>Izbriši…</translation>
+        <source>Page options</source>
+        <translation>Opcije stranice</translation>
     </message>
     <message>
         <source>Open a notebook to see its pages.</source>
@@ -1216,16 +1283,8 @@
         <translation>Nova stranica</translation>
     </message>
     <message>
-        <source>Page setup</source>
-        <translation>Postavke stranice</translation>
-    </message>
-    <message>
         <source>Delete page</source>
         <translation>Izbriši stranicu</translation>
-    </message>
-    <message>
-        <source>Duplicate</source>
-        <translation>Udvostruči</translation>
     </message>
     <message>
         <source>Move “%1” to the deleted pages?</source>

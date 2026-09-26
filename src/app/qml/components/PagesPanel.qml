@@ -47,23 +47,6 @@ Pane {
         anchors.fill: parent
         spacing: 4
 
-        RowLayout {
-            Layout.fillWidth: true
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            QuickButton {
-                Layout.rightMargin: 4
-                action: root.actions.addPage
-                display: AbstractButton.IconOnly
-                icon.source: Icons.plus
-                label: qsTr("New page")
-                objectName: "addPageButton"
-            }
-        }
-
         ListView {
             id: pageList
 
@@ -163,8 +146,10 @@ Pane {
                     }
 
                     QuickButton {
+                        id: options
+
                         icon.source: Icons.settings
-                        label: qsTr("Page setup")
+                        label: qsTr("Page options")
                         objectName: "pageOptionsButton"
                         opacity: row.hovered || row.highlighted ? 1 : 0
 
@@ -177,7 +162,7 @@ Pane {
 
                         onClicked: {
                             root.notebook.currentPage = row.index;
-                            root.actions.workspace.showPanel(Panels.pageSetup);
+                            rowMenu.openAt(rowMenu.parent.mapFromItem(options, 0, options.height));
                         }
                     }
 
@@ -200,7 +185,6 @@ Pane {
                 }
 
                 Component.onCompleted: row.askForThumbnail()
-                onClicked: root.notebook.currentPage = row.index
                 onPanelReadyChanged: row.askForThumbnail()
                 onPressAndHold: rowMenu.popup()
                 onThumbnailChanged: row.askForThumbnail()
@@ -217,53 +201,55 @@ Pane {
                 }
 
                 TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    gesturePolicy: TapHandler.DragThreshold
+
+                    onPressedChanged: {
+                        if (pressed) {
+                            root.notebook.currentPage = row.index;
+                        }
+                    }
+                }
+
+                TapHandler {
                     acceptedButtons: Qt.RightButton
 
                     onTapped: rowMenu.popup()
                 }
 
-                Menu {
+                PageOptionsMenu {
                     id: rowMenu
 
-                    MenuItem {
-                        text: qsTr("Rename")
+                    actions: root.actions
+                    index: row.index
+                    pageTitle: row.title
 
-                        onTriggered: root.renaming = row.index
-                    }
-
-                    MenuItem {
-                        objectName: "duplicatePageItem"
-                        text: qsTr("Duplicate")
-
-                        onTriggered: root.notebook.duplicatePage(row.index)
-                    }
-
-                    MenuItem {
-                        enabled: row.index > 0
-                        text: qsTr("Move up")
-
-                        onTriggered: root.notebook.movePage(row.index, row.index - 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && row.index + 1 < root.notebook.pageCount
-                        text: qsTr("Move down")
-
-                        onTriggered: root.notebook.movePage(row.index, row.index + 1)
-                    }
-
-                    MenuItem {
-                        enabled: root.ready && root.notebook.pageCount > 1
-                        text: qsTr("Delete…")
-
-                        onTriggered: root.askToDelete(row.index, row.title)
-                    }
+                    onDeleteWanted: root.askToDelete(row.index, row.title)
+                    onRenameWanted: root.renaming = row.index
                 }
             }
 
             DropLine {
                 list: pageList
                 place: root.landing
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            QuickButton {
+                Layout.rightMargin: 4
+                action: root.actions.addPage
+                display: AbstractButton.IconOnly
+                icon.source: Icons.plus
+                label: qsTr("New page")
+                objectName: "addPageButton"
             }
         }
     }

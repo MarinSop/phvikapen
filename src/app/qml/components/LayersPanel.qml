@@ -12,7 +12,7 @@ Pane {
     readonly property string active: root.notebook === null ? "" : root.notebook.activeLayer
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
-    readonly property real lineHeight: Math.round(40 * Theme.scale)
+    readonly property real lineHeight: Math.round(44 * Theme.scale)
     property int landing: -1
 
     function placeOfDrop(index) {
@@ -26,39 +26,6 @@ Pane {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: Theme.gap
-            Layout.rightMargin: Theme.gap
-            Layout.topMargin: Theme.gap
-            spacing: 2
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            QuickButton {
-                action: root.actions.addLayer
-                display: AbstractButton.IconOnly
-                label: root.actions.addLayer.text
-                objectName: "addLayerButton"
-            }
-
-            QuickButton {
-                action: root.actions.duplicateLayer
-                display: AbstractButton.IconOnly
-                label: root.actions.duplicateLayer.text
-                objectName: "duplicateLayerButton"
-            }
-
-            QuickButton {
-                action: root.actions.removeLayer
-                display: AbstractButton.IconOnly
-                label: root.actions.removeLayer.text
-                objectName: "removeLayerButton"
-            }
-        }
 
         ListView {
             id: list
@@ -98,9 +65,17 @@ Pane {
                 required property string layerId
                 required property bool locked
                 required property string name
+                required property string preview
                 required property bool shown
                 readonly property bool chosen: line.layerId === root.active
+                readonly property bool panelReady: root.ready
                 property bool renaming: false
+
+                function askForPreview() {
+                    if (root.ready && line.preview === "") {
+                        root.notebook.wantLayerPreview(line.layerId);
+                    }
+                }
 
                 Accessible.name: line.name
                 height: root.lineHeight
@@ -130,24 +105,25 @@ Pane {
                     }
                 }
                 contentItem: RowLayout {
-                    spacing: 2
+                    spacing: Theme.gap
 
-                    ShapeButton {
-                        active: !line.shown
-                        icon.source: line.shown ? Icons.shown : Icons.hidden
-                        label: line.shown ? qsTr("Hide this layer") : qsTr("Show this layer")
-                        objectName: "layerShown" + line.index
+                    Rectangle {
+                        Layout.preferredHeight: Math.round(32 * Theme.scale)
+                        Layout.preferredWidth: Math.round(26 * Theme.scale)
+                        border.color: palette.mid
+                        border.width: 1
+                        color: "white"
+                        opacity: line.shown ? 1 : 0.45
+                        radius: 2
 
-                        onClicked: root.notebook.showLayer(line.layerId, !line.shown)
-                    }
-
-                    ShapeButton {
-                        active: line.locked
-                        icon.source: line.locked ? Icons.locked : Icons.unlocked
-                        label: line.locked ? qsTr("Unlock this layer") : qsTr("Lock this layer")
-                        objectName: "layerLocked" + line.index
-
-                        onClicked: root.notebook.lockLayer(line.layerId, !line.locked)
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            cache: false
+                            fillMode: Image.PreserveAspectFit
+                            objectName: "layerPreview" + line.index
+                            source: line.preview
+                        }
                     }
 
                     ColumnLayout {
@@ -197,11 +173,31 @@ Pane {
                             visible: !line.renaming
                         }
                     }
+
+                    ShapeButton {
+                        active: !line.shown
+                        icon.source: line.shown ? Icons.shown : Icons.hidden
+                        label: line.shown ? qsTr("Hide this layer") : qsTr("Show this layer")
+                        objectName: "layerShown" + line.index
+
+                        onClicked: root.notebook.showLayer(line.layerId, !line.shown)
+                    }
+
+                    ShapeButton {
+                        active: line.locked
+                        icon.source: line.locked ? Icons.locked : Icons.unlocked
+                        label: line.locked ? qsTr("Unlock this layer") : qsTr("Lock this layer")
+                        objectName: "layerLocked" + line.index
+
+                        onClicked: root.notebook.lockLayer(line.layerId, !line.locked)
+                    }
                 }
 
-                onClicked: root.notebook.activeLayer = line.layerId
+                Component.onCompleted: line.askForPreview()
                 onDoubleClicked: line.renaming = true
+                onPanelReadyChanged: line.askForPreview()
                 onPressAndHold: lineMenu.popup()
+                onPreviewChanged: line.askForPreview()
 
                 ReorderHandler {
                     id: carry
@@ -212,6 +208,17 @@ Pane {
 
                     onLandingChanged: root.landing = carry.landing
                     onMoved: (from, to) => root.notebook.moveLayer(line.layerId, root.placeOfDrop(to))
+                }
+
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    gesturePolicy: TapHandler.DragThreshold
+
+                    onPressedChanged: {
+                        if (pressed) {
+                            root.notebook.activeLayer = line.layerId;
+                        }
+                    }
                 }
 
                 TapHandler {
@@ -255,6 +262,7 @@ Pane {
 
                     MenuItem {
                         action: root.actions.moveToActiveLayer
+                        objectName: "moveToLayerItem"
                     }
 
                     MenuItem {
@@ -282,17 +290,38 @@ Pane {
             }
         }
 
-        Button {
+        RowLayout {
             Layout.bottomMargin: Theme.gap
             Layout.fillWidth: true
             Layout.leftMargin: Theme.gap
             Layout.rightMargin: Theme.gap
             Layout.topMargin: Theme.gap
-            ToolTip.delay: 600
-            ToolTip.text: qsTr("Send what is picked up to the layer that is drawn in.")
-            ToolTip.visible: hovered
-            action: root.actions.moveToActiveLayer
-            objectName: "moveToLayerButton"
+            spacing: 2
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            QuickButton {
+                action: root.actions.addLayer
+                display: AbstractButton.IconOnly
+                label: root.actions.addLayer.text
+                objectName: "addLayerButton"
+            }
+
+            QuickButton {
+                action: root.actions.duplicateLayer
+                display: AbstractButton.IconOnly
+                label: root.actions.duplicateLayer.text
+                objectName: "duplicateLayerButton"
+            }
+
+            QuickButton {
+                action: root.actions.removeLayer
+                display: AbstractButton.IconOnly
+                label: root.actions.removeLayer.text
+                objectName: "removeLayerButton"
+            }
         }
     }
 

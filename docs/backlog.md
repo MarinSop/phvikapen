@@ -132,9 +132,6 @@ into a real problem earlier.
 - **A tab is carried by the whole group it is in.** Dragging a header carries the panel in front;
   a tab behind it is brought forward first and then carried. Picking up a tab directly, and
   dragging one tab past another inside the same group, are not there yet.
-- **The layers carry no small picture of what stands on them.** A line says its name, whether it is
-  shown, whether it is locked and how much stands on it. A thumbnail means drawing the layer alone,
-  which the painter can do for a page but not yet for one layer of it.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
 - **The first section of a new notebook is named in English.** Pages and layers are named in the
@@ -218,9 +215,8 @@ written so that all of them can share it. They are listed in the order they are 
 - **Ink on a locked layer can still be picked with the loop.** What answers a tap is decided by the
   page for pictures, tables and boxes of type; ink is picked by the canvas, which is handed strokes
   without being told which layer they stand on. Hiding a layer does hide its ink.
-- **More than one layer chosen at a time**, and a small picture of what stands on each beside its
-  name. The panel names a layer, says how much is on it and which one is in hand; a picture of it
-  would be drawn the way the small picture of a page already is.
+- **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
+  how much is on it and which one is in hand, but only one line can be marked out at a time.
 - **Mathematics that is not written on one line.** A sum written across is read, worked out and
   answered. A fraction written as one number over another, a power written small and raised, a root
   drawn over what it covers and anything else arranged in two dimensions are not read, because the

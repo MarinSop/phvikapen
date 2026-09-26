@@ -237,6 +237,8 @@ public:
     Q_INVOKABLE void duplicatePage(int index);
     Q_INVOKABLE void wantThumbnail(int index);
 
+    Q_INVOKABLE void wantLayerPreview(const QString& layerId);
+
     // How many pixels across the document of a page was drawn with; nothing, where none is shown.
     Q_INVOKABLE [[nodiscard]] int mediaPixelsOn(int index) const;
     Q_INVOKABLE void renamePage(int index, const QString& title);
@@ -588,7 +590,9 @@ private:
     void thumbnailPage(const std::shared_ptr<ThumbnailWork>& work,
                        const platform::pdf::PageImage& image);
     void paintThumbnail(const ThumbnailWork& work);
+    void paintLayerPreview(const ThumbnailWork& work, const core::Uuid& layerId);
     void forgetThumbnail(const core::Uuid& pageId);
+    void forgetLayerPreviews();
     void goToPage(const core::Uuid& pageId);
     void goToPlace(std::size_t section, std::size_t page);
     void setLoaded(bool loaded);
@@ -765,6 +769,7 @@ private:
     bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;
     std::map<core::Uuid, int> m_thumbnails;
+    std::map<core::Uuid, int> m_layerPreviews;
     int m_thumbnailRevision{0};
     std::vector<core::Stroke> m_clipboard;
     std::vector<core::TrashedItem> m_trashed;

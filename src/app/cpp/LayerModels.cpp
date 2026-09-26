@@ -37,6 +37,8 @@ QVariant LayerListModel::data(const QModelIndex& index, int role) const {
         return item.locked;
     case kCountRole:
         return item.count;
+    case kPreviewRole:
+        return item.preview;
     default:
         return {};
     }
@@ -45,7 +47,7 @@ QVariant LayerListModel::data(const QModelIndex& index, int role) const {
 QHash<int, QByteArray> LayerListModel::roleNames() const {
     return {
         {kLayerIdRole, "layerId"}, {kNameRole, "name"},   {kShownRole, "shown"},
-        {kLockedRole, "locked"},   {kCountRole, "count"},
+        {kLockedRole, "locked"},   {kCountRole, "count"}, {kPreviewRole, "preview"},
     };
 }
 
@@ -62,13 +64,26 @@ void LayerListModel::setItems(std::vector<LayerItem> items) {
     }
 }
 
-LayerItem itemOfLayer(const core::Layer& layer, int count) {
+void LayerListModel::setPreview(const QString& layerId, const QString& preview) {
+    for (std::size_t step = 0; step < m_items.size(); ++step) {
+        if (m_items[step].layerId != layerId || m_items[step].preview == preview) {
+            continue;
+        }
+        m_items[step].preview = preview;
+        const QModelIndex line = index(static_cast<int>(step));
+        emit dataChanged(line, line, {kPreviewRole});
+        return;
+    }
+}
+
+LayerItem itemOfLayer(const core::Layer& layer, int count, QString preview) {
     return LayerItem{
         .layerId = QString::fromStdString(layer.id.toString()),
         .name = QString::fromStdString(layer.name),
         .shown = layer.shown,
         .locked = layer.locked,
         .count = count,
+        .preview = std::move(preview),
     };
 }
 

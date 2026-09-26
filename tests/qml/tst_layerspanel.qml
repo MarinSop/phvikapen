@@ -64,7 +64,7 @@ TestCase {
     function test_d_theLineDrawnInIsMarkedOut() {
         const row = testCase.rowAt(1);
 
-        mouseClick(row, row.width - 20, row.height / 2);
+        mouseClick(row, row.width / 2, row.height / 2);
 
         tryVerify(() => testCase.nameOfRow(1) === "Middle");
         const model = notebooks.current.layers;
@@ -86,10 +86,13 @@ TestCase {
     }
 
     function test_f_sendingToALayerIsOffUntilSomethingIsPickedUp() {
-        const send = findChild(panel, "moveToLayerButton");
+        verify(!actions.moveToActiveLayer.enabled, "nothing is in hand, so there is nothing to send");
+    }
 
-        verify(send !== null);
-        verify(!send.enabled, "nothing is in hand, so there is nothing to send");
+    function test_h_theLineShowsWhatStandsOnIt() {
+        tryVerify(() => testCase.rowAt(0) !== null && findChild(testCase.rowAt(0), "layerPreview0") !== null);
+        const drawn = findChild(testCase.rowAt(0), "layerPreview0");
+        tryVerify(() => drawn.source.toString() !== "", 4000, "the line never asked for a picture of its layer");
     }
 
     function test_g_theLineSaysHowMuchStandsOnIt() {

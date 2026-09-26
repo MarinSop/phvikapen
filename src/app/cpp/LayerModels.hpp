@@ -22,6 +22,7 @@ struct LayerItem {
     bool shown{true};
     bool locked{false};
     int count{};
+    QString preview;
 
     friend bool operator==(const LayerItem&, const LayerItem&) = default;
 };
@@ -38,6 +39,7 @@ public:
     static constexpr int kShownRole = Qt::UserRole + 3;
     static constexpr int kLockedRole = Qt::UserRole + 4;
     static constexpr int kCountRole = Qt::UserRole + 5;
+    static constexpr int kPreviewRole = Qt::UserRole + 6;
 
     explicit LayerListModel(QObject* parent = nullptr);
 
@@ -47,6 +49,8 @@ public:
 
     void setItems(std::vector<LayerItem> items);
 
+    void setPreview(const QString& layerId, const QString& preview);
+
 signals:
     void countChanged();
 
@@ -54,6 +58,6 @@ private:
     std::vector<LayerItem> m_items;
 };
 
-[[nodiscard]] LayerItem itemOfLayer(const core::Layer& layer, int count);
+[[nodiscard]] LayerItem itemOfLayer(const core::Layer& layer, int count, QString preview);
 
 }

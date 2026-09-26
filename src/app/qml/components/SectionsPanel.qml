@@ -21,6 +21,12 @@ Pane {
         }
     }
 
+    function askToDelete(index, title) {
+        deleteDialog.index = index;
+        deleteDialog.itemTitle = title;
+        deleteDialog.open();
+    }
+
     background: null
     objectName: "sectionsPanel"
     padding: Theme.gap
@@ -40,23 +46,6 @@ Pane {
     ColumnLayout {
         anchors.fill: parent
         spacing: 4
-
-        RowLayout {
-            Layout.fillWidth: true
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            QuickButton {
-                Layout.rightMargin: 4
-                action: root.actions.addSection
-                display: AbstractButton.IconOnly
-                icon.source: Icons.plus
-                label: qsTr("New section")
-                objectName: "addSectionButton"
-            }
-        }
 
         ListView {
             id: sectionList
@@ -138,18 +127,17 @@ Pane {
                         objectName: "deleteSectionButton"
                         opacity: row.hovered || row.highlighted ? 1 : 0
 
-                        onClicked: root.askToDelete(row.index, row.title)
-
                         Behavior on opacity {
                             NumberAnimation {
                                 duration: Theme.quick
                                 easing.type: Theme.ease
                             }
                         }
+
+                        onClicked: root.askToDelete(row.index, row.title)
                     }
                 }
 
-                onClicked: root.notebook.currentSection = row.index
                 onPressAndHold: rowMenu.popup()
 
                 ReorderHandler {
@@ -161,6 +149,17 @@ Pane {
 
                     onLandingChanged: root.landing = carry.landing
                     onMoved: (from, to) => root.notebook.moveSection(from, to)
+                }
+
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    gesturePolicy: TapHandler.DragThreshold
+
+                    onPressedChanged: {
+                        if (pressed) {
+                            root.notebook.currentSection = row.index;
+                        }
+                    }
                 }
 
                 TapHandler {
@@ -206,6 +205,23 @@ Pane {
                 place: root.landing
             }
         }
+
+        RowLayout {
+            Layout.fillWidth: true
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            QuickButton {
+                Layout.rightMargin: 4
+                action: root.actions.addSection
+                display: AbstractButton.IconOnly
+                icon.source: Icons.plus
+                label: qsTr("New section")
+                objectName: "addSectionButton"
+            }
+        }
     }
 
     EmptyPanelNote {
@@ -213,12 +229,6 @@ Pane {
         text: qsTr("Open a notebook to see its sections.")
         visible: !root.ready
         width: parent.width - (Theme.gap * 4)
-    }
-
-    function askToDelete(index, title) {
-        deleteDialog.index = index;
-        deleteDialog.itemTitle = title;
-        deleteDialog.open();
     }
 
     ConfirmDialog {

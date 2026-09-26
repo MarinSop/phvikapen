@@ -44,6 +44,33 @@ TestCase {
         compare(notebooks.current.errorMessage, "");
     }
 
+    function test_c_aPageThatSlipsUnderTheFingerIsStillChosen() {
+        const wanted = notebooks.current.currentPage === 1 ? 2 : 1;
+        tryVerify(() => testCase.rowOfPage(wanted) !== null);
+        const row = testCase.rowOfPage(wanted);
+        const along = row.height / 2;
+
+        mousePress(row, row.width / 2, along);
+        mouseMove(row, row.width / 2, along + 9);
+        mouseRelease(row, row.width / 2, along + 9);
+
+        tryCompare(notebooks.current, "currentPage", wanted, 2000, "the page was not chosen because the finger moved");
+    }
+
+    function test_d_theCogOpensTheOptionsOfThatPage() {
+        const row = testCase.rowOfPage(1);
+        const cog = findChild(row, "pageOptionsButton");
+        verify(cog !== null);
+
+        mouseClick(cog, cog.width / 2, cog.height / 2);
+
+        const options = findChild(row, "pageOptionsMenu");
+        verify(options !== null, "the cog has no menu of its own");
+        tryVerify(() => options.opened, 2000, "the cog did not open the options of the page");
+        compare(notebooks.current.currentPage, 1);
+        options.close();
+    }
+
     height: 600
     name: "PagesPanel"
     visible: true

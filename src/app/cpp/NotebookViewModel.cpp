@@ -67,6 +67,21 @@
 namespace phvikapen::app {
 namespace {
 
+// A name the window hands back, matched against what the page carries: only the page knows which
+// thing wears which name, because a name goes out as text and comes back as text.
+[[nodiscard]] bool isNamed(const core::Uuid& id, const QString& name) {
+    return QString::fromStdString(id.toString()) == name;
+}
+
+[[nodiscard]] core::Uuid layerNamed(std::span<const core::Layer> layers, const QString& name) {
+    for (const core::Layer& layer : layers) {
+        if (isNamed(layer.id, name)) {
+            return layer.id;
+        }
+    }
+    return {};
+}
+
 constexpr auto kDefaultNotebookName = "default.phvika";
 // More than a reader would ever look through at once.
 constexpr std::size_t kMostFound = 300;
@@ -384,6 +399,7 @@ void NotebookViewModel::goToPage(const core::Uuid& pageId) {
         m_views.insert_or_assign(m_currentPage, m_canvas->viewport());
     }
     m_erasing.clear();
+    forgetLayerPreviews();
     m_currentPage = pageId;
     publishOutline();
     emit currentPageChanged();
@@ -1592,7 +1608,97 @@ void NotebookViewModel::paintThumbnail(const ThumbnailWork& work) {
     publishOutline();
 }
 
+void NotebookViewModel::wantLayerPreview(const QString& layerId) {
+    const core::Page* const page = currentPageData();
+    const core::PageInfo* const info = currentPageInfo();
+    if (page == nullptr || info == nullptr) {
+        return;
+    }
+    const core::Uuid wanted = layerNamed(page->layers(), layerId);
+    if (wanted.isNil() || m_layerPreviews.contains(wanted)) {
+        return;
+    }
+    ThumbnailWork work;
+    work.page = *info;
+    const std::span<const core::PlacedStroke> strokes = page->strokes();
+    work.strokes.assign(strokes.begin(), strokes.end());
+    const std::span<const core::PlacedText> texts = page->texts();
+    work.texts.assign(texts.begin(), texts.end());
+    const std::span<const core::PlacedTable> tables = page->tables();
+    work.tables.assign(tables.begin(), tables.end());
+    const std::span<const core::Layer> standing = page->layers();
+    work.layers.assign(standing.begin(), standing.end());
+    takePictures(work, page->pictures());
+    paintLayerPreview(work, wanted);
+}
+
+void NotebookViewModel::paintLayerPreview(const ThumbnailWork& work, const core::Uuid& layerId) {
+    std::vector<platform::render::DrawnPicture> pictures;
+    pictures.reserve(work.pictures.size());
+    for (const ThumbnailPicture& drawn : work.pictures) {
+        pictures.push_back(platform::render::DrawnPicture{
+            .placed = drawn.placed,
+            .picture = &drawn.picture,
+            .layer = drawn.layer,
+        });
+    }
+    std::vector<core::Layer> everything = work.layers;
+    for (core::Layer& layer : everything) {
+        layer.shown = true;
+    }
+    std::vector<core::Layer> alone = everything;
+    for (core::Layer& layer : alone) {
+        layer.shown = layer.id == layerId;
+    }
+    platform::render::PageContents contents{
+        .style = work.page.style,
+        .strokes = work.strokes,
+        .texts = work.texts,
+        .pictures = pictures,
+        .tables = work.tables,
+        .layers = everything,
+        .media = nullptr,
+    };
+    const core::Rect area = platform::render::pageArea(contents);
+    const bool anything = area.width() > 0.0F && area.height() > 0.0F;
+    const float ratio = anything ? area.height() / area.width() : kEmptyPageRatio;
+    const int height =
+        std::max(1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * ratio));
+    QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
+    const platform::render::Rgba paper = platform::render::paperColorOf(work.page.style);
+    picture.fill(QColor::fromRgbF(paper[0], paper[1], paper[2], paper[3]));
+    if (anything) {
+        contents.layers = alone;
+        QPainter painter{&picture};
+        painter.scale(static_cast<double>(thumbnails::kWidth) / static_cast<double>(area.width()),
+                      static_cast<double>(height) / static_cast<double>(area.height()));
+        platform::render::paintPage(painter, contents, area);
+    }
+
+    const int revision = ++m_thumbnailRevision;
+    m_layerPreviews[layerId] = revision;
+    const QString name = QString::fromStdString(layerId.toString());
+    thumbnails::put(QStringLiteral("layer-%1-%2").arg(name).arg(revision), picture);
+    m_layersModel.setPreview(name,
+                             QStringLiteral("image://pages/layer-%1-%2").arg(name).arg(revision));
+}
+
+void NotebookViewModel::forgetLayerPreviews() {
+    if (m_layerPreviews.empty()) {
+        return;
+    }
+    for (const auto& [layerId, revision] : m_layerPreviews) {
+        const QString name = QString::fromStdString(layerId.toString());
+        thumbnails::forget(QStringLiteral("layer-%1").arg(name));
+        m_layersModel.setPreview(name, QString{});
+    }
+    m_layerPreviews.clear();
+}
+
 void NotebookViewModel::forgetThumbnail(const core::Uuid& pageId) {
+    if (pageId == m_currentPage) {
+        forgetLayerPreviews();
+    }
     if (m_thumbnails.erase(pageId) == 0) {
         return;
     }
@@ -4052,21 +4158,6 @@ QVariantMap NotebookViewModel::cellSpan(const QString& tableId, int row, int col
 
 namespace {
 
-// A name the window hands back, matched against what the page carries: only the page knows which
-// thing wears which name, because a name goes out as text and comes back as text.
-[[nodiscard]] bool isNamed(const core::Uuid& id, const QString& name) {
-    return QString::fromStdString(id.toString()) == name;
-}
-
-[[nodiscard]] core::Uuid layerNamed(std::span<const core::Layer> layers, const QString& name) {
-    for (const core::Layer& layer : layers) {
-        if (isNamed(layer.id, name)) {
-            return layer.id;
-        }
-    }
-    return {};
-}
-
 [[nodiscard]] core::Uuid thingNamed(const core::Page& page, const QString& name) {
     for (const core::PlacedStroke& placed : page.strokes()) {
         if (isNamed(placed.stroke.id(), name)) {
@@ -4541,7 +4632,13 @@ void NotebookViewModel::publishLayers() {
         // Top first, the way a panel of layers is read.
         for (std::size_t step = standing.size(); step > 0; --step) {
             const core::Layer& layer = standing[step - 1];
-            items.push_back(itemOfLayer(layer, page->countOnLayer(layer.id)));
+            const auto revision = m_layerPreviews.find(layer.id);
+            const QString drawn = revision == m_layerPreviews.end()
+                                      ? QString{}
+                                      : QStringLiteral("image://pages/layer-%1-%2")
+                                            .arg(QString::fromStdString(layer.id.toString()))
+                                            .arg(revision->second);
+            items.push_back(itemOfLayer(layer, page->countOnLayer(layer.id), drawn));
         }
         if (layerNamed(standing, m_activeLayer).isNil() && !standing.empty()) {
             m_activeLayer = QString::fromStdString(standing.back().id.toString());
