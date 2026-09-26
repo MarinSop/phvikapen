@@ -138,10 +138,52 @@ TestCase {
         compare(keeper.gone, 0);
     }
 
+    function test_k_whetherACountdownIsHeardIsRememberedAndCanBeTurnedOff() {
+        const told = createTemporaryObject(spyComponent, testCase, {
+            target: keeper,
+            signalName: "soundsChanged"
+        });
+        const was = keeper.sounds;
+
+        keeper.sounds = !was;
+
+        compare(told.count, 1, "nothing said the setting had changed");
+        compare(keeper.sounds, !was);
+
+        const another = createTemporaryObject(keeperComponent, testCase);
+        compare(another.sounds, !was, "the setting was not remembered");
+
+        keeper.sounds = was;
+    }
+
+    function test_l_aCountdownWithNoNoiseStillRings() {
+        keeper.sounds = false;
+        const rang = createTemporaryObject(spyComponent, testCase, {
+            target: keeper,
+            signalName: "rangOut"
+        });
+        keeper.setWantedParts(0, 0, 1);
+
+        keeper.start();
+        rang.wait(3000);
+
+        verify(keeper.rang, "turning the noise off stopped it saying the time was up");
+        keeper.seen();
+        keeper.reset();
+        keeper.sounds = true;
+    }
+
     name: "TimeKeeper"
 
     TimeKeeperViewModel {
         id: keeper
+    }
+
+    Component {
+        id: keeperComponent
+
+        TimeKeeperViewModel {
+        }
     }
 
     Component {

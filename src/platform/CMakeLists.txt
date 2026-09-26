@@ -8,6 +8,7 @@ configure_file(update/Feed.hpp.in "${generated_dir}/platform/update/Feed.hpp" @O
 
 target_sources(phvikapen_platform
     PRIVATE
+        audio/Chime.cpp
         audio/QtSound.cpp
         ink/qt/QtInkItem.cpp
         ink/qt/QtInkRenderer.cpp
@@ -24,6 +25,7 @@ target_sources(phvikapen_platform
             "${PROJECT_SOURCE_DIR}/src"
             "${generated_dir}"
         FILES
+            audio/Chime.hpp
             audio/ISound.hpp
             audio/QtSound.hpp
             ink/IInkBackend.hpp

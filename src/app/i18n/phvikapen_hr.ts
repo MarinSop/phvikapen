@@ -2389,6 +2389,14 @@
         <source>%1m</source>
         <translation>%1 min</translation>
     </message>
+    <message>
+        <source>Make a noise when it reaches nothing</source>
+        <translation>Oglasi se kad dođe do nule</translation>
+    </message>
+    <message>
+        <source>This machine cannot make a noise</source>
+        <translation>Ovo računalo ne može proizvesti zvuk</translation>
+    </message>
 </context>
 <context>
     <name>TranscriptView</name>

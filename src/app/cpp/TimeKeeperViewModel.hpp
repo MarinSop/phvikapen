@@ -1,5 +1,7 @@
 #pragma once
 
+#include "platform/audio/Chime.hpp"
+
 #include <QElapsedTimer>
 #include <QObject>
 #include <QString>
@@ -23,6 +25,8 @@ class TimeKeeperViewModel : public QObject {
     Q_PROPERTY(qint64 wanted READ wanted WRITE setWanted NOTIFY wantedChanged FINAL)
     Q_PROPERTY(qreal howFar READ howFar NOTIFY tick FINAL)
     Q_PROPERTY(QString said READ said NOTIFY tick FINAL)
+    Q_PROPERTY(bool sounds READ sounds WRITE setSounds NOTIFY soundsChanged FINAL)
+    Q_PROPERTY(bool canSound READ canSound CONSTANT FINAL)
 
 public:
     enum class Way : quint8 {
@@ -84,9 +88,18 @@ public:
     // What the reader has seen; the ringing is put away until the next time.
     Q_INVOKABLE void seen();
 
+    // Whether a countdown that reaches nothing is heard as well as seen.
+    [[nodiscard]] bool sounds() const { return m_sounds; }
+
+    void setSounds(bool sounds);
+
+    // Whether this machine can make a noise at all.
+    [[nodiscard]] bool canSound() const { return m_chime.canRing(); }
+
 signals:
     void wayChanged();
     void wantedChanged();
+    void soundsChanged();
     void tick();
     // A countdown has reached nothing.
     void rangOut();
@@ -102,6 +115,8 @@ private:
     // How much had gone by when the count was last paused.
     qint64 m_held{0};
     bool m_rang{false};
+    bool m_sounds{true};
+    platform::audio::Chime m_chime;
     QElapsedTimer m_since;
     QTimer m_beat;
 };

@@ -187,6 +187,17 @@ Pane {
             }
         }
 
+        CheckBox {
+            Layout.fillWidth: true
+            checked: root.keeper.sounds
+            enabled: root.keeper.canSound
+            objectName: "timeSoundsCheck"
+            text: root.keeper.canSound ? qsTr("Make a noise when it reaches nothing") : qsTr("This machine cannot make a noise")
+            visible: root.countingDown
+
+            onToggled: root.keeper.sounds = checked
+        }
+
         Item {
             Layout.fillHeight: true
         }

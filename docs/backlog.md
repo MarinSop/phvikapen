@@ -248,9 +248,8 @@ written so that all of them can share it. They are listed in the order they are 
 - **A recording cannot be trimmed, joined or taken out on its own.** It is made, played, renamed
   and taken away, and the sound lives in the notebook file, so a long recording makes a large
   notebook and only deleting it gets the room back.
-- **A countdown that reaches nothing is seen but not heard.** The panel flashes, the bar says so
-  and the reading turns colour, but nothing sounds, because the application has no way of making a
-  noise yet.
+- **A countdown makes one noise and it cannot be changed.** Two notes worked out as they are
+  played. It can be turned off, but not chosen, and no other part of the application makes a noise.
 - **The clock stops when the application does.** How long a countdown was set for is remembered;
   how far along it was is not, because a count that went on while the application was shut would be
   a lie about time nobody was keeping.

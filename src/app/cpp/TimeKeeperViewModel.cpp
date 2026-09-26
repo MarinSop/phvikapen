@@ -10,6 +10,7 @@ namespace {
 
 constexpr auto kWaySetting = "timeKeeper/way";
 constexpr auto kWantedSetting = "timeKeeper/wanted";
+constexpr auto kSoundsSetting = "timeKeeper/sounds";
 constexpr int kBeat = 100;
 constexpr int kTens = 10;
 
@@ -32,12 +33,14 @@ void TimeKeeperViewModel::recall() {
     m_way = way == static_cast<int>(Way::Up) ? Way::Up : Way::Down;
     m_wanted = std::clamp(settings.value(kWantedSetting, kDefaultWanted).toLongLong(), kShortest,
                           kLongest);
+    m_sounds = settings.value(kSoundsSetting, true).toBool();
 }
 
 void TimeKeeperViewModel::remember() const {
     QSettings settings;
     settings.setValue(kWaySetting, static_cast<int>(m_way));
     settings.setValue(kWantedSetting, m_wanted);
+    settings.setValue(kSoundsSetting, m_sounds);
 }
 
 void TimeKeeperViewModel::setWay(Way way) {
@@ -154,6 +157,15 @@ void TimeKeeperViewModel::reset() {
     emit tick();
 }
 
+void TimeKeeperViewModel::setSounds(bool sounds) {
+    if (sounds == m_sounds) {
+        return;
+    }
+    m_sounds = sounds;
+    remember();
+    emit soundsChanged();
+}
+
 void TimeKeeperViewModel::seen() {
     if (!m_rang) {
         return;
@@ -168,6 +180,9 @@ void TimeKeeperViewModel::beat() {
         m_beat.stop();
         m_since.invalidate();
         m_rang = true;
+        if (m_sounds) {
+            m_chime.ring();
+        }
         emit tick();
         emit rangOut();
         return;
