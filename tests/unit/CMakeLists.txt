@@ -22,6 +22,7 @@ add_executable(phvikapen_tests
     core/FoldingTest.cpp
     core/StrokeCodecTest.cpp
     core/PlottingTest.cpp
+    core/RecordingTest.cpp
     core/SolvingTest.cpp
     core/StorageThreadTest.cpp
     core/StrokeCommandsTest.cpp

@@ -8,6 +8,7 @@
 #include "core/model/Outline.hpp"
 #include "core/model/Page.hpp"
 #include "core/model/Picture.hpp"
+#include "core/model/Recording.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/storage/NotebookStore.hpp"
 
@@ -30,6 +31,8 @@ struct LoadedPage {
     std::vector<PlacedPicture> pictures;
     std::vector<PlacedTable> tables;
     std::vector<Layer> layers;
+    std::vector<Recording> recordings;
+    std::vector<Mark> marks;
 };
 
 class StorageThread {

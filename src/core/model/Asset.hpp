@@ -12,6 +12,7 @@ namespace phvikapen::core {
 enum class AssetKind : std::uint8_t {
     Pdf,
     Image,
+    Sound,
 };
 
 struct Asset {

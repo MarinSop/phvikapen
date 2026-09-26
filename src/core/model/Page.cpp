@@ -293,6 +293,92 @@ void Page::setLayers(std::vector<Layer> layers) {
     }
 }
 
+void Page::setRecordings(std::vector<Recording> recordings) {
+    m_recordings = std::move(recordings);
+    std::ranges::stable_sort(m_recordings, {}, &Recording::madeAt);
+}
+
+const Recording* Page::recording(const Uuid& id) const noexcept {
+    const auto found = std::ranges::find(m_recordings, id, &Recording::id);
+    return found == m_recordings.end() ? nullptr : &*found;
+}
+
+Result<void> Page::addRecording(Recording made) {
+    if (made.id.isNil()) {
+        return makeError(ErrorCode::InvalidArgument, "a recording with no name of its own");
+    }
+    if (recording(made.id) != nullptr) {
+        return makeError(ErrorCode::InvalidArgument, "this recording is already on the page");
+    }
+    m_recordings.push_back(normalized(std::move(made)));
+    std::ranges::stable_sort(m_recordings, {}, &Recording::madeAt);
+    return {};
+}
+
+Result<Recording> Page::removeRecording(const Uuid& id) {
+    const auto found = std::ranges::find(m_recordings, id, &Recording::id);
+    if (found == m_recordings.end()) {
+        return makeError(ErrorCode::NotFound, "there is no such recording on this page");
+    }
+    Recording gone = std::move(*found);
+    m_recordings.erase(found);
+    forgetMarksOf(id);
+    return gone;
+}
+
+Result<void> Page::changeRecording(const Uuid& id, Recording made) {
+    const auto found = std::ranges::find(m_recordings, id, &Recording::id);
+    if (found == m_recordings.end()) {
+        return makeError(ErrorCode::NotFound, "there is no such recording on this page");
+    }
+    made.id = id;
+    *found = normalized(std::move(made));
+    std::ranges::stable_sort(m_recordings, {}, &Recording::madeAt);
+    return {};
+}
+
+Result<void> Page::setSaid(const Uuid& id, Said said) {
+    const auto found = std::ranges::find(m_recordings, id, &Recording::id);
+    if (found == m_recordings.end()) {
+        return makeError(ErrorCode::NotFound, "there is no such recording on this page");
+    }
+    found->said = std::move(said);
+    return {};
+}
+
+void Page::setMarks(std::vector<Mark> marks) {
+    m_marks = std::move(marks);
+    std::ranges::stable_sort(m_marks, {}, &Mark::at);
+}
+
+Result<void> Page::addMark(Mark mark) {
+    if (mark.recording.isNil() || mark.thing.isNil()) {
+        return makeError(ErrorCode::InvalidArgument, "a mark with nothing to tie together");
+    }
+    if (recording(mark.recording) == nullptr) {
+        return makeError(ErrorCode::NotFound, "there is no such recording on this page");
+    }
+    mark.at = std::max<std::int64_t>(0, mark.at);
+    const auto found = std::ranges::find_if(m_marks, [&mark](const Mark& kept) {
+        return kept.recording == mark.recording && kept.thing == mark.thing;
+    });
+    if (found != m_marks.end()) {
+        *found = mark;
+    } else {
+        m_marks.push_back(mark);
+    }
+    std::ranges::stable_sort(m_marks, {}, &Mark::at);
+    return {};
+}
+
+void Page::forgetMarksOf(const Uuid& recording) {
+    std::erase_if(m_marks, [&recording](const Mark& mark) { return mark.recording == recording; });
+}
+
+void Page::forgetMarksOfThing(const Uuid& thing) {
+    std::erase_if(m_marks, [&thing](const Mark& mark) { return mark.thing == thing; });
+}
+
 Result<Uuid> Page::moveToLayer(const Uuid& thingId, const Uuid& layerId) {
     const auto moved = [&layerId](Uuid& layer) {
         const Uuid stood = layer;

@@ -231,6 +231,42 @@ constexpr std::string_view kSchemaVersion13 = R"sql(
     ALTER TABLE page_tables ADD COLUMN layer BLOB;
 )sql";
 
+// Recordings made while a page was being written on, what was written down while each was
+// running, and what was said in them once somebody has asked for it to be read. The sound itself
+// goes in the assets, by what it contains, like every other thing made of bytes.
+constexpr std::string_view kSchemaVersion14 = R"sql(
+    CREATE TABLE page_recordings (
+        id        BLOB PRIMARY KEY NOT NULL,
+        page_id   BLOB NOT NULL REFERENCES pages (id) ON DELETE CASCADE,
+        sound     BLOB NOT NULL,
+        name      TEXT NOT NULL,
+        length    INTEGER NOT NULL,
+        made_at   INTEGER NOT NULL,
+        reading   INTEGER NOT NULL DEFAULT 0,
+        language  TEXT NOT NULL DEFAULT '',
+        trouble   TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX page_recordings_by_page ON page_recordings (page_id, made_at);
+    CREATE TABLE page_marks (
+        page_id      BLOB NOT NULL REFERENCES pages (id) ON DELETE CASCADE,
+        recording_id BLOB NOT NULL,
+        thing_id     BLOB NOT NULL,
+        at           INTEGER NOT NULL,
+        PRIMARY KEY (recording_id, thing_id)
+    );
+    CREATE INDEX page_marks_by_page ON page_marks (page_id, at);
+    CREATE TABLE recording_sayings (
+        recording_id BLOB NOT NULL REFERENCES page_recordings (id) ON DELETE CASCADE,
+        ordinal      INTEGER NOT NULL,
+        from_at      INTEGER NOT NULL,
+        to_at        INTEGER NOT NULL,
+        text         TEXT NOT NULL,
+        folded       TEXT NOT NULL,
+        PRIMARY KEY (recording_id, ordinal)
+    );
+    CREATE INDEX recording_sayings_by_word ON recording_sayings (folded);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2},
     std::pair{3, kSchemaVersion3},   std::pair{4, kSchemaVersion4},
@@ -238,6 +274,7 @@ constexpr std::array kMigrations{
     std::pair{8, kSchemaVersion8},   std::pair{9, kSchemaVersion9},
     std::pair{10, kSchemaVersion10}, std::pair{11, kSchemaVersion11},
     std::pair{12, kSchemaVersion12}, std::pair{13, kSchemaVersion13},
+    std::pair{14, kSchemaVersion14},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -464,6 +501,40 @@ enum class PictureColumn : std::uint8_t {
             },
         .layer = statement.id(column(PictureColumn::Layer)),
     };
+}
+
+enum class RecordingColumn : std::uint8_t {
+    Id,
+    Sound,
+    Name,
+    Length,
+    MadeAt,
+    Reading,
+    Language,
+    Trouble,
+};
+
+[[nodiscard]] constexpr int column(RecordingColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+[[nodiscard]] core::Reading toReading(std::int64_t value) noexcept {
+    return value >= 0 && value <= static_cast<std::int64_t>(core::Reading::Failed)
+               ? static_cast<core::Reading>(value)
+               : core::Reading::Unasked;
+}
+
+[[nodiscard]] Recording recordingFrom(const sqlite::Statement& statement) {
+    Recording made;
+    made.id = statement.id(column(RecordingColumn::Id));
+    made.sound = toContentId(statement.blob(column(RecordingColumn::Sound)));
+    made.name = statement.text(column(RecordingColumn::Name));
+    made.length = statement.integer(column(RecordingColumn::Length));
+    made.madeAt = statement.integer(column(RecordingColumn::MadeAt));
+    made.said.reading = toReading(statement.integer(column(RecordingColumn::Reading)));
+    made.said.language = statement.text(column(RecordingColumn::Language));
+    made.said.trouble = statement.text(column(RecordingColumn::Trouble));
+    return made;
 }
 
 constexpr unsigned int kByteBits = 8U;
@@ -1982,6 +2053,226 @@ Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
         }
     }
     return transaction->commit();
+}
+
+Result<void> NotebookStore::insertRecording(const Uuid& pageId, const Recording& recording) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_recordings (id, page_id, sound, name, length, made_at, "
+                    "reading, language, trouble) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, recording.id),
+        statement->bindId(2, pageId),
+        statement->bindBlob(3, contentBytes(recording.sound)),
+        statement->bindText(4, recording.name),
+        statement->bindInteger(5, recording.length),
+        statement->bindInteger(6, recording.madeAt),
+        statement->bindInteger(7, static_cast<std::int64_t>(recording.said.reading)),
+        statement->bindText(8, recording.said.language),
+        statement->bindText(9, recording.said.trouble),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::updateRecording(const Recording& recording) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "UPDATE page_recordings SET name = ?, length = ?, reading = ?, language = ?, "
+                    "trouble = ? WHERE id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindText(1, recording.name),
+        statement->bindInteger(2, recording.length),
+        statement->bindInteger(3, static_cast<std::int64_t>(recording.said.reading)),
+        statement->bindText(4, recording.said.language),
+        statement->bindText(5, recording.said.trouble),
+        statement->bindId(6, recording.id),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::removeRecording(const Uuid& recordingId) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    constexpr std::array kAway{
+        std::string_view{"DELETE FROM recording_sayings WHERE recording_id = ?;"},
+        std::string_view{"DELETE FROM page_marks WHERE recording_id = ?;"},
+        std::string_view{"DELETE FROM page_recordings WHERE id = ?;"},
+    };
+    for (const std::string_view sql : kAway) {
+        Result<sqlite::Statement> statement = sqlite::Statement::prepare(m_database, sql);
+        if (!statement) {
+            return std::unexpected{statement.error()};
+        }
+        if (const Result<void> bound = statement->bindId(1, recordingId); !bound) {
+            return bound;
+        }
+        if (const Result<void> ran = statement->run(); !ran) {
+            return ran;
+        }
+    }
+    return transaction->commit();
+}
+
+Result<std::vector<Recording>> NotebookStore::recordingsOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT id, sound, name, length, made_at, reading, language, trouble "
+                    "FROM page_recordings WHERE page_id = ? ORDER BY made_at;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<Recording> recordings;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            break;
+        }
+        recordings.push_back(recordingFrom(*statement));
+    }
+    for (Recording& made : recordings) {
+        Result<sqlite::Statement> sayings = sqlite::Statement::prepare(
+            m_database, "SELECT from_at, to_at, text FROM recording_sayings "
+                        "WHERE recording_id = ? ORDER BY ordinal;");
+        if (!sayings) {
+            return std::unexpected{sayings.error()};
+        }
+        if (const Result<void> bound = sayings->bindId(1, made.id); !bound) {
+            return std::unexpected{bound.error()};
+        }
+        while (true) {
+            const Result<bool> row = sayings->step();
+            if (!row) {
+                return std::unexpected{row.error()};
+            }
+            if (!*row) {
+                break;
+            }
+            made.said.sayings.push_back(Saying{
+                .from = sayings->integer(0),
+                .to = sayings->integer(1),
+                .text = sayings->text(2),
+            });
+        }
+    }
+    return recordings;
+}
+
+Result<void> NotebookStore::writeSayings(const Uuid& recordingId, std::span<const Saying> sayings) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    Result<sqlite::Statement> clear = sqlite::Statement::prepare(
+        m_database, "DELETE FROM recording_sayings WHERE recording_id = ?;");
+    if (!clear) {
+        return std::unexpected{clear.error()};
+    }
+    if (const Result<void> bound = clear->bindId(1, recordingId); !bound) {
+        return bound;
+    }
+    if (const Result<void> ran = clear->run(); !ran) {
+        return ran;
+    }
+    for (std::size_t step = 0; step < sayings.size(); ++step) {
+        Result<sqlite::Statement> insert = sqlite::Statement::prepare(
+            m_database, "INSERT INTO recording_sayings (recording_id, ordinal, from_at, to_at, "
+                        "text, folded) VALUES (?, ?, ?, ?, ?, ?);");
+        if (!insert) {
+            return std::unexpected{insert.error()};
+        }
+        const Saying& saying = sayings[step];
+        const Result<void> bound = bindAll({
+            insert->bindId(1, recordingId),
+            insert->bindInteger(2, static_cast<std::int64_t>(step)),
+            insert->bindInteger(3, saying.from),
+            insert->bindInteger(4, saying.to),
+            insert->bindText(5, saying.text),
+            insert->bindText(6, folded(saying.text)),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> ran = insert->run(); !ran) {
+            return ran;
+        }
+    }
+    return transaction->commit();
+}
+
+Result<void> NotebookStore::markThing(const Uuid& pageId, const Mark& mark) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "INSERT INTO page_marks (page_id, recording_id, thing_id, at) "
+                    "VALUES (?, ?, ?, ?) ON CONFLICT (recording_id, thing_id) "
+                    "DO UPDATE SET at = excluded.at;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    const Result<void> bound = bindAll({
+        statement->bindId(1, pageId),
+        statement->bindId(2, mark.recording),
+        statement->bindId(3, mark.thing),
+        statement->bindInteger(4, mark.at),
+    });
+    if (!bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<void> NotebookStore::unmarkThing(const Uuid& thingId) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM page_marks WHERE thing_id = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, thingId); !bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
+Result<std::vector<Mark>> NotebookStore::marksOfPage(const Uuid& pageId) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT recording_id, thing_id, at FROM page_marks WHERE page_id = ? "
+                    "ORDER BY at;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindId(1, pageId); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<Mark> marks;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return marks;
+        }
+        marks.push_back(Mark{
+            .recording = statement->id(0),
+            .thing = statement->id(1),
+            .at = statement->integer(2),
+        });
+    }
 }
 
 Result<NotebookOutline> NotebookStore::readOutline() const {

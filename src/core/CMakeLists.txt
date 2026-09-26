@@ -36,6 +36,7 @@ target_sources(phvikapen_core
         model/Page.cpp
         model/PageStyle.cpp
         model/Picture.cpp
+        model/Recording.cpp
         model/StrokeGrid.cpp
         model/Table.cpp
         model/TextBox.cpp
@@ -91,6 +92,7 @@ target_sources(phvikapen_core
             model/Page.hpp
             model/PageStyle.hpp
             model/Picture.hpp
+            model/Recording.hpp
             model/StrokeGrid.hpp
             model/Table.hpp
             model/TextBox.hpp

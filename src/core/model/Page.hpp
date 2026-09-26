@@ -6,6 +6,7 @@
 #include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Layer.hpp"
 #include "core/model/Picture.hpp"
+#include "core/model/Recording.hpp"
 #include "core/model/StrokeGrid.hpp"
 #include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
@@ -104,6 +105,37 @@ public:
 
     void setLayers(std::vector<Layer> layers);
 
+    // The recordings made while this page was being written on, oldest first.
+    [[nodiscard]] std::span<const Recording> recordings() const noexcept { return m_recordings; }
+
+    void setRecordings(std::vector<Recording> recordings);
+
+    [[nodiscard]] const Recording* recording(const Uuid& id) const noexcept;
+
+    // What was said in a recording, and how far the reading of it has got.
+    [[nodiscard]] Result<void> setSaid(const Uuid& id, Said said);
+
+    [[nodiscard]] Result<void> addRecording(Recording made);
+
+    [[nodiscard]] Result<Recording> removeRecording(const Uuid& id);
+
+    [[nodiscard]] Result<void> changeRecording(const Uuid& id, Recording made);
+
+    // What was written down while a recording was running, and when.
+    [[nodiscard]] std::span<const Mark> marks() const noexcept { return m_marks; }
+
+    void setMarks(std::vector<Mark> marks);
+
+    // A thing tied to a moment in a recording. A thing already tied to that recording is tied
+    // again at the same moment rather than twice.
+    [[nodiscard]] Result<void> addMark(Mark mark);
+
+    // Everything tied to a recording, let go of at once: what is done when the recording goes.
+    void forgetMarksOf(const Uuid& recording);
+
+    // Everything tied to a thing, let go of at once: what is done when the thing goes.
+    void forgetMarksOfThing(const Uuid& thing);
+
     // Which layer a thing on the page belongs to, whether it is a stroke of ink, a box of type, a
     // picture or a table. What comes back is the layer it stood on before, so that the move can be
     // taken back exactly.
@@ -123,6 +155,8 @@ private:
     std::vector<PlacedPicture> m_pictures;
     std::vector<PlacedTable> m_tables;
     std::vector<Layer> m_layers;
+    std::vector<Recording> m_recordings;
+    std::vector<Mark> m_marks;
     StrokeGrid m_grid;
 };
 

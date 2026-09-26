@@ -8,6 +8,7 @@
 #include "core/model/Page.hpp"
 #include "core/model/PageStyle.hpp"
 #include "core/model/Picture.hpp"
+#include "core/model/Recording.hpp"
 #include "core/model/Table.hpp"
 #include "core/model/TextBox.hpp"
 #include "core/text/InkWord.hpp"
@@ -24,7 +25,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 13;
+inline constexpr int kNotebookSchemaVersion = 14;
 
 struct TrashedItem {
     Uuid id;
@@ -80,6 +81,19 @@ public:
     [[nodiscard]] Result<void> removeTable(const Uuid& pageId, const Uuid& tableId);
     [[nodiscard]] Result<std::size_t> removeTablesOfPage(const Uuid& pageId);
     [[nodiscard]] Result<std::vector<PlacedTable>> tablesOfPage(const Uuid& pageId) const;
+
+    [[nodiscard]] Result<void> insertRecording(const Uuid& pageId, const Recording& recording);
+    [[nodiscard]] Result<void> updateRecording(const Recording& recording);
+    [[nodiscard]] Result<void> removeRecording(const Uuid& recordingId);
+    [[nodiscard]] Result<std::vector<Recording>> recordingsOfPage(const Uuid& pageId) const;
+
+    // What was said in a recording, in place of whatever was written down before.
+    [[nodiscard]] Result<void> writeSayings(const Uuid& recordingId,
+                                            std::span<const Saying> sayings);
+
+    [[nodiscard]] Result<void> markThing(const Uuid& pageId, const Mark& mark);
+    [[nodiscard]] Result<void> unmarkThing(const Uuid& thingId);
+    [[nodiscard]] Result<std::vector<Mark>> marksOfPage(const Uuid& pageId) const;
 
     // The layers of a page, bottom first. A page written down before there were layers has none,
     // and everything on it stands on the one it is given when it is read.

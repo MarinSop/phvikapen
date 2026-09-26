@@ -262,6 +262,9 @@ TEST(NotebookStoreTest, AddsThePaperColumnsAnOlderNotebookNeverGot) {
             DROP TABLE page_table_cells;
             DROP TABLE page_tables;
             DROP TABLE page_layers;
+            DROP TABLE recording_sayings;
+            DROP TABLE page_marks;
+            DROP TABLE page_recordings;
             ALTER TABLE strokes DROP COLUMN layer;
             ALTER TABLE pages DROP COLUMN ink_revision;
             ALTER TABLE pages DROP COLUMN read_revision;
@@ -314,6 +317,9 @@ TEST(NotebookStoreTest, LeavesTheColumnsOfANotebookThatAlreadyHasThemAlone) {
             DROP TABLE page_table_cells;
             DROP TABLE page_tables;
             DROP TABLE page_layers;
+            DROP TABLE recording_sayings;
+            DROP TABLE page_marks;
+            DROP TABLE page_recordings;
             ALTER TABLE strokes DROP COLUMN layer;
             ALTER TABLE pages DROP COLUMN ink_revision;
             ALTER TABLE pages DROP COLUMN read_revision;

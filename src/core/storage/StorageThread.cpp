@@ -94,12 +94,24 @@ void StorageThread::loadPage(const Uuid& pageId, PageHandler onLoaded) {
             onLoaded(std::unexpected{layers.error()});
             return;
         }
+        Result<std::vector<Recording>> recordings = m_store->recordingsOfPage(pageId);
+        if (!recordings) {
+            onLoaded(std::unexpected{recordings.error()});
+            return;
+        }
+        Result<std::vector<Mark>> marks = m_store->marksOfPage(pageId);
+        if (!marks) {
+            onLoaded(std::unexpected{marks.error()});
+            return;
+        }
         onLoaded(LoadedPage{
             .strokes = std::move(*strokes),
             .texts = std::move(*texts),
             .pictures = std::move(*pictures),
             .tables = std::move(*tables),
             .layers = std::move(*layers),
+            .recordings = std::move(*recordings),
+            .marks = std::move(*marks),
         });
     });
 }
