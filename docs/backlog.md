@@ -125,10 +125,10 @@ into a real problem earlier.
 
 ## The window
 
-- **A panel cannot be torn off into a window of its own.** Panels dock to any of the four sides and
-  stack into tabs, but they never leave the window, so two panels cannot stand side by side on a
-  second screen. That needs a window per floating group and a way of carrying a panel across the
-  gap between windows.
+- **A panel set loose never leaves the application window.** A panel dropped over the sheet becomes
+  a small window that is moved, sized and snapped into a corner, but it still lives inside the one
+  window, so two panels cannot stand side by side on a second screen. That needs a window of the
+  window system per loose group and a way of carrying a panel across the gap between them.
 - **A tab is carried by the whole group it is in.** Dragging a header carries the panel in front;
   a tab behind it is brought forward first and then carried. Picking up a tab directly, and
   dragging one tab past another inside the same group, are not there yet.

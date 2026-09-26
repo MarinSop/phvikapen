@@ -200,6 +200,101 @@ TestCase {
         compare(testCase.nodeAt(workspace, testCase.pathOf(workspace, "layers")).panels, ["pages", "layers"]);
     }
 
+    function test_n_aPanelSetLooseBecomesAWindowOfItsOwn() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        verify(workspace.isOpen("pages"));
+        verify(workspace.isAfloat("pages"));
+        compare(workspace.floating.length, 1);
+        compare(workspace.floating[0].node.panels, ["pages"]);
+        compare(workspace.floating[0].x, 40);
+        compare(testCase.pathOf(workspace, "pages"), null, "it is no longer in the docked tree");
+        compare(testCase.countOf(workspace.layout, testCase.kindMiddle), 1);
+    }
+
+    function test_o_aWindowIsMovedAndSizedWithoutLeavingItsPlace() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        workspace.movePanelWindow("~0", 120, 90);
+        workspace.sizePanelWindow("~0", 10, 10);
+
+        compare(workspace.floating.length, 1);
+        compare(workspace.floating[0].x, 120);
+        compare(workspace.floating[0].y, 90);
+        compare(workspace.floating[0].width, workspace.leastExtent, "a window is never smaller than a panel may be");
+    }
+
+    function test_p_aWindowDockedAgainJoinsTheTree() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        workspace.dockPanel("pages");
+
+        verify(!workspace.isAfloat("pages"));
+        compare(workspace.floating.length, 0);
+        verify(testCase.pathOf(workspace, "pages") !== null);
+    }
+
+    function test_q_aPanelDroppedOnAWindowJoinsItsTabs() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        workspace.dropAsTab("sections", "~0", 1);
+
+        compare(workspace.floating.length, 1);
+        compare(workspace.floating[0].node.panels, ["pages", "sections"]);
+        verify(workspace.isAfloat("sections"));
+    }
+
+    function test_r_aPanelDroppedOnTheEdgeOfAWindowSplitsIt() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        workspace.dropBeside("sections", "~0", WorkspaceViewModel.Bottom);
+
+        compare(workspace.floating.length, 1);
+        compare(workspace.floating[0].node.kind, testCase.kindSplit);
+        compare(workspace.floating[0].node.children.length, 2);
+        compare(workspace.floating[0].node.children[1].panels, ["sections"]);
+    }
+
+    function test_s_aWindowIsThereAgainTheNextTime() {
+        const written = createTemporaryObject(workspaceComponent, testCase);
+        written.floatPanel("layers", 70, 80, 320, 300);
+
+        const read = createTemporaryObject(workspaceComponent, testCase);
+
+        compare(read.floating.length, 1);
+        compare(read.floating[0].node.panels, ["layers"]);
+        compare(read.floating[0].x, 70);
+        compare(read.floating[0].height, 300);
+    }
+
+    function test_t_aWindowPutAwayComesBackAsAWindow() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("layers", 70, 80, 320, 300);
+
+        workspace.closePanel("layers");
+        verify(!workspace.isOpen("layers"));
+        workspace.openPanel("layers");
+
+        verify(workspace.isAfloat("layers"));
+        compare(workspace.floating[0].x, 70);
+    }
+
+    function test_u_puttingTheLayoutBackClosesEveryWindow() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+
+        workspace.resetWorkspace();
+
+        compare(workspace.floating.length, 0);
+        verify(testCase.pathOf(workspace, "pages") !== null);
+    }
+
     name: "WorkspaceViewModel"
 
     Component {

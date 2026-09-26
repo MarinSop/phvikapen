@@ -129,6 +129,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/EmptyPanelNote.qml
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
+        qml/components/FloatingPanel.qml
         qml/components/MenuCommand.qml
         qml/components/LayersPanel.qml
         qml/components/MenuLine.qml

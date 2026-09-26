@@ -19,6 +19,7 @@ class WorkspaceViewModel : public QObject {
     QML_ELEMENT
     Q_PROPERTY(QVariantMap layout READ layout NOTIFY layoutChanged FINAL)
     Q_PROPERTY(QVariantList panels READ panels NOTIFY layoutChanged FINAL)
+    Q_PROPERTY(QVariantList floating READ floating NOTIFY layoutChanged FINAL)
     Q_PROPERTY(int leastExtent READ leastExtent CONSTANT FINAL)
 
 public:
@@ -26,12 +27,16 @@ public:
     Q_ENUM(Edge)
 
     static constexpr int kLeastExtent = 120;
+    static constexpr int kWindowWidth = 300;
+    static constexpr int kWindowHeight = 340;
 
     explicit WorkspaceViewModel(QObject* parent = nullptr);
 
     [[nodiscard]] QVariantMap layout() const;
 
     [[nodiscard]] QVariantList panels() const;
+
+    [[nodiscard]] QVariantList floating() const;
 
     [[nodiscard]] static int leastExtent() { return kLeastExtent; }
 
@@ -48,6 +53,16 @@ public:
     Q_INVOKABLE void dropBeside(const QString& panelId, const QString& path, Edge edge);
 
     Q_INVOKABLE void dropAsTab(const QString& panelId, const QString& path, int at);
+
+    Q_INVOKABLE void floatPanel(const QString& panelId, int x, int y, int width, int height);
+
+    Q_INVOKABLE void dockPanel(const QString& panelId);
+
+    Q_INVOKABLE [[nodiscard]] bool isAfloat(const QString& panelId) const;
+
+    Q_INVOKABLE void movePanelWindow(const QString& path, int x, int y);
+
+    Q_INVOKABLE void sizePanelWindow(const QString& path, int width, int height);
 
     Q_INVOKABLE void choosePanel(const QString& path, int index);
 
@@ -75,10 +90,24 @@ private:
         QString path;
         Edge edge{Edge::Right};
         bool asTab{false};
+        bool afloat{false};
+        int x{};
+        int y{};
+        int width{kWindowWidth};
+        int height{kWindowHeight};
+    };
+
+    struct Afloat {
+        Node root;
+        int x{};
+        int y{};
+        int width{kWindowWidth};
+        int height{kWindowHeight};
     };
 
     [[nodiscard]] Node* nodeAt(const QString& path);
     [[nodiscard]] const Node* nodeAt(const QString& path) const;
+    [[nodiscard]] Afloat* windowAt(const QString& path);
     [[nodiscard]] QVariantMap shapeOf(const Node& node, const QString& path) const;
     [[nodiscard]] std::optional<QString> pathOfPanel(const QString& panelId) const;
     [[nodiscard]] std::optional<QString> pathOfMiddle() const;
@@ -88,6 +117,7 @@ private:
 
     void takeOut(const QString& panelId);
     void tidy(Node& node);
+    void tidyAll();
     void settle();
     void settleQuietly();
     void readLayout();
@@ -95,6 +125,7 @@ private:
     void layOutAfresh();
 
     Node m_root;
+    std::vector<Afloat> m_afloat;
     std::vector<std::pair<QString, Remembered>> m_closed;
 };
 

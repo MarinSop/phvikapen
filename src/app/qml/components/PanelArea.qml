@@ -12,6 +12,7 @@ Item {
     required property var node
     required property Item view
     required property WorkspaceViewModel workspace
+    property bool parentDown: false
     readonly property int kind: root.node.kind
 
     function holdsTheSheet(node) {
@@ -49,6 +50,8 @@ Item {
             id: slot
 
             readonly property real edgeReach: Math.round(26 * Theme.scale)
+            readonly property real cornerReach: Math.round(72 * Theme.scale)
+            readonly property real armLength: Math.round(56 * Theme.scale)
 
             function reportAim() {
                 if (!root.drag.dragging) {
@@ -63,7 +66,20 @@ Item {
                 const right = slot.width - local.x;
                 const top = local.y;
                 const bottom = slot.height - local.y;
+                if (Math.min(left, right) < slot.cornerReach && Math.min(top, bottom) < slot.cornerReach) {
+                    const atLeft = left <= right;
+                    const atTop = top <= bottom;
+                    const armX = atLeft ? corner.x : corner.x + slot.width - slot.armLength;
+                    const armY = atTop ? corner.y : corner.y + slot.height - slot.armLength;
+                    const edgeX = atLeft ? corner.x : corner.x + slot.width - 3;
+                    const edgeY = atTop ? corner.y : corner.y + slot.height - 3;
+                    root.drag.reportTwo(root.drag.cornerRank, "corner", root.node.path, -1, (atTop ? 0 : 2) + (atLeft ? 0 : 1), Qt.rect(armX, edgeY, slot.armLength, 3), Qt.rect(edgeX, armY, 3, slot.armLength));
+                    return;
+                }
                 const nearest = Math.min(left, right, top, bottom);
+                if (nearest > slot.edgeReach) {
+                    return;
+                }
                 if (nearest === left) {
                     root.drag.report(root.drag.edgeRank, "edge", root.node.path, WorkspaceViewModel.Left, 0, Qt.rect(corner.x, corner.y, 3, slot.height));
                 } else if (nearest === right) {
@@ -94,6 +110,7 @@ Item {
             actions: root.actions
             drag: root.drag
             panelIds: root.node.panels
+            parentDown: root.parentDown
             path: root.node.path
             workspace: root.workspace
 
@@ -144,7 +161,6 @@ Item {
 
                     required property int index
                     required property var modelData
-
                     readonly property bool stretches: branch.index === split.stretching
 
                     SplitView.fillHeight: split.orientation === Qt.Vertical && branch.stretches
@@ -157,6 +173,7 @@ Item {
                             "actions": root.actions,
                             "drag": root.drag,
                             "node": branch.modelData,
+                            "parentDown": !root.node.across,
                             "view": root.view,
                             "workspace": root.workspace
                         });

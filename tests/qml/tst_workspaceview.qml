@@ -22,6 +22,38 @@ TestCase {
         return view.mapFromItem(item, 0, 0);
     }
 
+    function aimAt(frame, toX, toY) {
+        tryVerify(() => frame.width > 0 && frame.height > 0);
+        const at = view.mapFromItem(frame, frame.width / 2, Math.round(10 * Theme.scale));
+        mousePress(view, at.x, at.y);
+        mouseMove(view, at.x + 20, at.y + 20);
+        tryVerify(() => view.dragging);
+        wait(Theme.calm + 50);
+        mouseMove(view, toX, toY);
+    }
+
+    function anyFrameOf(panelId) {
+        const docked = testCase.frameOf(panelId);
+        if (docked !== null) {
+            return docked;
+        }
+        for (const window of workspace.floating) {
+            if (window.node.panels.indexOf(panelId) >= 0) {
+                return findChild(view, "panelFrame_" + window.path);
+            }
+        }
+        return null;
+    }
+
+    function windowOf(panelId) {
+        for (const window of workspace.floating) {
+            if (window.node.panels.indexOf(panelId) >= 0) {
+                return findChild(view, "panelWindow_" + window.path);
+            }
+        }
+        return null;
+    }
+
     function frameOf(panelId) {
         const path = testCase.pathOf(panelId);
         return path === null ? null : findChild(view, "panelFrame_" + path);
@@ -32,6 +64,16 @@ TestCase {
         // The frames of the layout before this one are on their way out; measuring one of those
         // would measure where it used to be.
         wait(80);
+        testCase.settled("sections");
+        testCase.settled("pages");
+    }
+
+    function settled(panelId) {
+        tryVerify(() => {
+            const frame = testCase.anyFrameOf(panelId);
+            return frame !== null && frame.width > 0 && frame.height > 0;
+        }, 2000, "the frame of " + panelId + " never took a size");
+        return testCase.anyFrameOf(panelId);
     }
 
     function pathOf(panelId) {
@@ -136,6 +178,84 @@ TestCase {
         tryVerify(() => testCase.frameOf("layers") !== null);
 
         tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0 && view.middleSlot.height > 0, 2000, "the sheet lost its place");
+    }
+
+    function test_h_theLineForANewTabStaysClearOfTheTabItWouldFollow() {
+        tryVerify(() => testCase.frameOf("pages") !== null);
+        const pages = testCase.frameOf("pages");
+        const sections = testCase.frameOf("sections");
+        const tab = findChild(pages, "panelTab_pages");
+        verify(tab !== null);
+        const onto = view.mapFromItem(tab, Math.round(4 * Theme.scale), tab.height / 2);
+
+        testCase.aimAt(sections, onto.x, onto.y);
+
+        compare(view.dropKind, "tab");
+        const left = testCase.cornerOf(tab).x;
+        verify(view.dropHint.width > 0, "no line was drawn for the tab it would become");
+        verify(view.dropHint.x + view.dropHint.width <= left + 1, "the line runs over the tab beside it");
+        mouseRelease(view, onto.x, onto.y);
+    }
+
+    function test_ha_theLineForDroppingIntoAStackedPanelSitsOnTheDividerItWouldMake() {
+        tryVerify(() => testCase.frameOf("pages") !== null);
+        workspace.openPanel("layers");
+        const layers = testCase.settled("layers");
+        const pages = testCase.settled("pages");
+        wait(Theme.calm);
+        const onto = view.mapFromItem(pages, pages.width / 2, pages.height / 2);
+
+        testCase.aimAt(layers, onto.x, onto.y);
+
+        compare(view.dropKind, "edge");
+        const foot = testCase.cornerOf(pages).y + pages.height;
+        verify(Math.abs(view.dropHint.y - (foot - 3)) <= 2, "the line was not drawn on the edge the panel would land against");
+        mouseRelease(view, onto.x, onto.y);
+    }
+
+    function test_i_aPanelCarriedOverTheSheetBecomesAWindowOfItsOwn() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const sections = testCase.settled("sections");
+        const sheet = view.sheetRect();
+
+        testCase.carry(sections, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+
+        tryVerify(() => workspace.isAfloat("sections"), 2000, "the panel did not come loose");
+        tryVerify(() => testCase.windowOf("sections") !== null);
+        compare(testCase.pathOf("sections"), null, "it is no longer part of the docked tree");
+    }
+
+    function test_j_aPanelCarriedToACornerOfTheSheetSitsInThatCorner() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const sections = testCase.settled("sections");
+        const sheet = view.sheetRect();
+        const reach = Math.round(40 * Theme.scale);
+
+        testCase.aimAt(sections, sheet.x + reach, sheet.y + reach);
+        compare(view.dropKind, "corner");
+        mouseRelease(view, sheet.x + reach, sheet.y + reach);
+
+        tryVerify(() => workspace.isAfloat("sections"), 2000, "the panel did not come loose");
+        tryVerify(() => testCase.windowOf("sections") !== null);
+        const window = testCase.windowOf("sections");
+        verify(Math.abs(window.x - sheet.x) <= 2, "the window did not sit against the left of the sheet");
+        verify(Math.abs(window.y - sheet.y) <= 2, "the window did not sit against the top of the sheet");
+        verify(window.width < sheet.width / 2, "the window was stretched along the edge");
+    }
+
+    function test_k_aWindowCarriedBackOntoAnEdgeDocksAgain() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const sections = testCase.settled("sections");
+        const sheet = view.sheetRect();
+
+        testCase.carry(sections, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+        tryVerify(() => workspace.isAfloat("sections"), 2000);
+        const loose = testCase.settled("sections");
+
+        testCase.carry(loose, view.width - 6, view.height / 2);
+
+        tryVerify(() => !workspace.isAfloat("sections"), 2000, "the window did not dock again");
+        tryVerify(() => testCase.pathOf("sections") !== null);
     }
 
     height: 640
