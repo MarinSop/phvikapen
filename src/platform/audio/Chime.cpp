@@ -51,10 +51,8 @@ constexpr double kEdge = 0.08;
             const double turn = 2.0 * std::numbers::pi * note * static_cast<double>(step)
                                 / static_cast<double>(kRate);
             const double loud = std::sin(turn) * howLoudAt(through) * kHowLoud;
-            const auto sample =
-                static_cast<quint16>(static_cast<qint16>(std::clamp(loud * kLoudest,
-                                                                    static_cast<double>(kQuietest),
-                                                                    static_cast<double>(kLoudest))));
+            const auto sample = static_cast<quint16>(static_cast<qint16>(std::clamp(
+                loud * kLoudest, static_cast<double>(kQuietest), static_cast<double>(kLoudest))));
             const unsigned raw = sample;
             noise.append(static_cast<char>(raw & kLowByte));
             noise.append(static_cast<char>((raw >> kByteBits) & kLowByte));

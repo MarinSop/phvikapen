@@ -5290,33 +5290,71 @@ bool NotebookViewModel::canReadPictures() const {
     return m_pictureReader != nullptr;
 }
 
-QString NotebookViewModel::wordsInPicture(const QString& pictureId) const {
+const core::Picture* NotebookViewModel::pictureNamed(const QString& pictureId) const {
     const core::Page* const page = currentPageData();
     if (page == nullptr) {
-        return {};
+        return nullptr;
     }
     for (const core::PlacedPicture& placed : page->pictures()) {
         if (isNamed(placed.picture.id, pictureId)) {
-            const auto found = m_pictureWords.find(placed.picture.id);
-            return found == m_pictureWords.end() ? QString{} : found->second;
+            return &placed.picture;
         }
     }
-    return {};
+    return nullptr;
+}
+
+QString NotebookViewModel::wordsInPicture(const QString& pictureId) const {
+    const core::Picture* const standing = pictureNamed(pictureId);
+    if (standing == nullptr) {
+        return {};
+    }
+    const auto found = m_pictureWords.find(standing->source);
+    return found == m_pictureWords.end() ? QString{} : found->second;
 }
 
 void NotebookViewModel::forgetWordsInPicture(const QString& pictureId) {
-    const core::Page* const page = currentPageData();
-    if (page == nullptr) {
+    const core::Picture* const standing = pictureNamed(pictureId);
+    if (standing == nullptr) {
         return;
     }
-    for (const core::PlacedPicture& placed : page->pictures()) {
-        if (isNamed(placed.picture.id, pictureId)) {
-            m_pictureWords.erase(placed.picture.id);
-        }
+    const core::ContentId source = standing->source;
+    m_pictureWords.erase(source);
+    if (!m_storage) {
+        return;
     }
+    m_storage->submit([source](core::NotebookStore& store) -> core::Result<void> {
+        return store.forgetPictureWords(source);
+    });
 }
 
-void NotebookViewModel::hearWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+void NotebookViewModel::keepWhatIsInPicture(const core::ContentId& source,
+                                            std::span<const platform::ocr::Found> found) {
+    // Held by a pointer the writer can take along without any chance of failing.
+    auto words = std::make_shared<std::vector<core::PictureWord>>();
+    words->reserve(found.size());
+    for (const platform::ocr::Found& one : found) {
+        words->push_back(core::PictureWord{
+            .text = one.text,
+            .box =
+                core::Rect{
+                    .left = one.left,
+                    .top = one.top,
+                    .right = one.right,
+                    .bottom = one.bottom,
+                },
+        });
+    }
+    if (!m_storage) {
+        return;
+    }
+    m_storage->submit(
+        [source, words = std::shared_ptr<const std::vector<core::PictureWord>>{std::move(words)}](
+            core::NotebookStore& store) -> core::Result<void> {
+            return store.writePictureWords(source, *words);
+        });
+}
+
+void NotebookViewModel::hearWhatIsInPicture(const QString& pictureId, const core::ContentId& source,
                                             std::uint64_t opening,
                                             core::Result<std::vector<platform::ocr::Found>> found) {
     if (opening != m_opening) {
@@ -5337,11 +5375,12 @@ void NotebookViewModel::hearWhatIsInPicture(const QString& pictureId, const core
         emit pictureUnread(pictureId, tr("There are no words to be found in this picture."));
         return;
     }
-    m_pictureWords[pictureUuid] = words;
+    m_pictureWords[source] = words;
+    keepWhatIsInPicture(source, *found);
     emit pictureRead(pictureId, words);
 }
 
-void NotebookViewModel::readWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+void NotebookViewModel::readWhatIsInPicture(const QString& pictureId, const core::ContentId& source,
                                             std::uint64_t opening, const QString& language,
                                             core::Result<core::Asset> asset) {
     if (opening != m_opening) {
@@ -5358,34 +5397,15 @@ void NotebookViewModel::readWhatIsInPicture(const QString& pictureId, const core
     // Held by a pointer so that the bytes outlive the asking, however long the reader takes.
     const auto bytes = std::make_shared<const std::vector<std::byte>>(std::move(asset->data));
     m_pictureReader->read(*bytes, language.toStdString(),
-                          [this, opening, pictureId, pictureUuid,
+                          [this, opening, pictureId, source,
                            bytes](core::Result<std::vector<platform::ocr::Found>> found) {
-                              hearWhatIsInPicture(pictureId, pictureUuid, opening,
-                                                  std::move(found));
+                              hearWhatIsInPicture(pictureId, source, opening, std::move(found));
                           });
 }
 
-void NotebookViewModel::readPicture(const QString& pictureId, const QString& language) {
-    const core::Page* const page = currentPageData();
-    if (page == nullptr) {
-        emit pictureUnread(pictureId, tr("There is no page to read a picture on."));
-        return;
-    }
-    const core::Picture* standing = nullptr;
-    for (const core::PlacedPicture& placed : page->pictures()) {
-        if (isNamed(placed.picture.id, pictureId)) {
-            standing = &placed.picture;
-        }
-    }
-    if (standing == nullptr) {
-        emit pictureUnread(pictureId, tr("This picture is not on the page."));
-        return;
-    }
-    if (const auto already = m_pictureWords.find(standing->id);
-        already != m_pictureWords.end() && !already->second.isEmpty()) {
-        emit pictureRead(pictureId, already->second);
-        return;
-    }
+void NotebookViewModel::askTheReaderAboutPicture(const QString& pictureId,
+                                                 const core::ContentId& source,
+                                                 const QString& language) {
     if (m_pictureReader == nullptr) {
         emit pictureUnread(pictureId, tr("This machine cannot read the words in a picture."));
         return;
@@ -5395,18 +5415,68 @@ void NotebookViewModel::readPicture(const QString& pictureId, const QString& lan
         return;
     }
     core::StorageThread* const storage = &*m_storage;
-    const core::ContentId source = standing->source;
-    const core::Uuid pictureUuid = standing->id;
     const std::uint64_t opening = m_opening;
     emit readingPicture(pictureId);
-    storage->loadAsset(source, [this, opening, pictureId, pictureUuid,
-                                language](core::Result<core::Asset> asset) {
+    storage->loadAsset(
+        source, [this, opening, pictureId, source, language](core::Result<core::Asset> asset) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, opening, pictureId, source, language, asset = std::move(asset)] mutable {
+                    readWhatIsInPicture(pictureId, source, opening, language, std::move(asset));
+                },
+                Qt::QueuedConnection);
+        });
+}
+
+void NotebookViewModel::readPicture(const QString& pictureId, const QString& language) {
+    const core::Picture* const standing = pictureNamed(pictureId);
+    if (standing == nullptr) {
+        emit pictureUnread(pictureId, tr("This picture is not on the page."));
+        return;
+    }
+    const core::ContentId source = standing->source;
+    if (const auto already = m_pictureWords.find(source);
+        already != m_pictureWords.end() && !already->second.isEmpty()) {
+        emit pictureRead(pictureId, already->second);
+        return;
+    }
+    if (!m_storage) {
+        emit pictureUnread(pictureId, tr("This picture could not be read from the notebook."));
+        return;
+    }
+    // What was read before is in the notebook, so a picture read in an earlier sitting comes back
+    // at once, and comes back on a machine that carries no reader of its own.
+    core::StorageThread* const storage = &*m_storage;
+    const std::uint64_t opening = m_opening;
+    emit readingPicture(pictureId);
+    storage->submit([this, opening, pictureId, source,
+                     language](core::NotebookStore& store) -> core::Result<void> {
+        core::Result<std::vector<core::PictureWord>> kept = store.pictureWords(source);
+        if (!kept) {
+            return std::unexpected{kept.error()};
+        }
         QMetaObject::invokeMethod(
             this,
-            [this, opening, pictureId, pictureUuid, language, asset = std::move(asset)] mutable {
-                readWhatIsInPicture(pictureId, pictureUuid, opening, language, std::move(asset));
+            [this, opening, pictureId, source, language, kept = std::move(*kept)] {
+                if (opening != m_opening) {
+                    return;
+                }
+                if (kept.empty()) {
+                    askTheReaderAboutPicture(pictureId, source, language);
+                    return;
+                }
+                QString words;
+                for (const core::PictureWord& word : kept) {
+                    if (!words.isEmpty()) {
+                        words += QLatin1Char{'\n'};
+                    }
+                    words += QString::fromStdString(word.text);
+                }
+                m_pictureWords[source] = words;
+                emit pictureRead(pictureId, words);
             },
             Qt::QueuedConnection);
+        return {};
     });
 }
 

@@ -287,6 +287,26 @@ constexpr std::string_view kSchemaVersion15 = R"sql(
     CREATE UNIQUE INDEX page_links_by_page ON page_links (page_id, ordinal);
 )sql";
 
+// The words read out of a picture. They are kept against the picture itself rather than against
+// where it stands, so that moving it, drawing it larger or putting it on a second page all leave
+// them right, and replacing a picture leaves the old words behind with the old picture. Each run
+// keeps its corners as shares of the picture, and where it stands on a page is worked out when it
+// is searched for.
+constexpr std::string_view kSchemaVersion16 = R"sql(
+    CREATE TABLE picture_words (
+        source    BLOB NOT NULL,
+        ordinal   INTEGER NOT NULL,
+        text      TEXT NOT NULL,
+        folded    TEXT NOT NULL,
+        left_edge REAL NOT NULL,
+        top_edge  REAL NOT NULL,
+        width     REAL NOT NULL,
+        height    REAL NOT NULL,
+        PRIMARY KEY (source, ordinal)
+    );
+    CREATE INDEX picture_words_by_word ON picture_words (folded);
+)sql";
+
 constexpr std::array kMigrations{
     std::pair{1, kSchemaVersion1},   std::pair{2, kSchemaVersion2},
     std::pair{3, kSchemaVersion3},   std::pair{4, kSchemaVersion4},
@@ -295,6 +315,7 @@ constexpr std::array kMigrations{
     std::pair{10, kSchemaVersion10}, std::pair{11, kSchemaVersion11},
     std::pair{12, kSchemaVersion12}, std::pair{13, kSchemaVersion13},
     std::pair{14, kSchemaVersion14}, std::pair{15, kSchemaVersion15},
+    std::pair{16, kSchemaVersion16},
 };
 
 // The paper a page is written on: its colour, the colour and thickness of its ruling, and the line
@@ -1002,6 +1023,97 @@ enum class TableWordColumn : std::uint8_t {
     }
 }
 
+enum class PictureWordColumn : std::uint8_t {
+    PageId,
+    Text,
+    WordLeft,
+    WordTop,
+    WordWidth,
+    WordHeight,
+    PictureLeft,
+    PictureTop,
+    PictureWidth,
+    PictureHeight,
+    Section,
+    Page,
+};
+
+[[nodiscard]] constexpr int column(PictureWordColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+// Words read out of a picture. They are kept against the picture rather than against where it
+// stands, so where each run sits on a page is worked out here from the picture it belongs to. A
+// picture put on two pages is found on both.
+[[nodiscard]] Result<std::vector<Hit>> pictureHits(sqlite3* database,
+                                                   const std::vector<std::string>& wanted) {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        database, "SELECT page_pictures.page_id, picture_words.text, picture_words.left_edge, "
+                  "       picture_words.top_edge, picture_words.width, picture_words.height, "
+                  "       page_pictures.left_edge, page_pictures.top_edge, "
+                  "       page_pictures.width, page_pictures.height, "
+                  "       sections.ordinal, pages.ordinal "
+                  "FROM picture_words "
+                  "JOIN page_pictures ON page_pictures.source = picture_words.source "
+                  "JOIN pages ON pages.id = page_pictures.page_id "
+                  "JOIN sections ON sections.id = pages.section_id "
+                  "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+                  "  AND picture_words.folded LIKE ? ESCAPE '\\' "
+                  "ORDER BY sections.ordinal, pages.ordinal, page_pictures.ordinal, "
+                  "         picture_words.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindText(1, "%" + phraseOf(wanted) + "%"); !bound) {
+        return std::unexpected{bound.error()};
+    }
+
+    std::vector<Hit> hits;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return hits;
+        }
+        const auto standsAt =
+            static_cast<float>(statement->real(column(PictureWordColumn::PictureLeft)));
+        const auto standsDown =
+            static_cast<float>(statement->real(column(PictureWordColumn::PictureTop)));
+        const auto wide =
+            static_cast<float>(statement->real(column(PictureWordColumn::PictureWidth)));
+        const auto tall =
+            static_cast<float>(statement->real(column(PictureWordColumn::PictureHeight)));
+        const auto left = static_cast<float>(statement->real(column(PictureWordColumn::WordLeft)));
+        const auto top = static_cast<float>(statement->real(column(PictureWordColumn::WordTop)));
+        const auto across =
+            static_cast<float>(statement->real(column(PictureWordColumn::WordWidth)));
+        const auto down =
+            static_cast<float>(statement->real(column(PictureWordColumn::WordHeight)));
+        hits.push_back(Hit{
+            .section = statement->integer(column(PictureWordColumn::Section)),
+            .page = statement->integer(column(PictureWordColumn::Page)),
+            .found =
+                FoundWord{
+                    .pageId = statement->id(column(PictureWordColumn::PageId)),
+                    .word =
+                        InkWord{
+                            .text = statement->text(column(PictureWordColumn::Text)),
+                            .box =
+                                Rect{
+                                    .left = standsAt + (left * wide),
+                                    .top = standsDown + (top * tall),
+                                    .right = standsAt + ((left + across) * wide),
+                                    .bottom = standsDown + ((top + down) * tall),
+                                },
+                            .strokes = {},
+                        },
+                },
+        });
+    }
+}
+
 [[nodiscard]] Result<void> bindAll(std::initializer_list<Result<void>> bindings) {
     for (const Result<void>& bound : bindings) {
         if (!bound) {
@@ -1531,6 +1643,12 @@ Result<std::vector<FoundWord>> NotebookStore::findWords(std::string_view text) c
     }
     hits->insert(hits->end(), std::make_move_iterator(tabled->begin()),
                  std::make_move_iterator(tabled->end()));
+    Result<std::vector<Hit>> pictured = pictureHits(m_database, wanted);
+    if (!pictured) {
+        return std::unexpected{pictured.error()};
+    }
+    hits->insert(hits->end(), std::make_move_iterator(pictured->begin()),
+                 std::make_move_iterator(pictured->end()));
     std::ranges::stable_sort(*hits, {},
                              [](const Hit& hit) { return std::pair{hit.section, hit.page}; });
 
@@ -2373,6 +2491,89 @@ Result<void> NotebookStore::writeSayings(const Uuid& recordingId, std::span<cons
     return transaction->commit();
 }
 
+Result<void> NotebookStore::writePictureWords(const ContentId& source,
+                                              std::span<const PictureWord> words) {
+    Result<sqlite::Transaction> transaction = sqlite::Transaction::begin(m_database);
+    if (!transaction) {
+        return std::unexpected{transaction.error()};
+    }
+    if (const Result<void> cleared = forgetPictureWords(source); !cleared) {
+        return cleared;
+    }
+    for (std::size_t step = 0; step < words.size(); ++step) {
+        Result<sqlite::Statement> insert = sqlite::Statement::prepare(
+            m_database, "INSERT INTO picture_words (source, ordinal, text, folded, left_edge, "
+                        "top_edge, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?);");
+        if (!insert) {
+            return std::unexpected{insert.error()};
+        }
+        const PictureWord& word = words[step];
+        const Result<void> bound = bindAll({
+            insert->bindBlob(1, contentBytes(source)),
+            insert->bindInteger(2, static_cast<std::int64_t>(step)),
+            insert->bindText(3, word.text),
+            insert->bindText(4, folded(word.text)),
+            insert->bindReal(5, word.box.left),
+            insert->bindReal(6, word.box.top),
+            insert->bindReal(7, word.box.right - word.box.left),
+            insert->bindReal(8, word.box.bottom - word.box.top),
+        });
+        if (!bound) {
+            return bound;
+        }
+        if (const Result<void> ran = insert->run(); !ran) {
+            return ran;
+        }
+    }
+    return transaction->commit();
+}
+
+Result<std::vector<PictureWord>> NotebookStore::pictureWords(const ContentId& source) const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT text, left_edge, top_edge, width, height FROM picture_words "
+                    "WHERE source = ? ORDER BY ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindBlob(1, contentBytes(source)); !bound) {
+        return std::unexpected{bound.error()};
+    }
+    std::vector<PictureWord> words;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return words;
+        }
+        const auto left = static_cast<float>(statement->real(1));
+        const auto top = static_cast<float>(statement->real(2));
+        words.push_back(PictureWord{
+            .text = statement->text(0),
+            .box =
+                Rect{
+                    .left = left,
+                    .top = top,
+                    .right = left + static_cast<float>(statement->real(3)),
+                    .bottom = top + static_cast<float>(statement->real(4)),
+                },
+        });
+    }
+}
+
+Result<void> NotebookStore::forgetPictureWords(const ContentId& source) {
+    Result<sqlite::Statement> statement =
+        sqlite::Statement::prepare(m_database, "DELETE FROM picture_words WHERE source = ?;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    if (const Result<void> bound = statement->bindBlob(1, contentBytes(source)); !bound) {
+        return bound;
+    }
+    return statement->run();
+}
+
 Result<void> NotebookStore::markThing(const Uuid& pageId, const Mark& mark) {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database, "INSERT INTO page_marks (page_id, recording_id, thing_id, at) "
@@ -2810,7 +3011,8 @@ Result<void> NotebookStore::emptyTrash() {
         "DELETE FROM sections WHERE trashed = 1;"
         "DELETE FROM assets WHERE id NOT IN "
         "  (SELECT media_asset FROM pages WHERE media_asset IS NOT NULL) "
-        "  AND id NOT IN (SELECT source FROM page_pictures);";
+        "  AND id NOT IN (SELECT source FROM page_pictures);"
+        "DELETE FROM picture_words WHERE source NOT IN (SELECT source FROM page_pictures);";
     if (const Result<void> removed = sqlite::execute(m_database, kGone); !removed) {
         return removed;
     }

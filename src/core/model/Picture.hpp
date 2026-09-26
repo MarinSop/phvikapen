@@ -6,6 +6,7 @@
 #include "core/id/Uuid.hpp"
 
 #include <cstdint>
+#include <string>
 
 namespace phvikapen::core {
 
@@ -33,6 +34,16 @@ struct PlacedPicture {
     Uuid layer{kNilUuid};
 
     friend bool operator==(const PlacedPicture&, const PlacedPicture&) = default;
+};
+
+// A run of words read out of a picture, and where it sits within it. The corners are shares of the
+// width and height of the picture rather than a place on a page, so that moving the picture,
+// drawing it larger or putting the same picture on another page all leave them right.
+struct PictureWord {
+    std::string text;
+    Rect box;
+
+    friend bool operator==(const PictureWord&, const PictureWord&) = default;
 };
 
 // The upright box a picture covers, before it is turned.

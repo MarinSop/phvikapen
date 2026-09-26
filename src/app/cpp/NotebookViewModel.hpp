@@ -817,12 +817,17 @@ private:
     void publishRecordings();
     void publishLinks();
     [[nodiscard]] const core::Link* linkNamed(const QString& linkId) const;
-    void readWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+    [[nodiscard]] const core::Picture* pictureNamed(const QString& pictureId) const;
+    void readWhatIsInPicture(const QString& pictureId, const core::ContentId& source,
                              std::uint64_t opening, const QString& language,
                              core::Result<core::Asset> asset);
-    void hearWhatIsInPicture(const QString& pictureId, const core::Uuid& pictureUuid,
+    void hearWhatIsInPicture(const QString& pictureId, const core::ContentId& source,
                              std::uint64_t opening,
                              core::Result<std::vector<platform::ocr::Found>> found);
+    void askTheReaderAboutPicture(const QString& pictureId, const core::ContentId& source,
+                                  const QString& language);
+    void keepWhatIsInPicture(const core::ContentId& source,
+                             std::span<const platform::ocr::Found> found);
     [[nodiscard]] std::optional<core::Rect> areaOfPickedInk(const core::Page& page) const;
     [[nodiscard]] std::optional<core::Rect> areaOfPickedThing(const core::Page& page) const;
     // The moment a thing was put on the page, where a recording is running.
@@ -923,7 +928,7 @@ private:
     // What has been read out of the pictures on this page. It is worked out again whenever it is
     // wanted after the notebook is closed, because it is made from the picture rather than
     // written by the reader.
-    std::map<core::Uuid, QString> m_pictureWords;
+    std::map<core::ContentId, QString> m_pictureWords;
     std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;

@@ -117,7 +117,85 @@ TestCase {
         compare(notebook.wordsInPicture(pictureId), "", "what was read was not forgotten");
     }
 
-    function test_e_theWordsAreNeverWrittenOntoThePictureItself() {
+    function test_e_whatWasReadIsThereAgainWhenTheNotebookIsOpenedAgain() {
+        const path = newNotebookPath();
+        const picture = temporaryDirectory + "/kept-words.png";
+        let middle = {};
+        verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
+        let words = "";
+        {
+            const first = openNotebook(path);
+            if (!first.canReadPictures()) {
+                skip("this machine cannot read the words in a picture");
+            }
+            first.addPicture(Qt.resolvedUrl("file://" + picture));
+            tryVerify(() => first.pickedPicture !== "", 4000);
+            const read = createTemporaryObject(spyComponent, testCase, {
+                target: first,
+                signalName: "pictureRead"
+            });
+            first.readPicture(first.pickedPicture, "");
+            tryCompare(read, "count", 1, 10000, "nothing came back from reading the picture");
+            words = read.signalArguments[0][1];
+            verify(words.length > 0);
+            middle = first.pickedPictureBox;
+            first.destroy();
+            wait(0);
+        }
+
+        const again = openNotebook(path);
+        const pictureId = again.pictureUnder(middle.columnX + (middle.boxWidth / 2), middle.columnY + (middle.boxHeight / 2));
+        verify(pictureId !== "", "the picture itself was not kept");
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: again,
+            signalName: "pictureRead"
+        });
+
+        again.readPicture(pictureId, "");
+
+        tryCompare(read, "count", 1, 10000, "what was read was not kept");
+        compare(read.signalArguments[0][1], words, "what came back is not what was read before");
+        compare(again.wordsInPicture(pictureId), words);
+
+        // Searching goes to the notebook itself, so finding the word proves it was written down
+        // rather than read out of the picture a second time.
+        const found = createTemporaryObject(spyComponent, testCase, {
+            target: again,
+            signalName: "found"
+        });
+        again.find("Reykjavik");
+        tryVerify(() => found.count > 0, 6000, "the search never came back");
+        verify(found.signalArguments[found.count - 1][0].length > 0, "what was read was not written into the notebook");
+    }
+
+    function test_f_aNotebookIsSearchedForTheWordsInItsPictures() {
+        const notebook = openNotebook(newNotebookPath());
+        if (!notebook.canReadPictures()) {
+            skip("this machine cannot read the words in a picture");
+        }
+        const picture = temporaryDirectory + "/searched-words.png";
+        verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + picture));
+        tryVerify(() => notebook.pickedPicture !== "", 4000);
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "pictureRead"
+        });
+        notebook.readPicture(notebook.pickedPicture, "");
+        tryCompare(read, "count", 1, 10000);
+        const found = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "found"
+        });
+
+        notebook.find("Reykjavik");
+
+        tryVerify(() => found.count > 0, 6000, "the search never came back");
+        const hits = found.signalArguments[found.count - 1][0];
+        verify(hits.length > 0, "the search did not reach the words in the picture");
+    }
+
+    function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";
         verify(pictureOfWords(path, "Kept"));

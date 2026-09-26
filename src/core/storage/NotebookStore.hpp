@@ -26,7 +26,7 @@ struct sqlite3;
 
 namespace phvikapen::core {
 
-inline constexpr int kNotebookSchemaVersion = 15;
+inline constexpr int kNotebookSchemaVersion = 16;
 
 struct TrashedItem {
     Uuid id;
@@ -96,6 +96,13 @@ public:
     // What was said in a recording, in place of whatever was written down before.
     [[nodiscard]] Result<void> writeSayings(const Uuid& recordingId,
                                             std::span<const Saying> sayings);
+
+    // The words read out of a picture, in place of whatever was read out of it before. They are
+    // kept against the picture itself, so the same picture on two pages is read once.
+    [[nodiscard]] Result<void> writePictureWords(const ContentId& source,
+                                                 std::span<const PictureWord> words);
+    [[nodiscard]] Result<std::vector<PictureWord>> pictureWords(const ContentId& source) const;
+    [[nodiscard]] Result<void> forgetPictureWords(const ContentId& source);
 
     [[nodiscard]] Result<void> markThing(const Uuid& pageId, const Mark& mark);
     [[nodiscard]] Result<void> unmarkThing(const Uuid& thingId);

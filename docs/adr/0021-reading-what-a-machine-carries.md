@@ -9,6 +9,9 @@ Accepted
 Extended by [0022](0022-reading-a-recording-back-as-words.md), which fills in the reader for
 recordings on macOS.
 
+Amended by [0023](0023-keeping-the-words-read-out-of-a-picture.md), which writes what was read out
+of a picture into the notebook after all, reversing the decision below to hold it only in memory.
+
 ## Context
 
 Three kinds of reading are wanted, and they are the same kind of problem three times: reading

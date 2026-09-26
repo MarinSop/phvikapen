@@ -2726,10 +2726,6 @@
         <translation>Ovo računalo ne može čitati riječi sa slike.</translation>
     </message>
     <message>
-        <source>There is no page to read a picture on.</source>
-        <translation>Nema stranice na kojoj bi se slika čitala.</translation>
-    </message>
-    <message>
         <source>This picture is not on the page.</source>
         <translation>Ove slike nema na stranici.</translation>
     </message>
