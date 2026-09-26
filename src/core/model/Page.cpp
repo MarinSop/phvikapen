@@ -18,7 +18,7 @@
 
 namespace phvikapen::core {
 
-Page::Page(const Uuid& id) noexcept : m_id{id} {}
+Page::Page(const Uuid& id) : Page{id, {}} {}
 
 Page::Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts,
            std::vector<PlacedPicture> pictures, std::vector<PlacedTable> tables,

@@ -25,7 +25,7 @@ struct PlacedStroke {
 
 class Page {
 public:
-    explicit Page(const Uuid& id) noexcept;
+    explicit Page(const Uuid& id);
     Page(const Uuid& id, std::vector<PlacedStroke> strokes, std::vector<PlacedText> texts = {},
          std::vector<PlacedPicture> pictures = {}, std::vector<PlacedTable> tables = {},
          std::vector<Layer> layers = {});

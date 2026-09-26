@@ -1650,6 +1650,34 @@ TestCase {
         verify(notebook.errorMessage !== "");
     }
 
+    function test_aNewPageComesWithALayerToWriteOn() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addPage();
+
+        compare(notebook.currentPage, 1);
+        tryCompare(notebook.layers, "count", 1, 2000, "the new page has nowhere to write");
+        verify(notebook.activeLayer !== "");
+
+        notebook.addLayer();
+
+        tryCompare(notebook.layers, "count", 2, 2000, "a layer could not be added to a new page");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theFirstPageOfANewSectionComesWithALayer() {
+        const notebook = openNotebook(newNotebookPath());
+
+        notebook.addSection();
+
+        compare(notebook.currentSection, 1);
+        tryCompare(notebook.layers, "count", 1, 2000, "the first page of the section has nowhere to write");
+
+        notebook.addLayer();
+
+        tryCompare(notebook.layers, "count", 2, 2000, "a layer could not be added to a new section");
+    }
+
     function test_sectionsHoldTheirOwnPages() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

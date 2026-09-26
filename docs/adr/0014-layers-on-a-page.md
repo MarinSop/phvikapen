@@ -27,10 +27,13 @@ Every drawing application answers this the same way, and readers already know th
 name, a place in the order, and two switches: whether it is shown and whether it is locked. The
 first layer is the bottom of the pile and the last is the top.
 
-**A page always has at least one layer.** A page written down before there were layers has none
-written against it, and it makes itself one when it is read; everything on it names no layer at
-all, which is read as the bottom one. Nothing has to be rewritten, and a notebook made by an older
-version opens with all of it on a single layer, looking exactly as it did.
+**A page always has at least one layer.** The page itself keeps that promise, whichever way it is
+made: read from a file, copied from another page, or made empty for a page that is being added. A
+page written down before there were layers has none written against it, and it makes itself one
+when it is read; everything on it names no layer at all, which is read as the bottom one. Nothing
+has to be rewritten, and a notebook made by an older version opens with all of it on a single
+layer, looking exactly as it did. Because the promise is the page's own, no caller can hand out a
+page with nowhere to write.
 
 **A layer that is not shown is drawn nowhere**: not on the paper, not in what is printed, not in
 the small picture of the page. **A layer that is locked is drawn but cannot be touched**: nothing
