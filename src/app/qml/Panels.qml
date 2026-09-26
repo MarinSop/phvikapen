@@ -6,6 +6,7 @@ import PhvikaPen.Ui
 QtObject {
     id: root
 
+    readonly property string elements: "elements"
     readonly property string layers: "layers"
     readonly property string maths: "maths"
     readonly property string pageSetup: "pageSetup"
@@ -16,6 +17,8 @@ QtObject {
 
     function titleOf(panelId, spoken) {
         switch (panelId) {
+        case root.elements:
+            return qsTr("Elements");
         case root.layers:
             return qsTr("Layers");
         case root.maths:
@@ -37,6 +40,8 @@ QtObject {
         switch (panelId) {
         case root.layers:
             return Icons.layer;
+        case root.elements:
+            return Icons.elements;
         case root.maths:
             return Icons.solve;
         case root.sound:

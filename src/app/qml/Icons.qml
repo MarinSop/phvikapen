@@ -18,6 +18,7 @@ QtObject {
     readonly property url table: "qrc:/icons/table.svg"
     readonly property url time: "qrc:/icons/stopwatch.svg"
     readonly property url link: "qrc:/icons/link.svg"
+    readonly property url elements: "qrc:/icons/sticker.svg"
     readonly property url microphone: "qrc:/icons/microphone.svg"
     readonly property url play: "qrc:/icons/play.svg"
     readonly property url pause: "qrc:/icons/pause.svg"

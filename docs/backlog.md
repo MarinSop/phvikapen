@@ -217,6 +217,11 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **A picture is not kept in an element.** Ink, words and tables are. A picture is named by what
+  it contains rather than carried with the page, so keeping one means carrying its bytes from the
+  library into the notebook it is put in, and that is not written yet.
+- **An element is put down in the middle of what is being looked at.** It cannot yet be dropped
+  where the pointer is, or dragged out of the library onto the page.
 - **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place
   within a page are all names wider than a page identifier, and none of them is needed to move
   about one notebook.

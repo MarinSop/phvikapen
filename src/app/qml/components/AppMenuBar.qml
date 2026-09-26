@@ -266,6 +266,11 @@ MenuBar {
                 objectName: "soundPanelItem"
             }
 
+            MenuCommand {
+                action: root.actions.showElementsPanel
+                objectName: "elementsPanelItem"
+            }
+
             MenuSeparator {
             }
 

@@ -239,6 +239,14 @@
         <translation>Pusti odavde</translation>
     </message>
     <message>
+        <source>Elements</source>
+        <translation>Elementi</translation>
+    </message>
+    <message>
+        <source>Keep as Element…</source>
+        <translation>Spremi kao element…</translation>
+    </message>
+    <message>
         <source>Reset Panel Layout</source>
         <translation>Vrati raspored ploča</translation>
     </message>
@@ -474,6 +482,81 @@
     <message>
         <source>Usual</source>
         <translation>Uobičajeno</translation>
+    </message>
+</context>
+<context>
+    <name>ElementsPanel</name>
+    <message>
+        <source>Dismiss</source>
+        <translation>Odbaci</translation>
+    </message>
+    <message>
+        <source>Search elements</source>
+        <translation>Pretraži elemente</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Pretraži</translation>
+    </message>
+    <message>
+        <source>Kind of element</source>
+        <translation>Vrsta elementa</translation>
+    </message>
+    <message>
+        <source>Elements</source>
+        <translation>Elementi</translation>
+    </message>
+    <message>
+        <source>Put on the page</source>
+        <translation>Stavi na stranicu</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Preimenuj</translation>
+    </message>
+    <message>
+        <source>Delete…</source>
+        <translation>Izbriši…</translation>
+    </message>
+    <message>
+        <source>Keep what is picked up</source>
+        <translation>Spremi ono što je uhvaćeno</translation>
+    </message>
+    <message>
+        <source>Pick something up on a page and keep it here to use it again.</source>
+        <translation>Uhvati nešto na stranici i spremi ovdje da to koristiš ponovno.</translation>
+    </message>
+    <message>
+        <source>Keep as an element</source>
+        <translation>Spremi kao element</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Naziv</translation>
+    </message>
+    <message>
+        <source>Kind</source>
+        <translation>Vrsta</translation>
+    </message>
+    <message>
+        <source>Kind, such as Stickers or Shapes</source>
+        <translation>Vrsta, npr. Naljepnice ili Oblici</translation>
+    </message>
+    <message>
+        <source>Ink, words and tables are kept. A picture is not kept in an element yet.</source>
+        <translation>Spremaju se tinta, riječi i tablice. Slika se još ne sprema u element.</translation>
+    </message>
+    <message>
+        <source>Rename element</source>
+        <translation>Preimenuj element</translation>
+    </message>
+    <message>
+        <source>“%1” will go from the elements. This cannot be undone.</source>
+        <translation>“%1” nestaje iz elemenata. Ovo se ne može poništiti.</translation>
+    </message>
+    <message>
+        <source>Delete element</source>
+        <translation>Izbriši element</translation>
     </message>
 </context>
 <context>
@@ -1469,6 +1552,10 @@
 <context>
     <name>Panels</name>
     <message>
+        <source>Elements</source>
+        <translation>Elementi</translation>
+    </message>
+    <message>
         <source>Layers</source>
         <translation>Slojevi</translation>
     </message>
@@ -2079,6 +2166,10 @@
         <translation>Ploča s matematikom</translation>
     </message>
     <message>
+        <source>Elements panel</source>
+        <translation>Ploča s elementima</translation>
+    </message>
+    <message>
         <source>Recordings panel</source>
         <translation>Ploča sa snimkama</translation>
     </message>
@@ -2437,6 +2528,33 @@
     <message>
         <source>Pick the look you would like. You can change it later in Settings.</source>
         <translation>Odaberite izgled koji želite. Kasnije ga možete promijeniti u Postavkama.</translation>
+    </message>
+</context>
+<context>
+    <name>phvikapen::app::ElementsViewModel</name>
+    <message>
+        <source>The elements could not be kept in %1</source>
+        <translation>Elementi se nisu mogli spremiti u %1</translation>
+    </message>
+    <message>
+        <source>There is nowhere to keep an element.</source>
+        <translation>Nema gdje spremiti element.</translation>
+    </message>
+    <message>
+        <source>Pick up what is to be kept first.</source>
+        <translation>Prvo uhvati ono što treba spremiti.</translation>
+    </message>
+    <message>
+        <source>Elements</source>
+        <translation>Elementi</translation>
+    </message>
+    <message>
+        <source>Element %1</source>
+        <translation>Element %1</translation>
+    </message>
+    <message>
+        <source>This element could not be found.</source>
+        <translation>Ovaj element nije pronađen.</translation>
     </message>
 </context>
 <context>

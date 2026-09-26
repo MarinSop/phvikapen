@@ -273,6 +273,12 @@ Menu {
     }
 
     MenuCommand {
+        action: root.actions.keepAsElement
+        objectName: "contextKeepAsElement"
+        visible: root.actions.keepAsElement.enabled
+    }
+
+    MenuCommand {
         action: root.actions.addLink
         objectName: "contextAddLink"
         visible: root.actions.linkInHand === ""

@@ -15,6 +15,7 @@ Item {
     required property ToolViewModel tools
     required property WorkspaceViewModel workspace
     required property MathViewModel maths
+    required property ElementsViewModel library
     required property RecordingViewModel sound
     required property TimeKeeperViewModel timeKeeper
     readonly property InkCanvas canvas: root.notebooks.canvas
@@ -455,6 +456,22 @@ Item {
         text: qsTr("Play From Here")
 
         onTriggered: root.sound.playFromThing(root.whatIsPicked())
+    }
+    readonly property Action showElementsPanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.elements)
+        icon.source: Icons.elements
+        shortcut: root.settings.keysFor("elementsPanel")
+        text: qsTr("Elements")
+
+        onTriggered: root.workspace.togglePanel(Panels.elements)
+    }
+    readonly property Action keepAsElement: Action {
+        enabled: root.hasNotebook && root.library.anythingToKeep(root.notebook)
+        icon.source: Icons.elements
+        text: qsTr("Keep as Element…")
+
+        onTriggered: root.workspace.showPanel(Panels.elements)
     }
     readonly property Action resetPanels: Action {
         text: qsTr("Reset Panel Layout")

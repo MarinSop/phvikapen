@@ -186,9 +186,16 @@ ApplicationWindow {
         notebook: notebooks.current
     }
 
+    ElementsViewModel {
+        id: elementLibrary
+
+        directory: notebooks.directory + "/elements"
+    }
+
     AppActions {
         id: appActions
 
+        library: elementLibrary
         maths: maths
         sound: recordings
         timeKeeper: timeKeeper

@@ -5173,6 +5173,118 @@ QVariantMap NotebookViewModel::areaOfWhatIsPicked() const {
     return {};
 }
 
+NotebookViewModel::Handful NotebookViewModel::handfulPicked() const {
+    Handful handful;
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return handful;
+    }
+    const std::vector<core::Uuid> picked =
+        m_canvas.isNull() ? std::vector<core::Uuid>{} : m_canvas->selection();
+    for (const core::PlacedStroke& placed : page->strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) != picked.end()) {
+            handful.strokes.push_back(placed);
+        }
+    }
+    for (const core::PlacedText& placed : page->texts()) {
+        if (!m_pickedText.isEmpty() && isNamed(placed.box.id, m_pickedText)) {
+            handful.texts.push_back(placed);
+        }
+    }
+    for (const core::PlacedTable& placed : page->tables()) {
+        if (!m_pickedTable.isEmpty() && isNamed(placed.table.id, m_pickedTable)) {
+            handful.tables.push_back(placed);
+        }
+    }
+
+    std::optional<core::Rect> around;
+    const auto widen = [&around](const core::Rect& one) {
+        around = around ? around->united(one) : one;
+    };
+    for (const core::PlacedStroke& placed : handful.strokes) {
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
+            widen(*bounds);
+        }
+    }
+    for (const core::PlacedText& placed : handful.texts) {
+        widen(core::areaOf(placed.box));
+    }
+    for (const core::PlacedTable& placed : handful.tables) {
+        widen(core::areaOf(placed.table));
+    }
+    handful.area = around.value_or(core::Rect{});
+    return handful;
+}
+
+void NotebookViewModel::putDownHandful(const Handful& handful) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
+        return;
+    }
+    if (handful.strokes.empty() && handful.texts.empty() && handful.tables.empty()) {
+        return;
+    }
+    const core::Rect visible = m_canvas->visibleOnPage();
+    const auto halfway = static_cast<float>(kHalfway);
+    const float across =
+        visible.left + ((visible.width() - handful.area.width()) * halfway) - handful.area.left;
+    const float down =
+        visible.top + ((visible.height() - handful.area.height()) * halfway) - handful.area.top;
+    const core::Uuid layer = layerForNewThings(*page);
+    core::StorageThread* const storage = &*m_storage;
+
+    std::vector<std::unique_ptr<core::ICommand>> steps;
+    std::int64_t ordinal = page->nextOrdinal();
+    for (const core::PlacedStroke& placed : handful.strokes) {
+        const core::Stroke shifted = core::moved(placed.stroke, across, down);
+        core::Stroke fresh{m_ids.next(), shifted.style()};
+        for (const core::InkSample& sample : shifted.samples()) {
+            fresh.append(sample);
+        }
+        steps.push_back(std::make_unique<core::AddStrokeCommand>(page, storage,
+                                                                 core::PlacedStroke{
+                                                                     .ordinal = ordinal++,
+                                                                     .stroke = std::move(fresh),
+                                                                     .layer = layer,
+                                                                 }));
+    }
+    std::int64_t textOrdinal = page->nextTextOrdinal();
+    for (const core::PlacedText& placed : handful.texts) {
+        core::TextBox box = placed.box;
+        box.id = m_ids.next();
+        box.at.x += across;
+        box.at.y += down;
+        steps.push_back(std::make_unique<core::AddTextCommand>(page, storage,
+                                                               core::PlacedText{
+                                                                   .ordinal = textOrdinal++,
+                                                                   .box = core::normalized(box),
+                                                                   .layer = layer,
+                                                               }));
+    }
+    std::int64_t tableOrdinal = page->nextTableOrdinal();
+    for (const core::PlacedTable& placed : handful.tables) {
+        core::Table table = placed.table;
+        table.id = m_ids.next();
+        table.at.x += across;
+        table.at.y += down;
+        steps.push_back(
+            std::make_unique<core::AddTableCommand>(page, storage,
+                                                    core::PlacedTable{
+                                                        .ordinal = tableOrdinal++,
+                                                        .table = core::normalized(table),
+                                                        .layer = layer,
+                                                    }));
+    }
+    if (steps.empty()) {
+        return;
+    }
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+    publishTexts();
+    publishTables();
+    refreshCanvas();
+}
+
 void NotebookViewModel::addLink(const QString& where, bool toPage, const QString& label) {
     core::Page* const page = currentPageData();
     if (page == nullptr || !canPutSomethingDown() || !m_storage) {

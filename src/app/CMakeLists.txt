@@ -19,6 +19,7 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     cog
     stopwatch
     link
+    sticker
     microphone
     play
     pause
@@ -89,6 +90,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/InkCanvasForeign.hpp
         cpp/Clipboard.cpp
         cpp/Clipboard.hpp
+        cpp/ElementsViewModel.cpp
+        cpp/ElementsViewModel.hpp
         cpp/MathViewModel.cpp
         cpp/MathViewModel.hpp
         cpp/NotebookViewModel.cpp
@@ -141,6 +144,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ConfirmDialog.qml
         qml/components/ArrowButton.qml
         qml/components/DropLine.qml
+        qml/components/ElementsPanel.qml
         qml/components/EmptyPanelNote.qml
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml

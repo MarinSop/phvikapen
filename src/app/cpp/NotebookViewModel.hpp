@@ -368,6 +368,22 @@ public:
     // The area of the page the reader has hold of, which is where a new link is put.
     Q_INVOKABLE [[nodiscard]] QVariantMap areaOfWhatIsPicked() const;
 
+    // Everything the reader has hold of, carried off the page so that it can be kept somewhere
+    // else and put down again later. Where it stood is kept with it, so that a handful put down
+    // again keeps the shape it had.
+    struct Handful {
+        std::vector<core::PlacedStroke> strokes;
+        std::vector<core::PlacedText> texts;
+        std::vector<core::PlacedTable> tables;
+        core::Rect area{};
+    };
+
+    [[nodiscard]] Handful handfulPicked() const;
+
+    // A handful put down in the middle of what is being looked at, everything in it given a name
+    // of its own so that the same handful can be put down many times.
+    void putDownHandful(const Handful& handful);
+
     // The layer anything new is put on, which is the one the reader has chosen in the panel.
     [[nodiscard]] QString activeLayer() const { return m_activeLayer; }
 

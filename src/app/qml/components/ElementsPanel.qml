@@ -1,0 +1,282 @@
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import PhvikaPen.Ui
+
+Pane {
+    id: root
+
+    required property AppActions actions
+    readonly property ElementsViewModel library: root.actions.library
+    readonly property NotebookViewModel notebook: root.actions.notebook
+    readonly property bool ready: root.notebook !== null && root.notebook.loaded
+
+    function askToDelete(elementId, name) {
+        deleteDialog.elementId = elementId;
+        deleteDialog.itemName = name;
+        deleteDialog.open();
+    }
+
+    background: null
+    objectName: "elementsPanel"
+    padding: Theme.gap
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: Theme.gap
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.gap
+            visible: root.library.trouble !== ""
+
+            Label {
+                Layout.fillWidth: true
+                color: Theme.warning
+                objectName: "elementsTrouble"
+                text: root.library.trouble
+                wrapMode: Text.WordWrap
+            }
+
+            ShapeButton {
+                icon.source: Icons.close
+                label: qsTr("Dismiss")
+
+                onClicked: root.library.forgetTrouble()
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.gap
+
+            TextField {
+                id: looking
+
+                Accessible.name: qsTr("Search elements")
+                Layout.fillWidth: true
+                objectName: "elementSearch"
+                placeholderText: qsTr("Search")
+
+                onTextEdited: root.library.looking = looking.text
+            }
+
+            ComboBox {
+                id: kinds
+
+                Accessible.name: qsTr("Kind of element")
+                Layout.preferredWidth: Math.round(120 * Theme.scale)
+                model: root.library.kinds
+                objectName: "elementKinds"
+
+                onActivated: root.library.kind = kinds.currentText
+            }
+        }
+
+        GridView {
+            id: grid
+
+            Accessible.name: qsTr("Elements")
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            cellHeight: Math.round(104 * Theme.scale)
+            cellWidth: Math.round(92 * Theme.scale)
+            clip: true
+            model: root.library.elements
+            objectName: "elementGrid"
+
+            ScrollBar.vertical: ScrollBar {
+            }
+            delegate: ItemDelegate {
+                id: one
+
+                required property string elementId
+                required property int index
+                required property string kind
+                required property string name
+                required property string picture
+
+                Accessible.name: one.name
+                height: grid.cellHeight - 4
+                objectName: "element" + one.index
+                width: grid.cellWidth - 4
+
+                background: Rectangle {
+                    border.color: one.hovered ? Theme.accent : Theme.line
+                    border.width: 1
+                    color: one.hovered ? Theme.hover : "transparent"
+                    radius: 6
+                }
+                contentItem: ColumnLayout {
+                    spacing: 2
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignHCenter
+                        Layout.preferredHeight: Math.round(56 * Theme.scale)
+                        Layout.preferredWidth: Math.round(70 * Theme.scale)
+                        color: "white"
+                        radius: 3
+
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            cache: false
+                            fillMode: Image.PreserveAspectFit
+                            objectName: "elementPicture" + one.index
+                            source: one.picture
+                        }
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                        font.pixelSize: Math.round(11 * Theme.scale)
+                        horizontalAlignment: Text.AlignHCenter
+                        objectName: "elementName" + one.index
+                        text: one.name
+                    }
+                }
+
+                onClicked: root.library.put(root.notebook, one.elementId)
+                onPressAndHold: oneMenu.popup()
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+
+                    onTapped: oneMenu.popup()
+                }
+
+                Menu {
+                    id: oneMenu
+
+                    MenuItem {
+                        objectName: "putElementItem"
+                        text: qsTr("Put on the page")
+
+                        onTriggered: root.library.put(root.notebook, one.elementId)
+                    }
+
+                    MenuItem {
+                        text: qsTr("Rename")
+
+                        onTriggered: {
+                            renameDialog.elementId = one.elementId;
+                            renameDialog.itemName = one.name;
+                            renameDialog.open();
+                        }
+                    }
+
+                    MenuItem {
+                        objectName: "deleteElementItem"
+                        text: qsTr("Delete…")
+
+                        onTriggered: root.askToDelete(one.elementId, one.name)
+                    }
+                }
+            }
+        }
+
+        Button {
+            Layout.fillWidth: true
+            enabled: root.ready && root.library.anythingToKeep(root.notebook)
+            objectName: "keepElementButton"
+            text: qsTr("Keep what is picked up")
+
+            onClicked: {
+                keepDialog.itemName = "";
+                keepDialog.open();
+            }
+        }
+    }
+
+    EmptyPanelNote {
+        anchors.centerIn: parent
+        text: root.library.elements.count === 0 ? qsTr("Pick something up on a page and keep it here to use it again.") : ""
+        visible: root.library.elements.count === 0
+        width: parent.width - (Theme.gap * 4)
+    }
+
+    AppDialog {
+        id: keepDialog
+
+        property string itemName: ""
+
+        objectName: "keepElementDialog"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        title: qsTr("Keep as an element")
+
+        onAccepted: root.library.keep(root.notebook, nameField.text, kindField.text)
+        onAboutToShow: {
+            nameField.text = "";
+            kindField.text = root.library.kind === "" || root.library.kind === root.library.kinds[0] ? "" : root.library.kind;
+        }
+
+        ColumnLayout {
+            spacing: Theme.gap
+            width: Math.round(320 * Theme.scale)
+
+            TextField {
+                id: nameField
+
+                Accessible.name: qsTr("Name")
+                Layout.fillWidth: true
+                objectName: "elementNameField"
+                placeholderText: qsTr("Name")
+            }
+
+            TextField {
+                id: kindField
+
+                Accessible.name: qsTr("Kind")
+                Layout.fillWidth: true
+                objectName: "elementKindField"
+                placeholderText: qsTr("Kind, such as Stickers or Shapes")
+            }
+
+            Label {
+                Layout.fillWidth: true
+                color: palette.placeholderText
+                font.pixelSize: Math.round(11 * Theme.scale)
+                text: qsTr("Ink, words and tables are kept. A picture is not kept in an element yet.")
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    AppDialog {
+        id: renameDialog
+
+        property string elementId: ""
+        property string itemName: ""
+
+        objectName: "renameElementDialog"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        title: qsTr("Rename element")
+
+        onAccepted: root.library.rename(renameDialog.elementId, renameField.text)
+        onAboutToShow: renameField.text = renameDialog.itemName
+
+        TextField {
+            id: renameField
+
+            Accessible.name: qsTr("Name")
+            objectName: "renameElementField"
+            width: Math.round(280 * Theme.scale)
+        }
+    }
+
+    ConfirmDialog {
+        id: deleteDialog
+
+        property string elementId: ""
+        property string itemName: ""
+
+        objectName: "deleteElementDialog"
+        question: qsTr("“%1” will go from the elements. This cannot be undone.").arg(deleteDialog.itemName)
+        title: qsTr("Delete element")
+
+        onAccepted: root.library.remove(deleteDialog.elementId)
+    }
+}
