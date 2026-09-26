@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace phvikapen::core {
@@ -35,12 +36,15 @@ struct Equation {
     enum class Kind : std::uint8_t {
         Number,
         Operation,
+        // A letter standing for a number that is not known yet.
+        Unknown,
     };
 
     struct Step {
         Kind kind{Kind::Number};
         Operation operation{Operation::Add};
         double number{};
+        char letter{};
         std::size_t left{kNothing};
         std::size_t right{kNothing};
 
@@ -57,6 +61,11 @@ struct Equation {
 [[nodiscard]] bool isEmpty(const Equation& equation) noexcept;
 
 [[nodiscard]] Equation numberOf(double value);
+
+[[nodiscard]] Equation unknownOf(char letter);
+
+// The letters standing for numbers in an equation, each named once, in the order they are met.
+[[nodiscard]] std::string lettersOf(const Equation& equation);
 
 // One equation made of two, with what is done to them on top.
 [[nodiscard]] Equation joined(Operation operation, const Equation& left, const Equation& right);

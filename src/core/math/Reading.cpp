@@ -3,6 +3,7 @@
 #include "core/Error.hpp"
 #include "core/math/Equation.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -62,6 +63,7 @@ constexpr std::array<std::pair<std::string_view, char>, 8> kSpelledOut{
 
 enum class Mark : std::uint8_t {
     Number,
+    Letter,
     Plus,
     Minus,
     Times,
@@ -75,6 +77,7 @@ enum class Mark : std::uint8_t {
 struct Token {
     Mark mark{Mark::Number};
     double number{};
+    char letter{};
 };
 
 [[nodiscard]] Result<Token> numberAt(std::string_view written, std::size_t& at) {
@@ -97,7 +100,7 @@ struct Token {
     if (!std::isfinite(value)) {
         return makeError(ErrorCode::InvalidArgument, "a number here is too large to work with");
     }
-    return Token{.mark = Mark::Number, .number = value};
+    return Token{.mark = Mark::Number, .number = value, .letter = '\0'};
 }
 
 [[nodiscard]] bool isLetter(char letter) noexcept {
@@ -107,17 +110,23 @@ struct Token {
 // Names that stand for a sign no keyboard carries, so that a square root can be typed.
 constexpr std::string_view kRootName = "sqrt";
 
-[[nodiscard]] Result<Mark> nameAt(std::string_view written, std::size_t& at) {
+// A run of letters is either the name of a sign no keyboard carries, or letters each standing for
+// a number that is not known yet: xy is x times y, the way it is written.
+[[nodiscard]] Result<std::vector<Token>> nameAt(std::string_view written, std::size_t& at) {
     const std::size_t from = at;
     while (at < written.size() && isLetter(written[at])) {
         ++at;
     }
     const std::string_view name = written.substr(from, at - from);
     if (name == kRootName) {
-        return Mark::RootSign;
+        return std::vector<Token>{Token{.mark = Mark::RootSign, .number = 0.0, .letter = '\0'}};
     }
-    return makeError(ErrorCode::InvalidArgument,
-                     "there is a " + std::string{name} + " where arithmetic should be");
+    std::vector<Token> letters;
+    letters.reserve(name.size());
+    for (const char letter : name) {
+        letters.push_back(Token{.mark = Mark::Letter, .number = 0.0, .letter = letter});
+    }
+    return letters;
 }
 
 [[nodiscard]] Result<Mark> signAt(char letter) {
@@ -151,7 +160,7 @@ constexpr std::string_view kRootName = "sqrt";
             continue;
         }
         if (written.substr(at).starts_with(kRootSign)) {
-            tokens.push_back(Token{.mark = Mark::RootSign, .number = 0.0});
+            tokens.push_back(Token{.mark = Mark::RootSign, .number = 0.0, .letter = '\0'});
             at += kRootSign.size();
             continue;
         }
@@ -164,18 +173,18 @@ constexpr std::string_view kRootName = "sqrt";
             continue;
         }
         if (isLetter(written[at])) {
-            Result<Mark> name = nameAt(written, at);
+            Result<std::vector<Token>> name = nameAt(written, at);
             if (!name) {
                 return std::unexpected{name.error()};
             }
-            tokens.push_back(Token{.mark = *name, .number = 0.0});
+            tokens.insert(tokens.end(), name->begin(), name->end());
             continue;
         }
         Result<Mark> sign = signAt(written[at]);
         if (!sign) {
             return std::unexpected{sign.error()};
         }
-        tokens.push_back(Token{.mark = *sign, .number = 0.0});
+        tokens.push_back(Token{.mark = *sign, .number = 0.0, .letter = '\0'});
         ++at;
     }
     return tokens;
@@ -226,7 +235,7 @@ private:
     }
 
     [[nodiscard]] bool standsAgainst() const noexcept {
-        return at(Mark::Open) || at(Mark::RootSign);
+        return at(Mark::Open) || at(Mark::RootSign) || at(Mark::Letter);
     }
 
     void skip() noexcept { ++m_at; }
@@ -315,6 +324,9 @@ private:
         if (token.mark == Mark::Number) {
             return numberOf(token.number);
         }
+        if (token.mark == Mark::Letter) {
+            return unknownOf(token.letter);
+        }
         if (token.mark == Mark::RootSign) {
             Result<Equation> of = signs();
             if (!of) {
@@ -384,6 +396,40 @@ std::string tidied(std::string_view written) {
         ++at;
     }
     return put;
+}
+
+Result<Statement> statementOf(std::string_view written) {
+    const std::size_t equals = written.find('=');
+    if (equals == std::string_view::npos) {
+        Result<Equation> left = equationOf(written);
+        if (!left) {
+            return std::unexpected{left.error()};
+        }
+        return Statement{.left = std::move(*left), .right = {}, .balanced = false};
+    }
+    if (written.find('=', equals + 1) != std::string_view::npos) {
+        return makeError(ErrorCode::InvalidArgument, "there is more than one equals sign here");
+    }
+    Result<Equation> left = equationOf(written.substr(0, equals));
+    if (!left) {
+        return std::unexpected{left.error()};
+    }
+    Result<Equation> right = equationOf(written.substr(equals + 1));
+    if (!right) {
+        return std::unexpected{right.error()};
+    }
+    return Statement{.left = std::move(*left), .right = std::move(*right), .balanced = true};
+}
+
+std::string lettersOf(const Statement& statement) {
+    std::string named = lettersOf(statement.left);
+    for (const char letter : lettersOf(statement.right)) {
+        if (!named.contains(letter)) {
+            named.push_back(letter);
+        }
+    }
+    std::ranges::sort(named);
+    return named;
 }
 
 Result<Equation> equationOf(std::string_view written) {

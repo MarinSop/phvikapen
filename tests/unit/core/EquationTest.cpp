@@ -94,11 +94,18 @@ TEST(ReadingTest, ARootCanBeTypedByItsName) {
     EXPECT_EQ(answered("2 sqrt(9)"), "6");
 }
 
-TEST(ReadingTest, ANameThatMeansNothingIsSaidBack) {
-    const Result<Equation> read = equationOf("2 + fish");
+TEST(ReadingTest, ASignThatMeansNothingIsSaidBack) {
+    const Result<Equation> read = equationOf("2 + #");
 
     ASSERT_FALSE(read.has_value());
-    EXPECT_NE(read.error().message.find("fish"), std::string::npos);
+    EXPECT_NE(read.error().message.find('#'), std::string::npos);
+}
+
+TEST(ReadingTest, LettersStandForNumbersThatAreNotKnownYet) {
+    const Result<Equation> read = equationOf("2 + fish");
+
+    ASSERT_TRUE(read.has_value());
+    EXPECT_EQ(lettersOf(*read), "fhis");
 }
 
 TEST(ReadingTest, ANumberStandingAgainstABracketMeansMultiplication) {

@@ -1,6 +1,8 @@
 #include "core/math/Equation.hpp"
 
+#include <algorithm>
 #include <cstddef>
+#include <string>
 
 namespace phvikapen::core {
 namespace {
@@ -35,11 +37,37 @@ Equation numberOf(double value) {
         .kind = Equation::Kind::Number,
         .operation = Operation::Add,
         .number = value,
+        .letter = '\0',
         .left = Equation::kNothing,
         .right = Equation::kNothing,
     });
     equation.whole = 0;
     return equation;
+}
+
+Equation unknownOf(char letter) {
+    Equation equation;
+    equation.steps.push_back(Equation::Step{
+        .kind = Equation::Kind::Unknown,
+        .operation = Operation::Add,
+        .number = 0.0,
+        .letter = letter,
+        .left = Equation::kNothing,
+        .right = Equation::kNothing,
+    });
+    equation.whole = 0;
+    return equation;
+}
+
+std::string lettersOf(const Equation& equation) {
+    std::string named;
+    for (const Equation::Step& step : equation.steps) {
+        if (step.kind == Equation::Kind::Unknown && !named.contains(step.letter)) {
+            named.push_back(step.letter);
+        }
+    }
+    std::ranges::sort(named);
+    return named;
 }
 
 Equation joined(Operation operation, const Equation& left, const Equation& right) {
@@ -55,6 +83,7 @@ Equation joined(Operation operation, const Equation& left, const Equation& right
         .kind = Equation::Kind::Operation,
         .operation = operation,
         .number = 0.0,
+        .letter = '\0',
         .left = left.whole,
         .right = right.whole + along,
     });
@@ -71,6 +100,7 @@ Equation applied(Operation operation, const Equation& of) {
         .kind = Equation::Kind::Operation,
         .operation = operation,
         .number = 0.0,
+        .letter = '\0',
         .left = of.whole,
         .right = Equation::kNothing,
     });

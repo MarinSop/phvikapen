@@ -28,7 +28,9 @@ target_sources(phvikapen_core
         math/Answer.cpp
         math/Drawing.cpp
         math/Equation.cpp
+        math/Plotting.cpp
         math/Reading.cpp
+        math/Solving.cpp
         model/Layer.cpp
         model/Outline.cpp
         model/Page.cpp
@@ -80,7 +82,9 @@ target_sources(phvikapen_core
             math/Answer.hpp
             math/Drawing.hpp
             math/Equation.hpp
+            math/Plotting.hpp
             math/Reading.hpp
+            math/Solving.hpp
             model/Asset.hpp
             model/Layer.hpp
             model/Outline.hpp
