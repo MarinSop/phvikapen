@@ -31,6 +31,8 @@ Item {
     // editor keeps this up to date, so that a row is added beside the box being typed in.
     property int rowInHand: 0
     property int columnInHand: 0
+    // Which link the pointer was last over, so that the menu that opens there can change it.
+    property string linkInHand: ""
     // The stretch of boxes marked out in the table in hand, which is what joining them asks for.
     property int stretchFromColumn: -1
     property int stretchFromRow: -1
@@ -426,6 +428,27 @@ Item {
             }
         }
     }
+    readonly property Action addLink: Action {
+        enabled: root.hasNotebook
+        icon.source: Icons.link
+        text: qsTr("Add Link…")
+
+        onTriggered: root.linkWanted()
+    }
+    readonly property Action changeLink: Action {
+        enabled: root.linkInHand !== ""
+        icon.source: Icons.link
+        text: qsTr("Change Link…")
+
+        onTriggered: root.linkChangeWanted(root.linkInHand)
+    }
+    readonly property Action removeLink: Action {
+        enabled: root.linkInHand !== ""
+        icon.source: Icons.close
+        text: qsTr("Remove Link")
+
+        onTriggered: root.notebook.removeLink(root.linkInHand)
+    }
     readonly property Action playFromHere: Action {
         enabled: root.momentOfWhatIsPicked() >= 0
         icon.source: Icons.play
@@ -712,6 +735,8 @@ Item {
     signal settingsWanted
     signal findWanted
     signal trashWanted
+    signal linkWanted
+    signal linkChangeWanted(string linkId)
 
     // Nothing is closed over the top of changes nobody has kept.
     function askToClose(index) {

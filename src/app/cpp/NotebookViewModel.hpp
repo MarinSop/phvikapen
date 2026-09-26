@@ -132,6 +132,8 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QString shownRecording READ shownRecording WRITE showRecording NOTIFY
                    recordingsChanged FINAL)
     Q_PROPERTY(int shownReading READ shownReading NOTIFY recordingsChanged FINAL)
+    Q_PROPERTY(QVariantList links READ links NOTIFY linksChanged FINAL)
+    Q_PROPERTY(QVariantList pagesToLinkTo READ pagesToLinkTo NOTIFY outlineChanged FINAL)
     Q_PROPERTY(QString shownTrouble READ shownTrouble NOTIFY recordingsChanged FINAL)
     Q_PROPERTY(QString activeLayer READ activeLayer WRITE setActiveLayer NOTIFY layersChanged FINAL)
 
@@ -336,6 +338,35 @@ public:
                                  const QString& language);
 
     Q_INVOKABLE void markReading(const QString& recordingId, int reading, const QString& trouble);
+
+    // The links on the page being read, as the window draws them: where each stands on the page
+    // and where it goes.
+    [[nodiscard]] QVariantList links() const;
+
+    // Every page of the notebook a link could be made to, named by what it is.
+    [[nodiscard]] QVariantList pagesToLinkTo() const;
+
+    // A link put over what the reader has hold of, or over a patch of the page where nothing is
+    // held. `where` is a page of this notebook where `toPage` is true, and somewhere outside the
+    // application otherwise.
+    Q_INVOKABLE void addLink(const QString& where, bool toPage, const QString& label);
+
+    Q_INVOKABLE void changeLink(const QString& linkId, const QString& where, bool toPage,
+                                const QString& label);
+
+    Q_INVOKABLE void removeLink(const QString& linkId);
+
+    // The link under a place on the page, or nothing at all where there is none.
+    Q_INVOKABLE [[nodiscard]] QVariantMap linkUnder(qreal columnX, qreal columnY) const;
+
+    // Everything about one link, named by what it is.
+    Q_INVOKABLE [[nodiscard]] QVariantMap aboutLink(const QString& linkId) const;
+
+    // Follows a link: goes to the page it names, or says where outside the application it goes.
+    Q_INVOKABLE void followLink(const QString& linkId);
+
+    // The area of the page the reader has hold of, which is where a new link is put.
+    Q_INVOKABLE [[nodiscard]] QVariantMap areaOfWhatIsPicked() const;
 
     // The layer anything new is put on, which is the one the reader has chosen in the panel.
     [[nodiscard]] QString activeLayer() const { return m_activeLayer; }
@@ -557,6 +588,9 @@ public:
 
 signals:
     void recordingsChanged();
+    void linksChanged();
+    // A link goes somewhere outside the application, and the window is to open it.
+    void goingOut(const QUrl& where);
     void soundReady(const QString& recordingId, const QByteArray& sound);
     void soundMissing(const QString& recordingId);
     void notebookPathChanged();
@@ -748,6 +782,10 @@ private:
 
     void publishLayers();
     void publishRecordings();
+    void publishLinks();
+    [[nodiscard]] const core::Link* linkNamed(const QString& linkId) const;
+    [[nodiscard]] std::optional<core::Rect> areaOfPickedInk(const core::Page& page) const;
+    [[nodiscard]] std::optional<core::Rect> areaOfPickedThing(const core::Page& page) const;
     // The moment a thing was put on the page, where a recording is running.
     void noteTheMoment(const core::Uuid& thing);
     [[nodiscard]] const core::Recording* recordingNamed(const QString& recordingId) const;

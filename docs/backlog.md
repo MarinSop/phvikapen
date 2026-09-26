@@ -217,6 +217,11 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place
+  within a page are all names wider than a page identifier, and none of them is needed to move
+  about one notebook.
+- **A link is a rectangle.** It cannot follow the shape of a line of handwriting that wraps, so a
+  link over two lines covers the space between them as well.
 - **Nothing reads a recording back as words yet.** The whole path is there — asking, the state
   while it runs, what comes back, keeping it, tapping a line to move the playing, and saying
   plainly when it fails — but no machine carries a reader behind it, so every reading fails with

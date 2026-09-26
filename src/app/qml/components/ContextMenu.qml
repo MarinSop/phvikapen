@@ -270,6 +270,27 @@ Menu {
     }
 
     MenuLine {
+    }
+
+    MenuCommand {
+        action: root.actions.addLink
+        objectName: "contextAddLink"
+        visible: root.actions.linkInHand === ""
+    }
+
+    MenuCommand {
+        action: root.actions.changeLink
+        objectName: "contextChangeLink"
+        visible: root.actions.linkInHand !== ""
+    }
+
+    MenuCommand {
+        action: root.actions.removeLink
+        objectName: "contextRemoveLink"
+        visible: root.actions.linkInHand !== ""
+    }
+
+    MenuLine {
         visible: root.actions.playFromHere.enabled
     }
 

@@ -18,6 +18,7 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     export
     cog
     stopwatch
+    link
     microphone
     play
     pause
@@ -144,6 +145,8 @@ qt_add_qml_module(phvikapen_ui
         qml/components/EmptyState.qml
         qml/components/FindDialog.qml
         qml/components/FloatingPanel.qml
+        qml/components/LinkDialog.qml
+        qml/components/LinkLayer.qml
         qml/components/MathGraph.qml
         qml/components/MathPanel.qml
         qml/components/MenuCommand.qml

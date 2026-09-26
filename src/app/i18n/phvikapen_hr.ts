@@ -223,6 +223,18 @@
         <translation>Snimi zvuk</translation>
     </message>
     <message>
+        <source>Add Link…</source>
+        <translation>Dodaj poveznicu…</translation>
+    </message>
+    <message>
+        <source>Change Link…</source>
+        <translation>Promijeni poveznicu…</translation>
+    </message>
+    <message>
+        <source>Remove Link</source>
+        <translation>Ukloni poveznicu</translation>
+    </message>
+    <message>
         <source>Play From Here</source>
         <translation>Pusti odavde</translation>
     </message>
@@ -765,6 +777,56 @@
     </message>
 </context>
 <context>
+    <name>LinkDialog</name>
+    <message>
+        <source>Add Link</source>
+        <translation>Dodaj poveznicu</translation>
+    </message>
+    <message>
+        <source>Change Link</source>
+        <translation>Promijeni poveznicu</translation>
+    </message>
+    <message>
+        <source>A page</source>
+        <translation>Stranica</translation>
+    </message>
+    <message>
+        <source>Somewhere else</source>
+        <translation>Negdje drugdje</translation>
+    </message>
+    <message>
+        <source>Page to go to</source>
+        <translation>Stranica na koju vodi</translation>
+    </message>
+    <message>
+        <source>Where it goes</source>
+        <translation>Kamo vodi</translation>
+    </message>
+    <message>
+        <source>https://</source>
+        <translation>https://</translation>
+    </message>
+    <message>
+        <source>A link goes to a web page or to an address for mail.</source>
+        <translation>Poveznica vodi na web stranicu ili na adresu e-pošte.</translation>
+    </message>
+    <message>
+        <source>What it is called</source>
+        <translation>Kako se zove</translation>
+    </message>
+    <message>
+        <source>The link is put over whatever is picked up, or in the middle of the page where nothing is.</source>
+        <translation>Poveznica se stavlja preko onoga što je uhvaćeno, ili nasred stranice ako ništa nije.</translation>
+    </message>
+</context>
+<context>
+    <name>LinkLayer</name>
+    <message>
+        <source>Goes to another page</source>
+        <translation>Vodi na drugu stranicu</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
         <source>PhvikaPen %1</source>
@@ -829,6 +891,10 @@
     <message>
         <source>Saved to %1</source>
         <translation>Spremljeno u %1</translation>
+    </message>
+    <message>
+        <source>This machine could not open %1</source>
+        <translation>Ovo računalo nije moglo otvoriti %1</translation>
     </message>
 </context>
 <context>
@@ -2489,6 +2555,22 @@
     <message>
         <source>This recording could not be kept.</source>
         <translation>Ova snimka nije mogla biti spremljena.</translation>
+    </message>
+    <message>
+        <source>That page is not in this notebook.</source>
+        <translation>Te stranice nema u ovoj bilježnici.</translation>
+    </message>
+    <message>
+        <source>A link goes to a web page or to an address for mail.</source>
+        <translation>Poveznica vodi na web stranicu ili na adresu e-pošte.</translation>
+    </message>
+    <message>
+        <source>This link does not go anywhere.</source>
+        <translation>Ova poveznica ne vodi nikamo.</translation>
+    </message>
+    <message>
+        <source>The page this goes to is no longer in the notebook.</source>
+        <translation>Stranice na koju ovo vodi više nema u bilježnici.</translation>
     </message>
     <message>
         <source>%1 is not a picture</source>

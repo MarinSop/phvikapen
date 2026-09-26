@@ -198,6 +198,16 @@ ApplicationWindow {
         workspace: workspaceLayout
 
         onAboutWanted: aboutDialog.open()
+        onLinkWanted: linkDialog.makeOne()
+        onLinkChangeWanted: linkId => {
+            if (root.notebook === null) {
+                return;
+            }
+            const link = root.notebook.aboutLink(linkId);
+            if (link.linkId !== undefined) {
+                linkDialog.change(link);
+            }
+        }
         onLeaveWanted: root.close()
         onCloseAsked: index => {
             closeDialog.index = index;
@@ -266,9 +276,13 @@ ApplicationWindow {
             zoomStep: settings.zoomStep
 
             onMenuWanted: at => {
-                if (root.notebook !== null) {
-                    contextMenu.openAt(canvas.mapToItem(workspace, at.x, at.y));
+                if (root.notebook === null) {
+                    return;
                 }
+                const onPage = Qt.point((at.x / canvas.zoom) + canvas.viewOrigin.x, (at.y / canvas.zoom) + canvas.viewOrigin.y);
+                const link = root.notebook.linkUnder(onPage.x, onPage.y);
+                appActions.linkInHand = link.linkId === undefined ? "" : link.linkId;
+                contextMenu.openAt(canvas.mapToItem(workspace, at.x, at.y));
             }
 
             PictureLayer {
@@ -276,6 +290,15 @@ ApplicationWindow {
                 canvas: canvas
                 notebook: root.notebook
                 tools: toolState
+            }
+
+            LinkLayer {
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+                visible: root.notebook !== null
+
+                onFollowed: linkId => root.notebook.followLink(linkId)
             }
 
             SelectionLayer {
@@ -377,6 +400,12 @@ ApplicationWindow {
         anchors.fill: workspace
         canvas: canvas
         tools: toolState
+    }
+
+    LinkDialog {
+        id: linkDialog
+
+        actions: appActions
     }
 
     ContextMenu {
@@ -566,6 +595,14 @@ ApplicationWindow {
 
         function onSaved(path) {
             messageBar.show(qsTr("Saved to %1").arg(path));
+        }
+
+        // A link out of the application is opened by the machine, never by the application itself,
+        // and only after it has been found to be somewhere it is willing to send a reader.
+        function onGoingOut(where) {
+            if (!Qt.openUrlExternally(where)) {
+                messageBar.show(qsTr("This machine could not open %1").arg(where));
+            }
         }
 
         target: root.notebook

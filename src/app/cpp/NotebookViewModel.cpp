@@ -23,6 +23,7 @@
 #include "core/text/WrittenText.hpp"
 #include "core/undo/BundleCommand.hpp"
 #include "core/undo/LayerCommands.hpp"
+#include "core/undo/LinkCommands.hpp"
 #include "core/undo/OutlineCommands.hpp"
 #include "core/undo/PictureCommands.hpp"
 #include "core/undo/StrokeCommands.hpp"
@@ -91,6 +92,10 @@ constexpr qreal kMediaRedrawFactor = 1.4;
 constexpr int kMediaRedrawDelay = 200;
 constexpr float kPasteOffset = 24.0F;
 constexpr float kPickRadius = 6.0F;
+// How large a link stands where there is nothing under it to take its size from.
+constexpr float kNewLinkWidth = 80.0F;
+constexpr float kNewLinkHeight = 28.0F;
+constexpr float kBothSides = 2.0F;
 constexpr qreal kTextMargin = 8.0;
 // How much of a sheet a picture takes up when it is first put down, and how large a picture is
 // kept for drawing, so that a photograph from a modern camera does not ask the graphics card for
@@ -447,6 +452,7 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
             layersOrOne(std::move(loaded->layers)));
         made->setRecordings(std::move(loaded->recordings));
         made->setMarks(std::move(loaded->marks));
+        made->setLinks(std::move(loaded->links));
         m_pages.emplace(pageId, std::move(made));
     }
     if (const auto opened = m_pages.find(pageId); opened != m_pages.end()) {
@@ -2284,6 +2290,7 @@ void NotebookViewModel::refreshCanvas() {
     publishTables();
     publishLayers();
     publishRecordings();
+    publishLinks();
 }
 
 // The pages of the section stand in one column; the ones that are not read yet are empty sheets
@@ -5030,6 +5037,308 @@ void NotebookViewModel::markReading(const QString& recordingId, int reading,
             [kept = *now](core::NotebookStore& store) { return store.updateRecording(kept); });
     }
     publishRecordings();
+}
+
+const core::Link* NotebookViewModel::linkNamed(const QString& linkId) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return nullptr;
+    }
+    for (const core::PlacedLink& placed : page->links()) {
+        if (isNamed(placed.link.id, linkId)) {
+            return &placed.link;
+        }
+    }
+    return nullptr;
+}
+
+QVariantList NotebookViewModel::links() const {
+    QVariantList shown;
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return shown;
+    }
+    for (const core::PlacedLink& placed : page->links()) {
+        const core::Link& link = placed.link;
+        shown.append(QVariantMap{
+            {QStringLiteral("linkId"), QString::fromStdString(link.id.toString())},
+            {QStringLiteral("columnX"), static_cast<qreal>(link.at.x)},
+            {QStringLiteral("columnY"), static_cast<qreal>(link.at.y)},
+            {QStringLiteral("width"), static_cast<qreal>(link.width)},
+            {QStringLiteral("height"), static_cast<qreal>(link.height)},
+            {QStringLiteral("toPage"), link.kind == core::LinkKind::Page},
+            {
+                QStringLiteral("where"),
+                link.kind == core::LinkKind::Page ? QString::fromStdString(link.page.toString())
+                                                  : QString::fromStdString(link.where),
+            },
+            {QStringLiteral("label"), QString::fromStdString(link.label)},
+            {QStringLiteral("reachable"), core::goesSomewhere(link)},
+            {QStringLiteral("open"), core::isOpenToTheHand(page->layers(), placed.layer)},
+        });
+    }
+    return shown;
+}
+
+QVariantList NotebookViewModel::pagesToLinkTo() const {
+    QVariantList shown;
+    const std::span<const core::SectionInfo> sections = m_outline.sections();
+    for (std::size_t at = 0; at < sections.size(); ++at) {
+        const core::SectionInfo& section = sections[at];
+        for (std::size_t step = 0; step < section.pages.size(); ++step) {
+            const core::PageInfo& page = section.pages[step];
+            shown.append(QVariantMap{
+                {QStringLiteral("pageId"), QString::fromStdString(page.id.toString())},
+                {
+                    QStringLiteral("title"),
+                    page.title.empty() ? tr("Page %1").arg(step + 1)
+                                       : QString::fromStdString(page.title),
+                },
+                {
+                    QStringLiteral("section"),
+                    section.title.empty() ? tr("Section %1").arg(at + 1)
+                                          : QString::fromStdString(section.title),
+                },
+                {QStringLiteral("here"), page.id == m_currentPage},
+            });
+        }
+    }
+    return shown;
+}
+
+void NotebookViewModel::publishLinks() {
+    emit linksChanged();
+}
+
+namespace {
+
+[[nodiscard]] QVariantMap asArea(const core::Rect& area) {
+    return QVariantMap{
+        {QStringLiteral("columnX"), static_cast<qreal>(area.left)},
+        {QStringLiteral("columnY"), static_cast<qreal>(area.top)},
+        {QStringLiteral("width"), static_cast<qreal>(area.width())},
+        {QStringLiteral("height"), static_cast<qreal>(area.height())},
+    };
+}
+
+}
+
+std::optional<core::Rect> NotebookViewModel::areaOfPickedInk(const core::Page& page) const {
+    if (m_canvas.isNull() || m_canvas->selectedCount() == 0) {
+        return std::nullopt;
+    }
+    const std::vector<core::Uuid> picked = m_canvas->selection();
+    std::optional<core::Rect> around;
+    for (const core::PlacedStroke& placed : page.strokes()) {
+        if (std::ranges::find(picked, placed.stroke.id()) == picked.end()) {
+            continue;
+        }
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
+            around = around ? around->united(*bounds) : *bounds;
+        }
+    }
+    return around;
+}
+
+std::optional<core::Rect> NotebookViewModel::areaOfPickedThing(const core::Page& page) const {
+    for (const core::PlacedText& placed : page.texts()) {
+        if (!m_pickedText.isEmpty() && isNamed(placed.box.id, m_pickedText)) {
+            return core::areaOf(placed.box);
+        }
+    }
+    for (const core::PlacedPicture& placed : page.pictures()) {
+        if (!m_pickedPicture.isEmpty() && isNamed(placed.picture.id, m_pickedPicture)) {
+            return core::areaOf(placed.picture);
+        }
+    }
+    for (const core::PlacedTable& placed : page.tables()) {
+        if (!m_pickedTable.isEmpty() && isNamed(placed.table.id, m_pickedTable)) {
+            return core::areaOf(placed.table);
+        }
+    }
+    return std::nullopt;
+}
+
+QVariantMap NotebookViewModel::areaOfWhatIsPicked() const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    if (const std::optional<core::Rect> around = areaOfPickedThing(*page)) {
+        return asArea(*around);
+    }
+    if (const std::optional<core::Rect> around = areaOfPickedInk(*page)) {
+        return asArea(*around);
+    }
+    return {};
+}
+
+void NotebookViewModel::addLink(const QString& where, bool toPage, const QString& label) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || !canPutSomethingDown() || !m_storage) {
+        return;
+    }
+    const QVariantMap over = areaOfWhatIsPicked();
+    core::Rect area{
+        .left = 0.0F,
+        .top = 0.0F,
+        .right = 0.0F,
+        .bottom = 0.0F,
+    };
+    if (!over.isEmpty()) {
+        area.left = static_cast<float>(over.value(QStringLiteral("columnX")).toReal());
+        area.top = static_cast<float>(over.value(QStringLiteral("columnY")).toReal());
+        area.right = area.left + static_cast<float>(over.value(QStringLiteral("width")).toReal());
+        area.bottom = area.top + static_cast<float>(over.value(QStringLiteral("height")).toReal());
+    } else if (!m_canvas.isNull()) {
+        const core::Rect visible = m_canvas->visibleOnPage();
+        area.left = visible.left + (visible.width() * static_cast<float>(kHalfway)) - kNewLinkWidth;
+        area.top = visible.top + (visible.height() * static_cast<float>(kHalfway));
+        area.right = area.left + (kNewLinkWidth * kBothSides);
+        area.bottom = area.top + kNewLinkHeight;
+    }
+
+    core::Link link{
+        .id = m_ids.next(),
+        .at = core::Point{.x = area.left, .y = area.top},
+        .width = area.width(),
+        .height = area.height(),
+        .kind = toPage ? core::LinkKind::Page : core::LinkKind::Web,
+        .page = core::Uuid{},
+        .where = toPage ? std::string{} : where.trimmed().toStdString(),
+        .label = label.trimmed().toStdString(),
+    };
+    if (toPage) {
+        for (const core::SectionInfo& section : m_outline.sections()) {
+            for (const core::PageInfo& kept : section.pages) {
+                if (isNamed(kept.id, where)) {
+                    link.page = kept.id;
+                }
+            }
+        }
+    }
+    link = core::normalized(std::move(link));
+    if (!core::goesSomewhere(link)) {
+        reportError(toPage ? tr("That page is not in this notebook.")
+                           : tr("A link goes to a web page or to an address for mail."));
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::AddLinkCommand>(page, storage,
+                                                      core::PlacedLink{
+                                                          .ordinal = page->nextLinkOrdinal(),
+                                                          .link = std::move(link),
+                                                          .layer = layerForNewThings(*page),
+                                                      }));
+    publishLinks();
+}
+
+void NotebookViewModel::changeLink(const QString& linkId, const QString& where, bool toPage,
+                                   const QString& label) {
+    const core::Link* const standing = linkNamed(linkId);
+    core::Page* const page = currentPageData();
+    if (page == nullptr || standing == nullptr || !m_storage) {
+        return;
+    }
+    core::Link wanted = *standing;
+    wanted.kind = toPage ? core::LinkKind::Page : core::LinkKind::Web;
+    wanted.label = label.trimmed().toStdString();
+    wanted.where = toPage ? std::string{} : where.trimmed().toStdString();
+    wanted.page = core::Uuid{};
+    if (toPage) {
+        for (const core::SectionInfo& section : m_outline.sections()) {
+            for (const core::PageInfo& kept : section.pages) {
+                if (isNamed(kept.id, where)) {
+                    wanted.page = kept.id;
+                }
+            }
+        }
+    }
+    wanted = core::normalized(std::move(wanted));
+    if (!core::goesSomewhere(wanted)) {
+        reportError(toPage ? tr("That page is not in this notebook.")
+                           : tr("A link goes to a web page or to an address for mail."));
+        return;
+    }
+    runCommand(std::make_unique<core::ChangeLinkCommand>(page, &*m_storage, std::move(wanted)));
+    publishLinks();
+}
+
+void NotebookViewModel::removeLink(const QString& linkId) {
+    const core::Link* const standing = linkNamed(linkId);
+    core::Page* const page = currentPageData();
+    if (page == nullptr || standing == nullptr || !m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::RemoveLinkCommand>(page, storage, standing->id));
+    publishLinks();
+}
+
+QVariantMap NotebookViewModel::linkUnder(qreal columnX, qreal columnY) const {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr) {
+        return {};
+    }
+    const core::Link* const found = page->linkUnder(core::Point{
+        .x = static_cast<float>(columnX),
+        .y = static_cast<float>(columnY),
+    });
+    if (found == nullptr) {
+        return {};
+    }
+    return QVariantMap{
+        {QStringLiteral("linkId"), QString::fromStdString(found->id.toString())},
+        {QStringLiteral("toPage"), found->kind == core::LinkKind::Page},
+        {
+            QStringLiteral("where"),
+            found->kind == core::LinkKind::Page ? QString::fromStdString(found->page.toString())
+                                                : QString::fromStdString(found->where),
+        },
+        {QStringLiteral("label"), QString::fromStdString(found->label)},
+        {QStringLiteral("reachable"), core::goesSomewhere(*found)},
+    };
+}
+
+QVariantMap NotebookViewModel::aboutLink(const QString& linkId) const {
+    const core::Link* const found = linkNamed(linkId);
+    if (found == nullptr) {
+        return {};
+    }
+    return QVariantMap{
+        {QStringLiteral("linkId"), QString::fromStdString(found->id.toString())},
+        {QStringLiteral("toPage"), found->kind == core::LinkKind::Page},
+        {
+            QStringLiteral("where"),
+            found->kind == core::LinkKind::Page ? QString::fromStdString(found->page.toString())
+                                                : QString::fromStdString(found->where),
+        },
+        {QStringLiteral("label"), QString::fromStdString(found->label)},
+        {QStringLiteral("reachable"), core::goesSomewhere(*found)},
+    };
+}
+
+void NotebookViewModel::followLink(const QString& linkId) {
+    const core::Link* const found = linkNamed(linkId);
+    if (found == nullptr) {
+        return;
+    }
+    if (!core::goesSomewhere(*found)) {
+        reportError(tr("This link does not go anywhere."));
+        return;
+    }
+    if (found->kind == core::LinkKind::Web) {
+        emit goingOut(QUrl{QString::fromStdString(found->where)});
+        return;
+    }
+    const core::Uuid wanted = found->page;
+    if (m_outline.page(wanted) == nullptr) {
+        reportError(tr("The page this goes to is no longer in the notebook."));
+        return;
+    }
+    goToPage(wanted);
 }
 
 void NotebookViewModel::publishLayers() {
