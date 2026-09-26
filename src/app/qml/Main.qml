@@ -176,10 +176,15 @@ ApplicationWindow {
         id: maths
     }
 
+    TimeKeeperViewModel {
+        id: timeKeeper
+    }
+
     AppActions {
         id: appActions
 
         maths: maths
+        timeKeeper: timeKeeper
         notebooks: notebooks
         settings: settings
         tools: toolState

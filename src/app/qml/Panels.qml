@@ -11,6 +11,7 @@ QtObject {
     readonly property string pageSetup: "pageSetup"
     readonly property string pages: "pages"
     readonly property string sections: "sections"
+    readonly property string time: "time"
 
     function titleOf(panelId, spoken) {
         switch (panelId) {
@@ -22,6 +23,8 @@ QtObject {
             return qsTr("Page Setup");
         case root.sections:
             return qsTr("Sections");
+        case root.time:
+            return qsTr("Time");
         default:
             return qsTr("Pages");
         }
@@ -33,6 +36,8 @@ QtObject {
             return Icons.layer;
         case root.maths:
             return Icons.solve;
+        case root.time:
+            return Icons.time;
         case root.pageSetup:
             return Icons.settings;
         default:

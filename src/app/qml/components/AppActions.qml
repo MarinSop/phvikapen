@@ -15,6 +15,7 @@ Item {
     required property ToolViewModel tools
     required property WorkspaceViewModel workspace
     required property MathViewModel maths
+    required property TimeKeeperViewModel timeKeeper
     readonly property InkCanvas canvas: root.notebooks.canvas
     readonly property NotebookViewModel notebook: root.notebooks.current
     readonly property bool hasNotebook: root.notebook !== null && root.notebook.loaded
@@ -391,6 +392,15 @@ Item {
         text: qsTr("Maths")
 
         onTriggered: root.workspace.togglePanel(Panels.maths)
+    }
+    readonly property Action showTimePanel: Action {
+        checkable: true
+        checked: root.isPanelOpen(Panels.time)
+        icon.source: Icons.time
+        shortcut: root.settings.keysFor("timePanel")
+        text: qsTr("Time")
+
+        onTriggered: root.workspace.togglePanel(Panels.time)
     }
     readonly property Action resetPanels: Action {
         text: qsTr("Reset Panel Layout")

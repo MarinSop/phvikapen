@@ -207,6 +207,10 @@
         <translation>Matematika</translation>
     </message>
     <message>
+        <source>Time</source>
+        <translation>Vrijeme</translation>
+    </message>
+    <message>
         <source>Reset Panel Layout</source>
         <translation>Vrati raspored ploča</translation>
     </message>
@@ -404,6 +408,14 @@
 </context>
 <context>
     <name>AppStatusBar</name>
+    <message>
+        <source>Time %1</source>
+        <translation>Vrijeme %1</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Vrijeme</translation>
+    </message>
     <message>
         <source>Previous page</source>
         <translation>Prethodna stranica</translation>
@@ -1391,6 +1403,10 @@
         <translation>Odjeljci</translation>
     </message>
     <message>
+        <source>Time</source>
+        <translation>Vrijeme</translation>
+    </message>
+    <message>
         <source>Pages</source>
         <translation>Stranice</translation>
     </message>
@@ -1918,6 +1934,10 @@
         <translation>Ploča s matematikom</translation>
     </message>
     <message>
+        <source>Time panel</source>
+        <translation>Ploča s vremenom</translation>
+    </message>
+    <message>
         <source>Page setup panel</source>
         <translation>Ploča postavki stranice</translation>
     </message>
@@ -2042,6 +2062,57 @@
     <message>
         <source>The colors of the application itself: indigo, violet and blue.</source>
         <translation>Boje same aplikacije: indigo, ljubičasta i plava.</translation>
+    </message>
+</context>
+<context>
+    <name>TimeKeeperPanel</name>
+    <message>
+        <source>Timer</source>
+        <translation>Odbrojavanje</translation>
+    </message>
+    <message>
+        <source>Stopwatch</source>
+        <translation>Štoperica</translation>
+    </message>
+    <message>
+        <source>Time %1</source>
+        <translation>Vrijeme %1</translation>
+    </message>
+    <message>
+        <source>Time is up</source>
+        <translation>Vrijeme je isteklo</translation>
+    </message>
+    <message>
+        <source>Hours</source>
+        <translation>Sati</translation>
+    </message>
+    <message>
+        <source>Minutes</source>
+        <translation>Minute</translation>
+    </message>
+    <message>
+        <source>Seconds</source>
+        <translation>Sekunde</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pauziraj</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>Nastavi</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Pokreni</translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation>Poništi</translation>
+    </message>
+    <message>
+        <source>%1m</source>
+        <translation>%1 min</translation>
     </message>
 </context>
 <context>

@@ -286,10 +286,15 @@ TestCase {
         id: maths
     }
 
+    TimeKeeperViewModel {
+        id: timeKeeper
+    }
+
     AppActions {
         id: actions
 
         maths: maths
+        timeKeeper: timeKeeper
         notebooks: notebooks
         settings: settings
         tools: tools

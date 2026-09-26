@@ -217,6 +217,12 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
+- **A countdown that reaches nothing is seen but not heard.** The panel flashes, the bar says so
+  and the reading turns colour, but nothing sounds, because the application has no way of making a
+  noise yet.
+- **The clock stops when the application does.** How long a countdown was set for is remembered;
+  how far along it was is not, because a count that went on while the application was shut would be
+  a lie about time nobody was keeping.
 - **An equation with more than one letter is drawn but not solved.** A statement with two letters
   is a curve, and the curve is drawn; solving one of them in terms of the other, and solving two
   equations together, both need rearranging rather than gathering into powers.

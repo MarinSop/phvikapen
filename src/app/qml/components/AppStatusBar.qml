@@ -26,6 +26,25 @@ ToolBar {
         anchors.fill: parent
         spacing: 6
 
+        // The clock stays in sight while it is counting, whether or not its panel is open.
+        QuickButton {
+            id: timeShown
+
+            Accessible.name: qsTr("Time %1").arg(root.actions.timeKeeper.said)
+            display: AbstractButton.TextBesideIcon
+            icon.color: root.actions.timeKeeper.rang ? Theme.warning : Theme.text
+            icon.source: Icons.time
+            label: qsTr("Time")
+            objectName: "timeInTheBar"
+            text: root.actions.timeKeeper.said
+            visible: root.actions.timeKeeper.started || root.actions.timeKeeper.rang
+
+            onClicked: {
+                root.actions.timeKeeper.seen();
+                root.actions.workspace.showPanel(Panels.time);
+            }
+        }
+
         Item {
             Layout.fillWidth: true
         }

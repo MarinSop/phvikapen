@@ -256,6 +256,11 @@ MenuBar {
                 objectName: "mathsPanelItem"
             }
 
+            MenuCommand {
+                action: root.actions.showTimePanel
+                objectName: "timePanelItem"
+            }
+
             MenuSeparator {
             }
 

@@ -17,6 +17,7 @@ phvikapen_collect_icons("${icons_dir}" icon_files
     import
     export
     cog
+    stopwatch
     chevron-left
     chevron-right
     zoom-in
@@ -108,6 +109,8 @@ qt_add_qml_module(phvikapen_ui
         cpp/NotebooksViewModel.hpp
         cpp/Thumbnails.cpp
         cpp/Thumbnails.hpp
+        cpp/TimeKeeperViewModel.cpp
+        cpp/TimeKeeperViewModel.hpp
         cpp/ToolViewModel.cpp
         cpp/ToolViewModel.hpp
         cpp/UpdateViewModel.cpp
@@ -171,6 +174,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/ShortcutField.qml
         qml/components/SizeFields.qml
         qml/components/ThemeCard.qml
+        qml/components/TimeKeeperPanel.qml
         qml/components/TextBox.qml
         qml/components/TextLayer.qml
         qml/components/ToolPalette.qml

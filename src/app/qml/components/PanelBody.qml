@@ -10,7 +10,7 @@ Loader {
     required property string panelId
 
     asynchronous: false
-    sourceComponent: root.panelId === Panels.layers ? layersBody : root.panelId === Panels.maths ? mathsBody : root.panelId === Panels.pageSetup ? pageSetupBody : root.panelId === Panels.sections ? sectionsBody : pagesBody
+    sourceComponent: root.panelId === Panels.layers ? layersBody : root.panelId === Panels.maths ? mathsBody : root.panelId === Panels.time ? timeBody : root.panelId === Panels.pageSetup ? pageSetupBody : root.panelId === Panels.sections ? sectionsBody : pagesBody
 
     Component {
         id: pagesBody
@@ -24,6 +24,14 @@ Loader {
         id: sectionsBody
 
         SectionsPanel {
+            actions: root.actions
+        }
+    }
+
+    Component {
+        id: timeBody
+
+        TimeKeeperPanel {
             actions: root.actions
         }
     }

@@ -16,6 +16,7 @@ QtObject {
     readonly property url sitAtTop: "qrc:/icons/objects-vertical-top.svg"
     readonly property url solve: "qrc:/icons/math.svg"
     readonly property url table: "qrc:/icons/table.svg"
+    readonly property url time: "qrc:/icons/stopwatch.svg"
     readonly property url toText: "qrc:/icons/font.svg"
     readonly property url layer: "qrc:/icons/layer.svg"
     readonly property url layerAdd: "qrc:/icons/layer-plus.svg"
