@@ -15,6 +15,7 @@ Item {
     readonly property bool dragging: drag.dragging
     readonly property rect dropHint: drag.hint
     readonly property string dropKind: drag.kind
+    readonly property string dropPanel: drag.panelId
 
     function windowSpan() {
         return Qt.size(Math.round(Math.max(220, Math.min(480, drag.homeWidth))), Math.round(Math.max(200, Math.min(560, drag.homeHeight))));

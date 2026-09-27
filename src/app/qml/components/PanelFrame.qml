@@ -156,7 +156,7 @@ Rectangle {
                 id: headerDrag
 
                 dragThreshold: 8
-                grabPermissions: PointerHandler.CanTakeOverFromAnything
+                grabPermissions: PointerHandler.CanTakeOverFromItems | PointerHandler.CanTakeOverFromHandlersOfDifferentType
                 target: null
 
                 onActiveChanged: {
@@ -199,9 +199,18 @@ Rectangle {
                         current: index === root.current
                         panelId: modelData
 
+                        onCarriedTo: at => {
+                            root.drag.at = at;
+                        }
                         onClicked: {
                             root.current = index;
                             root.workspace.choosePanel(root.path, index);
+                        }
+                        onPutDown: root.drag.dropped()
+                        onTakenUp: at => {
+                            root.current = index;
+                            root.workspace.choosePanel(root.path, index);
+                            root.drag.take(modelData, at, root.path, root.width, root.height);
                         }
                     }
 

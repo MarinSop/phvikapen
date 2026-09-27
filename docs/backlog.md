@@ -129,9 +129,9 @@ into a real problem earlier.
   window of its own, which goes anywhere the screens reach and is remembered where it was left, but
   a panel dragged out of a free window has nowhere to land: the drag knows only the one window it
   began in. Docking a free panel is done through its header, not by carrying it back.
-- **A tab is carried by the whole group it is in.** Dragging a header carries the panel in front;
-  a tab behind it is brought forward first and then carried. Picking up a tab directly, and
-  dragging one tab past another inside the same group, are not there yet.
+- **A carried tab leaves no gap behind it.** A tab is picked up on its own and dragged past another
+  inside its group, and the line says where it will land, but the tabs it passes do not slide aside
+  to open a space, so the order only settles once the hand lets go.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
 - **The first section of a new notebook is named in English.** Pages and layers are named in the

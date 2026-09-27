@@ -280,6 +280,65 @@ TestCase {
         verify(workspace.isAfloat("sections"), "bringing it back must not dock it");
     }
 
+    // A tab picked up by itself, rather than by the header of the group it stands in.
+    function carryTab(frame, panelId, toX, toY) {
+        const tab = findChild(frame, "panelTab_" + panelId);
+        verify(tab !== null, "there is no tab for " + panelId);
+        tryVerify(() => tab.width > 0);
+        const at = view.mapFromItem(tab, tab.width / 2, tab.height / 2);
+        mousePress(view, at.x, at.y);
+        mouseMove(view, at.x + 20, at.y + 20);
+        tryVerify(() => view.dragging, 2000, "the tab was never picked up");
+        wait(Theme.calm + 50);
+        mouseMove(view, toX, toY);
+        return tab;
+    }
+
+    function test_m_aTabIsPickedUpOnItsOwnAndCarriedOut() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const pages = testCase.settled("pages");
+        const sections = testCase.settled("sections");
+        // Put the two into one group, so there is a tab behind the one in front.
+        const onto = view.mapFromItem(pages, pages.width / 2, Math.round(10 * Theme.scale));
+        testCase.carry(sections, onto.x, onto.y);
+        tryVerify(() => testCase.pathOf("sections") === testCase.pathOf("pages"), 2000, "the two did not join");
+        const together = testCase.settled("pages");
+        compare(testCase.stackOf("pages").panels.length, 2);
+
+        // Carry the tab that is not in front out onto the far edge of the window.
+        const behind = testCase.stackOf("pages").panels.slice()[0];
+        testCase.carryTab(together, behind, view.width - 6, view.height / 2);
+        compare(view.dropPanel, behind, "the whole group was carried instead of the one tab");
+        mouseRelease(view, view.width - 6, view.height / 2);
+
+        tryVerify(() => testCase.stackOf(behind).panels.length === 1, 2000, "the tab did not come out on its own");
+        verify(testCase.pathOf(behind) !== testCase.pathOf(behind === "pages" ? "sections" : "pages"), "the two are still together");
+    }
+
+    function test_n_aTabIsDraggedPastAnotherInsideItsOwnGroup() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const pages = testCase.settled("pages");
+        const sections = testCase.settled("sections");
+        const onto = view.mapFromItem(pages, pages.width / 2, Math.round(10 * Theme.scale));
+        testCase.carry(sections, onto.x, onto.y);
+        tryVerify(() => testCase.pathOf("sections") === testCase.pathOf("pages"), 2000);
+        const together = testCase.settled("pages");
+        // A list from a property is not a snapshot: it follows the layout as it changes.
+        const was = testCase.stackOf("pages").panels.slice();
+        compare(was.length, 2);
+
+        // Carry the first tab past the second, inside the same strip.
+        const second = findChild(together, "panelTab_" + was[1]);
+        verify(second !== null);
+        const past = view.mapFromItem(second, second.width - 2, second.height / 2);
+        testCase.carryTab(together, was[0], past.x, past.y);
+        compare(view.dropKind, "tab", "no place among the tabs was offered");
+        mouseRelease(view, past.x, past.y);
+
+        tryVerify(() => testCase.stackOf(was[0]).panels[1] === was[0], 2000, "the tab did not move past the other");
+        compare(testCase.stackOf(was[0]).panels.length, 2, "reordering must not lose a panel");
+    }
+
     height: 640
     name: "WorkspaceView"
     visible: true
