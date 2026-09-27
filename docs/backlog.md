@@ -260,10 +260,14 @@ written so that all of them can share it. They are listed in the order they are 
 - **An equation with more than one letter is drawn but not solved.** A statement with two letters
   is a curve, and the curve is drawn; solving one of them in terms of the other, and solving two
   equations together, both need rearranging rather than gathering into powers.
-- **A curve drawn on the page is ink, and carries no numbers.** The curve and its two axes go on
-  the page as strokes, so they are moved, recoloured and erased like anything drawn by hand, but
-  the grid and the figures along the axes are not drawn with them, and the drawing does not change
-  again when the graph beside the notes is moved.
+- **A curve drawn on the page carries no figures.** The curve, its two axes and the rules between
+  them go on the page as strokes, so they are moved, recoloured and erased like anything drawn by
+  hand, but the numbers along the axes are not written: they would be boxes of type rather than
+  ink, and would scatter the graph into a score of separate things to pick up. Drawing the whole
+  graph as one picture instead is the other way round, and would give up the ink.
+- **A drawn graph is a handful of strokes, not one thing.** It cannot be moved, sized or taken away
+  in one gesture once it is down, and it does not change again when the graph beside the notes is
+  moved.
 - **A power higher than a square is searched, not solved.** A straight line and a square come out
   exactly; a cube and above are found by halving between the turning points, so the answers are as
   near as a double can get rather than written as a formula. A power above the eighth is refused,

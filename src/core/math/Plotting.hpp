@@ -55,6 +55,18 @@ inline constexpr int kMostSamples = 4096;
 // one letter a statement holds where it holds only one.
 [[nodiscard]] Result<std::pair<char, char>> axesOf(const Statement& statement);
 
+// About how many rules a graph is given across its shorter side, before the step is rounded to a
+// number a reader counts in.
+inline constexpr int kWantedRules = 8;
+
+// The step between the rules of a graph: one, two or five times a power of ten, so that the numbers
+// the rules fall on are ones a reader counts in. A span of nothing at all is given a step of one.
+[[nodiscard]] double ruleStep(double span);
+
+// Where the rules fall between two numbers, at whole multiples of the step, smallest first. Neither
+// end is left out where it falls on a multiple.
+[[nodiscard]] std::vector<double> rulesBetween(double from, double to, double step);
+
 // The curve a statement draws over a frame. For every place across the frame the statement is
 // solved for the letter that runs up, so a straight line, a square and a circle are all drawn the
 // same way, and a curve with two halves comes back as two runs.

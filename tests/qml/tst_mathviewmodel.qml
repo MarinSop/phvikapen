@@ -151,8 +151,9 @@ TestCase {
 
         notebook.drawCurve(maths.runs, maths.frame, "#204080");
 
-        // Two axes and at least one run of the curve itself.
+        // Rules across and up, two axes, and at least one run of the curve itself.
         tryVerify(() => notebook.strokeCount >= 3, 4000, "the curve was not drawn on the page");
+        verify(notebook.strokeCount > 6, "the graph was drawn without its rules");
         verify(notebook.canUndo, "drawing the curve cannot be undone");
 
         notebook.undo();

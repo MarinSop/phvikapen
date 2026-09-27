@@ -3289,6 +3289,11 @@ constexpr float kGraphShare = 0.7F;
 // How thick the axes are drawn beside the curve itself.
 constexpr float kAxisWidth = 1.0F;
 constexpr float kCurveWidth = 2.0F;
+constexpr float kRuleWidth = 0.5F;
+
+// How grey the two axes are drawn, and how much paler the rules between them are.
+constexpr std::uint8_t kAxisGrey = 128;
+constexpr std::uint8_t kRuleGrey = 205;
 
 // A run shorter than this is a single point the eye would never see, so it is left out.
 constexpr std::size_t kShortestRun = 2;
@@ -3357,7 +3362,18 @@ void NotebookViewModel::drawCurve(const QVariantList& runs, const QVariantMap& f
     };
 
     const core::Color ink = asColor(colour.isValid() ? colour : QColor{Qt::black});
-    const core::Color faint{.red = 128, .green = 128, .blue = 128, .alpha = core::Color::kOpaque};
+    const core::Color faint{
+        .red = kAxisGrey,
+        .green = kAxisGrey,
+        .blue = kAxisGrey,
+        .alpha = core::Color::kOpaque,
+    };
+    const core::Color paler{
+        .red = kRuleGrey,
+        .green = kRuleGrey,
+        .blue = kRuleGrey,
+        .alpha = core::Color::kOpaque,
+    };
     const core::Uuid layer = layerForNewThings(*page);
     std::vector<core::PlacedStroke> drawn;
     std::int64_t ordinal = page->nextOrdinal();
@@ -3373,6 +3389,23 @@ void NotebookViewModel::drawCurve(const QVariantList& runs, const QVariantMap& f
             .layer = layer,
         });
     };
+
+    // The rules go down first, so that the axes and the curve stand over them rather than under.
+    const double step = core::ruleStep(std::min(core::widthOf(looking), core::heightOf(looking)));
+    for (const double at : core::rulesBetween(looking.left, looking.right, step)) {
+        const std::array<core::InkSample, 2> rule{
+            placing.at(at, looking.bottom),
+            placing.at(at, looking.top),
+        };
+        put(paler, kRuleWidth, rule);
+    }
+    for (const double at : core::rulesBetween(looking.bottom, looking.top, step)) {
+        const std::array<core::InkSample, 2> rule{
+            placing.at(looking.left, at),
+            placing.at(looking.right, at),
+        };
+        put(paler, kRuleWidth, rule);
+    }
 
     // The axes are drawn where nothing crosses them at the edge, so a frame that does not hold
     // zero gets its axis along the nearest side rather than none at all.

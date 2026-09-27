@@ -8,6 +8,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +19,13 @@ namespace {
 // How far above and below the frame a curve is still followed, so that a line leaving the top and
 // coming back in keeps its shape, and how far it may climb before it counts as gone.
 constexpr double kRoomOutside = 4.0;
+
+constexpr double kTens = 10.0;
+constexpr double kFive = 5.0;
+constexpr double kTwo = 2.0;
+
+// A graph is never given more rules than this, however small the step it is asked for.
+constexpr int kMostRules = 512;
 constexpr int kMostBranches = 2;
 
 [[nodiscard]] bool isWorthKeeping(double up, const Frame& frame) noexcept {
@@ -30,6 +38,41 @@ constexpr int kMostBranches = 2;
 bool isDrawable(const Frame& frame) noexcept {
     return std::isfinite(frame.left) && std::isfinite(frame.right) && std::isfinite(frame.bottom)
            && std::isfinite(frame.top) && widthOf(frame) > 0.0 && heightOf(frame) > 0.0;
+}
+
+double ruleStep(double span) {
+    if (!(span > 0.0) || !std::isfinite(span)) {
+        return 1.0;
+    }
+    const double rough = span / static_cast<double>(kWantedRules);
+    const double power = std::pow(kTens, std::floor(std::log10(rough)));
+    const double times = rough / power;
+    if (times >= kFive) {
+        return power * kFive;
+    }
+    return power * (times >= kTwo ? kTwo : 1.0);
+}
+
+std::vector<double> rulesBetween(double from, double to, double step) {
+    std::vector<double> rules;
+    if (!(step > 0.0) || !std::isfinite(step) || !(to > from)) {
+        return rules;
+    }
+    const double span = to - from;
+    if (span / step > static_cast<double>(kMostRules)) {
+        return rules;
+    }
+    // Every rule is worked out from the step itself rather than added on to the one before, because
+    // a step of a tenth walked from a long way out drifts.
+    const auto first = static_cast<std::int64_t>(std::ceil(from / step));
+    const auto last = static_cast<std::int64_t>(std::floor(to / step));
+    for (std::int64_t multiple = first; multiple <= last; ++multiple) {
+        const double whole = static_cast<double>(multiple) * step;
+        if (whole >= from && whole <= to) {
+            rules.push_back(whole);
+        }
+    }
+    return rules;
 }
 
 Result<std::pair<char, char>> axesOf(const Statement& statement) {

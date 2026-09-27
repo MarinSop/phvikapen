@@ -131,5 +131,49 @@ TEST(PlottingTest, FindsTheTwoWaysAcrossAGraph) {
     EXPECT_EQ(axes->second, 'y');
 }
 
+TEST(RuleStepTest, StepsAreOnesTwosOrFivesTimesAPowerOfTen) {
+    EXPECT_DOUBLE_EQ(ruleStep(20.0), 2.0);
+    EXPECT_DOUBLE_EQ(ruleStep(80.0), 10.0);
+    EXPECT_DOUBLE_EQ(ruleStep(1.0), 0.1);
+    EXPECT_DOUBLE_EQ(ruleStep(400.0), 50.0);
+}
+
+TEST(RuleStepTest, ASpanOfNothingIsGivenAStepOfOne) {
+    EXPECT_DOUBLE_EQ(ruleStep(0.0), 1.0);
+    EXPECT_DOUBLE_EQ(ruleStep(-5.0), 1.0);
+}
+
+TEST(RulesBetweenTest, RulesFallOnWholeMultiplesOfTheStep) {
+    const std::vector<double> rules = rulesBetween(-5.0, 5.0, 2.0);
+
+    ASSERT_EQ(rules.size(), 5U);
+    EXPECT_DOUBLE_EQ(rules.front(), -4.0);
+    EXPECT_DOUBLE_EQ(rules[2], 0.0);
+    EXPECT_DOUBLE_EQ(rules.back(), 4.0);
+}
+
+TEST(RulesBetweenTest, BothEndsAreKeptWhereTheyFallOnAMultiple) {
+    const std::vector<double> rules = rulesBetween(0.0, 10.0, 5.0);
+
+    ASSERT_EQ(rules.size(), 3U);
+    EXPECT_DOUBLE_EQ(rules.front(), 0.0);
+    EXPECT_DOUBLE_EQ(rules.back(), 10.0);
+}
+
+TEST(RulesBetweenTest, AStepThatWouldMakeTooManyRulesMakesNone) {
+    EXPECT_TRUE(rulesBetween(0.0, 1e9, 1.0).empty());
+    EXPECT_TRUE(rulesBetween(0.0, 10.0, 0.0).empty());
+    EXPECT_TRUE(rulesBetween(5.0, 5.0, 1.0).empty());
+}
+
+TEST(RulesBetweenTest, ARuleFarFromNothingIsStillAWholeMultiple) {
+    const std::vector<double> rules = rulesBetween(1000.0, 1000.5, 0.1);
+
+    ASSERT_FALSE(rules.empty());
+    for (const double at : rules) {
+        EXPECT_NEAR(std::round(at * 10.0) / 10.0, at, 1e-9);
+    }
+}
+
 }
 }
