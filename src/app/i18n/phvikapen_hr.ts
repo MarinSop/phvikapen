@@ -596,6 +596,26 @@
         <source>Find</source>
         <translation>Traži</translation>
     </message>
+    <message numerus="yes">
+        <source>Reading %1 more picture(s)…</source>
+        <translation>
+            <numerusform>Čitam još %1 sliku…</numerusform>
+            <numerusform>Čitam još %1 slike…</numerusform>
+            <numerusform>Čitam još %1 slika…</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>A picture is searched once its words have been read.</source>
+        <translation>Slika se pretražuje kad su joj riječi pročitane.</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Zaustavi</translation>
+    </message>
+    <message>
+        <source>Read every picture</source>
+        <translation>Pročitaj svaku sliku</translation>
+    </message>
     <message>
         <source>This machine cannot read handwriting, so there is nothing to search.</source>
         <translation>Ovo računalo ne može čitati rukopis, pa nema što tražiti.</translation>

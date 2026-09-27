@@ -68,6 +68,34 @@ AppDialog {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Theme.gap
+            visible: root.notebook !== null && root.notebook.canReadPictures()
+
+            Label {
+                Layout.fillWidth: true
+                color: palette.placeholderText
+                objectName: "findPictureState"
+                text: root.notebook === null ? "" : root.notebook.picturesToRead > 0 ? qsTr("Reading %1 more picture(s)…", "", root.notebook.picturesToRead) : qsTr("A picture is searched once its words have been read.")
+                wrapMode: Text.WordWrap
+            }
+
+            Button {
+                enabled: root.notebook !== null && root.notebook.loaded
+                objectName: "readPicturesButton"
+                text: root.notebook !== null && root.notebook.picturesToRead > 0 ? qsTr("Stop") : qsTr("Read every picture")
+
+                onClicked: {
+                    if (root.notebook.picturesToRead > 0) {
+                        root.notebook.giveUpReadingPictures();
+                    } else {
+                        root.notebook.readEveryPicture("");
+                    }
+                }
+            }
+        }
+
         Label {
             Layout.fillWidth: true
             color: palette.placeholderText

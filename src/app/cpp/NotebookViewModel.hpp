@@ -77,6 +77,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
     Q_PROPERTY(bool readsHandwriting READ readsHandwriting CONSTANT FINAL)
     Q_PROPERTY(int pagesToRead READ pagesToRead NOTIFY readingChanged FINAL)
+    Q_PROPERTY(int picturesToRead READ picturesToRead NOTIFY readingPicturesChanged FINAL)
     Q_PROPERTY(QString title READ title NOTIFY outlineChanged FINAL)
     Q_PROPERTY(QString keptAt READ keptAt NOTIFY keptAtChanged FINAL)
     Q_PROPERTY(bool edited READ edited NOTIFY editedChanged FINAL)
@@ -493,6 +494,15 @@ public:
 
     Q_INVOKABLE void forgetWordsInPicture(const QString& pictureId);
 
+    // Reads every picture in this notebook that nothing has been read out of yet, one at a time, so
+    // that searching reaches the words in all of them rather than only the ones asked about by
+    // hand.
+    Q_INVOKABLE void readEveryPicture(const QString& language);
+
+    Q_INVOKABLE void giveUpReadingPictures();
+
+    [[nodiscard]] int picturesToRead() const { return static_cast<int>(m_pictureQueue.size()); }
+
     [[nodiscard]] QString pickedPicture() const { return m_pickedPicture; }
 
     void setPickedPicture(const QString& pictureId);
@@ -642,6 +652,7 @@ signals:
     void pictureRead(const QString& pictureId, const QString& words);
     void pictureUnread(const QString& pictureId, const QString& why);
     void readingPicture(const QString& pictureId);
+    void readingPicturesChanged();
     // A link goes somewhere outside the application, and the window is to open it.
     void goingOut(const QUrl& where);
     void soundReady(const QString& recordingId, const QByteArray& sound);
@@ -848,6 +859,10 @@ private:
                                   const QString& language);
     void keepWhatIsInPicture(const core::ContentId& source,
                              std::span<const platform::ocr::Found> found);
+    void readTheNextPicture(const QString& language);
+    void hearTheNextPicture(const core::ContentId& source, const QString& language,
+                            std::uint64_t opening,
+                            core::Result<std::vector<platform::ocr::Found>> found);
     [[nodiscard]] std::optional<core::Rect> areaOfPickedInk(const core::Page& page) const;
     [[nodiscard]] std::optional<core::Rect> areaOfPickedThing(const core::Page& page) const;
     // The moment a thing was put on the page, where a recording is running.
@@ -949,6 +964,7 @@ private:
     // wanted after the notebook is closed, because it is made from the picture rather than
     // written by the reader.
     std::map<core::ContentId, QString> m_pictureWords;
+    std::vector<core::ContentId> m_pictureQueue;
     std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;

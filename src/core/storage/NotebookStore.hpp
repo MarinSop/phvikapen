@@ -102,6 +102,10 @@ public:
     [[nodiscard]] Result<void> writePictureWords(const ContentId& source,
                                                  std::span<const PictureWord> words);
     [[nodiscard]] Result<std::vector<PictureWord>> pictureWords(const ContentId& source) const;
+
+    // The pictures standing on a page of this notebook that nothing has been read out of yet,
+    // oldest page first. A picture on two pages is named once.
+    [[nodiscard]] Result<std::vector<ContentId>> picturesWaitingToBeRead() const;
     [[nodiscard]] Result<void> forgetPictureWords(const ContentId& source);
 
     [[nodiscard]] Result<void> markThing(const Uuid& pageId, const Mark& mark);

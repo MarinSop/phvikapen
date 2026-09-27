@@ -332,6 +332,47 @@ TEST(NotebookPicturesTest, SearchingANotebookReachesTheWordsInAPicture) {
     EXPECT_FLOAT_EQ(hits->front().word.box.bottom, 290.0F);
 }
 
+TEST(NotebookPicturesTest, NamesThePicturesNothingHasBeenReadOutOfYet) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = firstPageOf(*store);
+    Picture first = pictureAt(ids, 0.0F, 0.0F);
+    Picture second = pictureAt(ids, 200.0F, 0.0F);
+    second.source = ContentId{ContentId::Bytes{9, 9}};
+    ASSERT_TRUE(store->insertPicture(page, PlacedPicture{.ordinal = 0, .picture = first}));
+    ASSERT_TRUE(store->insertPicture(page, PlacedPicture{.ordinal = 1, .picture = second}));
+
+    const Result<std::vector<ContentId>> waiting = store->picturesWaitingToBeRead();
+
+    ASSERT_TRUE(waiting.has_value()) << waiting.error().message;
+    EXPECT_EQ(waiting->size(), 2U);
+
+    const std::array<PictureWord, 1> read{PictureWord{.text = "Read", .box = Rect{}}};
+    ASSERT_TRUE(store->writePictureWords(first.source, read));
+
+    const Result<std::vector<ContentId>> left = store->picturesWaitingToBeRead();
+    ASSERT_TRUE(left.has_value()) << left.error().message;
+    ASSERT_EQ(left->size(), 1U);
+    EXPECT_EQ(left->front(), second.source);
+}
+
+TEST(NotebookPicturesTest, APictureInTheTrashIsNotWaitingToBeRead) {
+    const TemporaryNotebook notebook;
+    Uuid7Generator ids;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Uuid page = firstPageOf(*store);
+    ASSERT_TRUE(store->insertPicture(
+        page, PlacedPicture{.ordinal = 0, .picture = pictureAt(ids, 0.0F, 0.0F)}));
+    ASSERT_EQ(store->picturesWaitingToBeRead().value().size(), 1U);
+
+    ASSERT_TRUE(store->trashPage(page));
+
+    EXPECT_TRUE(store->picturesWaitingToBeRead().value().empty());
+}
+
 TEST(NotebookPicturesTest, TheSamePictureOnTwoPagesIsFoundOnBoth) {
     const TemporaryNotebook notebook;
     Uuid7Generator ids;

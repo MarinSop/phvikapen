@@ -195,6 +195,51 @@ TestCase {
         verify(hits.length > 0, "the search did not reach the words in the picture");
     }
 
+    function test_fa_everyPictureInTheNotebookIsReadInOneGo() {
+        const path = newNotebookPath();
+        const picture = temporaryDirectory + "/every-words.png";
+        verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
+        let middle = {};
+        {
+            const first = openNotebook(path);
+            if (!first.canReadPictures()) {
+                skip("this machine cannot read the words in a picture");
+            }
+            first.addPicture(Qt.resolvedUrl("file://" + picture));
+            tryVerify(() => first.pickedPicture !== "", 4000);
+            middle = first.pickedPictureBox;
+            // Nothing is asked about the picture, so nothing has been read out of it.
+            first.destroy();
+            wait(0);
+        }
+
+        const again = openNotebook(path);
+        const pictureId = again.pictureUnder(middle.columnX + (middle.boxWidth / 2), middle.columnY + (middle.boxHeight / 2));
+        verify(pictureId !== "", "the picture itself was not kept");
+        compare(again.wordsInPicture(pictureId), "", "the picture was read without being asked");
+
+        again.readEveryPicture("");
+
+        tryVerify(() => again.wordsInPicture(pictureId) !== "", 20000, "reading every picture did not read this one");
+        tryVerify(() => again.picturesToRead === 0, 20000, "the reading never finished");
+        const after = createTemporaryObject(spyComponent, testCase, {
+            target: again,
+            signalName: "found"
+        });
+        again.find("Reykjavik");
+        tryVerify(() => after.count > 0, 6000);
+        verify(after.signalArguments[0][0].length > 0, "reading every picture did not reach the search");
+    }
+
+    function test_fb_readingEveryPictureIsGivenUpWhenAskedTo() {
+        const notebook = openNotebook(newNotebookPath());
+
+        // With nothing to read, giving up is quiet rather than an error.
+        notebook.giveUpReadingPictures();
+
+        compare(notebook.picturesToRead, 0);
+    }
+
     function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";

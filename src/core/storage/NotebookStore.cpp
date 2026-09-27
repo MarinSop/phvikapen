@@ -2562,6 +2562,31 @@ Result<std::vector<PictureWord>> NotebookStore::pictureWords(const ContentId& so
     }
 }
 
+Result<std::vector<ContentId>> NotebookStore::picturesWaitingToBeRead() const {
+    Result<sqlite::Statement> statement = sqlite::Statement::prepare(
+        m_database, "SELECT DISTINCT page_pictures.source "
+                    "FROM page_pictures "
+                    "JOIN pages ON pages.id = page_pictures.page_id "
+                    "JOIN sections ON sections.id = pages.section_id "
+                    "WHERE pages.trashed = 0 AND sections.trashed = 0 "
+                    "  AND page_pictures.source NOT IN (SELECT source FROM picture_words) "
+                    "ORDER BY sections.ordinal, pages.ordinal, page_pictures.ordinal;");
+    if (!statement) {
+        return std::unexpected{statement.error()};
+    }
+    std::vector<ContentId> waiting;
+    while (true) {
+        const Result<bool> row = statement->step();
+        if (!row) {
+            return std::unexpected{row.error()};
+        }
+        if (!*row) {
+            return waiting;
+        }
+        waiting.push_back(toContentId(statement->blob(0)));
+    }
+}
+
 Result<void> NotebookStore::forgetPictureWords(const ContentId& source) {
     Result<sqlite::Statement> statement =
         sqlite::Statement::prepare(m_database, "DELETE FROM picture_words WHERE source = ?;");

@@ -220,9 +220,10 @@ written so that all of them can share it. They are listed in the order they are 
 - **Only macOS reads the words in a picture.** Windows carries a reader of its own and it is one
   file against the interface that is already there; until it is written, Windows says plainly that
   it cannot read one.
-- **A picture is not read until it is asked for.** What was read is written into the notebook and
-  searching reaches it, but nothing reads the pictures already on the pages, so a notebook full of
-  pictures is searched for its words only once each has been read by hand.
+- **Reading every picture is asked for, not done on its own.** One command reads every picture in a
+  notebook that nothing has been read out of yet, and it can be stopped, but nothing starts it by
+  itself, and a picture nothing could be read out of is tried once more the next time the notebook
+  is opened, because only words are written down and there are none to write.
 - **What was read out of a picture is not shown over it.** Each run keeps its corners, and a search
   points at the right part of the picture, but the words cannot be picked out on the picture itself
   the way handwriting can.
