@@ -38,6 +38,10 @@ Item {
     // What has been read out of the picture in hand, so it can be marked out on the picture itself.
     readonly property var found: root.wordsNow(root.readings)
 
+    // A run of words read out of the picture was tapped, so that what it says can be taken
+    // somewhere else. The layer itself keeps no clipboard and writes nothing.
+    signal wordTapped(string said)
+
     function wordsNow(readings) {
         return root.holding && root.notebook !== null ? root.notebook.wordsFoundInPicture(root.pickedId) : [];
     }
@@ -140,20 +144,35 @@ Item {
             model: root.found
 
             Rectangle {
+                id: run
+
                 required property int index
                 required property var modelData
 
-                Accessible.name: modelData.text
+                Accessible.name: run.modelData.text
                 border.color: Theme.accent
                 border.width: 1
                 color: Theme.accent
                 height: Math.max(1, (modelData.bottom - modelData.top) * frame.height)
                 objectName: "pictureWord" + index
-                opacity: 0.18
+                opacity: tapped.hovered ? 0.36 : 0.18
                 radius: 2
                 width: Math.max(1, (modelData.right - modelData.left) * frame.width)
                 x: modelData.left * frame.width
                 y: modelData.top * frame.height
+
+                HoverHandler {
+                    id: tapped
+
+                    cursorShape: Qt.PointingHandCursor
+                }
+
+                TapHandler {
+                    // A tap takes the words; a drag still carries the picture about underneath.
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+
+                    onTapped: root.wordTapped(run.modelData.text)
+                }
             }
         }
 

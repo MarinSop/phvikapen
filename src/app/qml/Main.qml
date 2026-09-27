@@ -298,6 +298,11 @@ ApplicationWindow {
                 canvas: canvas
                 notebook: root.notebook
                 tools: toolState
+
+                onWordTapped: said => {
+                    appActions.copyToClipboard(said);
+                    messageBar.show(qsTr("“%1” was copied.").arg(said));
+                }
             }
 
             LinkLayer {

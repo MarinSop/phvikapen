@@ -944,6 +944,10 @@
         <translation>%1%2 — PhvikaPen %3</translation>
     </message>
     <message>
+        <source>“%1” was copied.</source>
+        <translation>„%1“ je kopirano.</translation>
+    </message>
+    <message>
         <source>Leave PhvikaPen</source>
         <translation>Izlaz iz PhvikaPena</translation>
     </message>
