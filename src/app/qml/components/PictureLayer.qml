@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import PhvikaPen.Ui
 
 // The frame around the picture that is picked up, with the grips that move, size and turn it. The
@@ -41,6 +42,8 @@ Item {
     // A run of words read out of the picture was tapped, so that what it says can be taken
     // somewhere else. The layer itself keeps no clipboard and writes nothing.
     signal wordTapped(string said)
+    // The same run, asked for as a box of type where it stands on the page.
+    signal wordWanted(string said, point at)
 
     function wordsNow(readings) {
         return root.holding && root.notebook !== null ? root.notebook.wordsFoundInPicture(root.pickedId) : [];
@@ -171,7 +174,32 @@ Item {
                     // A tap takes the words; a drag still carries the picture about underneath.
                     gesturePolicy: TapHandler.ReleaseWithinBounds
 
+                    onLongPressed: runMenu.popup()
                     onTapped: root.wordTapped(run.modelData.text)
+                }
+
+                TapHandler {
+                    acceptedButtons: Qt.RightButton
+
+                    onTapped: runMenu.popup()
+                }
+
+                Menu {
+                    id: runMenu
+
+                    MenuItem {
+                        objectName: "copyPictureWord"
+                        text: qsTr("Copy these words")
+
+                        onTriggered: root.wordTapped(run.modelData.text)
+                    }
+
+                    MenuItem {
+                        objectName: "typePictureWord"
+                        text: qsTr("Put these words on the page as type")
+
+                        onTriggered: root.wordWanted(run.modelData.text, run.mapToItem(null, 0, 0))
+                    }
                 }
             }
         }

@@ -448,6 +448,11 @@ public:
     // left to be typed into: what the parts of the window that make words of their own hand over.
     Q_INVOKABLE void writeDown(const QString& said, const QVariantMap& style, bool formula);
 
+    // The same words, put where they are asked for rather than in the middle of what is being
+    // looked at.
+    Q_INVOKABLE void writeDownAt(const QString& said, qreal columnX, qreal columnY,
+                                 const QVariantMap& style);
+
     // A curve drawn on the page as ink, in a square in the middle of what is being looked at, with
     // its two axes. `runs` holds one list of points per run of the curve, counted the way
     // arithmetic counts, and `frame` says which part of the graph is being looked at.

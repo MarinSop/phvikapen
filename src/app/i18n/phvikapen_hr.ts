@@ -1629,6 +1629,17 @@
     </message>
 </context>
 <context>
+    <name>PictureLayer</name>
+    <message>
+        <source>Copy these words</source>
+        <translation>Kopiraj te riječi</translation>
+    </message>
+    <message>
+        <source>Put these words on the page as type</source>
+        <translation>Stavi te riječi na stranicu kao tekst</translation>
+    </message>
+</context>
+<context>
     <name>PictureTextDialog</name>
     <message>
         <source>Text in this picture</source>

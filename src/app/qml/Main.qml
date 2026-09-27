@@ -303,6 +303,10 @@ ApplicationWindow {
                     appActions.copyToClipboard(said);
                     messageBar.show(qsTr("“%1” was copied.").arg(said));
                 }
+                onWordWanted: (said, at) => {
+                    const onto = canvas.mapFromItem(null, at);
+                    root.notebook.writeDownAt(said, onto.x, onto.y, toolState.textStyle);
+                }
             }
 
             LinkLayer {

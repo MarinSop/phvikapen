@@ -3462,6 +3462,20 @@ void NotebookViewModel::writeDown(const QString& said, const QVariantMap& style,
     finishText(textId, words, 0.0);
 }
 
+void NotebookViewModel::writeDownAt(const QString& said, qreal columnX, qreal columnY,
+                                    const QVariantMap& style) {
+    const QString words = said.trimmed();
+    if (words.isEmpty() || m_canvas.isNull()) {
+        return;
+    }
+    addTextAt(columnX, columnY, style);
+    const QString textId = m_pickedText;
+    if (textId.isEmpty()) {
+        return;
+    }
+    finishText(textId, words, 0.0);
+}
+
 void NotebookViewModel::finishText(const QString& textId, const QString& text, qreal height) {
     const std::optional<std::pair<core::Uuid, core::TextBox>> found = textById(textId);
     if (!found) {

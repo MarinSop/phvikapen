@@ -274,6 +274,33 @@ TestCase {
         compare(notebook.wordsFoundInPicture(pictureId).length, 0, "the runs were not forgotten");
     }
 
+    function test_fd_aRunOfWordsIsPutOnThePageAsTypeWhereItStands() {
+        const notebook = openNotebook(newNotebookPath());
+        if (!notebook.canReadPictures()) {
+            skip("this machine cannot read the words in a picture");
+        }
+        const path = temporaryDirectory + "/typed-words.png";
+        verify(pictureOfWords(path, "Reykjavik"), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        tryVerify(() => notebook.pickedPicture !== "", 4000);
+        const pictureId = notebook.pickedPicture;
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "pictureRead"
+        });
+        notebook.readPicture(pictureId, "");
+        tryCompare(read, "count", 1, 10000);
+        const runs = notebook.wordsFoundInPicture(pictureId);
+        verify(runs.length > 0);
+        const was = notebook.texts.count;
+
+        notebook.writeDownAt(runs[0].text, 120, 140, {});
+
+        tryCompare(notebook.texts, "count", was + 1, 4000, "the words were not put on the page");
+        // The picture itself is untouched: the words are a box of type beside it.
+        compare(notebook.pickedPicture !== "" || notebook.pickedText !== "", true);
+    }
+
     function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";
