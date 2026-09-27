@@ -129,9 +129,9 @@ into a real problem earlier.
   window of its own, which goes anywhere the screens reach and is remembered where it was left, but
   a panel dragged out of a free window has nowhere to land: the drag knows only the one window it
   began in. Docking a free panel is done through its header, not by carrying it back.
-- **A carried tab leaves no gap behind it.** A tab is picked up on its own and dragged past another
-  inside its group, and the line says where it will land, but the tabs it passes do not slide aside
-  to open a space, so the order only settles once the hand lets go.
+- **A carried tab is not lifted off the strip.** The tabs it would land before slide aside to open a
+  gap and the line says where it lands, but the carried tab itself stays in place, faded, rather than
+  following the pointer out of the strip.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
 - **The first section of a new notebook is named in English.** Pages and layers are named in the
@@ -228,9 +228,9 @@ written so that all of them can share it. They are listed in the order they are 
   it cannot be turned into a box of type where it stands, and several runs cannot be picked at once.
 - **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
   kept, but the page names one picked picture, so an element cannot hold two pictures at once.
-- **An element dragged out of the library shows nothing while it is carried.** It lands where the
-  hand lets go, but nothing follows the pointer on the way, so where it will land is only clear once
-  it is there.
+- **The element being carried is shown, but nothing marks where it will land.** A small picture of it
+  follows the pointer, and it lands with its corner there, but the page shows no outline beforehand,
+  so it is not plain that a drop over the panels puts nothing down.
 - **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place
   within a page are all names wider than a page identifier, and none of them is needed to move
   about one notebook.

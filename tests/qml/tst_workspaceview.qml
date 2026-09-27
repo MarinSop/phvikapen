@@ -339,6 +339,31 @@ TestCase {
         compare(testCase.stackOf(was[0]).panels.length, 2, "reordering must not lose a panel");
     }
 
+    function test_o_theTabsOpenAGapForTheOneBeingCarried() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const pages = testCase.settled("pages");
+        const sections = testCase.settled("sections");
+        const onto = view.mapFromItem(pages, pages.width / 2, Math.round(10 * Theme.scale));
+        testCase.carry(sections, onto.x, onto.y);
+        tryVerify(() => testCase.pathOf("sections") === testCase.pathOf("pages"), 2000);
+        const together = testCase.settled("pages");
+        const was = testCase.stackOf("pages").panels.slice();
+        const second = findChild(together, "panelTab_" + was[1]);
+        verify(second !== null);
+        const restingAt = testCase.cornerOf(second).x;
+
+        // Carry the first tab onto the far side of the second, so the second must slide aside.
+        const past = view.mapFromItem(second, second.width - 2, second.height / 2);
+        testCase.carryTab(together, was[0], past.x, past.y);
+
+        tryVerify(() => testCase.cornerOf(second).x > restingAt + 4, 2000, "the tabs did not open a gap");
+        mouseRelease(view, past.x, past.y);
+
+        // Once the hand lets go the gap closes again, whatever the new order is.
+        const settledSecond = findChild(testCase.settled(was[0]), "panelTab_" + was[1]);
+        tryVerify(() => settledSecond !== null && Math.abs(testCase.cornerOf(settledSecond).x - restingAt) <= 4 || testCase.cornerOf(settledSecond).x < restingAt, 2000, "the gap never closed");
+    }
+
     height: 640
     name: "WorkspaceView"
     visible: true

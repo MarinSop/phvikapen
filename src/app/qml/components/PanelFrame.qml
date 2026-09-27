@@ -17,6 +17,9 @@ Rectangle {
     readonly property string currentPanel: root.current >= 0 && root.current < root.panelIds.length ? root.panelIds[root.current] : ""
     readonly property real edgeReach: Math.round(26 * Theme.scale)
     readonly property bool holdsOnlyTheDragged: root.panelIds.length === 1 && root.panelIds[0] === root.drag.panelId
+    // Whether a tab is being carried onto this very strip, so the tabs can open a gap for it.
+    readonly property bool openingAGap: root.drag.dragging && root.drag.kind === "tab" && root.drag.path === root.path
+    readonly property real gapWidth: Math.round(28 * Theme.scale)
 
     function reportAim() {
         if (!root.drag.dragging || root.holdsOnlyTheDragged) {
@@ -60,6 +63,15 @@ Rectangle {
             return;
         }
         root.drag.looseWanted(root.currentPanel, root.mapToItem(null, root.width / 2, root.height / 2), root.width, root.height);
+    }
+
+    // How far a tab slides aside to leave room for the one being carried. Only the tabs the carried
+    // one would land before move, and the carried tab itself stays where it is.
+    function slideOf(at, panelId) {
+        if (!root.openingAGap || panelId === root.drag.panelId) {
+            return 0;
+        }
+        return at >= root.drag.at2 ? root.gapWidth : 0;
     }
 
     function tabAt(along) {
@@ -193,24 +205,37 @@ Rectangle {
                     spacing: 8
 
                     delegate: PanelTab {
+                        id: oneTab
+
                         required property int index
                         required property string modelData
 
-                        current: index === root.current
-                        panelId: modelData
+                        current: oneTab.index === root.current
+                        panelId: oneTab.modelData
+
+                        transform: Translate {
+                            x: root.slideOf(oneTab.index, oneTab.modelData)
+
+                            Behavior on x {
+                                NumberAnimation {
+                                    duration: Theme.quick
+                                    easing.type: Theme.ease
+                                }
+                            }
+                        }
 
                         onCarriedTo: at => {
                             root.drag.at = at;
                         }
                         onClicked: {
-                            root.current = index;
-                            root.workspace.choosePanel(root.path, index);
+                            root.current = oneTab.index;
+                            root.workspace.choosePanel(root.path, oneTab.index);
                         }
                         onPutDown: root.drag.dropped()
                         onTakenUp: at => {
-                            root.current = index;
-                            root.workspace.choosePanel(root.path, index);
-                            root.drag.take(modelData, at, root.path, root.width, root.height);
+                            root.current = oneTab.index;
+                            root.workspace.choosePanel(root.path, oneTab.index);
+                            root.drag.take(oneTab.modelData, at, root.path, root.width, root.height);
                         }
                     }
 

@@ -12,6 +12,11 @@ Pane {
     readonly property ElementsViewModel library: root.actions.library
     readonly property NotebookViewModel notebook: root.actions.notebook
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
+    // The element being carried out of the library, and where the hand has it, so that something
+    // follows the pointer instead of the element appearing out of nowhere where it lands.
+    property string carrying: ""
+    property url carriedPicture: ""
+    property point carriedAt: Qt.point(0, 0)
 
     function askToDelete(elementId, name) {
         deleteDialog.elementId = elementId;
@@ -152,7 +157,14 @@ Pane {
                     target: null
 
                     onActiveChanged: {
-                        if (carry.active || root.actions.canvas === null || !root.ready) {
+                        if (carry.active) {
+                            root.carrying = one.elementId;
+                            root.carriedPicture = one.picture;
+                            root.carriedAt = carry.centroid.scenePosition;
+                            return;
+                        }
+                        root.carrying = "";
+                        if (root.actions.canvas === null || !root.ready) {
                             return;
                         }
                         const onto = root.actions.canvas.mapFromItem(null, carry.centroid.scenePosition);
@@ -160,6 +172,11 @@ Pane {
                             return;
                         }
                         root.library.putAt(root.notebook, one.elementId, onto.x, onto.y);
+                    }
+                    onCentroidChanged: {
+                        if (carry.active) {
+                            root.carriedAt = carry.centroid.scenePosition;
+                        }
                     }
                 }
 
@@ -210,6 +227,25 @@ Pane {
                 keepDialog.open();
             }
         }
+    }
+
+    // What is being carried, drawn over everything so it can be seen on its way to the page.
+    Image {
+        id: ghost
+
+        readonly property point here: ghost.parent === null ? Qt.point(0, 0) : ghost.parent.mapFromItem(null, root.carriedAt)
+
+        cache: false
+        fillMode: Image.PreserveAspectFit
+        height: Math.round(56 * Theme.scale)
+        opacity: 0.75
+        parent: Overlay.overlay
+        source: root.carriedPicture
+        visible: root.carrying !== "" && ghost.source !== ""
+        width: Math.round(70 * Theme.scale)
+        x: ghost.here.x - (ghost.width / 2)
+        y: ghost.here.y - (ghost.height / 2)
+        z: 100
     }
 
     EmptyPanelNote {
