@@ -129,9 +129,9 @@ into a real problem earlier.
   window of its own, which goes anywhere the screens reach and is remembered where it was left, but
   a panel dragged out of a free window has nowhere to land: the drag knows only the one window it
   began in. Docking a free panel is done through its header, not by carrying it back.
-- **A carried tab is not lifted off the strip.** The tabs it would land before slide aside to open a
-  gap and the line says where it lands, but the carried tab itself stays in place, faded, rather than
-  following the pointer out of the strip.
+- **A carried tab is faded, not lifted.** A name follows the pointer and the tabs open a gap for it,
+  but the tab itself stays in the strip with its colour dimmed rather than leaving it, so a tab
+  carried a long way looks as though it is in two places.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
 - **The first section of a new notebook is named in English.** Pages and layers are named in the
@@ -265,9 +265,10 @@ written so that all of them can share it. They are listed in the order they are 
   hand, but the numbers along the axes are not written: they would be boxes of type rather than
   ink, and would scatter the graph into a score of separate things to pick up. Drawing the whole
   graph as one picture instead is the other way round, and would give up the ink.
-- **A drawn graph is a handful of strokes, not one thing.** It cannot be moved, sized or taken away
-  in one gesture once it is down, and it does not change again when the graph beside the notes is
-  moved.
+- **A drawn graph is a handful of strokes, not one thing.** The loop picks them all together, so it
+  is moved and deleted like any other drawing, but it cannot be sized by its corners, it does not
+  change again when the graph beside the notes is moved, and nothing ties the strokes together as
+  the graph they came from.
 - **A power higher than a square is searched, not solved.** A straight line and a square come out
   exactly; a cube and above are found by halving between the turning points, so the answers are as
   near as a double can get rather than written as a formula. A power above the eighth is refused,
