@@ -32,6 +32,15 @@ Item {
     readonly property real turnNow: (root.holding ? root.picked.turn : 0) + root.liveTurn
     readonly property real boxLeft: ((root.holding ? root.picked.columnX : 0) - root.origin.x) * root.zoom + root.liveX
     readonly property real boxTop: ((root.holding ? root.picked.columnY : 0) - root.origin.y) * root.zoom + root.liveY
+    // How many readings have come back. It is counted so that the runs below are asked for again
+    // once a reading finishes, which is not something a property of the notebook announces.
+    property int readings: 0
+    // What has been read out of the picture in hand, so it can be marked out on the picture itself.
+    readonly property var found: root.wordsNow(root.readings)
+
+    function wordsNow(readings) {
+        return root.holding && root.notebook !== null ? root.notebook.wordsFoundInPicture(root.pickedId) : [];
+    }
 
     function columnPointOf(position) {
         return Qt.point((position.x / root.zoom) + root.origin.x, (position.y / root.zoom) + root.origin.y);
@@ -75,6 +84,18 @@ Item {
         }
     }
 
+    Connections {
+        function onPictureRead(pictureId, words) {
+            root.readings += 1;
+        }
+
+        function onPictureUnread(pictureId, why) {
+            root.readings += 1;
+        }
+
+        target: root.notebook
+    }
+
     // A press asks what stands under it. Where that is nothing, the press is let through to the
     // canvas, which goes on picking ink as it always has.
     MouseArea {
@@ -111,6 +132,29 @@ Item {
             border.width: 1
             color: "transparent"
             objectName: "pictureFrame"
+        }
+
+        // What was read out of the picture, marked out on the picture itself. The corners are kept
+        // as shares of it, so they stay right whatever size it is drawn at and however it is turned.
+        Repeater {
+            model: root.found
+
+            Rectangle {
+                required property int index
+                required property var modelData
+
+                Accessible.name: modelData.text
+                border.color: Theme.accent
+                border.width: 1
+                color: Theme.accent
+                height: Math.max(1, (modelData.bottom - modelData.top) * frame.height)
+                objectName: "pictureWord" + index
+                opacity: 0.18
+                radius: 2
+                width: Math.max(1, (modelData.right - modelData.left) * frame.width)
+                x: modelData.left * frame.width
+                y: modelData.top * frame.height
+            }
         }
 
         // Inside the frame carries the picture about.

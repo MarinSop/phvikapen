@@ -224,9 +224,9 @@ written so that all of them can share it. They are listed in the order they are 
   notebook that nothing has been read out of yet, and it can be stopped, but nothing starts it by
   itself, and a picture nothing could be read out of is tried once more the next time the notebook
   is opened, because only words are written down and there are none to write.
-- **What was read out of a picture is not shown over it.** Each run keeps its corners, and a search
-  points at the right part of the picture, but the words cannot be picked out on the picture itself
-  the way handwriting can.
+- **A run of words on a picture cannot be tapped.** The runs read out of the picture in hand are
+  marked out on it, and a search points at the right part of it, but tapping a run does nothing: it
+  cannot be copied on its own or turned into a box of type where it stands.
 - **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
   kept, but the page names one picked picture, so an element cannot hold two pictures at once.
 - **An element dragged out of the library shows nothing while it is carried.** It lands where the

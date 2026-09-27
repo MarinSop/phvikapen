@@ -497,6 +497,10 @@ public:
 
     Q_INVOKABLE void forgetWordsInPicture(const QString& pictureId);
 
+    // Each run of words read out of a picture and where it sits within it, as shares of its width
+    // and height, so that the runs can be drawn over the picture whatever size it is shown at.
+    Q_INVOKABLE [[nodiscard]] QVariantList wordsFoundInPicture(const QString& pictureId) const;
+
     // Reads every picture in this notebook that nothing has been read out of yet, one at a time, so
     // that searching reaches the words in all of them rather than only the ones asked about by
     // hand.
@@ -969,6 +973,7 @@ private:
     // written by the reader.
     std::map<core::ContentId, QString> m_pictureWords;
     std::vector<core::ContentId> m_pictureQueue;
+    std::map<core::ContentId, std::vector<core::PictureWord>> m_pictureFound;
     std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;

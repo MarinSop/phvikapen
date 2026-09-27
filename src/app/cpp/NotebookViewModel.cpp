@@ -5528,6 +5528,29 @@ QString NotebookViewModel::wordsInPicture(const QString& pictureId) const {
     return found == m_pictureWords.end() ? QString{} : found->second;
 }
 
+QVariantList NotebookViewModel::wordsFoundInPicture(const QString& pictureId) const {
+    const core::Picture* const standing = pictureNamed(pictureId);
+    if (standing == nullptr) {
+        return {};
+    }
+    const auto found = m_pictureFound.find(standing->source);
+    if (found == m_pictureFound.end()) {
+        return {};
+    }
+    QVariantList shown;
+    shown.reserve(static_cast<qsizetype>(found->second.size()));
+    for (const core::PictureWord& word : found->second) {
+        shown.append(QVariantMap{
+            {QStringLiteral("text"), QString::fromStdString(word.text)},
+            {QStringLiteral("left"), word.box.left},
+            {QStringLiteral("top"), word.box.top},
+            {QStringLiteral("right"), word.box.right},
+            {QStringLiteral("bottom"), word.box.bottom},
+        });
+    }
+    return shown;
+}
+
 void NotebookViewModel::forgetWordsInPicture(const QString& pictureId) {
     const core::Picture* const standing = pictureNamed(pictureId);
     if (standing == nullptr) {
@@ -5535,6 +5558,7 @@ void NotebookViewModel::forgetWordsInPicture(const QString& pictureId) {
     }
     const core::ContentId source = standing->source;
     m_pictureWords.erase(source);
+    m_pictureFound.erase(source);
     if (!m_storage) {
         return;
     }
@@ -5563,6 +5587,7 @@ void NotebookViewModel::keepWhatIsInPicture(const core::ContentId& source,
     if (!m_storage) {
         return;
     }
+    m_pictureFound[source] = *words;
     m_storage->submit(
         [source, words = std::shared_ptr<const std::vector<core::PictureWord>>{std::move(words)}](
             core::NotebookStore& store) -> core::Result<void> {
@@ -5689,6 +5714,7 @@ void NotebookViewModel::readPicture(const QString& pictureId, const QString& lan
                     words += QString::fromStdString(word.text);
                 }
                 m_pictureWords[source] = words;
+                m_pictureFound[source] = kept;
                 emit pictureRead(pictureId, words);
             },
             Qt::QueuedConnection);

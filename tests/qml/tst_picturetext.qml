@@ -240,6 +240,40 @@ TestCase {
         compare(notebook.picturesToRead, 0);
     }
 
+    function test_fc_whereEachRunOfWordsSitsInThePictureIsHandedBack() {
+        const notebook = openNotebook(newNotebookPath());
+        if (!notebook.canReadPictures()) {
+            skip("this machine cannot read the words in a picture");
+        }
+        const path = temporaryDirectory + "/where-words.png";
+        verify(pictureOfWords(path, "Reykjavik"), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        tryVerify(() => notebook.pickedPicture !== "", 4000);
+        const pictureId = notebook.pickedPicture;
+        compare(notebook.wordsFoundInPicture(pictureId).length, 0, "nothing has been read yet");
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "pictureRead"
+        });
+
+        notebook.readPicture(pictureId, "");
+
+        tryCompare(read, "count", 1, 10000);
+        const runs = notebook.wordsFoundInPicture(pictureId);
+        verify(runs.length > 0, "no run of words was handed back");
+        for (const run of runs) {
+            verify(run.text.length > 0, "a run with nothing in it was handed back");
+            // The corners are shares of the picture, so they all lie between nothing and one.
+            verify(run.left >= 0 && run.left <= 1, "left is not a share of the picture");
+            verify(run.top >= 0 && run.top <= 1, "top is not a share of the picture");
+            verify(run.right > run.left, "the run has no width");
+            verify(run.bottom > run.top, "the run has no height");
+        }
+
+        notebook.forgetWordsInPicture(pictureId);
+        compare(notebook.wordsFoundInPicture(pictureId).length, 0, "the runs were not forgotten");
+    }
+
     function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";
