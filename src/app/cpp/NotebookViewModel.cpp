@@ -5391,6 +5391,16 @@ void NotebookViewModel::takeHandful(const HandfulReady& ready) {
 }
 
 void NotebookViewModel::putDownHandful(const Handful& handful) {
+    putHandful(handful, std::nullopt);
+}
+
+void NotebookViewModel::putDownHandfulAt(const Handful& handful, qreal columnX, qreal columnY) {
+    const std::optional<TextPlace> place = placeInColumn(QPointF{columnX, columnY});
+    putHandful(handful, place ? std::optional<core::Point>{place->at} : std::nullopt);
+}
+
+void NotebookViewModel::putHandful(const Handful& handful,
+                                   const std::optional<core::Point>& corner) {
     core::Page* const page = currentPageData();
     if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
@@ -5401,10 +5411,13 @@ void NotebookViewModel::putDownHandful(const Handful& handful) {
     }
     const core::Rect visible = m_canvas->visibleOnPage();
     const auto halfway = static_cast<float>(kHalfway);
-    const float across =
-        visible.left + ((visible.width() - handful.area.width()) * halfway) - handful.area.left;
-    const float down =
-        visible.top + ((visible.height() - handful.area.height()) * halfway) - handful.area.top;
+    const float across = corner
+                             ? corner->x - handful.area.left
+                             : visible.left + ((visible.width() - handful.area.width()) * halfway)
+                                   - handful.area.left;
+    const float down = corner ? corner->y - handful.area.top
+                              : visible.top + ((visible.height() - handful.area.height()) * halfway)
+                                    - handful.area.top;
     const core::Uuid layer = layerForNewThings(*page);
     core::StorageThread* const storage = &*m_storage;
 

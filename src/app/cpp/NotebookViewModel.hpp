@@ -400,6 +400,9 @@ public:
     // of its own so that the same handful can be put down many times.
     void putDownHandful(const Handful& handful);
 
+    // The same, put down with its top left corner where the pointer is rather than in the middle.
+    void putDownHandfulAt(const Handful& handful, qreal columnX, qreal columnY);
+
     // The layer anything new is put on, which is the one the reader has chosen in the panel.
     [[nodiscard]] QString activeLayer() const { return m_activeLayer; }
 
@@ -815,6 +818,7 @@ private:
     [[nodiscard]] std::vector<core::Uuid> setAside() const;
     [[nodiscard]] std::vector<core::Stroke> standingIn() const;
     [[nodiscard]] std::optional<TextPlace> placeInColumn(QPointF column) const;
+    void putHandful(const Handful& handful, const std::optional<core::Point>& corner);
     void settleDraft();
     [[nodiscard]] int sheetOfPage(const core::Uuid& pageId) const;
     [[nodiscard]] int sheetCount() const;

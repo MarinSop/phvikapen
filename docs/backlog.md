@@ -229,8 +229,9 @@ written so that all of them can share it. They are listed in the order they are 
   the way handwriting can.
 - **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
   kept, but the page names one picked picture, so an element cannot hold two pictures at once.
-- **An element is put down in the middle of what is being looked at.** It cannot yet be dropped
-  where the pointer is, or dragged out of the library onto the page.
+- **An element dragged out of the library shows nothing while it is carried.** It lands where the
+  hand lets go, but nothing follows the pointer on the way, so where it will land is only clear once
+  it is there.
 - **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place
   within a page are all names wider than a page identifier, and none of them is needed to move
   about one notebook.

@@ -11,6 +11,7 @@
 #include <QImage>
 #include <QModelIndex>
 #include <QObject>
+#include <QPointF>
 #include <QPointer>
 #include <QString>
 #include <QVariant>
@@ -118,6 +119,11 @@ public:
     // An element put on the page being read, in the middle of what is being looked at.
     Q_INVOKABLE void put(phvikapen::app::NotebookViewModel* into, const QString& elementId);
 
+    // The same element, put down with its corner where the pointer let go rather than in the
+    // middle of what is being looked at.
+    Q_INVOKABLE void putAt(phvikapen::app::NotebookViewModel* into, const QString& elementId,
+                           qreal columnX, qreal columnY);
+
     Q_INVOKABLE void rename(const QString& elementId, const QString& name);
 
     Q_INVOKABLE void remove(const QString& elementId);
@@ -151,7 +157,10 @@ private:
     void fetchThenPaint(const core::Uuid& elementId, const std::shared_ptr<Showing>& showing);
     void paintElement(const core::Uuid& elementId, const std::shared_ptr<Showing>& showing);
     void fetchThenPutDown(const std::shared_ptr<NotebookViewModel::Handful>& handful,
-                          const QPointer<NotebookViewModel>& keeper);
+                          const QPointer<NotebookViewModel>& keeper,
+                          const std::optional<QPointF>& corner);
+    void fetchThenPut(NotebookViewModel* into, const QString& elementId,
+                      const std::optional<QPointF>& corner);
     [[nodiscard]] const core::PageInfo* elementNamed(const QString& elementId) const;
 
     QString m_directory;

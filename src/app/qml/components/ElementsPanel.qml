@@ -142,6 +142,27 @@ Pane {
                 onClicked: root.library.put(root.notebook, one.elementId)
                 onPressAndHold: oneMenu.popup()
 
+                // An element dragged out of the library lands where the hand lets go, so it can be
+                // put exactly where it is wanted rather than in the middle of the view.
+                DragHandler {
+                    id: carry
+
+                    dragThreshold: 6
+                    grabPermissions: PointerHandler.CanTakeOverFromAnything
+                    target: null
+
+                    onActiveChanged: {
+                        if (carry.active || root.actions.canvas === null || !root.ready) {
+                            return;
+                        }
+                        const onto = root.actions.canvas.mapFromItem(null, carry.centroid.scenePosition);
+                        if (onto.x < 0 || onto.y < 0 || onto.x > root.actions.canvas.width || onto.y > root.actions.canvas.height) {
+                            return;
+                        }
+                        root.library.putAt(root.notebook, one.elementId, onto.x, onto.y);
+                    }
+                }
+
                 TapHandler {
                     acceptedButtons: Qt.RightButton
 

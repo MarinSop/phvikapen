@@ -247,6 +247,28 @@ TestCase {
         compare(library.trouble, "");
     }
 
+    function test_j_anElementIsPutDownWhereItIsAskedFor() {
+        const notebook = openNotebook(newNotebookPath());
+        testCase.draw(notebook, 60, 60);
+        tryCompare(notebook, "strokeCount", 1);
+        pickEverything(notebook);
+        library.keep(notebook, "Where I say", "Shapes");
+        tryVerify(() => idOfNamed("Where I say") !== "", 4000);
+        const which = idOfNamed("Where I say");
+        const another = openNotebook(newNotebookPath());
+
+        library.putAt(another, which, 300, 260);
+
+        tryCompare(another, "strokeCount", 1, 4000, "the element was not put on the page");
+        another.canvas.selectEverything();
+        tryVerify(() => another.canvas.selectedCount > 0, 2000);
+        const where = another.areaOfWhatIsPicked();
+        verify(where.width > 0, "nothing was measured");
+        // The element lands with its corner where it was asked for, not in the middle of the view.
+        verify(Math.abs(where.columnX - 300) <= 1, "it did not land where it was asked for");
+        verify(Math.abs(where.columnY - 260) <= 1, "it did not land where it was asked for");
+    }
+
     function test_i_aPictureIsKeptInAnElementAndPutDownAgain() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/element-picture.png";

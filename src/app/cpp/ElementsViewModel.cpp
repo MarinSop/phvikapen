@@ -546,12 +546,20 @@ void ElementsViewModel::paintElement(const core::Uuid& elementId,
 }
 
 void ElementsViewModel::fetchThenPutDown(const std::shared_ptr<NotebookViewModel::Handful>& handful,
-                                         const QPointer<NotebookViewModel>& keeper) {
+                                         const QPointer<NotebookViewModel>& keeper,
+                                         const std::optional<QPointF>& corner) {
     if (keeper.isNull()) {
         return;
     }
+    const auto put = [corner](NotebookViewModel* into, const NotebookViewModel::Handful& what) {
+        if (corner) {
+            into->putDownHandfulAt(what, corner->x(), corner->y());
+            return;
+        }
+        into->putDownHandful(what);
+    };
     if (handful->pictures.empty() || !m_storage) {
-        keeper->putDownHandful(*handful);
+        put(keeper.data(), *handful);
         return;
     }
     core::StorageThread* const storage = &*m_storage;
@@ -584,6 +592,16 @@ void ElementsViewModel::fetchThenPutDown(const std::shared_ptr<NotebookViewModel
 }
 
 void ElementsViewModel::put(NotebookViewModel* into, const QString& elementId) {
+    fetchThenPut(into, elementId, std::nullopt);
+}
+
+void ElementsViewModel::putAt(NotebookViewModel* into, const QString& elementId, qreal columnX,
+                              qreal columnY) {
+    fetchThenPut(into, elementId, QPointF{columnX, columnY});
+}
+
+void ElementsViewModel::fetchThenPut(NotebookViewModel* into, const QString& elementId,
+                                     const std::optional<QPointF>& corner) {
     const core::PageInfo* const element = elementNamed(elementId);
     if (into == nullptr || element == nullptr || !m_storage) {
         takeTrouble(tr("This element could not be found."));
@@ -594,10 +612,10 @@ void ElementsViewModel::put(NotebookViewModel* into, const QString& elementId) {
     const std::uint64_t opening = m_opening;
     const core::Uuid wanted = element->id;
     QPointer<NotebookViewModel> keeper{into};
-    storage->loadPage(wanted, [this, opening, keeper](core::Result<core::LoadedPage> got) {
+    storage->loadPage(wanted, [this, opening, keeper, corner](core::Result<core::LoadedPage> got) {
         QMetaObject::invokeMethod(
             this,
-            [this, opening, keeper, got = std::move(got)] mutable {
+            [this, opening, keeper, corner, got = std::move(got)] mutable {
                 if (opening != m_opening || keeper.isNull()) {
                     return;
                 }
@@ -614,7 +632,7 @@ void ElementsViewModel::put(NotebookViewModel* into, const QString& elementId) {
                         NotebookViewModel::Handful::Carried{.placed = placed, .bytes = nullptr});
                 }
                 handful->area = areaAround(*handful);
-                fetchThenPutDown(handful, keeper);
+                fetchThenPutDown(handful, keeper, corner);
             },
             Qt::QueuedConnection);
     });
