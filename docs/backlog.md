@@ -226,9 +226,8 @@ written so that all of them can share it. They are listed in the order they are 
 - **What was read out of a picture is not shown over it.** Each run keeps its corners, and a search
   points at the right part of the picture, but the words cannot be picked out on the picture itself
   the way handwriting can.
-- **A picture is not kept in an element.** Ink, words and tables are. A picture is named by what
-  it contains rather than carried with the page, so keeping one means carrying its bytes from the
-  library into the notebook it is put in, and that is not written yet.
+- **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
+  kept, but the page names one picked picture, so an element cannot hold two pictures at once.
 - **An element is put down in the middle of what is being looked at.** It cannot yet be dropped
   where the pointer is, or dragged out of the library onto the page.
 - **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place

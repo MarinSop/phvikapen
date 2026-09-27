@@ -79,7 +79,26 @@ struct Adding {
     for (const core::PlacedTable& placed : handful.tables) {
         widen(core::areaOf(placed.table));
     }
+    for (const NotebookViewModel::Handful::Carried& carried : handful.pictures) {
+        widen(core::areaOf(carried.placed.picture));
+    }
     return around.value_or(core::Rect{});
+}
+
+// The bytes of an asset as the window's own reckoning of a run of bytes, so that a picture can be
+// decoded from what the notebook holds.
+[[nodiscard]] QByteArray bytesOf(const std::vector<std::byte>& data) {
+    QByteArray held;
+    held.resize(static_cast<qsizetype>(data.size()));
+    for (std::size_t step = 0; step < data.size(); ++step) {
+        held[static_cast<qsizetype>(step)] = static_cast<char>(data[step]);
+    }
+    return held;
+}
+
+[[nodiscard]] bool nothingIn(const NotebookViewModel::Handful& handful) {
+    return handful.strokes.empty() && handful.texts.empty() && handful.tables.empty()
+           && handful.pictures.empty();
 }
 
 }
@@ -272,8 +291,7 @@ bool ElementsViewModel::anythingToKeep(NotebookViewModel* from) {
     if (from == nullptr) {
         return false;
     }
-    const NotebookViewModel::Handful handful = from->handfulPicked();
-    return !handful.strokes.empty() || !handful.texts.empty() || !handful.tables.empty();
+    return !nothingIn(from->handfulPicked());
 }
 
 void ElementsViewModel::keep(NotebookViewModel* from, const QString& name, const QString& kind) {
@@ -282,8 +300,7 @@ void ElementsViewModel::keep(NotebookViewModel* from, const QString& name, const
         return;
     }
     core::StorageThread* const storage = &*m_storage;
-    const NotebookViewModel::Handful handful = from->handfulPicked();
-    if (handful.strokes.empty() && handful.texts.empty() && handful.tables.empty()) {
+    if (nothingIn(from->handfulPicked())) {
         takeTrouble(tr("Pick up what is to be kept first."));
         return;
     }
@@ -354,6 +371,24 @@ void ElementsViewModel::keep(NotebookViewModel* from, const QString& name, const
         });
     }
 
+    const std::uint64_t opening = m_opening;
+    from->takeHandful([this, opening, elementId](const NotebookViewModel::Handful& handful) {
+        if (opening != m_opening) {
+            return;
+        }
+        writeInto(elementId, handful);
+        drawPicture(elementId);
+        publish();
+        emit kept(QString::fromStdString(elementId.toString()));
+    });
+}
+
+void ElementsViewModel::writeInto(const core::Uuid& elementId,
+                                  const NotebookViewModel::Handful& handful) {
+    if (!m_storage) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
     // Everything is carried to the top left corner, so an element is kept without the room that
     // happened to be around it on the page it came from.
     const float across = -handful.area.left + kRoomAround;
@@ -386,10 +421,28 @@ void ElementsViewModel::keep(NotebookViewModel* from, const QString& name, const
             return store.insertTable(elementId, shifted);
         });
     }
-
-    drawPicture(elementId);
-    publish();
-    emit kept(QString::fromStdString(elementId.toString()));
+    for (const NotebookViewModel::Handful::Carried& carried : handful.pictures) {
+        if (carried.bytes == nullptr || carried.bytes->empty()) {
+            continue;
+        }
+        core::PlacedPicture shifted = carried.placed;
+        shifted.picture.at.x += across;
+        shifted.picture.at.y += down;
+        shifted.layer = core::Uuid{};
+        const auto bytes = carried.bytes;
+        const core::ContentId source = shifted.picture.source;
+        storage->submit([source, bytes](core::NotebookStore& store) {
+            return store.insertAsset(core::Asset{
+                .id = source,
+                .kind = core::AssetKind::Image,
+                .name = {},
+                .data = *bytes,
+            });
+        });
+        storage->submit([elementId, shifted](core::NotebookStore& store) {
+            return store.insertPicture(elementId, shifted);
+        });
+    }
 }
 
 void ElementsViewModel::drawPicture(const core::Uuid& elementId) {
@@ -405,39 +458,129 @@ void ElementsViewModel::drawPicture(const core::Uuid& elementId) {
                 if (opening != m_opening || !got) {
                     return;
                 }
-                const platform::render::PageContents contents{
-                    .style = {},
-                    .strokes = got->strokes,
-                    .texts = got->texts,
-                    .pictures = {},
-                    .tables = got->tables,
-                    .layers = {},
-                    .media = nullptr,
-                };
-                const core::Rect area = platform::render::pageArea(contents);
-                const bool anything = area.width() > 0.0F && area.height() > 0.0F;
-                const float ratio = anything ? area.height() / area.width() : kEmptyRatio;
-                const int height =
-                    std::max(1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * ratio));
-                QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
-                picture.fill(Qt::transparent);
-                if (anything) {
-                    QPainter painter{&picture};
-                    painter.scale(static_cast<double>(thumbnails::kWidth)
-                                      / static_cast<double>(area.width()),
-                                  static_cast<double>(height) / static_cast<double>(area.height()));
-                    platform::render::paintPage(painter, contents, area);
-                }
-                const int revision = ++m_pictureRevision;
-                m_pictures[elementId] = revision;
-                thumbnails::put(QStringLiteral("element-%1-%2")
-                                    .arg(QString::fromStdString(elementId.toString()))
-                                    .arg(revision),
-                                picture);
-                publish();
+                auto showing = std::make_shared<Showing>();
+                showing->page = std::move(*got);
+                showing->images.resize(showing->page.pictures.size());
+                fetchThenPaint(elementId, showing);
             },
             Qt::QueuedConnection);
     });
+}
+
+void ElementsViewModel::fetchThenPaint(const core::Uuid& elementId,
+                                       const std::shared_ptr<Showing>& showing) {
+    if (showing->page.pictures.empty() || !m_storage) {
+        paintElement(elementId, showing);
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    const std::uint64_t opening = m_opening;
+    const auto waiting = std::make_shared<std::size_t>(showing->page.pictures.size());
+    for (std::size_t step = 0; step < showing->page.pictures.size(); ++step) {
+        storage->loadAsset(
+            showing->page.pictures[step].picture.source,
+            [this, opening, elementId, showing, waiting, step](core::Result<core::Asset> asset) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, opening, elementId, showing, waiting, step,
+                     asset = std::move(asset)] mutable {
+                        if (opening != m_opening) {
+                            return;
+                        }
+                        if (asset) {
+                            showing->images[step].loadFromData(bytesOf(asset->data));
+                        }
+                        *waiting -= 1;
+                        if (*waiting == 0) {
+                            paintElement(elementId, showing);
+                        }
+                    },
+                    Qt::QueuedConnection);
+            });
+    }
+}
+
+void ElementsViewModel::paintElement(const core::Uuid& elementId,
+                                     const std::shared_ptr<Showing>& showing) {
+    std::vector<platform::render::DrawnPicture> drawn;
+    drawn.reserve(showing->page.pictures.size());
+    for (std::size_t step = 0; step < showing->page.pictures.size(); ++step) {
+        if (showing->images[step].isNull()) {
+            continue;
+        }
+        drawn.push_back(platform::render::DrawnPicture{
+            .placed = showing->page.pictures[step].picture,
+            .picture = &showing->images[step],
+            .layer = core::kNilUuid,
+        });
+    }
+    const platform::render::PageContents contents{
+        .style = {},
+        .strokes = showing->page.strokes,
+        .texts = showing->page.texts,
+        .pictures = drawn,
+        .tables = showing->page.tables,
+        .layers = {},
+        .media = nullptr,
+    };
+    const core::Rect area = platform::render::pageArea(contents);
+    const bool anything = area.width() > 0.0F && area.height() > 0.0F;
+    const float ratio = anything ? area.height() / area.width() : kEmptyRatio;
+    const int height =
+        std::max(1, static_cast<int>(static_cast<float>(thumbnails::kWidth) * ratio));
+    QImage picture{thumbnails::kWidth, height, QImage::Format_ARGB32_Premultiplied};
+    picture.fill(Qt::transparent);
+    if (anything) {
+        QPainter painter{&picture};
+        painter.scale(static_cast<double>(thumbnails::kWidth) / static_cast<double>(area.width()),
+                      static_cast<double>(height) / static_cast<double>(area.height()));
+        platform::render::paintPage(painter, contents, area);
+    }
+    const int revision = ++m_pictureRevision;
+    m_pictures[elementId] = revision;
+    thumbnails::put(QStringLiteral("element-%1-%2")
+                        .arg(QString::fromStdString(elementId.toString()))
+                        .arg(revision),
+                    picture);
+    publish();
+}
+
+void ElementsViewModel::fetchThenPutDown(const std::shared_ptr<NotebookViewModel::Handful>& handful,
+                                         const QPointer<NotebookViewModel>& keeper) {
+    if (keeper.isNull()) {
+        return;
+    }
+    if (handful->pictures.empty() || !m_storage) {
+        keeper->putDownHandful(*handful);
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    const std::uint64_t opening = m_opening;
+    const auto waiting = std::make_shared<std::size_t>(handful->pictures.size());
+    for (std::size_t step = 0; step < handful->pictures.size(); ++step) {
+        storage->loadAsset(
+            handful->pictures[step].placed.picture.source,
+            [this, opening, handful, keeper, waiting, step](core::Result<core::Asset> asset) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, opening, handful, keeper, waiting, step,
+                     asset = std::move(asset)] mutable {
+                        if (opening != m_opening) {
+                            return;
+                        }
+                        if (asset) {
+                            handful->pictures[step].bytes =
+                                std::make_shared<const std::vector<std::byte>>(
+                                    std::move(asset->data));
+                        }
+                        *waiting -= 1;
+                        if (*waiting == 0 && !keeper.isNull()) {
+                            keeper->putDownHandful(*handful);
+                        }
+                    },
+                    Qt::QueuedConnection);
+            });
+    }
 }
 
 void ElementsViewModel::put(NotebookViewModel* into, const QString& elementId) {
@@ -462,12 +605,16 @@ void ElementsViewModel::put(NotebookViewModel* into, const QString& elementId) {
                     takeTrouble(QString::fromStdString(got.error().message));
                     return;
                 }
-                NotebookViewModel::Handful handful;
-                handful.strokes = std::move(got->strokes);
-                handful.texts = std::move(got->texts);
-                handful.tables = std::move(got->tables);
-                handful.area = areaAround(handful);
-                keeper->putDownHandful(handful);
+                auto handful = std::make_shared<NotebookViewModel::Handful>();
+                handful->strokes = std::move(got->strokes);
+                handful->texts = std::move(got->texts);
+                handful->tables = std::move(got->tables);
+                for (const core::PlacedPicture& placed : got->pictures) {
+                    handful->pictures.push_back(
+                        NotebookViewModel::Handful::Carried{.placed = placed, .bytes = nullptr});
+                }
+                handful->area = areaAround(*handful);
+                fetchThenPutDown(handful, keeper);
             },
             Qt::QueuedConnection);
     });

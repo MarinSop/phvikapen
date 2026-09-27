@@ -8,6 +8,7 @@
 #include <QAbstractListModel>
 #include <QByteArray>
 #include <QHash>
+#include <QImage>
 #include <QModelIndex>
 #include <QObject>
 #include <QPointer>
@@ -18,6 +19,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -133,10 +135,23 @@ signals:
     void kept(const QString& elementId);
 
 private:
+    // An element as it is drawn: what is on it, and what each of its pictures is made of. The
+    // pictures are held beside the page so that they outlive the drawing, which is what the
+    // painter is handed pointers to.
+    struct Showing {
+        core::LoadedPage page;
+        std::vector<QImage> images;
+    };
+
     void open();
     void publish();
     void takeTrouble(const QString& why);
+    void writeInto(const core::Uuid& elementId, const NotebookViewModel::Handful& handful);
     void drawPicture(const core::Uuid& elementId);
+    void fetchThenPaint(const core::Uuid& elementId, const std::shared_ptr<Showing>& showing);
+    void paintElement(const core::Uuid& elementId, const std::shared_ptr<Showing>& showing);
+    void fetchThenPutDown(const std::shared_ptr<NotebookViewModel::Handful>& handful,
+                          const QPointer<NotebookViewModel>& keeper);
     [[nodiscard]] const core::PageInfo* elementNamed(const QString& elementId) const;
 
     QString m_directory;

@@ -35,6 +35,34 @@ TestCase {
         tryVerify(() => notebook.canvas.selectedCount > 0, 2000, "nothing was picked up");
     }
 
+    // A small picture written out as a file, so that an element can be kept with one in it.
+    function pictureFile(path) {
+        wait(60);
+        const shot = grabImage(blob);
+        shot.save(path);
+        return shot.width > 0;
+    }
+
+    function idOfNamed(name) {
+        for (let step = 0; step < library.elements.count; ++step) {
+            if (nameAt(step) === name) {
+                return idAt(step);
+            }
+        }
+        return "";
+    }
+
+    function anyPictureOn(notebook) {
+        for (let down = 5; down < testCase.height; down += 15) {
+            for (let across = 5; across < testCase.width; across += 15) {
+                if (notebook.pictureUnder(across, down) !== "") {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     function nameAt(row) {
         return library.elements.data(library.elements.index(row, 0), Qt.UserRole + 2);
     }
@@ -219,6 +247,28 @@ TestCase {
         compare(library.trouble, "");
     }
 
+    function test_i_aPictureIsKeptInAnElementAndPutDownAgain() {
+        const notebook = openNotebook(newNotebookPath());
+        const path = temporaryDirectory + "/element-picture.png";
+        verify(pictureFile(path), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        tryVerify(() => notebook.pickedPicture !== "", 4000, "the picture never went on the page");
+
+        verify(library.anythingToKeep(notebook), "a picture on its own is not worth keeping");
+
+        library.keep(notebook, "A picture", "Stickers");
+        tryVerify(() => idOfNamed("A picture") !== "", 4000, "the element was not kept");
+        const which = idOfNamed("A picture");
+
+        const another = openNotebook(newNotebookPath());
+        verify(!anyPictureOn(another), "the second notebook already had a picture on it");
+
+        library.put(another, which);
+
+        tryVerify(() => anyPictureOn(another), 6000, "the picture was not put on the page");
+        compare(library.trouble, "");
+    }
+
     height: 400
     name: "Elements"
     visible: true
@@ -229,6 +279,21 @@ TestCase {
         id: library
 
         directory: temporaryDirectory + "/elementLibrary"
+    }
+
+    Rectangle {
+        id: blob
+
+        color: "steelblue"
+        height: 60
+        width: 80
+
+        Rectangle {
+            anchors.centerIn: parent
+            color: "orange"
+            height: 20
+            width: 30
+        }
     }
 
     Component {

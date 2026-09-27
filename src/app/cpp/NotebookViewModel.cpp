@@ -5197,6 +5197,11 @@ NotebookViewModel::Handful NotebookViewModel::handfulPicked() const {
             handful.tables.push_back(placed);
         }
     }
+    for (const core::PlacedPicture& placed : page->pictures()) {
+        if (!m_pickedPicture.isEmpty() && isNamed(placed.picture.id, m_pickedPicture)) {
+            handful.pictures.push_back(Handful::Carried{.placed = placed, .bytes = nullptr});
+        }
+    }
 
     std::optional<core::Rect> around;
     const auto widen = [&around](const core::Rect& one) {
@@ -5213,8 +5218,48 @@ NotebookViewModel::Handful NotebookViewModel::handfulPicked() const {
     for (const core::PlacedTable& placed : handful.tables) {
         widen(core::areaOf(placed.table));
     }
+    for (const Handful::Carried& carried : handful.pictures) {
+        widen(core::areaOf(carried.placed.picture));
+    }
     handful.area = around.value_or(core::Rect{});
     return handful;
+}
+
+void NotebookViewModel::takeHandful(const HandfulReady& ready) {
+    Handful handful = handfulPicked();
+    if (handful.pictures.empty() || !m_storage) {
+        ready(std::move(handful));
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    const std::uint64_t opening = m_opening;
+    // The handful is held by a pointer so that every picture can be filled in as it comes back,
+    // and handed on once the last one has.
+    const auto held = std::make_shared<Handful>(std::move(handful));
+    const auto waiting = std::make_shared<std::size_t>(held->pictures.size());
+    for (std::size_t step = 0; step < held->pictures.size(); ++step) {
+        storage->loadAsset(
+            held->pictures[step].placed.picture.source,
+            [this, opening, held, waiting, step, ready](core::Result<core::Asset> asset) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, opening, held, waiting, step, ready, asset = std::move(asset)] mutable {
+                        if (opening != m_opening) {
+                            return;
+                        }
+                        if (asset) {
+                            held->pictures[step].bytes =
+                                std::make_shared<const std::vector<std::byte>>(
+                                    std::move(asset->data));
+                        }
+                        *waiting -= 1;
+                        if (*waiting == 0) {
+                            ready(*held);
+                        }
+                    },
+                    Qt::QueuedConnection);
+            });
+    }
 }
 
 void NotebookViewModel::putDownHandful(const Handful& handful) {
@@ -5222,7 +5267,8 @@ void NotebookViewModel::putDownHandful(const Handful& handful) {
     if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
         return;
     }
-    if (handful.strokes.empty() && handful.texts.empty() && handful.tables.empty()) {
+    if (handful.strokes.empty() && handful.texts.empty() && handful.tables.empty()
+        && handful.pictures.empty()) {
         return;
     }
     const core::Rect visible = m_canvas->visibleOnPage();
@@ -5275,6 +5321,35 @@ void NotebookViewModel::putDownHandful(const Handful& handful) {
                                                         .table = core::normalized(table),
                                                         .layer = layer,
                                                     }));
+    }
+    std::int64_t pictureOrdinal = page->nextPictureOrdinal();
+    for (const Handful::Carried& carried : handful.pictures) {
+        if (carried.bytes == nullptr || carried.bytes->empty()) {
+            continue;
+        }
+        core::Picture picture = carried.placed.picture;
+        picture.id = m_ids.next();
+        picture.at.x += across;
+        picture.at.y += down;
+        // What the picture is made of is written first, so that the row pointing at it never
+        // stands for a moment with nothing behind it.
+        const auto bytes = carried.bytes;
+        const core::ContentId source = picture.source;
+        storage->submit([source, bytes](core::NotebookStore& store) {
+            return store.insertAsset(core::Asset{
+                .id = source,
+                .kind = core::AssetKind::Image,
+                .name = {},
+                .data = *bytes,
+            });
+        });
+        steps.push_back(
+            std::make_unique<core::AddPictureCommand>(page, storage,
+                                                      core::PlacedPicture{
+                                                          .ordinal = pictureOrdinal++,
+                                                          .picture = core::normalized(picture),
+                                                          .layer = layer,
+                                                      }));
     }
     if (steps.empty()) {
         return;

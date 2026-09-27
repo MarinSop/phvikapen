@@ -547,8 +547,8 @@
         <translation>Vrsta, npr. Naljepnice ili Oblici</translation>
     </message>
     <message>
-        <source>Ink, words and tables are kept. A picture is not kept in an element yet.</source>
-        <translation>Spremaju se tinta, riječi i tablice. Slika se još ne sprema u element.</translation>
+        <source>Ink, words, tables and pictures are all kept.</source>
+        <translation>Tinta, tekst, tablice i slike — sve se čuva.</translation>
     </message>
     <message>
         <source>Rename element</source>

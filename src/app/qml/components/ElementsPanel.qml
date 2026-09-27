@@ -239,7 +239,7 @@ Pane {
                 Layout.fillWidth: true
                 color: palette.placeholderText
                 font.pixelSize: Math.round(11 * Theme.scale)
-                text: qsTr("Ink, words and tables are kept. A picture is not kept in an element yet.")
+                text: qsTr("Ink, words, tables and pictures are all kept.")
                 wrapMode: Text.WordWrap
             }
         }

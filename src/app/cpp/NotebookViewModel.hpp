@@ -373,13 +373,27 @@ public:
     // else and put down again later. Where it stood is kept with it, so that a handful put down
     // again keeps the shape it had.
     struct Handful {
+        // A picture and what it is made of. The bytes are carried along because a picture is kept
+        // once in the notebook it came from, and a handful may be put down in another one.
+        struct Carried {
+            core::PlacedPicture placed;
+            std::shared_ptr<const std::vector<std::byte>> bytes;
+        };
+
         std::vector<core::PlacedStroke> strokes;
         std::vector<core::PlacedText> texts;
         std::vector<core::PlacedTable> tables;
+        std::vector<Carried> pictures;
         core::Rect area{};
     };
 
+    using HandfulReady = std::function<void(Handful)>;
+
     [[nodiscard]] Handful handfulPicked() const;
+
+    // The same handful, with whatever its pictures are made of fetched from the notebook first.
+    // The answer comes back through `ready`, because the bytes are not to hand.
+    void takeHandful(const HandfulReady& ready);
 
     // A handful put down in the middle of what is being looked at, everything in it given a name
     // of its own so that the same handful can be put down many times.
