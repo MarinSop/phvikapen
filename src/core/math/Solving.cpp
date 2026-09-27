@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -16,8 +17,26 @@
 namespace phvikapen::core {
 namespace {
 
-constexpr int kHighestPower = 2;
+// How high a power of one letter an equation may be gathered into. Beyond this the numbers a run
+// of powers holds stop meaning anything useful.
+constexpr int kHighestPower = 8;
+
+// Up to a square there is a formula; above it the numbers are searched for.
+constexpr int kHighestByFormula = 2;
 constexpr double kAlmostNothing = 1e-12;
+
+// How near nothing a searched answer must bring the equation before it is called an answer.
+constexpr double kNearEnough = 1e-9;
+
+// How finely each stretch between two turning points is halved. Each step halves the stretch, so
+// sixty steps take any stretch a double can hold down to nothing.
+constexpr int kHalvings = 60;
+
+// Two answers nearer than this are the same answer found twice.
+constexpr double kSameAnswer = 1e-7;
+
+// A stretch is halved, so its middle is the two ends brought together and split in two.
+constexpr double kBothHalves = 2.0;
 
 [[nodiscard]] bool isNothing(double value) noexcept {
     return std::abs(value) < kAlmostNothing;
@@ -132,7 +151,7 @@ void trimmed(std::vector<double>& powers) {
     const std::size_t reach = left.size() + right.size() - 1;
     if (static_cast<int>(reach) - 1 > kHighestPower) {
         return makeError(ErrorCode::Unsupported,
-                         "only a straight line and a square are worked out here");
+                         "that power of a letter is too high to be worked out here");
     }
     std::vector<double> product(reach, 0.0);
     for (std::size_t along = 0; along < left.size(); ++along) {
@@ -142,6 +161,121 @@ void trimmed(std::vector<double>& powers) {
     }
     trimmed(product);
     return product;
+}
+
+// What a run of powers comes to at one place: 2x + 5 at 3 is 11.
+[[nodiscard]] double powersAt(std::span<const double> powers, double where) {
+    double worth = 0.0;
+    for (std::size_t step = powers.size(); step > 0; --step) {
+        worth = (worth * where) + powers[step - 1];
+    }
+    return worth;
+}
+
+// The run of powers of the slope: 3x^2 + 2x + 5 becomes 6x + 2.
+[[nodiscard]] std::vector<double> slopeOf(std::span<const double> powers) {
+    if (powers.size() <= 1) {
+        return {};
+    }
+    std::vector<double> slope(powers.size() - 1, 0.0);
+    for (std::size_t step = 1; step < powers.size(); ++step) {
+        slope[step - 1] = powers[step] * static_cast<double>(step);
+    }
+    return slope;
+}
+
+// How far out any answer can lie. Beyond this the highest power outgrows everything else, so
+// nothing out there can come to nothing.
+[[nodiscard]] double asFarAsAnswersGo(std::span<const double> powers) {
+    const double highest = powers.back();
+    double most = 0.0;
+    for (std::size_t step = 0; step + 1 < powers.size(); ++step) {
+        most = std::max(most, std::abs(powers[step] / highest));
+    }
+    return 1.0 + most;
+}
+
+// The one place between two turning points where a run of powers comes to nothing, found by
+// halving the stretch. Between two turning points the run only climbs or only falls, so there is
+// at most one, and it is here if the two ends lie on opposite sides of nothing.
+[[nodiscard]] std::optional<double> nothingBetween(std::span<const double> powers, double from,
+                                                   double to) {
+    double low = from;
+    double high = to;
+    double atLow = powersAt(powers, low);
+    const double atHigh = powersAt(powers, high);
+    if (isNothing(atLow)) {
+        return low;
+    }
+    if (isNothing(atHigh)) {
+        return high;
+    }
+    if ((atLow < 0.0) == (atHigh < 0.0)) {
+        return std::nullopt;
+    }
+    for (int step = 0; step < kHalvings; ++step) {
+        const double middle = low + ((high - low) / kBothHalves);
+        const double atMiddle = powersAt(powers, middle);
+        if (isNothing(atMiddle)) {
+            return middle;
+        }
+        if ((atMiddle < 0.0) == (atLow < 0.0)) {
+            low = middle;
+            atLow = atMiddle;
+        } else {
+            high = middle;
+        }
+    }
+    return low + ((high - low) / kBothHalves);
+}
+
+void keepAnswer(std::vector<double>& answers, double answer) {
+    const auto already = std::ranges::find_if(
+        answers, [answer](double kept) { return std::abs(kept - answer) <= kSameAnswer; });
+    if (already == answers.end()) {
+        answers.push_back(answer);
+    }
+}
+
+// Every number a run of powers comes to nothing at, smallest first. The turning points cut the run
+// into stretches that each climb or fall throughout, so each stretch holds at most one answer and
+// halving finds it. A turning point that is itself an answer is a number the run touches without
+// crossing, which no halving would find.
+[[nodiscard]] std::vector<double> nothingsOf(std::span<const double> powers) {
+    std::vector<double> answers;
+    if (powers.size() < 2) {
+        return answers;
+    }
+    if (powers.size() == 2) {
+        answers.push_back(-powers[0] / powers[1]);
+        return answers;
+    }
+    const std::vector<double> slope = slopeOf(powers);
+    const std::vector<double> turning = nothingsOf(slope);
+    const double reach = asFarAsAnswersGo(powers);
+    std::vector<double> edges;
+    edges.reserve(turning.size() + 2);
+    edges.push_back(-reach);
+    for (const double at : turning) {
+        if (at > -reach && at < reach) {
+            edges.push_back(at);
+        }
+    }
+    edges.push_back(reach);
+    std::ranges::sort(edges);
+    for (std::size_t step = 0; step + 1 < edges.size(); ++step) {
+        if (const std::optional<double> found =
+                nothingBetween(powers, edges[step], edges[step + 1])) {
+            keepAnswer(answers, *found);
+        }
+    }
+    for (const double at : turning) {
+        if (std::abs(powersAt(powers, at)) <= kNearEnough) {
+            keepAnswer(answers, at);
+        }
+    }
+    std::ranges::sort(answers);
+    return answers;
 }
 
 [[nodiscard]] bool isPlainNumber(const std::vector<double>& powers) {
@@ -261,7 +395,7 @@ private:
         }
         if (times != std::floor(times) || times < 0.0 || times > kHighestPower) {
             return makeError(ErrorCode::Unsupported,
-                             "only a straight line and a square are worked out here");
+                             "that power of a letter is too high to be worked out here");
         }
         std::vector<double> product{1.0};
         for (int step = 0; step < static_cast<int>(times); ++step) {
@@ -388,12 +522,17 @@ Result<Solution> solvedFor(const Statement& statement, char letter,
     if (solution.power == 0) {
         return makeError(ErrorCode::InvalidArgument, "the two sides can never be equal");
     }
-    if (solution.power > kHighestPower) {
-        return makeError(ErrorCode::Unsupported,
-                         "only a straight line and a square are worked out here");
-    }
-
-    if (solution.power == 1) {
+    if (solution.power > kHighestByFormula) {
+        solution.answers = nothingsOf(gathered);
+        solution.working.push_back(Working{
+            .reason = Working::Reason::Searched,
+            .said = writtenPowers(gathered, letter) + " = 0",
+            .number = static_cast<double>(solution.power),
+        });
+        if (solution.answers.empty()) {
+            return makeError(ErrorCode::InvalidArgument, "there is no number this can stand for");
+        }
+    } else if (solution.power == 1) {
         const double against = gathered[1];
         const double alone = gathered[0];
         solution.working.push_back(Working{

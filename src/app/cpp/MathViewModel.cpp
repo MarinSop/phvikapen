@@ -30,6 +30,8 @@ constexpr qreal kLargestFrame = 1e9;
         return MathViewModel::Reason::Divided;
     case core::Working::Reason::Formula:
         return MathViewModel::Reason::Formula;
+    case core::Working::Reason::Searched:
+        return MathViewModel::Reason::Searched;
     case core::Working::Reason::Answered:
         return MathViewModel::Reason::Reached;
     default:

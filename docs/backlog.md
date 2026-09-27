@@ -258,11 +258,14 @@ written so that all of them can share it. They are listed in the order they are 
 - **An equation with more than one letter is drawn but not solved.** A statement with two letters
   is a curve, and the curve is drawn; solving one of them in terms of the other, and solving two
   equations together, both need rearranging rather than gathering into powers.
-- **A curve is drawn in the window, not on the page.** The graph is looked at beside the notes
-  rather than standing among them. Putting one on a page means drawing it the way a sum is drawn
-  and keeping it as something the page holds.
-- **A power higher than a square is not solved.** Gathering into powers reaches a straight line and
-  a square exactly; a cube needs either rearranging or hunting for the answer by halves.
+- **A curve drawn on the page is ink, and carries no numbers.** The curve and its two axes go on
+  the page as strokes, so they are moved, recoloured and erased like anything drawn by hand, but
+  the grid and the figures along the axes are not drawn with them, and the drawing does not change
+  again when the graph beside the notes is moved.
+- **A power higher than a square is searched, not solved.** A straight line and a square come out
+  exactly; a cube and above are found by halving between the turning points, so the answers are as
+  near as a double can get rather than written as a formula. A power above the eighth is refused,
+  and an answer that is not a plain number is never found, because only real numbers are searched.
 - **Mathematics that is not written on one line.** A sum written across is read, worked out and
   answered. A fraction written as one number over another, a power written small and raised, a root
   drawn over what it covers and anything else arranged in two dimensions are not read, because the

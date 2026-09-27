@@ -137,9 +137,70 @@ TestCase {
         compare(maths.runs.length, 0);
     }
 
+    function test_o_aCurveIsDrawnOnThePageAsInk() {
+        const canvas = createTemporaryObject(canvasComponent, testCase);
+        const notebook = createTemporaryObject(notebookComponent, testCase, {
+            canvas: canvas,
+            notebookPath: temporaryDirectory + "/maths-drawn.phvika"
+        });
+        tryCompare(notebook, "loaded", true);
+        maths.resetFrame();
+        maths.ask("y = 2x");
+        verify(maths.runs.length > 0, "there was no curve to draw");
+        compare(notebook.strokeCount, 0);
+
+        notebook.drawCurve(maths.runs, maths.frame, "#204080");
+
+        // Two axes and at least one run of the curve itself.
+        tryVerify(() => notebook.strokeCount >= 3, 4000, "the curve was not drawn on the page");
+        verify(notebook.canUndo, "drawing the curve cannot be undone");
+
+        notebook.undo();
+        tryCompare(notebook, "strokeCount", 0, 4000, "undoing did not take the curve off again");
+    }
+
+    function test_p_aCurveIsNotDrawnWhereThereIsNothingToDraw() {
+        const canvas = createTemporaryObject(canvasComponent, testCase);
+        const notebook = createTemporaryObject(notebookComponent, testCase, {
+            canvas: canvas,
+            notebookPath: temporaryDirectory + "/maths-nothing.phvika"
+        });
+        tryCompare(notebook, "loaded", true);
+
+        notebook.drawCurve([], {
+            left: 5,
+            right: 5,
+            bottom: -1,
+            top: 1
+        }, "#204080");
+
+        wait(100);
+        compare(notebook.strokeCount, 0, "a frame with no width was drawn anyway");
+    }
+
+    height: 400
     name: "MathViewModel"
+    visible: true
+    when: windowShown
+    width: 400
 
     MathViewModel {
         id: maths
+    }
+
+    Component {
+        id: canvasComponent
+
+        InkCanvas {
+            height: testCase.height
+            width: testCase.width
+        }
+    }
+
+    Component {
+        id: notebookComponent
+
+        NotebookViewModel {
+        }
     }
 }

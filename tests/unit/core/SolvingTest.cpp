@@ -5,7 +5,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -125,8 +127,57 @@ TEST(SolvingTest, SaysWhenAStatementHoldsForEveryNumber) {
     EXPECT_TRUE(solution->answers.empty());
 }
 
-TEST(SolvingTest, RefusesAPowerHigherThanASquare) {
+TEST(SolvingTest, SearchesACubeForItsAnswer) {
     const Result<Solution> solution = solve("x^3 = 8");
+
+    ASSERT_TRUE(solution.has_value()) << solution.error().message;
+    EXPECT_EQ(solution->power, 3);
+    ASSERT_EQ(solution->answers.size(), 1U);
+    EXPECT_NEAR(solution->answers.front(), 2.0, 1e-6);
+    EXPECT_TRUE(std::ranges::any_of(solution->working, [](const Working& line) {
+        return line.reason == Working::Reason::Searched;
+    })) << "nothing said the answer was searched for";
+}
+
+TEST(SolvingTest, FindsEveryAnswerOfACubeThatHasThree) {
+    const Result<Solution> solution = solve("x^3 - 6x^2 + 11x = 6");
+
+    ASSERT_TRUE(solution.has_value()) << solution.error().message;
+    ASSERT_EQ(solution->answers.size(), 3U);
+    EXPECT_NEAR(solution->answers[0], 1.0, 1e-6);
+    EXPECT_NEAR(solution->answers[1], 2.0, 1e-6);
+    EXPECT_NEAR(solution->answers[2], 3.0, 1e-6);
+}
+
+TEST(SolvingTest, FindsAnAnswerACubeOnlyTouches) {
+    // (x - 1)^2 (x + 2) = 0: the run touches nothing at 1 without crossing it.
+    const Result<Solution> solution = solve("x^3 - 3x + 2 = 0");
+
+    ASSERT_TRUE(solution.has_value()) << solution.error().message;
+    ASSERT_EQ(solution->answers.size(), 2U);
+    EXPECT_NEAR(solution->answers[0], -2.0, 1e-6);
+    EXPECT_NEAR(solution->answers[1], 1.0, 1e-6);
+}
+
+TEST(SolvingTest, SearchesAFourthPowerForItsAnswers) {
+    const Result<Solution> solution = solve("x^4 = 16");
+
+    ASSERT_TRUE(solution.has_value()) << solution.error().message;
+    EXPECT_EQ(solution->power, 4);
+    ASSERT_EQ(solution->answers.size(), 2U);
+    EXPECT_NEAR(solution->answers[0], -2.0, 1e-6);
+    EXPECT_NEAR(solution->answers[1], 2.0, 1e-6);
+}
+
+TEST(SolvingTest, SaysPlainlyWhenAPowerComesToNothingNowhere) {
+    const Result<Solution> solution = solve("x^4 + 1 = 0");
+
+    ASSERT_FALSE(solution.has_value());
+    EXPECT_FALSE(solution.error().message.empty());
+}
+
+TEST(SolvingTest, RefusesAPowerFarTooHighToWorkOut) {
+    const Result<Solution> solution = solve("x^12 = 1");
 
     ASSERT_FALSE(solution.has_value());
     EXPECT_EQ(solution.error().code, ErrorCode::Unsupported);

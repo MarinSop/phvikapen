@@ -21,6 +21,8 @@ Pane {
             return qsTr("Divided both sides by %1").arg(number);
         case MathViewModel.Formula:
             return qsTr("Used the formula for a square");
+        case MathViewModel.Searched:
+            return qsTr("Searched a power of %1 for its answers").arg(number);
         case MathViewModel.Reached:
             return qsTr("Answer");
         default:
@@ -173,6 +175,14 @@ Pane {
                 text: qsTr("Further")
 
                 onClicked: root.maths.zoomBy(1.25, 0, 0)
+            }
+
+            Button {
+                enabled: root.notebook !== null && root.notebook.loaded
+                objectName: "graphDrawButton"
+                text: qsTr("Draw on the page")
+
+                onClicked: root.notebook.drawCurve(root.maths.runs, root.maths.frame, root.actions.tools.strokeColor)
             }
 
             Item {

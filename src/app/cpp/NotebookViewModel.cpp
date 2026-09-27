@@ -12,6 +12,7 @@
 #include "core/ink/StrokeSelection.hpp"
 #include "core/math/Answer.hpp"
 #include "core/math/Equation.hpp"
+#include "core/math/Plotting.hpp"
 #include "core/math/Reading.hpp"
 #include "core/model/Asset.hpp"
 #include "core/model/Layer.hpp"
@@ -3278,6 +3279,133 @@ void NotebookViewModel::addTextAt(qreal columnX, qreal columnY, const QVariantMa
     const QString textId = QString::fromStdString(box.id.toString());
     setPickedText(textId);
     emit textAdded(textId);
+}
+
+namespace {
+
+// How much of the shorter side of what is being looked at a drawn graph takes.
+constexpr float kGraphShare = 0.7F;
+
+// How thick the axes are drawn beside the curve itself.
+constexpr float kAxisWidth = 1.0F;
+constexpr float kCurveWidth = 2.0F;
+
+// A run shorter than this is a single point the eye would never see, so it is left out.
+constexpr std::size_t kShortestRun = 2;
+
+[[nodiscard]] double numberIn(const QVariantMap& from, const QString& named, double whenMissing) {
+    const auto found = from.find(named);
+    return found == from.end() ? whenMissing : found.value().toDouble();
+}
+
+// Where a place on the graph falls inside the square the graph is drawn in.
+struct Placing {
+    double left{};
+    double top{};
+    double width{};
+    double height{};
+    core::Frame frame;
+
+    [[nodiscard]] core::InkSample at(double across, double up) const {
+        const double wide = core::widthOf(frame);
+        const double tall = core::heightOf(frame);
+        return core::InkSample{
+            .x = static_cast<float>(left + (((across - frame.left) / wide) * width)),
+            // A graph counts upwards and a page counts downwards.
+            .y = static_cast<float>(top + (((frame.top - up) / tall) * height)),
+        };
+    }
+};
+
+[[nodiscard]] core::Stroke lineOf(const core::Uuid& id, const core::Color& colour, float width,
+                                  std::span<const core::InkSample> along) {
+    core::Stroke line{id, core::StrokeStyle{.color = colour, .width = width, .roundEnds = true}};
+    for (const core::InkSample& sample : along) {
+        line.append(sample);
+    }
+    return line;
+}
+
+}
+
+void NotebookViewModel::drawCurve(const QVariantList& runs, const QVariantMap& frame,
+                                  const QColor& colour) {
+    core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull() || !canPutSomethingDown() || !m_storage) {
+        return;
+    }
+    const core::Frame looking{
+        .left = numberIn(frame, QStringLiteral("left"), -core::kFrameReach),
+        .right = numberIn(frame, QStringLiteral("right"), core::kFrameReach),
+        .bottom = numberIn(frame, QStringLiteral("bottom"), -core::kFrameReach),
+        .top = numberIn(frame, QStringLiteral("top"), core::kFrameReach),
+    };
+    if (!core::isDrawable(looking)) {
+        return;
+    }
+    const core::Rect visible = m_canvas->visibleOnPage();
+    const float side = std::min(visible.width(), visible.height()) * kGraphShare;
+    if (side <= 0.0F) {
+        return;
+    }
+    const Placing placing{
+        .left = static_cast<double>(visible.left + ((visible.width() - side) / 2.0F)),
+        .top = static_cast<double>(visible.top + ((visible.height() - side) / 2.0F)),
+        .width = static_cast<double>(side),
+        .height = static_cast<double>(side),
+        .frame = looking,
+    };
+
+    const core::Color ink = asColor(colour.isValid() ? colour : QColor{Qt::black});
+    const core::Color faint{.red = 128, .green = 128, .blue = 128, .alpha = core::Color::kOpaque};
+    const core::Uuid layer = layerForNewThings(*page);
+    std::vector<core::PlacedStroke> drawn;
+    std::int64_t ordinal = page->nextOrdinal();
+
+    const auto put = [&](const core::Color& with, float width,
+                         std::span<const core::InkSample> along) {
+        if (along.size() < kShortestRun) {
+            return;
+        }
+        drawn.push_back(core::PlacedStroke{
+            .ordinal = ordinal++,
+            .stroke = lineOf(m_ids.next(), with, width, along),
+            .layer = layer,
+        });
+    };
+
+    // The axes are drawn where nothing crosses them at the edge, so a frame that does not hold
+    // zero gets its axis along the nearest side rather than none at all.
+    const double acrossAt = std::clamp(0.0, looking.bottom, looking.top);
+    const double upAt = std::clamp(0.0, looking.left, looking.right);
+    const std::array<core::InkSample, 2> sideways{
+        placing.at(looking.left, acrossAt),
+        placing.at(looking.right, acrossAt),
+    };
+    const std::array<core::InkSample, 2> upright{
+        placing.at(upAt, looking.bottom),
+        placing.at(upAt, looking.top),
+    };
+    put(faint, kAxisWidth, sideways);
+    put(faint, kAxisWidth, upright);
+
+    for (const QVariant& one : runs) {
+        const QVariantList spots = one.toList();
+        std::vector<core::InkSample> along;
+        along.reserve(static_cast<std::size_t>(spots.size()));
+        for (const QVariant& spot : spots) {
+            const QPointF where = spot.toPointF();
+            along.push_back(placing.at(where.x(), where.y()));
+        }
+        put(ink, kCurveWidth, along);
+    }
+    if (drawn.empty()) {
+        return;
+    }
+    core::StorageThread* const storage = &*m_storage;
+    forgetThumbnail(page->id());
+    runCommand(std::make_unique<core::AddStrokesCommand>(page, storage, std::move(drawn)));
+    refreshCanvas();
 }
 
 void NotebookViewModel::writeDown(const QString& said, const QVariantMap& style, bool formula) {

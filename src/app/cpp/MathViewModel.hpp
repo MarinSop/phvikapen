@@ -58,6 +58,7 @@ public:
         Divided,
         Formula,
         Reached,
+        Searched,
     };
     Q_ENUM(Reason)
 

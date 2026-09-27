@@ -41,6 +41,8 @@ struct Working {
         Divided,
         // The formula for an equation with a square in it was used.
         Formula,
+        // A power too high for a formula was searched for its answers instead.
+        Searched,
         // What the letter stands for.
         Answered,
     };
@@ -70,8 +72,9 @@ struct Solution {
 // A run of powers written out the way it is read: {5, 2} against x is "2x + 5".
 [[nodiscard]] std::string writtenPowers(std::span<const double> powers, char letter);
 
-// What the letter must stand for if the statement is to hold. Only a straight line and a square
-// are worked out; anything higher is refused plainly rather than half answered.
+// What the letter must stand for if the statement is to hold. A straight line and a square are
+// worked out exactly; a higher power is searched, which finds every number it comes to nothing at
+// but not the two halves of a number that has none.
 [[nodiscard]] Result<Solution> solvedFor(const Statement& statement, char letter,
                                          std::span<const Standing> standing);
 

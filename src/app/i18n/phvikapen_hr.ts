@@ -999,6 +999,10 @@
         <translation>Upotrijebljena formula za kvadratnu jednadžbu</translation>
     </message>
     <message>
+        <source>Searched a power of %1 for its answers</source>
+        <translation>Potraženi odgovori za potenciju %1</translation>
+    </message>
+    <message>
         <source>Answer</source>
         <translation>Rješenje</translation>
     </message>
@@ -1045,6 +1049,10 @@
     <message>
         <source>Further</source>
         <translation>Dalje</translation>
+    </message>
+    <message>
+        <source>Draw on the page</source>
+        <translation>Nacrtaj na stranicu</translation>
     </message>
 </context>
 <context>

@@ -444,6 +444,12 @@ public:
     // left to be typed into: what the parts of the window that make words of their own hand over.
     Q_INVOKABLE void writeDown(const QString& said, const QVariantMap& style, bool formula);
 
+    // A curve drawn on the page as ink, in a square in the middle of what is being looked at, with
+    // its two axes. `runs` holds one list of points per run of the curve, counted the way
+    // arithmetic counts, and `frame` says which part of the graph is being looked at.
+    Q_INVOKABLE void drawCurve(const QVariantList& runs, const QVariantMap& frame,
+                               const QColor& colour);
+
     // What a box says once the reader stops typing; a box left empty is dropped.
     Q_INVOKABLE void finishText(const QString& textId, const QString& text, qreal height);
 
