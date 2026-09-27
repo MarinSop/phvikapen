@@ -1557,6 +1557,14 @@
 <context>
     <name>PanelFrame</name>
     <message>
+        <source>Bring this panel back over the page</source>
+        <translation>Vrati ovaj panel nad stranicu</translation>
+    </message>
+    <message>
+        <source>Set this panel free in a window of its own</source>
+        <translation>Pusti ovaj panel u vlastiti prozor</translation>
+    </message>
+    <message>
         <source>Close this panel</source>
         <translation>Zatvori ovu ploču</translation>
     </message>

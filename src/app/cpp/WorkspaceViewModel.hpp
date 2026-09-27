@@ -20,6 +20,7 @@ class WorkspaceViewModel : public QObject {
     Q_PROPERTY(QVariantMap layout READ layout NOTIFY layoutChanged FINAL)
     Q_PROPERTY(QVariantList panels READ panels NOTIFY layoutChanged FINAL)
     Q_PROPERTY(QVariantList floating READ floating NOTIFY layoutChanged FINAL)
+    Q_PROPERTY(QVariantList looseWindows READ looseWindows NOTIFY layoutChanged FINAL)
     Q_PROPERTY(int leastExtent READ leastExtent CONSTANT FINAL)
 
 public:
@@ -37,6 +38,10 @@ public:
     [[nodiscard]] QVariantList panels() const;
 
     [[nodiscard]] QVariantList floating() const;
+    [[nodiscard]] QVariantList looseWindows() const;
+
+    // Which panel names a floating window: the first one in it, wherever it sits inside.
+    Q_INVOKABLE [[nodiscard]] QString firstPanelOf(const QString& path) const;
 
     [[nodiscard]] static int leastExtent() { return kLeastExtent; }
 
@@ -63,6 +68,12 @@ public:
     Q_INVOKABLE void movePanelWindow(const QString& path, int x, int y);
 
     Q_INVOKABLE void sizePanelWindow(const QString& path, int width, int height);
+
+    // Whether a floating panel lives in a window of its own rather than over the sheet. A window
+    // of its own can be carried anywhere, including onto another screen.
+    Q_INVOKABLE void setPanelLoose(const QString& path, bool loose);
+
+    Q_INVOKABLE [[nodiscard]] bool isLoose(const QString& panelId) const;
 
     Q_INVOKABLE void choosePanel(const QString& path, int index);
 
@@ -103,11 +114,16 @@ private:
         int y{};
         int width{kWindowWidth};
         int height{kWindowHeight};
+        // A panel set free lives in a window of its own, which can be carried onto another screen.
+        // One that is not stands over the sheet, inside the application's own window.
+        bool loose{};
     };
 
     [[nodiscard]] Node* nodeAt(const QString& path);
     [[nodiscard]] const Node* nodeAt(const QString& path) const;
     [[nodiscard]] Afloat* windowAt(const QString& path);
+    [[nodiscard]] const Afloat* windowAt(const QString& path) const;
+    [[nodiscard]] QVariantList shownAfloat(bool loose) const;
     [[nodiscard]] QVariantMap shapeOf(const Node& node, const QString& path) const;
     [[nodiscard]] std::optional<QString> pathOfPanel(const QString& panelId) const;
     [[nodiscard]] std::optional<QString> pathOfMiddle() const;

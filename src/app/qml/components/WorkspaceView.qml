@@ -127,6 +127,28 @@ Item {
         }
     }
 
+    Repeater {
+        model: root.workspace.looseWindows
+
+        Item {
+            id: freeHolder
+
+            required property var modelData
+            readonly property var own: ownWindow
+
+            objectName: "loosePanelHolder_" + freeHolder.modelData.path
+
+            PanelWindow {
+                id: ownWindow
+
+                actions: root.actions
+                drag: drag
+                place: freeHolder.modelData
+                workspace: root.workspace
+            }
+        }
+    }
+
     Rectangle {
         readonly property point corner: root.mapFromItem(null, drag.hint.x, drag.hint.y)
 

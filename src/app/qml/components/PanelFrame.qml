@@ -209,6 +209,15 @@ Rectangle {
                 }
 
                 ShapeButton {
+                    icon.source: Icons.setFree
+                    label: root.workspace.isLoose(root.currentPanel) ? qsTr("Bring this panel back over the page") : qsTr("Set this panel free in a window of its own")
+                    objectName: "freePanelButton"
+                    visible: root.workspace.isAfloat(root.currentPanel)
+
+                    onClicked: root.workspace.setPanelLoose(root.path, !root.workspace.isLoose(root.currentPanel))
+                }
+
+                ShapeButton {
                     icon.source: Icons.close
                     label: qsTr("Close this panel")
                     objectName: "closePanelButton"

@@ -295,6 +295,79 @@ TestCase {
         verify(testCase.pathOf(workspace, "pages") !== null);
     }
 
+    function test_v_aPanelIsSetFreeInAWindowOfItsOwnAndBroughtBack() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+        verify(workspace.isAfloat("pages"));
+        verify(!workspace.isLoose("pages"), "a floating panel is not free to begin with");
+        compare(workspace.looseWindows.length, 0);
+
+        workspace.setPanelLoose("~0", true);
+
+        verify(workspace.isLoose("pages"), "the panel was not set free");
+        compare(workspace.floating.length, 0, "a panel set free no longer stands over the sheet");
+        compare(workspace.looseWindows.length, 1);
+        compare(workspace.looseWindows[0].node.panels, ["pages"]);
+        compare(workspace.looseWindows[0].x, 40);
+
+        workspace.setPanelLoose("~0", false);
+
+        verify(!workspace.isLoose("pages"));
+        compare(workspace.floating.length, 1, "the panel did not come back over the sheet");
+        compare(workspace.looseWindows.length, 0);
+    }
+
+    function test_w_aPanelSetFreeIsStillFreeTheNextTime() {
+        const written = createTemporaryObject(workspaceComponent, testCase);
+        written.floatPanel("layers", 70, 80, 320, 300);
+        written.setPanelLoose("~0", true);
+
+        const read = createTemporaryObject(workspaceComponent, testCase);
+
+        compare(read.looseWindows.length, 1, "the panel was not still free");
+        compare(read.looseWindows[0].node.panels, ["layers"]);
+        compare(read.looseWindows[0].y, 80);
+        verify(read.isLoose("layers"));
+    }
+
+    function test_x_aWindowSetFreeIsStillMovedAndSized() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+        workspace.setPanelLoose("~0", true);
+
+        workspace.movePanelWindow("~0", 500, 420);
+        workspace.sizePanelWindow("~0", 360, 300);
+
+        compare(workspace.looseWindows[0].x, 500);
+        compare(workspace.looseWindows[0].y, 420);
+        compare(workspace.looseWindows[0].width, 360);
+        compare(workspace.looseWindows[0].height, 300);
+    }
+
+    function test_y_aPanelThatIsNotAfloatIsNeverFree() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+
+        verify(!workspace.isLoose("pages"), "a docked panel cannot be free");
+        workspace.setPanelLoose("~0", true);
+        compare(workspace.looseWindows.length, 0, "a window that is not there was set free");
+
+        workspace.setPanelLoose("0", true);
+        compare(workspace.looseWindows.length, 0, "a docked path was taken for a window");
+    }
+
+    function test_z_dockingAPanelSetFreeBringsItIntoTheTree() {
+        const workspace = createTemporaryObject(workspaceComponent, testCase);
+        workspace.floatPanel("pages", 40, 60, 300, 340);
+        workspace.setPanelLoose("~0", true);
+
+        workspace.dockPanel("pages");
+
+        verify(!workspace.isAfloat("pages"), "the panel did not dock");
+        verify(!workspace.isLoose("pages"));
+        compare(workspace.looseWindows.length, 0);
+        verify(testCase.pathOf(workspace, "pages") !== null);
+    }
+
     name: "WorkspaceViewModel"
 
     Component {

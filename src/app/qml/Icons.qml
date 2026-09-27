@@ -45,6 +45,7 @@ QtObject {
     readonly property url eraseWhole: "qrc:/icons/minus-circle.svg"
     readonly property url exportDocument: "qrc:/icons/export.svg"
     readonly property url fit: "qrc:/icons/expand.svg"
+    readonly property url setFree: "qrc:/icons/expand.svg"
     readonly property url hand: "qrc:/icons/move.svg"
     readonly property url highlighter: "qrc:/icons/highlight.svg"
     readonly property url importDocument: "qrc:/icons/import.svg"

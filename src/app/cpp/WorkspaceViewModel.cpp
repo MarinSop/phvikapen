@@ -162,6 +162,14 @@ WorkspaceViewModel::Afloat* WorkspaceViewModel::windowAt(const QString& path) {
     return &m_afloat[static_cast<std::size_t>(trail->afloat)];
 }
 
+const WorkspaceViewModel::Afloat* WorkspaceViewModel::windowAt(const QString& path) const {
+    const std::optional<Trail> trail = trailOf(path);
+    if (!trail || trail->afloat < 0 || static_cast<std::size_t>(trail->afloat) >= m_afloat.size()) {
+        return nullptr;
+    }
+    return &m_afloat[static_cast<std::size_t>(trail->afloat)];
+}
+
 QVariantMap WorkspaceViewModel::shapeOf(const Node& node, const QString& path) const {
     QVariantList children;
     for (std::size_t step = 0; step < node.children.size(); ++step) {
@@ -195,9 +203,39 @@ QVariantList WorkspaceViewModel::panels() const {
 }
 
 QVariantList WorkspaceViewModel::floating() const {
+    return shownAfloat(false);
+}
+
+QVariantList WorkspaceViewModel::looseWindows() const {
+    return shownAfloat(true);
+}
+
+QString WorkspaceViewModel::firstPanelOf(const QString& path) const {
+    const Node* const node = nodeAt(path);
+    if (node == nullptr) {
+        return {};
+    }
+    const auto look = [](this auto&& again, const Node& standing) -> QString {
+        if (!standing.panels.isEmpty()) {
+            return standing.panels.front();
+        }
+        for (const Node& child : standing.children) {
+            if (const QString found = again(child); !found.isEmpty()) {
+                return found;
+            }
+        }
+        return {};
+    };
+    return look(*node);
+}
+
+QVariantList WorkspaceViewModel::shownAfloat(bool loose) const {
     QVariantList shown;
     for (std::size_t step = 0; step < m_afloat.size(); ++step) {
         const Afloat& window = m_afloat[step];
+        if (window.loose != loose) {
+            continue;
+        }
         const QString path = QLatin1Char{'~'} + QString::number(step);
         shown.append(QVariantMap{
             {QStringLiteral("path"), path},
@@ -205,6 +243,7 @@ QVariantList WorkspaceViewModel::floating() const {
             {QStringLiteral("y"), window.y},
             {QStringLiteral("width"), window.width},
             {QStringLiteral("height"), window.height},
+            {QStringLiteral("loose"), window.loose},
             {QStringLiteral("node"), shapeOf(window.root, path)},
         });
     }
@@ -560,6 +599,25 @@ void WorkspaceViewModel::sizePanelWindow(const QString& path, int width, int hei
     writeLayout();
 }
 
+void WorkspaceViewModel::setPanelLoose(const QString& path, bool loose) {
+    Afloat* const window = windowAt(path);
+    if (window == nullptr || window->loose == loose) {
+        return;
+    }
+    window->loose = loose;
+    writeLayout();
+    emit layoutChanged();
+}
+
+bool WorkspaceViewModel::isLoose(const QString& panelId) const {
+    const std::optional<QString> where = pathOfPanel(panelId);
+    if (!where) {
+        return false;
+    }
+    const Afloat* const window = windowAt(*where);
+    return window != nullptr && window->loose;
+}
+
 void WorkspaceViewModel::choosePanel(const QString& path, int index) {
     Node* const stack = nodeAt(path);
     if (stack == nullptr || stack->kind != Node::Kind::Stack) {
@@ -623,6 +681,7 @@ void WorkspaceViewModel::writeLayout() const {
             {QStringLiteral("y"), window.y},
             {QStringLiteral("width"), window.width},
             {QStringLiteral("height"), window.height},
+            {QStringLiteral("loose"), window.loose},
             {QStringLiteral("root"), writtenNode(window.root)},
         });
     }
@@ -694,6 +753,7 @@ void WorkspaceViewModel::readLayout() {
         window.y = said.value(QStringLiteral("y")).toInt();
         window.width = std::max(said.value(QStringLiteral("width")).toInt(), kLeastExtent);
         window.height = std::max(said.value(QStringLiteral("height")).toInt(), kLeastExtent);
+        window.loose = said.value(QStringLiteral("loose")).toBool();
         m_afloat.push_back(std::move(window));
     }
     tidyAll();

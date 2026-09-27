@@ -258,6 +258,28 @@ TestCase {
         tryVerify(() => testCase.pathOf("sections") !== null);
     }
 
+    function test_l_aPanelSetFreeGetsAWindowOfItsOwnAndGivesItUpAgain() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const sections = testCase.settled("sections");
+        const sheet = view.sheetRect();
+        testCase.carry(sections, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+        tryVerify(() => workspace.isAfloat("sections"), 2000, "the panel did not come loose");
+
+        workspace.setPanelLoose("~0", true);
+
+        // A panel set free is no longer drawn over the sheet: it stands in a window the machine owns.
+        tryVerify(() => testCase.windowOf("sections") === null, 2000, "it is still over the sheet");
+        const holder = findChild(view, "loosePanelHolder_~0");
+        verify(holder !== null, "no window of its own was made");
+        tryVerify(() => holder.own !== null && holder.own.visible, 2000, "the window of its own never showed");
+        compare(holder.own.objectName, "loosePanelWindow_~0");
+
+        workspace.setPanelLoose("~0", false);
+
+        tryVerify(() => testCase.windowOf("sections") !== null, 2000, "it did not come back over the sheet");
+        verify(workspace.isAfloat("sections"), "bringing it back must not dock it");
+    }
+
     height: 640
     name: "WorkspaceView"
     visible: true
