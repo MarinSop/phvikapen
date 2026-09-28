@@ -344,6 +344,15 @@ TestCase {
 
         compare(layer.chosen.length, 1, "the run was not put back");
         compare(layer.chosenWords(), runs[1].text);
+
+        layer.chooseEveryRun();
+
+        compare(layer.chosen.length, runs.length, "every run was not picked out at once");
+        compare(layer.chosenWords(), layer.everyWord());
+
+        layer.chosen = [];
+
+        compare(layer.chosen.length, 0, "the runs were not all put back");
         let all = "";
         for (const run of runs) {
             all += (all === "" ? "" : "\n") + run.text;

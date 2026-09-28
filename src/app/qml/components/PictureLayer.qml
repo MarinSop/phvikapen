@@ -52,6 +52,15 @@ Item {
         return root.holding && root.notebook !== null ? root.notebook.wordsFoundInPicture(root.pickedId) : [];
     }
 
+    // Every run at once, or none of them, without tapping through them one at a time.
+    function chooseEveryRun() {
+        const all = [];
+        for (let at = 0; at < root.found.length; ++at) {
+            all.push(at);
+        }
+        root.chosen = all;
+    }
+
     // A run is picked out, or put back, without disturbing the others.
     function chooseRun(index) {
         const now = root.chosen.slice();
@@ -253,6 +262,24 @@ Item {
                         text: qsTr("Put these words on the page as type")
 
                         onTriggered: root.wordWanted(run.modelData.text, run.mapToItem(null, 0, 0))
+                    }
+
+                    MenuItem {
+                        height: visible ? implicitHeight : 0
+                        objectName: "chooseEveryPictureWord"
+                        text: qsTr("Pick out every run")
+                        visible: root.chosen.length < root.found.length
+
+                        onTriggered: root.chooseEveryRun()
+                    }
+
+                    MenuItem {
+                        height: visible ? implicitHeight : 0
+                        objectName: "chooseNoPictureWord"
+                        text: qsTr("Pick out none of them")
+                        visible: root.chosen.length > 0
+
+                        onTriggered: root.chosen = []
                     }
 
                     MenuItem {

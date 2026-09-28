@@ -1639,6 +1639,14 @@
         <translation>Stavi te riječi na stranicu kao tekst</translation>
     </message>
     <message>
+        <source>Pick out every run</source>
+        <translation>Označi svaki niz</translation>
+    </message>
+    <message>
+        <source>Pick out none of them</source>
+        <translation>Odznači sve</translation>
+    </message>
+    <message>
         <source>Copy the runs picked out</source>
         <translation>Kopiraj označene nizove</translation>
     </message>

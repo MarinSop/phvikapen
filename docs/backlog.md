@@ -226,9 +226,9 @@ written so that all of them can share it. They are listed in the order they are 
   itself, and a picture nothing could be read out of is tried once more the next time the notebook
   is opened, because only words are written down and there are none to write.
 - **A run of words on a picture is picked out with a key held down, and nothing says so.** Several
-  runs are picked out together with Shift or Ctrl held, and the menu then offers them as one block
-  of type or as one thing copied, as it offers everything read out of the picture. Nothing on the
-  page says that a key is what does it, and there is no way to pick every run with one command.
+  runs are picked out together with Shift or Ctrl held, and the menu offers every run at once, the
+  runs picked out as one block of type or as one thing copied, and everything read out of the
+  picture. Nothing on the page says that a key is what picks one out by hand.
 - **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
   kept, but the page names one picked picture, so an element cannot hold two pictures at once.
 - **The element being carried is shown, but nothing marks where it will land.** A small picture of it
