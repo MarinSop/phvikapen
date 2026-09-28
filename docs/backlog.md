@@ -71,9 +71,10 @@ into a real problem earlier.
 
 ## Picking strokes
 
-- **A rectangle, and no resizing.** Strokes are picked with a rectangle, so a stroke cannot be
-  picked out of a crowd by drawing a loop around it, and what is picked can be moved, copied,
-  recoloured and deleted, but not resized or turned by its corners.
+- **Ink is picked with a rectangle, not with a loop.** What is picked can be moved, copied,
+  recoloured, deleted, sized by its eight grips and turned by its knob, but the pick itself is a
+  rectangle: a stroke cannot be taken out of a crowd by drawing a loop around it, which needs a
+  point-in-polygon test against every stroke rather than a box.
 - **What was copied is only kept in the notebook it came from.** Strokes cannot be pasted into
   another notebook, and nothing is put on the system clipboard.
 - **The picture of a picked stroke is worked out again after every move.** Moving rewrites each
