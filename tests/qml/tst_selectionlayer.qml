@@ -108,6 +108,65 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    function test_d_inkOnALockedLayerIsNotPickedUp() {
+        const notebook = openNotebook(newNotebookPath());
+        openLayer(notebook, pickingTools());
+        testCase.draw(notebook, 40, 40);
+        tryCompare(notebook, "strokeCount", 1);
+        const lower = notebook.activeLayer;
+        notebook.addLayer();
+        tryCompare(notebook.layers, "count", 2);
+        verify(notebook.activeLayer !== lower, "the new layer was not taken in hand");
+        testCase.draw(notebook, 150, 150);
+        tryCompare(notebook, "strokeCount", 2);
+
+        notebook.canvas.selectEverything();
+
+        tryCompare(notebook.canvas, "selectedCount", 2, 4000, "both were not picked up to begin with");
+
+        notebook.lockLayer(lower, true);
+        notebook.canvas.selectEverything();
+
+        tryCompare(notebook.canvas, "selectedCount", 1, 4000, "ink on a locked layer was picked up");
+
+        notebook.lockLayer(lower, false);
+        notebook.canvas.selectEverything();
+
+        tryCompare(notebook.canvas, "selectedCount", 2, 4000, "unlocking did not give the ink back");
+    }
+
+    function test_e_inkOnAHiddenLayerIsNotPickedUp() {
+        const notebook = openNotebook(newNotebookPath());
+        openLayer(notebook, pickingTools());
+        testCase.draw(notebook, 40, 40);
+        tryCompare(notebook, "strokeCount", 1);
+        const lower = notebook.activeLayer;
+        notebook.addLayer();
+        tryCompare(notebook.layers, "count", 2);
+        testCase.draw(notebook, 150, 150);
+        tryCompare(notebook, "strokeCount", 2);
+
+        notebook.showLayer(lower, false);
+        notebook.canvas.selectEverything();
+
+        // Ink the reader cannot see must not be taken hold of by a loop drawn over it.
+        tryCompare(notebook.canvas, "selectedCount", 1, 4000, "ink on a hidden layer was picked up");
+    }
+
+    function test_f_whatIsAlreadyPickedIsLetGoOfWhenItsLayerIsLocked() {
+        const notebook = openNotebook(newNotebookPath());
+        openLayer(notebook, pickingTools());
+        testCase.draw(notebook, 40, 40);
+        tryCompare(notebook, "strokeCount", 1);
+        const only = notebook.activeLayer;
+        notebook.canvas.selectEverything();
+        tryCompare(notebook.canvas, "selectedCount", 1);
+
+        notebook.lockLayer(only, true);
+
+        tryCompare(notebook.canvas, "selectedCount", 0, 4000, "the ink was left picked up on a locked layer");
+    }
+
     function test_c_theFrameStandsAsideForEveryToolButTheLoop() {
         const notebook = openNotebook(newNotebookPath());
         const tools = pickingTools();

@@ -850,6 +850,7 @@ private:
     // What the canvas must leave out, and what it must draw instead, while ink is being rubbed
     // out or dragged about.
     [[nodiscard]] std::vector<core::Uuid> setAside() const;
+    [[nodiscard]] std::vector<core::Uuid> outOfReach() const;
     [[nodiscard]] std::vector<core::Stroke> standingIn() const;
     [[nodiscard]] std::optional<TextPlace> placeInColumn(QPointF column) const;
     void putHandful(const Handful& handful, const std::optional<core::Point>& corner);

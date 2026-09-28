@@ -494,7 +494,25 @@ void QtInkItem::rebuildBuffers() {
     update();
 }
 
+void QtInkItem::setUnpickable(std::span<const core::Uuid> strokeIds) {
+    std::vector<core::Uuid> wanted{strokeIds.begin(), strokeIds.end()};
+    if (wanted == m_unpickable) {
+        return;
+    }
+    m_unpickable = std::move(wanted);
+    std::vector<core::Uuid> kept = m_selected;
+    std::erase_if(kept, [this](const core::Uuid& id) {
+        return std::ranges::find(m_unpickable, id) != m_unpickable.end();
+    });
+    if (kept.size() != m_selected.size()) {
+        showSelection(std::move(kept));
+    }
+}
+
 void QtInkItem::showSelection(std::vector<core::Uuid> strokeIds) {
+    std::erase_if(strokeIds, [this](const core::Uuid& id) {
+        return std::ranges::find(m_unpickable, id) != m_unpickable.end();
+    });
     m_selected = std::move(strokeIds);
     m_marquee.reset();
     m_dragFrom.reset();

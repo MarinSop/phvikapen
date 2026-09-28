@@ -218,9 +218,11 @@ written so that all of them can share it. They are listed in the order they are 
   On the glass the ink is drawn by the canvas and a table by the window over it, so a table cannot
   be shown underneath ink however the layers are ordered. Removing that means drawing ink, pictures,
   tables and type through one renderer.
-- **Ink on a locked layer can still be picked with the loop.** What answers a tap is decided by the
-  page for pictures, tables and boxes of type; ink is picked by the canvas, which is handed strokes
-  without being told which layer they stand on. Hiding a layer does hide its ink.
+- **A locked layer holds its ink fast, but not its pictures, tables or boxes of type.** Ink on a
+  locked layer, and ink on one that is not shown, is left where it stands however the loop is drawn,
+  and ink already picked up is let go of the moment its layer is locked. A picture or a table on a
+  locked layer can still be taken hold of, because what answers a tap for those is decided by the
+  page rather than by the canvas.
 - **What the Windows picture reader makes of a real picture has never been seen.** Windows reads a
   picture with the reader it carries, against the same interface macOS uses, and the build is
   proven on Windows on ARM by the pipeline. What it reads out of real handwriting or a real

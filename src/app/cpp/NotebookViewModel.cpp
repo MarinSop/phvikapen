@@ -2303,6 +2303,24 @@ std::vector<core::Uuid> NotebookViewModel::setAside() const {
     return hidden;
 }
 
+// Ink that may not be picked up: what stands on a locked layer, and what stands on one that is not
+// shown, because a loop must not take hold of ink the reader has put beyond reach or cannot see.
+std::vector<core::Uuid> NotebookViewModel::outOfReach() const {
+    std::vector<core::Uuid> held;
+    for (const auto& [pageId, page] : m_pages) {
+        if (page == nullptr) {
+            continue;
+        }
+        for (const core::PlacedStroke& placed : page->strokes()) {
+            if (core::isLockedOn(page->layers(), placed.layer)
+                || !core::isShownOn(page->layers(), placed.layer)) {
+                held.push_back(placed.stroke.id());
+            }
+        }
+    }
+    return held;
+}
+
 std::vector<core::Stroke> NotebookViewModel::standingIn() const {
     std::vector<core::Stroke> shown = m_preview;
     for (const auto& [strokeId, left] : m_erasePieces) {
@@ -2327,6 +2345,7 @@ void NotebookViewModel::refreshCanvas() {
         const core::Page placeholder{m_currentPage};
         m_canvas->showPage(placeholder, style);
     }
+    m_canvas->setUnpickable(outOfReach());
     if (const auto remembered = m_views.find(m_currentPage); remembered != m_views.end()) {
         m_canvas->showView(remembered->second);
     }
@@ -2360,6 +2379,7 @@ void NotebookViewModel::showColumn() {
     }
 
     m_canvas->showColumn(views, currentPage(), setAside(), standingIn());
+    m_canvas->setUnpickable(outOfReach());
     publishTexts();
     publishTables();
     publishLayers();

@@ -231,6 +231,10 @@ public:
     // Everything drawn on the sheet that is being read, picked up at once.
     Q_INVOKABLE void selectEverything();
 
+    // Ink that may not be picked up: what stands on a layer that is locked, or on one that is not
+    // shown. It is left where it is however the pick was made.
+    void setUnpickable(std::span<const core::Uuid> strokeIds);
+
     void showMedia(std::span<const MediaPiece> pieces);
     void clearMedia();
 
@@ -441,6 +445,7 @@ private:
     std::vector<core::InkVertex> m_overlay;
     std::vector<core::Uuid> m_selected;
     std::vector<core::Uuid> m_hidden;
+    std::vector<core::Uuid> m_unpickable;
     std::vector<core::Stroke> m_extra;
 
     struct Marquee {
