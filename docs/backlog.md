@@ -62,8 +62,10 @@ into a real problem earlier.
 
 ## Updates and settings
 
-- **Nothing is ever asked before it phones home.** The first start looks for a newer version
-  without asking, and the only way not to is to turn the setting off afterwards.
+- **The question about looking for new versions is asked at the first start, not before the first
+  window.** The reader is asked once, nothing is sent until they have answered, and the answer can be
+  changed in the settings. The question stands over the window rather than being part of a first run
+  that introduces the application.
 - **An update is offered once.** If the bar is ignored, nothing brings it back until the next
   start, and there is no way to see what changed in the new version.
 - **The settings are thin.** The paper new notebooks start on is there now, but the pressure curve

@@ -956,6 +956,14 @@
         <translation>%1%2 — PhvikaPen %3</translation>
     </message>
     <message>
+        <source>May PhvikaPen ask its own site whether a newer version is out, each time it starts? Nothing else is sent, and this can be changed in the settings.</source>
+        <translation>Smije li PhvikaPen pri svakom pokretanju pitati svoju stranicu ima li novija verzija? Ništa drugo se ne šalje, a ovo se može promijeniti u postavkama.</translation>
+    </message>
+    <message>
+        <source>Look for new versions?</source>
+        <translation>Provjeravati nove verzije?</translation>
+    </message>
+    <message>
         <source>“%1” was copied.</source>
         <translation>„%1“ je kopirano.</translation>
     </message>

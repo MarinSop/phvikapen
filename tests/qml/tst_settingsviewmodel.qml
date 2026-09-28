@@ -11,6 +11,28 @@ TestCase {
         compare(settings.lookForUpdates, true);
     }
 
+    function test_a1_nothingIsLookedForBeforeTheReaderHasBeenAsked() {
+        const settings = createTemporaryObject(settingsComponent, testCase);
+
+        // A fresh set of settings has not been answered, whatever the setting itself says.
+        compare(settings.updatesAsked, false, "the reader is taken to have answered already");
+
+        settings.answerAboutUpdates(false);
+
+        compare(settings.updatesAsked, true, "the answer was not written down");
+        compare(settings.lookForUpdates, false, "saying no did not stop it looking");
+
+        const later = createTemporaryObject(settingsComponent, testCase);
+
+        compare(later.updatesAsked, true, "the reader would be asked a second time");
+        compare(later.lookForUpdates, false);
+
+        later.answerAboutUpdates(true);
+
+        compare(later.lookForUpdates, true, "the answer cannot be changed afterwards");
+        later.lookForUpdates = true;
+    }
+
     function test_b_whatWasSetIsRememberedForTheNextTime() {
         const settings = createTemporaryObject(settingsComponent, testCase);
         settings.lookForUpdates = false;

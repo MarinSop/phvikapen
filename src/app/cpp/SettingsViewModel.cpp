@@ -20,6 +20,7 @@ namespace phvikapen::app {
 namespace {
 
 constexpr auto kLookForUpdatesSetting = "updates/lookAtStart";
+constexpr auto kUpdatesAskedSetting = "updates/asked";
 constexpr auto kTestVersionsSetting = "updates/testVersions";
 constexpr auto kThemeSetting = "look/theme";
 constexpr auto kShortcutPrefix = "shortcuts/";
@@ -50,6 +51,7 @@ SettingsViewModel::SettingsViewModel(QObject* parent)
       m_folder{QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/notebooks"} {
     const QSettings settings;
     m_lookForUpdates = settings.value(kLookForUpdatesSetting, true).toBool();
+    m_updatesAsked = settings.value(kUpdatesAskedSetting, false).toBool();
     m_testVersions = settings.value(kTestVersionsSetting, false).toBool();
     m_theme = std::clamp(settings.value(kThemeSetting, m_theme).toInt(), 0, kThemeCount - 1);
     applyTheme();
@@ -106,6 +108,19 @@ void SettingsViewModel::setLookForUpdates(bool wanted) {
     m_lookForUpdates = wanted;
     QSettings settings;
     settings.setValue(kLookForUpdatesSetting, wanted);
+    emit lookForUpdatesChanged();
+}
+
+// The reader has answered, whichever way. The answer is written down so that they are asked once
+// and not at every start.
+void SettingsViewModel::answerAboutUpdates(bool look) {
+    setLookForUpdates(look);
+    if (m_updatesAsked) {
+        return;
+    }
+    m_updatesAsked = true;
+    QSettings settings;
+    settings.setValue(kUpdatesAskedSetting, true);
     emit lookForUpdatesChanged();
 }
 

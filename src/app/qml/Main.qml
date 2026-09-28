@@ -163,13 +163,33 @@ ApplicationWindow {
 
         testVersions: settings.testVersions
 
+        // Nothing is sent anywhere before the reader has said it may be. Until they have answered,
+        // the application does not look, however the setting happens to stand.
         Component.onCompleted: {
+            if (!settings.updatesAsked) {
+                askAboutUpdates.open();
+                return;
+            }
             if (settings.lookForUpdates) {
                 updates.check();
             }
         }
         onRestartWanted: Qt.quit()
         onUpdateFound: updateDialog.offer()
+    }
+
+    ConfirmDialog {
+        id: askAboutUpdates
+
+        objectName: "askAboutUpdatesDialog"
+        question: qsTr("May PhvikaPen ask its own site whether a newer version is out, each time it starts? Nothing else is sent, and this can be changed in the settings.")
+        title: qsTr("Look for new versions?")
+
+        onAccepted: {
+            settings.answerAboutUpdates(true);
+            updates.check();
+        }
+        onRejected: settings.answerAboutUpdates(false)
     }
 
     MathViewModel {

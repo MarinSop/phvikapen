@@ -18,6 +18,7 @@ class SettingsViewModel : public QObject {
     QML_ELEMENT
     Q_PROPERTY(bool lookForUpdates READ lookForUpdates WRITE setLookForUpdates NOTIFY
                    lookForUpdatesChanged FINAL)
+    Q_PROPERTY(bool updatesAsked READ updatesAsked NOTIFY lookForUpdatesChanged FINAL)
     Q_PROPERTY(
         bool testVersions READ testVersions WRITE setTestVersions NOTIFY testVersionsChanged FINAL)
     Q_PROPERTY(int theme READ theme WRITE setTheme NOTIFY themeChanged FINAL)
@@ -70,6 +71,12 @@ public:
     void setTheme(int theme);
 
     [[nodiscard]] bool lookForUpdates() const { return m_lookForUpdates; }
+
+    // Whether the reader has been asked yet whether the application may look for a newer version.
+    // Until they have, nothing is sent anywhere.
+    [[nodiscard]] bool updatesAsked() const { return m_updatesAsked; }
+
+    Q_INVOKABLE void answerAboutUpdates(bool look);
 
     [[nodiscard]] bool testVersions() const { return m_testVersions; }
 
@@ -231,6 +238,7 @@ private:
     ShortcutListModel m_shortcutList;
     QString m_folder;
     bool m_lookForUpdates{true};
+    bool m_updatesAsked{};
     bool m_testVersions{false};
 };
 
