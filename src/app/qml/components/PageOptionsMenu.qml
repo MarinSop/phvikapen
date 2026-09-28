@@ -58,6 +58,34 @@ Menu {
         onTriggered: root.notebook.movePage(root.index, root.index + 1)
     }
 
+    Menu {
+        id: intoSection
+
+        // The last page of a section stays, as it does when one is deleted, so a section of one page
+        // has nothing to give away.
+        enabled: root.ready && root.notebook.sectionCount > 1 && root.notebook.pageCount > 1
+        objectName: "movePageToSectionMenu"
+        title: qsTr("Move to another section")
+
+        Instantiator {
+            model: root.ready ? root.notebook.sections : null
+
+            delegate: MenuItem {
+                required property int index
+                required property string title
+
+                enabled: index !== (root.ready ? root.notebook.currentSection : -1)
+                objectName: "movePageToSection" + index
+                text: title
+
+                onTriggered: root.notebook.movePageToSection(root.index, index)
+            }
+
+            onObjectAdded: (index, object) => intoSection.insertItem(index, object)
+            onObjectRemoved: (index, object) => intoSection.removeItem(object)
+        }
+    }
+
     MenuLine {
     }
 

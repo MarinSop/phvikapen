@@ -1784,6 +1784,51 @@ TestCase {
         compare(notebook.sections.data(notebook.sections.index(0, 0), Qt.UserRole + 1), "Dnevnik");
     }
 
+    function test_aPageIsMovedIntoAnotherSection() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        tryCompare(notebook, "pageCount", 2);
+        notebook.renamePage(1, "Travelling");
+        notebook.addSection();
+        tryCompare(notebook, "sectionCount", 2);
+        compare(notebook.currentSection, 1);
+        compare(notebook.pageCount, 1, "a new section starts with one page");
+        notebook.currentSection = 0;
+        tryCompare(notebook, "pageCount", 2);
+
+        notebook.movePageToSection(1, 1);
+
+        // The page is followed to where it went, so the notebook is reading the other section now.
+        tryCompare(notebook, "currentSection", 1, 4000, "the page was not followed into the other section");
+        tryCompare(notebook, "pageCount", 2, 4000, "the page did not arrive in the other section");
+        tryVerify(() => pageNames(notebook).indexOf("Travelling") >= 0, 4000, "the page that arrived is not the one that left");
+        notebook.currentSection = 0;
+        tryCompare(notebook, "pageCount", 1, 4000, "the page did not leave its own section");
+
+        notebook.undo();
+
+        tryCompare(notebook, "sectionCount", 2);
+        notebook.currentSection = 0;
+        tryCompare(notebook, "pageCount", 2, 4000, "taking it back did not bring the page home");
+        tryVerify(() => pageNames(notebook).indexOf("Travelling") >= 0, 4000, "the page that came home is not the one that left");
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_theLastPageOfASectionCannotBeMovedAway() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addSection();
+        tryCompare(notebook, "sectionCount", 2);
+        notebook.currentSection = 0;
+        tryCompare(notebook, "pageCount", 1);
+
+        notebook.movePageToSection(0, 1);
+
+        // A section with nothing in it would be given a blank page the next time it is opened, so
+        // the last page stays where it is.
+        tryCompare(notebook, "pageCount", 1, 2000, "the only page of the section was moved away");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_sectionsHoldTheirOwnPages() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

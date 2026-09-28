@@ -1474,6 +1474,10 @@
         <translation>Pomakni dolje</translation>
     </message>
     <message>
+        <source>Move to another section</source>
+        <translation>Premjesti u drugu sekciju</translation>
+    </message>
+    <message>
         <source>Paper of this section</source>
         <translation>Papir ovog odjeljka</translation>
     </message>

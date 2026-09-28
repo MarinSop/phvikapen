@@ -1322,6 +1322,34 @@ void NotebookViewModel::deletePage(int index) {
     }
 }
 
+void NotebookViewModel::movePageToSection(int from, int section) {
+    const std::optional<std::size_t> here = currentSectionIndex();
+    if (!here || !m_storage) {
+        return;
+    }
+    const std::optional<std::size_t> target = checkedIndex(section, m_outline.sections().size());
+    if (!target || *target == *here) {
+        return;
+    }
+    // A page is named after where it stands unless it was renamed, so the names are written down
+    // before it moves: a page carried out of a section must not rename the ones it leaves behind.
+    nameEveryPage(*here);
+    if (!m_storage) {
+        return;
+    }
+    const std::span<const core::SectionInfo> sections = m_outline.sections();
+    const std::optional<std::size_t> source = checkedIndex(from, sections[*here].pages.size());
+    if (!source || sections[*here].pages.size() <= 1) {
+        return;
+    }
+    runCommand(std::make_unique<core::MovePageCommand>(&m_outline, &*m_storage,
+                                                       sections[*here].pages[*source].id,
+                                                       core::PagePlace{
+                                                           .sectionId = sections[*target].id,
+                                                           .index = sections[*target].pages.size(),
+                                                       }));
+}
+
 void NotebookViewModel::movePage(int from, int to) {
     const std::optional<std::size_t> section = currentSectionIndex();
     if (!section || !m_storage) {

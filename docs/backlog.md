@@ -102,9 +102,10 @@ into a real problem earlier.
 - **Every picture is drawn on the thread that draws the window.** A page with a lot of ink is
   painted small where the window runs, and nothing limits how many are kept.
 
-- **Only pages can be dragged, and only inside their section.** Sections are still moved through
-  their menu, a page cannot be dragged into another section, and nothing is shown between the rows
-  to say where the page would land.
+- **A page moves into another section through its menu, not by being dragged there.** A page is
+  dragged to reorder it inside its own section, and its menu moves it to the foot of any other
+  section, which can be taken back. Dragging it across to the list of sections would want one drag
+  reckoned over two panels. Sections themselves are still moved through their own menu.
 - **A duplicated page copies the whole page.** Its strokes are written again, so duplicating a full
   page costs as much room as the page itself even where nothing was changed.
 

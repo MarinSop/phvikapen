@@ -254,6 +254,10 @@ public:
     Q_INVOKABLE void addPage();
     Q_INVOKABLE void deletePage(int index);
     Q_INVOKABLE void movePage(int from, int to);
+
+    // Moves a page of the section being read to the foot of another section. The last page of a
+    // section stays, as it does when one is deleted.
+    Q_INVOKABLE void movePageToSection(int from, int section);
     Q_INVOKABLE void duplicatePage(int index);
     Q_INVOKABLE void wantThumbnail(int index);
 
