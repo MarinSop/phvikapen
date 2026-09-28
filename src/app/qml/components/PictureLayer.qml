@@ -38,6 +38,9 @@ Item {
     property int readings: 0
     // What has been read out of the picture in hand, so it can be marked out on the picture itself.
     readonly property var found: root.wordsNow(root.readings)
+    // Which runs the reader has picked out, by their place in `found`. Picked runs are taken
+    // together, in the order they stand on the picture.
+    property var chosen: []
 
     // A run of words read out of the picture was tapped, so that what it says can be taken
     // somewhere else. The layer itself keeps no clipboard and writes nothing.
@@ -47,6 +50,43 @@ Item {
 
     function wordsNow(readings) {
         return root.holding && root.notebook !== null ? root.notebook.wordsFoundInPicture(root.pickedId) : [];
+    }
+
+    // A run is picked out, or put back, without disturbing the others.
+    function chooseRun(index) {
+        const now = root.chosen.slice();
+        const at = now.indexOf(index);
+        if (at >= 0) {
+            now.splice(at, 1);
+        } else {
+            now.push(index);
+        }
+        root.chosen = now;
+    }
+
+    function wordsOf(which) {
+        let said = "";
+        for (const at of which) {
+            if (at >= 0 && at < root.found.length) {
+                said += (said === "" ? "" : "\n") + root.found[at].text;
+            }
+        }
+        return said;
+    }
+
+    function everyWord() {
+        const all = [];
+        for (let at = 0; at < root.found.length; ++at) {
+            all.push(at);
+        }
+        return root.wordsOf(all);
+    }
+
+    // What the reader has picked out, smallest place first, so the words come out in the order they
+    // stand on the picture rather than the order they were tapped in.
+    function chosenWords() {
+        const picked = root.chosen.slice().sort((one, two) => one - two);
+        return root.wordsOf(picked);
     }
 
     function columnPointOf(position) {
@@ -90,6 +130,10 @@ Item {
             root.notebook.pickedPicture = "";
         }
     }
+    // Another picture, or another reading of this one, means the runs picked out are not there any
+    // more, so nothing is left picked out by their place alone.
+    onFoundChanged: root.chosen = []
+    onPickedIdChanged: root.chosen = []
 
     Connections {
         function onPictureRead(pictureId, words) {
@@ -151,14 +195,15 @@ Item {
 
                 required property int index
                 required property var modelData
+                readonly property bool mine: root.chosen.indexOf(run.index) >= 0
 
                 Accessible.name: run.modelData.text
                 border.color: Theme.accent
-                border.width: 1
+                border.width: run.mine ? 2 : 1
                 color: Theme.accent
                 height: Math.max(1, (modelData.bottom - modelData.top) * frame.height)
                 objectName: "pictureWord" + index
-                opacity: tapped.hovered ? 0.36 : 0.18
+                opacity: run.mine ? 0.5 : (tapped.hovered ? 0.36 : 0.18)
                 radius: 2
                 width: Math.max(1, (modelData.right - modelData.left) * frame.width)
                 x: modelData.left * frame.width
@@ -172,10 +217,19 @@ Item {
 
                 TapHandler {
                     // A tap takes the words; a drag still carries the picture about underneath.
+                    acceptedModifiers: Qt.NoModifier
                     gesturePolicy: TapHandler.ReleaseWithinBounds
 
                     onLongPressed: runMenu.popup()
                     onTapped: root.wordTapped(run.modelData.text)
+                }
+
+                // Held down, a tap picks the run out beside the others rather than taking it.
+                TapHandler {
+                    acceptedModifiers: Qt.ShiftModifier | Qt.ControlModifier
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+
+                    onTapped: root.chooseRun(run.index)
                 }
 
                 TapHandler {
@@ -199,6 +253,38 @@ Item {
                         text: qsTr("Put these words on the page as type")
 
                         onTriggered: root.wordWanted(run.modelData.text, run.mapToItem(null, 0, 0))
+                    }
+
+                    MenuItem {
+                        height: visible ? implicitHeight : 0
+                        objectName: "copyChosenPictureWords"
+                        text: qsTr("Copy the runs picked out")
+                        visible: root.chosen.length > 0
+
+                        onTriggered: root.wordTapped(root.chosenWords())
+                    }
+
+                    MenuItem {
+                        height: visible ? implicitHeight : 0
+                        objectName: "typeChosenPictureWords"
+                        text: qsTr("Put the runs picked out on the page as type")
+                        visible: root.chosen.length > 0
+
+                        onTriggered: root.wordWanted(root.chosenWords(), run.mapToItem(null, 0, 0))
+                    }
+
+                    MenuItem {
+                        objectName: "copyEveryPictureWord"
+                        text: qsTr("Copy everything read from this picture")
+
+                        onTriggered: root.wordTapped(root.everyWord())
+                    }
+
+                    MenuItem {
+                        objectName: "typeEveryPictureWord"
+                        text: qsTr("Put everything read from this picture on the page as type")
+
+                        onTriggered: root.wordWanted(root.everyWord(), frame.mapToItem(null, 0, 0))
                     }
                 }
             }

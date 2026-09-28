@@ -301,6 +301,56 @@ TestCase {
         compare(notebook.pickedPicture !== "" || notebook.pickedText !== "", true);
     }
 
+    function test_fe_severalRunsArePickedOutAndTakenTogether() {
+        const notebook = openNotebook(newNotebookPath());
+        if (!notebook.canReadPictures()) {
+            skip("this machine cannot read the words in a picture");
+        }
+        const path = temporaryDirectory + "/two-runs.png";
+        verify(pictureOfWords(path, "Reykjavik\nGothenburg"), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        tryVerify(() => notebook.pickedPicture !== "", 4000);
+        const pictureId = notebook.pickedPicture;
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "pictureRead"
+        });
+        notebook.readPicture(pictureId, "");
+        tryCompare(read, "count", 1, 10000);
+        const runs = notebook.wordsFoundInPicture(pictureId);
+        if (runs.length < 2) {
+            skip("this machine read the picture as one run");
+        }
+        const canvas = createTemporaryObject(canvasComponent, testCase);
+        const tools = createTemporaryObject(toolsComponent, testCase);
+        const layer = createTemporaryObject(layerComponent, testCase, {
+            canvas: canvas,
+            notebook: notebook,
+            tools: tools
+        });
+        tryVerify(() => layer.found.length >= 2, 4000);
+
+        // Picked out in the other order, to prove the words come out in the order they stand.
+        layer.chooseRun(1);
+        layer.chooseRun(0);
+
+        compare(layer.chosen.length, 2, "two runs were not picked out");
+        compare(layer.chosenWords(), runs[0].text + "\n" + runs[1].text);
+        const mark = findChild(layer, "pictureWord0");
+        verify(mark !== null, "the mark on the first run is not there");
+        compare(mark.border.width, 2, "a run picked out is not shown as picked out");
+
+        layer.chooseRun(0);
+
+        compare(layer.chosen.length, 1, "the run was not put back");
+        compare(layer.chosenWords(), runs[1].text);
+        let all = "";
+        for (const run of runs) {
+            all += (all === "" ? "" : "\n") + run.text;
+        }
+        compare(layer.everyWord(), all, "everything read out of the picture is not taken together");
+    }
+
     function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";
@@ -355,6 +405,22 @@ TestCase {
         id: notebookComponent
 
         NotebookViewModel {
+        }
+    }
+
+    Component {
+        id: toolsComponent
+
+        ToolViewModel {
+        }
+    }
+
+    Component {
+        id: layerComponent
+
+        PictureLayer {
+            height: 200
+            width: 400
         }
     }
 

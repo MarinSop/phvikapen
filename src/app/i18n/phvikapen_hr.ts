@@ -1638,6 +1638,22 @@
         <source>Put these words on the page as type</source>
         <translation>Stavi te riječi na stranicu kao tekst</translation>
     </message>
+    <message>
+        <source>Copy the runs picked out</source>
+        <translation>Kopiraj označene nizove</translation>
+    </message>
+    <message>
+        <source>Put the runs picked out on the page as type</source>
+        <translation>Stavi označene nizove na stranicu kao tekst</translation>
+    </message>
+    <message>
+        <source>Copy everything read from this picture</source>
+        <translation>Kopiraj sve pročitano s ove slike</translation>
+    </message>
+    <message>
+        <source>Put everything read from this picture on the page as type</source>
+        <translation>Stavi sve pročitano s ove slike na stranicu kao tekst</translation>
+    </message>
 </context>
 <context>
     <name>PictureTextDialog</name>
