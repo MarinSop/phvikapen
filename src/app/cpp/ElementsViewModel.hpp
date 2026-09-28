@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QPointF>
 #include <QPointer>
+#include <QSizeF>
 #include <QString>
 #include <QVariant>
 #include <QtQmlIntegration>
@@ -33,6 +34,10 @@ struct ElementItem {
     QString kind;
     QString picture;
     int things{};
+    // How large the element is on the page, so the page can show where it would land before it
+    // does.
+    qreal pageWidth{};
+    qreal pageHeight{};
 
     friend bool operator==(const ElementItem&, const ElementItem&) = default;
 };
@@ -49,6 +54,8 @@ public:
     static constexpr int kKindRole = Qt::UserRole + 3;
     static constexpr int kPictureRole = Qt::UserRole + 4;
     static constexpr int kThingsRole = Qt::UserRole + 5;
+    static constexpr int kPageWidthRole = Qt::UserRole + 6;
+    static constexpr int kPageHeightRole = Qt::UserRole + 7;
 
     explicit ElementListModel(QObject* parent = nullptr);
 
@@ -172,6 +179,7 @@ private:
     core::Uuid7Generator m_ids;
     std::optional<core::StorageThread> m_storage;
     std::map<core::Uuid, int> m_pictures;
+    std::map<core::Uuid, QSizeF> m_areas;
     int m_pictureRevision{0};
     std::uint64_t m_opening{0};
 };

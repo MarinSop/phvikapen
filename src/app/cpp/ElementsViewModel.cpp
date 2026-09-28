@@ -85,6 +85,30 @@ struct Adding {
     return around.value_or(core::Rect{});
 }
 
+// The box around everything an element holds. The small picture of an element is drawn over a whole
+// sheet, so the sheet is no measure of how much room the element itself would take on a page.
+[[nodiscard]] core::Rect roomOf(const core::LoadedPage& page) {
+    std::optional<core::Rect> around;
+    const auto widen = [&around](const core::Rect& one) {
+        around = around ? around->united(one) : one;
+    };
+    for (const core::PlacedStroke& placed : page.strokes) {
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
+            widen(*bounds);
+        }
+    }
+    for (const core::PlacedText& placed : page.texts) {
+        widen(core::areaOf(placed.box));
+    }
+    for (const core::PlacedTable& placed : page.tables) {
+        widen(core::areaOf(placed.table));
+    }
+    for (const core::PlacedPicture& placed : page.pictures) {
+        widen(core::areaOf(placed.picture));
+    }
+    return around.value_or(core::Rect{});
+}
+
 // The bytes of an asset as the window's own reckoning of a run of bytes, so that a picture can be
 // decoded from what the notebook holds.
 [[nodiscard]] QByteArray bytesOf(const std::vector<std::byte>& data) {
@@ -126,6 +150,10 @@ QVariant ElementListModel::data(const QModelIndex& index, int role) const {
         return item.picture;
     case kThingsRole:
         return item.things;
+    case kPageWidthRole:
+        return item.pageWidth;
+    case kPageHeightRole:
+        return item.pageHeight;
     default:
         return {};
     }
@@ -133,8 +161,9 @@ QVariant ElementListModel::data(const QModelIndex& index, int role) const {
 
 QHash<int, QByteArray> ElementListModel::roleNames() const {
     return {
-        {kElementIdRole, "elementId"}, {kNameRole, "name"},     {kKindRole, "kind"},
-        {kPictureRole, "picture"},     {kThingsRole, "things"},
+        {kElementIdRole, "elementId"},   {kNameRole, "name"},     {kKindRole, "kind"},
+        {kPictureRole, "picture"},       {kThingsRole, "things"}, {kPageWidthRole, "pageWidth"},
+        {kPageHeightRole, "pageHeight"},
     };
 }
 
@@ -270,6 +299,7 @@ void ElementsViewModel::publish() {
                 continue;
             }
             const auto drawn = m_pictures.find(page.id);
+            const auto across = m_areas.find(page.id);
             items.push_back(ElementItem{
                 .elementId = QString::fromStdString(page.id.toString()),
                 .name = name,
@@ -280,6 +310,8 @@ void ElementsViewModel::publish() {
                                      .arg(QString::fromStdString(page.id.toString()))
                                      .arg(drawn->second),
                 .things = 0,
+                .pageWidth = across == m_areas.end() ? 0.0 : across->second.width(),
+                .pageHeight = across == m_areas.end() ? 0.0 : across->second.height(),
             });
         }
     }
@@ -538,6 +570,9 @@ void ElementsViewModel::paintElement(const core::Uuid& elementId,
     }
     const int revision = ++m_pictureRevision;
     m_pictures[elementId] = revision;
+    const core::Rect room = roomOf(showing->page);
+    m_areas[elementId] =
+        QSizeF{static_cast<qreal>(room.width()), static_cast<qreal>(room.height())};
     thumbnails::put(QStringLiteral("element-%1-%2")
                         .arg(QString::fromStdString(elementId.toString()))
                         .arg(revision),

@@ -231,9 +231,10 @@ written so that all of them can share it. They are listed in the order they are 
   picture. Nothing on the page says that a key is what picks one out by hand.
 - **Only one picture at a time goes into an element.** Ink, words, tables and pictures are all
   kept, but the page names one picked picture, so an element cannot hold two pictures at once.
-- **The element being carried is shown, but nothing marks where it will land.** A small picture of it
-  follows the pointer, and it lands with its corner there, but the page shows no outline beforehand,
-  so it is not plain that a drop over the panels puts nothing down.
+- **The outline of where an element will land is drawn only once the element has been listed.** How
+  much room an element takes is worked out when its small picture is drawn, so an element whose
+  picture has not been drawn yet is carried with no outline under the pointer, and the outline shows
+  the room it takes rather than what stands in it.
 - **A link points at a page, and nothing finer or wider.** Another notebook, a section, and a place
   within a page are all names wider than a page identifier, and none of them is needed to move
   about one notebook.

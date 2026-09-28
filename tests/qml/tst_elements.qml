@@ -75,6 +75,19 @@ TestCase {
         return library.elements.data(library.elements.index(row, 0), Qt.UserRole + 3);
     }
 
+    function roomAt(row) {
+        return Qt.size(library.elements.data(library.elements.index(row, 0), Qt.UserRole + 6), library.elements.data(library.elements.index(row, 0), Qt.UserRole + 7));
+    }
+
+    function rowOfNamed(name) {
+        for (let step = 0; step < library.elements.count; ++step) {
+            if (nameAt(step) === name) {
+                return step;
+            }
+        }
+        return -1;
+    }
+
     function init() {
         library.looking = "";
         library.kind = "";
@@ -267,6 +280,27 @@ TestCase {
         // The element lands with its corner where it was asked for, not in the middle of the view.
         verify(Math.abs(where.columnX - 300) <= 1, "it did not land where it was asked for");
         verify(Math.abs(where.columnY - 260) <= 1, "it did not land where it was asked for");
+    }
+
+    function test_ja_anElementSaysHowMuchRoomItTakesOnThePage() {
+        const notebook = openNotebook(newNotebookPath());
+        testCase.draw(notebook, 60, 60);
+        tryCompare(notebook, "strokeCount", 1);
+        pickEverything(notebook);
+        const was = notebook.areaOfWhatIsPicked();
+        verify(was.width > 0, "nothing was measured");
+        library.keep(notebook, "How big", "Shapes");
+        tryVerify(() => idOfNamed("How big") !== "", 4000);
+        const row = rowOfNamed("How big");
+        verify(row >= 0);
+
+        // The room is known once the small picture of the element has been drawn, so this waits.
+        tryVerify(() => roomAt(row).width > 0, 6000, "the element never said how much room it takes");
+
+        const room = roomAt(row);
+        // The room is what was picked up, not the sheet the small picture of it is drawn over.
+        verify(Math.abs(room.width - was.width) <= 1, "the element does not take the room it was kept from");
+        verify(Math.abs(room.height - was.height) <= 1, "the element does not take the room it was kept from");
     }
 
     function test_i_aPictureIsKeptInAnElementAndPutDownAgain() {

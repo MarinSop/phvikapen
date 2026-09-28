@@ -17,6 +17,26 @@ Pane {
     property string carrying: ""
     property url carriedPicture: ""
     property point carriedAt: Qt.point(0, 0)
+    // How large it is on the page, so that the page can outline where it would land.
+    property real carriedWide: 0
+    property real carriedTall: 0
+    readonly property var landing: root.landingNow(root.carrying, root.carriedAt)
+
+    // Where the element would land, in the coordinates of the window over everything, or nothing
+    // where the hand is not over the page: a drop anywhere else puts nothing down, and the page
+    // says so by showing no outline.
+    function landingNow(carrying, at) {
+        const canvas = root.actions === null ? null : root.actions.canvas;
+        if (carrying === "" || canvas === null || !root.ready || root.carriedWide <= 0) {
+            return null;
+        }
+        const onto = canvas.mapFromItem(null, at);
+        if (onto.x < 0 || onto.y < 0 || onto.x > canvas.width || onto.y > canvas.height) {
+            return null;
+        }
+        const corner = canvas.mapToItem(null, onto.x, onto.y);
+        return Qt.rect(corner.x, corner.y, root.carriedWide * canvas.zoom, root.carriedTall * canvas.zoom);
+    }
 
     function askToDelete(elementId, name) {
         deleteDialog.elementId = elementId;
@@ -101,6 +121,8 @@ Pane {
                 required property int index
                 required property string kind
                 required property string name
+                required property real pageHeight
+                required property real pageWidth
                 required property string picture
 
                 Accessible.name: one.name
@@ -160,6 +182,8 @@ Pane {
                         if (carry.active) {
                             root.carrying = one.elementId;
                             root.carriedPicture = one.picture;
+                            root.carriedWide = one.pageWidth;
+                            root.carriedTall = one.pageHeight;
                             root.carriedAt = carry.centroid.scenePosition;
                             return;
                         }
@@ -246,6 +270,29 @@ Pane {
         x: ghost.here.x - (ghost.width / 2)
         y: ghost.here.y - (ghost.height / 2)
         z: 100
+    }
+
+    // The room the element would take on the page, drawn where the hand is. It is drawn over
+    // everything, like the small picture that follows the pointer, because the page is not this
+    // panel's to draw on.
+    Rectangle {
+        id: landingMark
+
+        readonly property point here: landingMark.parent === null || root.landing === null ? Qt.point(0, 0) : landingMark.parent.mapFromItem(null, Qt.point(root.landing.x, root.landing.y))
+
+        border.color: Theme.accent
+        border.width: 2
+        color: Theme.accent
+        height: root.landing === null ? 0 : root.landing.height
+        objectName: "elementLanding"
+        opacity: 0.16
+        parent: Overlay.overlay
+        radius: 3
+        visible: root.landing !== null
+        width: root.landing === null ? 0 : root.landing.width
+        x: landingMark.here.x
+        y: landingMark.here.y
+        z: 99
     }
 
     EmptyPanelNote {
