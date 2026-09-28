@@ -464,6 +464,7 @@ void NotebookViewModel::showLoadedPage(std::uint64_t opening, const core::Uuid& 
         setLoaded(true);
         emit pageChanged();
         refreshCanvas();
+        pointAtWhatWasFound();
     }
 }
 
@@ -2540,10 +2541,46 @@ void NotebookViewModel::goToFound(int index) {
     if (!at) {
         return;
     }
+    m_pointed = m_found[*at];
     goToPage(m_found[*at].pageId);
+    pointAtWhatWasFound();
+}
+
+// Where the word stands in the column, so that the page moves the least it can to show it and then
+// points at it. A page that has not been read from the notebook yet has no sheet of its own to
+// stand on, so this is asked again once it has.
+void NotebookViewModel::pointAtWhatWasFound() {
+    if (!m_pointed || m_canvas.isNull() || m_pointed->pageId != m_currentPage) {
+        return;
+    }
+    const QRectF where = m_canvas->sheetRect(sheetOfPage(m_pointed->pageId));
+    const core::Rect& box = m_pointed->word.box;
+    const QRectF area{
+        where.x() + static_cast<qreal>(box.left), where.y() + static_cast<qreal>(box.top),
+        static_cast<qreal>(box.right - box.left), static_cast<qreal>(box.bottom - box.top)};
+    m_canvas->lookAt(area);
+    m_pointedWord = QVariantMap{
+        {QStringLiteral("pageId"), QString::fromStdString(m_pointed->pageId.toString())},
+        {QStringLiteral("text"), QString::fromStdString(m_pointed->word.text)},
+        {QStringLiteral("columnLeft"), area.left()},
+        {QStringLiteral("columnTop"), area.top()},
+        {QStringLiteral("columnRight"), area.right()},
+        {QStringLiteral("columnBottom"), area.bottom()},
+    };
+    emit pointedWordChanged();
+}
+
+void NotebookViewModel::forgetPointedWord() {
+    if (!m_pointed && m_pointedWord.isEmpty()) {
+        return;
+    }
+    m_pointed.reset();
+    m_pointedWord.clear();
+    emit pointedWordChanged();
 }
 
 void NotebookViewModel::publishFound(std::vector<core::FoundWord> hits) {
+    forgetPointedWord();
     m_found = std::move(hits);
     QVariantList results;
     results.reserve(static_cast<qsizetype>(std::min(m_found.size(), kMostFound)));

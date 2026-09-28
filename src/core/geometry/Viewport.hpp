@@ -31,6 +31,11 @@ public:
 
     void panBy(float viewDeltaX, float viewDeltaY) noexcept;
     void showTop(float pageY) noexcept;
+
+    // Moves as little as it can so that an area of the page is in view, with a little room around
+    // it. An area already in view is left alone, and one too large to fit is shown from its top
+    // left corner.
+    void bringIntoView(ViewSize view, Rect area) noexcept;
     void zoomAround(Point view, float factor) noexcept;
     void setScale(float scale) noexcept;
 

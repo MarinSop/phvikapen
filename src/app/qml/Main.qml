@@ -318,6 +318,12 @@ ApplicationWindow {
                 onFollowed: linkId => root.notebook.followLink(linkId)
             }
 
+            FoundMark {
+                anchors.fill: parent
+                canvas: canvas
+                notebook: root.notebook
+            }
+
             SelectionLayer {
                 anchors.fill: parent
                 canvas: canvas

@@ -74,6 +74,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QString startPage READ startPage WRITE setStartPage NOTIFY startPageChanged FINAL)
     Q_PROPERTY(phvikapen::platform::ink::QtInkItem* canvas READ canvas WRITE setCanvas NOTIFY
                    canvasChanged FINAL)
+    Q_PROPERTY(QVariantMap pointedWord READ pointedWord NOTIFY pointedWordChanged FINAL)
     Q_PROPERTY(bool loaded READ loaded NOTIFY loadedChanged FINAL)
     Q_PROPERTY(bool readsHandwriting READ readsHandwriting CONSTANT FINAL)
     Q_PROPERTY(int pagesToRead READ pagesToRead NOTIFY readingChanged FINAL)
@@ -164,6 +165,13 @@ public:
 
     // Show the page one of the words found by the last search was written on.
     Q_INVOKABLE void goToFound(int index);
+
+    // The word the reader was taken to, where it stands in the column, so that the page can point
+    // at it. Empty where nothing is being pointed at.
+    [[nodiscard]] QVariantMap pointedWord() const { return m_pointedWord; }
+
+    // Stops pointing at it, once the page has finished saying where it was.
+    Q_INVOKABLE void forgetPointedWord();
 
     void setNotebookPath(const QString& path);
 
@@ -672,6 +680,7 @@ signals:
     void notebookPathChanged();
     void readingChanged();
     void found(const QVariantList& words);
+    void pointedWordChanged();
     void copiedAsText(const QString& text);
     void pickedTextChanged();
     void pickedBoxChanged();
@@ -805,6 +814,7 @@ private:
     void dropStartingPage();
     void markEdited();
     void publishFound(std::vector<core::FoundWord> hits);
+    void pointAtWhatWasFound();
 
     // A place on a page, found from a point in the column of sheets.
     struct TextPlace {
@@ -968,6 +978,8 @@ private:
     QString m_keptAt;
     HandwritingReader m_reader{this};
     std::vector<core::FoundWord> m_found;
+    std::optional<core::FoundWord> m_pointed;
+    QVariantMap m_pointedWord;
     int m_pagesToRead{0};
     bool m_edited{false};
     std::map<core::Uuid, core::Viewport> m_views;

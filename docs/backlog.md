@@ -174,8 +174,9 @@ into a real problem earlier.
 
 ## Reading handwriting
 
-- **A found word is not pointed at.** Choosing what was found opens the page it is on, but nothing
-  shows where on the page the word sits, although the place is kept with it.
+- **Only the word followed to is pointed at.** Choosing what was found brings the word into view and
+  marks it out for a moment. The other words found on the same page are not marked, and there is no
+  way to step from one to the next without going back to the list.
 - **The language is whatever the machine has.** The reader Windows carries reads the languages whose
   handwriting is installed; the application neither says which those are nor offers to install one.
 - **Nothing is read on macOS**, so the searching can only be tried on the target device.

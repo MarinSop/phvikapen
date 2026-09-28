@@ -351,6 +351,66 @@ TestCase {
         compare(layer.everyWord(), all, "everything read out of the picture is not taken together");
     }
 
+    function test_ff_followingAFoundWordPointsAtItOnThePage() {
+        const canvas = createTemporaryObject(canvasComponent, testCase);
+        const notebook = createTemporaryObject(notebookComponent, testCase, {
+            canvas: canvas,
+            notebookPath: newNotebookPath()
+        });
+        tryCompare(notebook, "loaded", true);
+        if (!notebook.canReadPictures()) {
+            skip("this machine cannot read the words in a picture");
+        }
+        const picture = temporaryDirectory + "/pointed-words.png";
+        verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + picture));
+        tryVerify(() => notebook.pickedPicture !== "", 4000);
+        const read = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "pictureRead"
+        });
+        const pictureId = notebook.pickedPicture;
+        notebook.readPicture(pictureId, "");
+        tryCompare(read, "count", 1, 10000);
+        // The picture is carried to the foot of the sheet, so that the word cannot already be in
+        // view and the page has to move to show it.
+        const box = notebook.pickedPictureBox;
+        notebook.placePicture(pictureId, {
+            "columnX": 80,
+            "columnY": 880,
+            "boxWidth": box.boxWidth,
+            "boxHeight": box.boxHeight,
+            "turn": 0
+        });
+        wait(200);
+        const found = createTemporaryObject(spyComponent, testCase, {
+            target: notebook,
+            signalName: "found"
+        });
+        notebook.find("Reykjavik");
+        tryVerify(() => found.count > 0, 6000, "the search never came back");
+        verify(found.signalArguments[found.count - 1][0].length > 0, "nothing was found");
+        compare(notebook.pointedWord.columnLeft, undefined, "something was pointed at unasked");
+        const wasAt = canvas.viewOrigin.y;
+
+        notebook.goToFound(0);
+
+        const pointed = notebook.pointedWord;
+        verify(pointed.columnLeft !== undefined, "the word followed to is not pointed at");
+        verify(pointed.columnRight > pointed.columnLeft, "the word pointed at has no width");
+        verify(pointed.columnBottom > pointed.columnTop, "the word pointed at has no height");
+        verify(pointed.text.length > 0, "the word pointed at says nothing");
+        verify(pointed.columnTop > 800, "the word is not where the picture was carried to");
+        verify(canvas.viewOrigin.y > wasAt + 200, "the page did not move down to the word");
+        // The page moved as little as it needed to, so the word is in view and no further.
+        verify(canvas.viewOrigin.y <= pointed.columnTop, "the word is above what is in view");
+        verify((pointed.columnBottom - canvas.viewOrigin.y) * canvas.zoom <= canvas.height + 1, "the word is below what is in view");
+
+        notebook.forgetPointedWord();
+
+        compare(notebook.pointedWord.columnLeft, undefined, "the mark was not forgotten");
+    }
+
     function test_g_theWordsAreNeverWrittenOntoThePictureItself() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";

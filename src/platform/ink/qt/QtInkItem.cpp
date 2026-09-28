@@ -380,6 +380,20 @@ void QtInkItem::goToSheet(int index) {
     changeView(viewport);
 }
 
+void QtInkItem::lookAt(const QRectF& area) {
+    if (area.isEmpty()) {
+        return;
+    }
+    core::Viewport viewport = m_viewport;
+    viewport.bringIntoView(viewSize(), core::Rect{
+                                           .left = static_cast<float>(area.left()),
+                                           .top = static_cast<float>(area.top()),
+                                           .right = static_cast<float>(area.right()),
+                                           .bottom = static_cast<float>(area.bottom()),
+                                       });
+    changeView(viewport);
+}
+
 namespace {
 
 constexpr core::Color kMarqueeColor{.red = 60, .green = 110, .blue = 220, .alpha = 220};

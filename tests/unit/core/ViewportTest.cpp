@@ -110,6 +110,87 @@ TEST(ViewportTest, KeepsPaperFromDriftingOutOfView) {
         farDown.intersects({.left = 0.0F, .top = 0.0F, .right = a4.width, .bottom = a4.height}));
 }
 
+TEST(ViewportTest, LeavesAnAreaAlreadyInViewWhereItStands) {
+    Viewport viewport;
+    const Rect seen = viewport.visiblePage(kLaptopView);
+    const Viewport was = viewport;
+
+    viewport.bringIntoView(kLaptopView,
+                           {.left = 200.0F, .top = 200.0F, .right = 260.0F, .bottom = 220.0F});
+
+    EXPECT_EQ(viewport, was);
+    EXPECT_EQ(viewport.visiblePage(kLaptopView), seen);
+}
+
+TEST(ViewportTest, MovesTheLeastItCanToBringAnAreaBelowIntoView) {
+    Viewport viewport;
+    const Rect area{.left = 100.0F, .top = 2000.0F, .right = 180.0F, .bottom = 2030.0F};
+
+    viewport.bringIntoView(kLaptopView, area);
+
+    const Rect seen = viewport.visiblePage(kLaptopView);
+    EXPECT_TRUE(seen.top <= area.top && seen.bottom >= area.bottom);
+    // The area is brought to the bottom edge, not to the middle, because that is the least move.
+    EXPECT_NEAR(seen.bottom - area.bottom, Viewport::kPaperMargin, 0.01F);
+}
+
+TEST(ViewportTest, MovesTheLeastItCanToBringAnAreaAboveIntoView) {
+    Viewport viewport;
+    viewport.showTop(3000.0F);
+    const Rect area{.left = 100.0F, .top = 1000.0F, .right = 180.0F, .bottom = 1030.0F};
+
+    viewport.bringIntoView(kLaptopView, area);
+
+    const Rect seen = viewport.visiblePage(kLaptopView);
+    EXPECT_TRUE(seen.top <= area.top && seen.bottom >= area.bottom);
+    EXPECT_NEAR(area.top - seen.top, Viewport::kPaperMargin, 0.01F);
+}
+
+TEST(ViewportTest, BringsAnAreaToTheSideIntoView) {
+    Viewport viewport;
+    const Rect area{.left = 4000.0F, .top = 100.0F, .right = 4080.0F, .bottom = 130.0F};
+
+    viewport.bringIntoView(kLaptopView, area);
+
+    const Rect seen = viewport.visiblePage(kLaptopView);
+    EXPECT_TRUE(seen.left <= area.left && seen.right >= area.right);
+    EXPECT_NEAR(seen.top, 0.0F, 0.01F);
+}
+
+TEST(ViewportTest, ShowsAnAreaTooLargeToFitFromItsStart) {
+    Viewport viewport;
+    const Rect area{.left = 0.0F, .top = 500.0F, .right = 4000.0F, .bottom = 5000.0F};
+
+    viewport.bringIntoView(kLaptopView, area);
+
+    const Rect seen = viewport.visiblePage(kLaptopView);
+    EXPECT_NEAR(seen.left, area.left, 0.01F);
+    EXPECT_NEAR(seen.top, area.top, 0.01F);
+}
+
+TEST(ViewportTest, ReadsAnAreaGivenTheOtherWayAround) {
+    Viewport viewport;
+    Viewport backwards;
+    const Rect area{.left = 100.0F, .top = 2000.0F, .right = 180.0F, .bottom = 2030.0F};
+
+    viewport.bringIntoView(kLaptopView, area);
+    backwards.bringIntoView(
+        kLaptopView,
+        {.left = area.right, .top = area.bottom, .right = area.left, .bottom = area.top});
+
+    EXPECT_EQ(viewport, backwards);
+}
+
+TEST(ViewportTest, BringsNothingIntoAViewWithNoRoom) {
+    Viewport viewport;
+    const Viewport was = viewport;
+
+    viewport.bringIntoView({.width = 0.0F, .height = 0.0F},
+                           {.left = 0.0F, .top = 9000.0F, .right = 10.0F, .bottom = 9010.0F});
+
+    EXPECT_EQ(viewport, was);
+}
+
 TEST(ViewportTest, LeavesAnInfiniteCanvasFreeToRoam) {
     Viewport viewport;
 

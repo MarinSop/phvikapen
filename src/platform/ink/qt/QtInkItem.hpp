@@ -145,6 +145,10 @@ public:
 
     Q_INVOKABLE void goToSheet(int index);
 
+    // Moves as little as it can so that an area of the column is in view. An area already in view
+    // leaves the page where it stands.
+    Q_INVOKABLE void lookAt(const QRectF& area);
+
     // Where a sheet of the column stands, in the coordinates of the column.
     Q_INVOKABLE [[nodiscard]] QRectF sheetRect(int index) const;
 

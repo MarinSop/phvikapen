@@ -21,6 +21,23 @@ constexpr float kBothSides = 2.0F;
     return std::clamp(scale, Viewport::kMinimumScale, Viewport::kMaximumScale);
 }
 
+// Where one axis must start so that a stretch of the page is in view, having moved as little as it
+// can. A stretch too long to fit is shown from its start, because its start is what is being looked
+// for.
+[[nodiscard]] float movedIntoView(float origin, float visible, float from, float to,
+                                  float room) noexcept {
+    if (to - from >= visible) {
+        return from;
+    }
+    if (from - room < origin) {
+        return std::max(from - room, to - visible);
+    }
+    if (to + room > origin + visible) {
+        return std::min(to + room - visible, from);
+    }
+    return origin;
+}
+
 [[nodiscard]] float keepAxisInView(float origin, float visible, float paper) noexcept {
     const float margin = Viewport::kPaperMargin;
     if (paper + (kBothSides * margin) <= visible) {
@@ -55,6 +72,17 @@ void Viewport::panBy(float viewDeltaX, float viewDeltaY) noexcept {
 
 void Viewport::showTop(float pageY) noexcept {
     m_origin.y = pageY;
+}
+
+void Viewport::bringIntoView(ViewSize view, Rect area) noexcept {
+    if (view.width <= 0.0F || view.height <= 0.0F) {
+        return;
+    }
+    const auto [left, right] = std::minmax(area.left, area.right);
+    const auto [top, bottom] = std::minmax(area.top, area.bottom);
+    const float room = kPaperMargin / m_scale;
+    m_origin.x = movedIntoView(m_origin.x, view.width / m_scale, left, right, room);
+    m_origin.y = movedIntoView(m_origin.y, view.height / m_scale, top, bottom, room);
 }
 
 void Viewport::zoomAround(Point view, float factor) noexcept {
