@@ -240,9 +240,17 @@ written so that all of them can share it. They are listed in the order they are 
   about one notebook.
 - **A link is a rectangle.** It cannot follow the shape of a line of handwriting that wraps, so a
   link over two lines covers the space between them as well.
-- **Only macOS reads a recording back as words.** Windows carries a reader of its own and it is one
-  file against the same interface; until it is there, a reading on Windows fails with that reason
-  rather than coming back empty.
+- **The Windows speech reader is an older one than the Mac's.** Windows carries only one reader that
+  can be handed a recording rather than a microphone, and it is the Speech API the system has
+  carried for many years. It reads dictation with whatever speech packs the machine has, it is
+  poorer at that than the reader macOS carries, and a machine with no pack reads nothing and says
+  so. The newer recognizer cannot be given a recording at all.
+- **A recording is decoded in full before it is read on Windows.** The reader takes plain samples,
+  so a long recording is held in memory twice over: once as it was recorded, once as samples.
+  Reading it a piece at a time would need the reader to be fed as the decoding runs.
+- **Where the Windows reader puts a word in time has not been checked against a long recording.**
+  Every word comes back with the reader's own offset within the run it was heard in, and the run
+  with its place in the sound. Whether those two add up over an hour has only been reasoned about.
 - **A transcript is as fine as a line, not as fine as a word.** The reader gives a moment for every
   word, and words spoken together are gathered into lines at a pause or a full stop. Tapping moves
   the playing to a line; a word inside one cannot be tapped on its own.
@@ -300,3 +308,6 @@ written so that all of them can share it. They are listed in the order they are 
   comparing rendered images against recordings from the real pen.
 - **Reading handwriting.** Everything but the reader itself is tested on the development machine;
   what Windows makes of real handwriting, in Croatian or any other language, has never been seen.
+- **Reading a picture and a recording on Windows.** Both readers are built and linked by the
+  pipeline on Windows on ARM, and everything above them is tested on the development machine. What
+  either one makes of a real photograph or a real recording has only been seen on macOS.

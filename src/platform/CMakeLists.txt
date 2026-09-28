@@ -90,12 +90,15 @@ elseif(WIN32)
     target_sources(phvikapen_platform
         PRIVATE
             ocr/win/WindowsReadPicture.cpp
+            speech/win/WindowsSpeech.cpp
         PUBLIC
             FILE_SET HEADERS
             FILES
                 ocr/win/WindowsReadPicture.hpp
+                speech/win/WindowsSpeech.hpp
     )
-    target_sources(phvikapen_platform PRIVATE speech/NoSpeech.cpp)
+    # The speech reader is the one Windows itself carries; sapi.lib names it and nothing else.
+    target_link_libraries(phvikapen_platform PRIVATE sapi)
 else()
     target_sources(phvikapen_platform PRIVATE ocr/NoReadPicture.cpp speech/NoSpeech.cpp)
 endif()

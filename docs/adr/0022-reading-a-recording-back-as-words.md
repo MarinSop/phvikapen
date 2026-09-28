@@ -8,6 +8,9 @@ Accepted
 
 Extends [0021](0021-reading-what-a-machine-carries.md).
 
+Extended by [0024](0024-reading-a-picture-and-a-recording-on-windows.md), which gives Windows a
+speech reader of its own.
+
 ## Context
 
 [0021](0021-reading-what-a-machine-carries.md) named the job of reading a recording back as words

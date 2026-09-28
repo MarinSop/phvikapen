@@ -7,7 +7,9 @@ Date: 2026-09-26
 Accepted
 
 Extended by [0022](0022-reading-a-recording-back-as-words.md), which fills in the reader for
-recordings on macOS.
+recordings on macOS, and by
+[0024](0024-reading-a-picture-and-a-recording-on-windows.md), which fills in both readers on
+Windows.
 
 Amended by [0023](0023-keeping-the-words-read-out-of-a-picture.md), which writes what was read out
 of a picture into the notebook after all, reversing the decision below to hold it only in memory.
