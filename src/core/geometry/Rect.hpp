@@ -19,6 +19,12 @@ struct Rect {
                && other.top <= bottom;
     }
 
+    // Whether another box stands wholly inside this one. A box on the very edge is inside.
+    [[nodiscard]] constexpr bool contains(const Rect& other) const noexcept {
+        return other.left >= left && other.right <= right && other.top >= top
+               && other.bottom <= bottom;
+    }
+
     [[nodiscard]] constexpr Rect united(const Rect& other) const noexcept {
         return {
             .left = std::min(left, other.left),

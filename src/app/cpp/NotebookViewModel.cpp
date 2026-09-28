@@ -75,6 +75,17 @@ namespace {
     return QString::fromStdString(id.toString()) == name;
 }
 
+// The box around a run of strokes, or nothing where none of them has any shape at all.
+[[nodiscard]] std::optional<core::Rect> boxAround(std::span<const core::PlacedStroke> strokes) {
+    std::optional<core::Rect> around;
+    for (const core::PlacedStroke& placed : strokes) {
+        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
+            around = around ? around->united(*bounds) : *bounds;
+        }
+    }
+    return around;
+}
+
 [[nodiscard]] core::Uuid layerNamed(std::span<const core::Layer> layers, const QString& name) {
     for (const core::Layer& layer : layers) {
         if (isNamed(layer.id, name)) {
@@ -5390,6 +5401,29 @@ QVariantMap NotebookViewModel::areaOfWhatIsPicked() const {
     return {};
 }
 
+namespace {
+
+// The box around everything a handful holds, so that it can be put down somewhere else in one
+// piece.
+[[nodiscard]] core::Rect roomOf(const NotebookViewModel::Handful& handful) {
+    std::optional<core::Rect> around = boxAround(handful.strokes);
+    const auto widen = [&around](const core::Rect& one) {
+        around = around ? around->united(one) : one;
+    };
+    for (const core::PlacedText& placed : handful.texts) {
+        widen(core::areaOf(placed.box));
+    }
+    for (const core::PlacedTable& placed : handful.tables) {
+        widen(core::areaOf(placed.table));
+    }
+    for (const NotebookViewModel::Handful::Carried& carried : handful.pictures) {
+        widen(core::areaOf(carried.placed.picture));
+    }
+    return around.value_or(core::Rect{});
+}
+
+}
+
 NotebookViewModel::Handful NotebookViewModel::handfulPicked() const {
     Handful handful;
     const core::Page* const page = currentPageData();
@@ -5403,41 +5437,27 @@ NotebookViewModel::Handful NotebookViewModel::handfulPicked() const {
             handful.strokes.push_back(placed);
         }
     }
+    // The loop picks up whatever stands wholly inside it, not only the one thing the page names as
+    // picked, so a diagram of ink and pictures together is kept in one piece.
+    const std::optional<core::Rect> loop = boxAround(handful.strokes);
+    const auto inTheLoop = [&loop](const core::Rect& one) { return loop && loop->contains(one); };
     for (const core::PlacedText& placed : page->texts()) {
-        if (!m_pickedText.isEmpty() && isNamed(placed.box.id, m_pickedText)) {
+        if (isNamed(placed.box.id, m_pickedText) || inTheLoop(core::areaOf(placed.box))) {
             handful.texts.push_back(placed);
         }
     }
     for (const core::PlacedTable& placed : page->tables()) {
-        if (!m_pickedTable.isEmpty() && isNamed(placed.table.id, m_pickedTable)) {
+        if (isNamed(placed.table.id, m_pickedTable) || inTheLoop(core::areaOf(placed.table))) {
             handful.tables.push_back(placed);
         }
     }
     for (const core::PlacedPicture& placed : page->pictures()) {
-        if (!m_pickedPicture.isEmpty() && isNamed(placed.picture.id, m_pickedPicture)) {
+        if (isNamed(placed.picture.id, m_pickedPicture)
+            || inTheLoop(core::areaOf(placed.picture))) {
             handful.pictures.push_back(Handful::Carried{.placed = placed, .bytes = nullptr});
         }
     }
-
-    std::optional<core::Rect> around;
-    const auto widen = [&around](const core::Rect& one) {
-        around = around ? around->united(one) : one;
-    };
-    for (const core::PlacedStroke& placed : handful.strokes) {
-        if (const std::optional<core::Rect> bounds = placed.stroke.boundingBox()) {
-            widen(*bounds);
-        }
-    }
-    for (const core::PlacedText& placed : handful.texts) {
-        widen(core::areaOf(placed.box));
-    }
-    for (const core::PlacedTable& placed : handful.tables) {
-        widen(core::areaOf(placed.table));
-    }
-    for (const Handful::Carried& carried : handful.pictures) {
-        widen(core::areaOf(carried.placed.picture));
-    }
-    handful.area = around.value_or(core::Rect{});
+    handful.area = roomOf(handful);
     return handful;
 }
 

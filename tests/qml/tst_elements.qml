@@ -303,6 +303,48 @@ TestCase {
         verify(Math.abs(room.height - was.height) <= 1, "the element does not take the room it was kept from");
     }
 
+    function test_jb_theLoopTakesAPictureStandingInsideItIntoTheElement() {
+        const notebook = openNotebook(newNotebookPath());
+        const path = temporaryDirectory + "/looped-picture.png";
+        verify(pictureFile(path), "the picture could not be written");
+        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        tryVerify(() => notebook.pickedPicture !== "", 4000, "the picture never went on the page");
+        const which = notebook.pickedPicture;
+        const canvas = notebook.canvas;
+        // Stand the picture somewhere small and plainly in view, so a loop can be drawn round it.
+        notebook.placePicture(which, {
+            "columnX": canvas.viewOrigin.x + (110 / canvas.zoom),
+            "columnY": canvas.viewOrigin.y + (110 / canvas.zoom),
+            "boxWidth": 60 / canvas.zoom,
+            "boxHeight": 40 / canvas.zoom,
+            "turn": 0
+        });
+        wait(200);
+
+        // Ink all the way round it, and the picture itself let go of, so nothing but the loop can
+        // be what takes the picture along.
+        mousePress(canvas, 95, 95);
+        mouseMove(canvas, 140, 120, -1, Qt.LeftButton);
+        mouseMove(canvas, 185, 165, -1, Qt.LeftButton);
+        mouseRelease(canvas, 185, 165);
+        tryCompare(notebook, "strokeCount", 1);
+        notebook.pickedPicture = "";
+        compare(notebook.pickedPicture, "", "the picture is still the one the page names as picked");
+        pickEverything(notebook);
+
+        library.keep(notebook, "Loop and picture", "Shapes");
+
+        tryVerify(() => idOfNamed("Loop and picture") !== "", 4000, "the element was not kept");
+        const element = idOfNamed("Loop and picture");
+        const another = openNotebook(newNotebookPath());
+        verify(!anyPictureOn(another), "the second notebook already had a picture on it");
+
+        library.put(another, element);
+
+        tryVerify(() => anyPictureOn(another), 6000, "the loop did not take the picture along");
+        compare(library.trouble, "");
+    }
+
     function test_i_aPictureIsKeptInAnElementAndPutDownAgain() {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/element-picture.png";
