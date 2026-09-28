@@ -76,7 +76,8 @@ else()
 endif()
 
 # The words in a picture and the words in a recording are read by whatever the machine carries.
-# macOS carries both; everywhere else the application says plainly that it cannot read them.
+# Windows and macOS each carry both; anywhere else the application says plainly that it cannot
+# read them.
 if(APPLE)
     target_sources(phvikapen_platform PRIVATE ocr/AppleReadPicture.mm speech/AppleSpeech.mm)
     set_source_files_properties(ocr/AppleReadPicture.mm speech/AppleSpeech.mm
@@ -85,6 +86,16 @@ if(APPLE)
     target_link_libraries(phvikapen_platform PRIVATE
         "-framework Vision" "-framework CoreGraphics" "-framework ImageIO"
         "-framework Speech" "-framework Foundation")
+elseif(WIN32)
+    target_sources(phvikapen_platform
+        PRIVATE
+            ocr/win/WindowsReadPicture.cpp
+        PUBLIC
+            FILE_SET HEADERS
+            FILES
+                ocr/win/WindowsReadPicture.hpp
+    )
+    target_sources(phvikapen_platform PRIVATE speech/NoSpeech.cpp)
 else()
     target_sources(phvikapen_platform PRIVATE ocr/NoReadPicture.cpp speech/NoSpeech.cpp)
 endif()

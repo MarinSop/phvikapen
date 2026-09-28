@@ -217,9 +217,12 @@ written so that all of them can share it. They are listed in the order they are 
   without being told which layer they stand on. Hiding a layer does hide its ink.
 - **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
   how much is on it and which one is in hand, but only one line can be marked out at a time.
-- **Only macOS reads the words in a picture.** Windows carries a reader of its own and it is one
-  file against the interface that is already there; until it is written, Windows says plainly that
-  it cannot read one.
+- **What the Windows picture reader makes of a real picture has never been seen.** Windows reads a
+  picture with the reader it carries, against the same interface macOS uses, and the build is
+  proven on Windows on ARM by the pipeline. What it reads out of real handwriting or a real
+  photograph, in Croatian or any other language, has only been read on macOS so far. The reader
+  also reads only the languages whose packs the machine has, so a machine without a Croatian pack
+  reads Croatian words as whatever language it does have.
 - **Reading every picture is asked for, not done on its own.** One command reads every picture in a
   notebook that nothing has been read out of yet, and it can be stopped, but nothing starts it by
   itself, and a picture nothing could be read out of is tried once more the next time the notebook
