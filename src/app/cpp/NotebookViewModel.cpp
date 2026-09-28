@@ -4778,6 +4778,67 @@ void NotebookViewModel::renameLayer(const QString& layerId, const QString& name)
     changeLayers(std::move(wanted));
 }
 
+void NotebookViewModel::markLayer(const QString& layerId, bool marked) {
+    if (marked == m_markedLayers.contains(layerId)) {
+        return;
+    }
+    if (marked) {
+        m_markedLayers.append(layerId);
+    } else {
+        m_markedLayers.removeAll(layerId);
+    }
+    emit markedLayersChanged();
+}
+
+void NotebookViewModel::unmarkLayers() {
+    if (m_markedLayers.isEmpty()) {
+        return;
+    }
+    m_markedLayers.clear();
+    emit markedLayersChanged();
+}
+
+// Every marked layer is changed in one write, so hiding or locking several of them is one thing to
+// take back rather than one for each.
+void NotebookViewModel::changeMarkedLayers(const std::function<bool(core::Layer&)>& change) {
+    if (m_markedLayers.isEmpty()) {
+        return;
+    }
+    std::vector<core::Layer> wanted = layersHere();
+    bool anything = false;
+    for (const QString& layerId : m_markedLayers) {
+        const std::size_t at = core::placeOfLayer(wanted, layerNamed(wanted, layerId));
+        if (at >= wanted.size()) {
+            continue;
+        }
+        anything = change(wanted[at]) || anything;
+    }
+    if (!anything) {
+        return;
+    }
+    changeLayers(std::move(wanted));
+}
+
+void NotebookViewModel::showMarkedLayers(bool shown) {
+    changeMarkedLayers([shown](core::Layer& layer) {
+        if (layer.shown == shown) {
+            return false;
+        }
+        layer.shown = shown;
+        return true;
+    });
+}
+
+void NotebookViewModel::lockMarkedLayers(bool locked) {
+    changeMarkedLayers([locked](core::Layer& layer) {
+        if (layer.locked == locked) {
+            return false;
+        }
+        layer.locked = locked;
+        return true;
+    });
+}
+
 void NotebookViewModel::showLayer(const QString& layerId, bool shown) {
     std::vector<core::Layer> wanted = layersHere();
     const std::size_t at = core::placeOfLayer(wanted, layerNamed(wanted, layerId));
@@ -6133,8 +6194,16 @@ void NotebookViewModel::publishLayers() {
             m_activeLayer = QString::fromStdString(standing.back().id.toString());
         }
     }
+    // A layer marked out and then taken away is no longer there to mark.
+    const std::span<const core::Layer> standing =
+        page == nullptr ? std::span<const core::Layer>{} : page->layers();
+    const qsizetype gone = m_markedLayers.removeIf(
+        [standing](const QString& layerId) { return layerNamed(standing, layerId).isNil(); });
     m_layersModel.setItems(std::move(items));
     emit layersChanged();
+    if (gone > 0) {
+        emit markedLayersChanged();
+    }
 }
 
 void NotebookViewModel::publishTables() {

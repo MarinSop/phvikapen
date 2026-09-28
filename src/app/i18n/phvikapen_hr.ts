@@ -863,6 +863,18 @@
         <translation>Udvostruči</translation>
     </message>
     <message>
+        <source>Leave this layer out</source>
+        <translation>Odznači ovaj sloj</translation>
+    </message>
+    <message>
+        <source>Mark this layer out as well</source>
+        <translation>Označi i ovaj sloj</translation>
+    </message>
+    <message>
+        <source>Mark none of them out</source>
+        <translation>Odznači sve slojeve</translation>
+    </message>
+    <message>
         <source>Move up</source>
         <translation>Pomakni gore</translation>
     </message>

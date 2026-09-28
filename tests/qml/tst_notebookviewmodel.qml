@@ -46,6 +46,14 @@ TestCase {
         return names;
     }
 
+    function layerShown(notebook, row) {
+        return notebook.layers.data(notebook.layers.index(row, 0), Qt.UserRole + 3);
+    }
+
+    function layerLocked(notebook, row) {
+        return notebook.layers.data(notebook.layers.index(row, 0), Qt.UserRole + 4);
+    }
+
     function layerIdAt(notebook, row) {
         return notebook.layers.data(notebook.layers.index(row, 0), Qt.UserRole + 1);
     }
@@ -56,6 +64,58 @@ TestCase {
         compare(notebook.layers.count, 1);
         verify(notebook.activeLayer !== "");
         compare(layerIdAt(notebook, 0), notebook.activeLayer);
+    }
+
+    function test_severalLayersAreHiddenAndLockedInOneGo() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addLayer();
+        notebook.addLayer();
+        tryCompare(notebook.layers, "count", 3);
+        const first = layerIdAt(notebook, 0);
+        const second = layerIdAt(notebook, 1);
+        const third = layerIdAt(notebook, 2);
+
+        notebook.markLayer(first, true);
+        notebook.markLayer(second, true);
+
+        compare(notebook.markedLayers.length, 2, "two layers were not marked out");
+
+        notebook.showMarkedLayers(false);
+
+        tryVerify(() => !layerShown(notebook, 0) && !layerShown(notebook, 1), 4000, "the marked layers were not hidden");
+        verify(layerShown(notebook, 2), "a layer that was not marked was hidden as well");
+
+        // One thing done, so one thing to take back.
+        notebook.undo();
+
+        tryVerify(() => layerShown(notebook, 0) && layerShown(notebook, 1), 4000, "taking it back did not bring both layers back");
+
+        notebook.lockMarkedLayers(true);
+
+        tryVerify(() => layerLocked(notebook, 0) && layerLocked(notebook, 1), 4000, "the marked layers were not locked");
+        verify(!layerLocked(notebook, 2), "a layer that was not marked was locked as well");
+
+        notebook.unmarkLayers();
+
+        compare(notebook.markedLayers.length, 0, "the layers were not unmarked");
+        notebook.showMarkedLayers(false);
+        verify(layerShown(notebook, 2), "hiding with nothing marked hid something");
+        compare(notebook.errorMessage, "");
+        verify(third !== "");
+    }
+
+    function test_aLayerMarkedOutAndThenTakenAwayIsNoLongerMarked() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addLayer();
+        tryCompare(notebook.layers, "count", 2);
+        const going = layerIdAt(notebook, 0);
+        notebook.markLayer(going, true);
+        compare(notebook.markedLayers.length, 1);
+
+        notebook.removeLayer(going);
+
+        tryCompare(notebook.layers, "count", 1);
+        tryVerify(() => notebook.markedLayers.length === 0, 4000, "a layer that is gone is still marked");
     }
 
     function test_aLayerIsAddedRenamedHiddenAndLocked() {

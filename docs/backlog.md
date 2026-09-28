@@ -135,8 +135,10 @@ into a real problem earlier.
   is carried, so it is never in two places, but the space it came out of stays open at its old width
   rather than closing up behind it, and the strip does not draw an outline of where it will land
   beyond the gap the other tabs open.
-- **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
-  locked in one go.
+- **Marked layers are hidden and locked together, but not moved or deleted together.** Several layers
+  are marked out with Shift or Ctrl held and hidden or locked in one go, which counts as one thing to
+  take back. Reordering and deleting still reach one layer at a time, and nothing on the panel says
+  that a key is what marks one out.
 - **There is no tool for text.** The palette holds only what the application can do: pick, drag the
   page, draw, highlight, draw a shape and erase.
 - **The menus are only checked by their commands.** Tests trigger the commands behind the menus, not
@@ -215,8 +217,6 @@ written so that all of them can share it. They are listed in the order they are 
 - **Ink on a locked layer can still be picked with the loop.** What answers a tap is decided by the
   page for pictures, tables and boxes of type; ink is picked by the canvas, which is handed strokes
   without being told which layer they stand on. Hiding a layer does hide its ink.
-- **More than one layer chosen at a time.** The panel names a layer, draws what stands on it, says
-  how much is on it and which one is in hand, but only one line can be marked out at a time.
 - **What the Windows picture reader makes of a real picture has never been seen.** Windows reads a
   picture with the reader it carries, against the same interface macOS uses, and the build is
   proven on Windows on ARM by the pipeline. What it reads out of real handwriting or a real

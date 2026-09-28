@@ -139,6 +139,7 @@ class NotebookViewModel : public QObject, public QQmlParserStatus {
     Q_PROPERTY(QVariantList pagesToLinkTo READ pagesToLinkTo NOTIFY outlineChanged FINAL)
     Q_PROPERTY(QString shownTrouble READ shownTrouble NOTIFY recordingsChanged FINAL)
     Q_PROPERTY(QString activeLayer READ activeLayer WRITE setActiveLayer NOTIFY layersChanged FINAL)
+    Q_PROPERTY(QStringList markedLayers READ markedLayers NOTIFY markedLayersChanged FINAL)
 
 public:
     explicit NotebookViewModel(QObject* parent = nullptr);
@@ -426,6 +427,15 @@ public:
 
     Q_INVOKABLE void renameLayer(const QString& layerId, const QString& name);
 
+    // Layers marked out beside the one in hand, so that hiding or locking reaches all of them at
+    // once and counts as one thing done.
+    [[nodiscard]] QStringList markedLayers() const { return m_markedLayers; }
+
+    Q_INVOKABLE void markLayer(const QString& layerId, bool marked);
+    Q_INVOKABLE void unmarkLayers();
+    Q_INVOKABLE void showMarkedLayers(bool shown);
+    Q_INVOKABLE void lockMarkedLayers(bool locked);
+
     Q_INVOKABLE void showLayer(const QString& layerId, bool shown);
 
     Q_INVOKABLE void lockLayer(const QString& layerId, bool locked);
@@ -691,6 +701,7 @@ signals:
     void textAdded(const QString& textId);
     void startPageChanged();
     void canvasChanged();
+    void markedLayersChanged();
     void loadedChanged();
     void errorMessageChanged();
     void pageChanged();
@@ -868,6 +879,7 @@ private:
     void publishTables();
 
     void publishLayers();
+    void changeMarkedLayers(const std::function<bool(core::Layer&)>& change);
     void publishRecordings();
     void publishLinks();
     [[nodiscard]] const core::Link* linkNamed(const QString& linkId) const;
@@ -1005,6 +1017,7 @@ private:
     TableListModel m_tablesModel;
     LayerListModel m_layersModel;
     QString m_activeLayer;
+    QStringList m_markedLayers;
     QString m_pickedTable;
     std::map<core::ContentId, QImage> m_pictureImages;
     std::set<core::ContentId> m_wantedPictures;

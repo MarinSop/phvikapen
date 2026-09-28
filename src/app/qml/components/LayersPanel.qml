@@ -14,6 +14,25 @@ Pane {
     readonly property bool ready: root.notebook !== null && root.notebook.loaded
     readonly property real lineHeight: Math.round(44 * Theme.scale)
     property int landing: -1
+    readonly property var marked: root.notebook === null ? [] : root.notebook.markedLayers
+
+    // A layer marked out beside the one in hand is hidden or locked with it, in one go. With nothing
+    // marked out, the button reaches the one line it stands on, as it always did.
+    function showFrom(layerId, shown) {
+        if (root.marked.indexOf(layerId) >= 0) {
+            root.notebook.showMarkedLayers(shown);
+            return;
+        }
+        root.notebook.showLayer(layerId, shown);
+    }
+
+    function lockFrom(layerId, locked) {
+        if (root.marked.indexOf(layerId) >= 0) {
+            root.notebook.lockMarkedLayers(locked);
+            return;
+        }
+        root.notebook.lockLayer(layerId, locked);
+    }
 
     function placeOfDrop(index) {
         return Math.max(0, list.count - 1 - index);
@@ -68,6 +87,7 @@ Pane {
                 required property string preview
                 required property bool shown
                 readonly property bool chosen: line.layerId === root.active
+                readonly property bool mine: root.marked.indexOf(line.layerId) >= 0
                 readonly property bool panelReady: root.ready
                 property bool renaming: false
 
@@ -84,7 +104,9 @@ Pane {
                 z: carry.active ? 2 : 1
 
                 background: Rectangle {
-                    color: line.chosen ? Theme.accentSoft : line.hovered ? Theme.hover : "transparent"
+                    border.color: line.mine ? Theme.accent : "transparent"
+                    border.width: line.mine ? 1 : 0
+                    color: line.chosen || line.mine ? Theme.accentSoft : line.hovered ? Theme.hover : "transparent"
                     radius: 6
 
                     Behavior on color {
@@ -180,7 +202,7 @@ Pane {
                         label: line.shown ? qsTr("Hide this layer") : qsTr("Show this layer")
                         objectName: "layerShown" + line.index
 
-                        onClicked: root.notebook.showLayer(line.layerId, !line.shown)
+                        onClicked: root.showFrom(line.layerId, !line.shown)
                     }
 
                     ShapeButton {
@@ -189,7 +211,7 @@ Pane {
                         label: line.locked ? qsTr("Unlock this layer") : qsTr("Lock this layer")
                         objectName: "layerLocked" + line.index
 
-                        onClicked: root.notebook.lockLayer(line.layerId, !line.locked)
+                        onClicked: root.lockFrom(line.layerId, !line.locked)
                     }
                 }
 
@@ -212,6 +234,7 @@ Pane {
 
                 TapHandler {
                     acceptedButtons: Qt.LeftButton
+                    acceptedModifiers: Qt.NoModifier
                     gesturePolicy: TapHandler.DragThreshold
 
                     onPressedChanged: {
@@ -219,6 +242,16 @@ Pane {
                             root.notebook.activeLayer = line.layerId;
                         }
                     }
+                }
+
+                // Held down, a tap marks the layer out beside the others rather than taking it in
+                // hand, so that several are hidden or locked at once.
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    acceptedModifiers: Qt.ShiftModifier | Qt.ControlModifier
+                    gesturePolicy: TapHandler.ReleaseWithinBounds
+
+                    onTapped: root.notebook.markLayer(line.layerId, !line.mine)
                 }
 
                 TapHandler {
@@ -241,6 +274,22 @@ Pane {
                         text: qsTr("Duplicate")
 
                         onTriggered: root.notebook.duplicateLayer(line.layerId)
+                    }
+
+                    MenuItem {
+                        objectName: "markLayerItem"
+                        text: line.mine ? qsTr("Leave this layer out") : qsTr("Mark this layer out as well")
+
+                        onTriggered: root.notebook.markLayer(line.layerId, !line.mine)
+                    }
+
+                    MenuItem {
+                        height: visible ? implicitHeight : 0
+                        objectName: "unmarkLayersItem"
+                        text: qsTr("Mark none of them out")
+                        visible: root.marked.length > 0
+
+                        onTriggered: root.notebook.unmarkLayers()
                     }
 
                     MenuItem {
