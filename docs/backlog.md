@@ -125,10 +125,12 @@ into a real problem earlier.
 
 ## The window
 
-- **A panel cannot be carried from one window to another.** A floating panel is set free into a
-  window of its own, which goes anywhere the screens reach and is remembered where it was left, but
-  a panel dragged out of a free window has nowhere to land: the drag knows only the one window it
-  began in. Docking a free panel is done through its header, not by carrying it back.
+- **Two windows over the same patch of screen both offer a carried panel a place.** A drag is now
+  reckoned on the screens, so a panel carried out of its own window lands in another one, and every
+  window draws the lines and the name. Where two windows overlap, both report what is under the hand
+  and the one with the stronger claim wins rather than the one actually in front. A panel carried
+  *into* a free window is refused as well: a free window shows one panel, and what a second one
+  would do to it is not settled.
 - **A carried tab leaves a gap of its own width behind.** The tab is not drawn in the strip while it
   is carried, so it is never in two places, but the space it came out of stays open at its old width
   rather than closing up behind it, and the strip does not draw an outline of where it will land

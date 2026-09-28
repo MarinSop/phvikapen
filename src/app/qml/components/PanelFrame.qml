@@ -25,13 +25,13 @@ Rectangle {
         if (!root.drag.dragging || root.holdsOnlyTheDragged) {
             return;
         }
-        const local = root.mapFromItem(null, root.drag.at);
+        const local = root.mapFromGlobal(root.drag.at.x, root.drag.at.y);
         if (local.x < 0 || local.y < 0 || local.x > root.width || local.y > root.height) {
             return;
         }
-        const corner = root.mapToItem(null, 0, 0);
+        const corner = root.mapToGlobal(0, 0);
         if (local.y >= header.y && local.y <= header.y + header.height) {
-            const along = tabs.mapFromItem(null, root.drag.at);
+            const along = tabs.mapFromGlobal(root.drag.at.x, root.drag.at.y);
             const at = root.tabAt(along.x);
             root.drag.report(root.drag.tabRank, "tab", root.path, -1, at, root.tabCaret(at));
             return;
@@ -62,7 +62,7 @@ Rectangle {
             root.workspace.dockPanel(root.currentPanel);
             return;
         }
-        root.drag.looseWanted(root.currentPanel, root.mapToItem(null, root.width / 2, root.height / 2), root.width, root.height);
+        root.drag.looseWanted(root.currentPanel, root.mapToGlobal(root.width / 2, root.height / 2), root.width, root.height);
     }
 
     // How far a tab slides aside to leave room for the one being carried. Only the tabs the carried
@@ -86,13 +86,13 @@ Rectangle {
     }
 
     function tabCaret(at) {
-        const strip = tabs.mapToItem(null, 0, 0);
+        const strip = tabs.mapToGlobal(0, 0);
         const tab = tabs.itemAtIndex(Math.min(at, tabs.count - 1));
         if (tab === null) {
             return Qt.rect(strip.x, strip.y, 3, tabs.height);
         }
         const past = at > tabs.count - 1;
-        const edge = tab.mapToItem(null, past ? tab.width : 0, 0);
+        const edge = tab.mapToGlobal(past ? tab.width : 0, 0);
         const middleOfGap = tabs.spacing / 2;
         const along = edge.x + (past ? middleOfGap : -middleOfGap) - 1;
         return Qt.rect(Math.max(strip.x - 5, Math.min(strip.x + tabs.width - 3, along)), strip.y, 3, tabs.height);
@@ -173,14 +173,14 @@ Rectangle {
 
                 onActiveChanged: {
                     if (headerDrag.active) {
-                        root.drag.take(root.currentPanel, headerDrag.centroid.scenePosition, root.path, root.width, root.height);
+                        root.drag.take(root.currentPanel, root.drag.screenOf(root, headerDrag.centroid.scenePosition), root.path, root.width, root.height);
                         return;
                     }
                     root.drag.dropped();
                 }
                 onCentroidChanged: {
                     if (headerDrag.active) {
-                        root.drag.at = headerDrag.centroid.scenePosition;
+                        root.drag.at = root.drag.screenOf(root, headerDrag.centroid.scenePosition);
                     }
                 }
             }
@@ -225,7 +225,7 @@ Rectangle {
                         }
 
                         onCarriedTo: at => {
-                            root.drag.at = at;
+                            root.drag.at = root.drag.screenOf(oneTab, at);
                         }
                         onClicked: {
                             root.current = oneTab.index;
@@ -235,7 +235,7 @@ Rectangle {
                         onTakenUp: at => {
                             root.current = oneTab.index;
                             root.workspace.choosePanel(root.path, oneTab.index);
-                            root.drag.take(oneTab.modelData, at, root.path, root.width, root.height);
+                            root.drag.take(oneTab.modelData, root.drag.screenOf(oneTab, at), root.path, root.width, root.height);
                         }
                     }
 

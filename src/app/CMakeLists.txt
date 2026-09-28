@@ -174,6 +174,7 @@ qt_add_qml_module(phvikapen_ui
         qml/components/PanelCloseTarget.qml
         qml/components/PanelArea.qml
         qml/components/PanelDragState.qml
+        qml/components/PanelDropMarks.qml
         qml/components/SectionsPanel.qml
         qml/components/PanelFrame.qml
         qml/components/PanelTab.qml

@@ -30,8 +30,8 @@ Item {
         if (!root.carried) {
             return;
         }
-        const wanted = root.view.mapFromItem(null, root.drag.at);
-        const from = root.view.mapFromItem(null, root.drag.startAt);
+        const wanted = root.view.mapFromGlobal(root.drag.at.x, root.drag.at.y);
+        const from = root.view.mapFromGlobal(root.drag.startAt.x, root.drag.startAt.y);
         root.x = root.snapped(root.place.x + wanted.x - from.x, root.width, root.view.width);
         root.y = root.snapped(root.place.y + wanted.y - from.y, root.height, root.view.height);
         root.drag.windowRect = Qt.rect(root.x, root.y, root.width, root.height);

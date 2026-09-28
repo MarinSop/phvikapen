@@ -65,5 +65,10 @@ Window {
             view: holder
             workspace: root.workspace
         }
+
+        PanelDropMarks {
+            anchors.fill: parent
+            drag: root.drag
+        }
     }
 }

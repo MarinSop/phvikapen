@@ -12,12 +12,16 @@ QtObject {
     property string homePath: ""
     property real homeWidth: 0
     property real homeHeight: 0
+    // Where the hand is and where it began, on the screens rather than in one window's scene, so
+    // that a panel carried out of its own window can be aimed at another one.
     property point at: Qt.point(0, 0)
     property point startAt: Qt.point(0, 0)
     property string kind: ""
     property string path: ""
     property int edge: -1
     property int at2: 0
+    // The lines that show where it would land, also on the screens: whichever window the hand is
+    // over draws them in its own coordinates.
     property rect hint: Qt.rect(0, 0, 0, 0)
     property rect hint2: Qt.rect(0, 0, 0, 0)
     property rect windowRect: Qt.rect(0, 0, 0, 0)
@@ -59,13 +63,23 @@ QtObject {
         root.hint2 = hint2;
     }
 
-    function take(panelId, scenePosition, homePath, homeWidth, homeHeight) {
+    // Where a point of an item stands on the screens. Every window reports and reads through this,
+    // so one drag is reckoned in one set of coordinates however many windows it crosses.
+    function screenOf(item, scenePoint) {
+        if (item === null) {
+            return scenePoint;
+        }
+        const local = item.mapFromItem(null, scenePoint.x, scenePoint.y);
+        return item.mapToGlobal(local.x, local.y);
+    }
+
+    function take(panelId, screenPosition, homePath, homeWidth, homeHeight) {
         root.panelId = panelId;
         root.homePath = homePath;
         root.homeWidth = homeWidth;
         root.homeHeight = homeHeight;
-        root.at = scenePosition;
-        root.startAt = scenePosition;
+        root.at = screenPosition;
+        root.startAt = screenPosition;
         root.windowRect = Qt.rect(0, 0, 0, 0);
         root.settledAt = Qt.point(-1, -1);
     }

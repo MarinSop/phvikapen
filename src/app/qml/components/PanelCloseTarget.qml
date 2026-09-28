@@ -10,8 +10,8 @@ Rectangle {
     required property PanelDragState drag
     readonly property bool aimedAt: root.drag.kind === "close"
 
-    function pointInside(scenePosition) {
-        const point = root.mapFromItem(null, scenePosition);
+    function pointInside(screenPosition) {
+        const point = root.mapFromGlobal(screenPosition.x, screenPosition.y);
         return point.x >= 0 && point.y >= 0 && point.x <= root.width && point.y <= root.height;
     }
 

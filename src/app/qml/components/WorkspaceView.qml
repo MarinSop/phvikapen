@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import PhvikaPen.Ui
 
 Item {
@@ -42,14 +41,14 @@ Item {
             return drag.windowRect;
         }
         const span = root.windowSpan();
-        const here = root.mapFromItem(null, drag.at);
+        const here = root.mapFromGlobal(drag.at.x, drag.at.y);
         return Qt.rect(Math.round(Math.max(0, Math.min(root.width - span.width, here.x - (span.width / 2)))), Math.round(Math.max(0, Math.min(root.height - span.height, here.y - (Theme.rowHeight / 2)))), span.width, span.height);
     }
 
-    function letPanelFloat(panelId, scenePosition, wide, tall) {
+    function letPanelFloat(panelId, screenPosition, wide, tall) {
         const width = Math.round(Math.max(220, Math.min(480, wide)));
         const height = Math.round(Math.max(200, Math.min(560, tall)));
-        const at = root.mapFromItem(null, scenePosition);
+        const at = root.mapFromGlobal(screenPosition.x, screenPosition.y);
         root.workspace.floatPanel(panelId, Math.round(Math.max(0, Math.min(root.width - width, at.x - (width / 2)))), Math.round(Math.max(0, Math.min(root.height - height, at.y - (height / 2)))), width, height);
     }
 
@@ -150,30 +149,9 @@ Item {
         }
     }
 
-    Rectangle {
-        readonly property point corner: root.mapFromItem(null, drag.hint.x, drag.hint.y)
-
-        color: Theme.accent
-        height: drag.hint.height
-        radius: 2
-        visible: drag.dragging && drag.kind !== "" && drag.kind !== "close"
-        width: drag.hint.width
-        x: corner.x
-        y: corner.y
-        z: 50
-    }
-
-    Rectangle {
-        readonly property point corner: root.mapFromItem(null, drag.hint2.x, drag.hint2.y)
-
-        color: Theme.accent
-        height: drag.hint2.height
-        radius: 2
-        visible: drag.dragging && drag.hint2.width > 0
-        width: drag.hint2.width
-        x: corner.x
-        y: corner.y
-        z: 50
+    PanelDropMarks {
+        anchors.fill: parent
+        drag: drag
     }
 
     PanelCloseTarget {
@@ -187,32 +165,6 @@ Item {
                 duration: Theme.calm
                 easing.type: Theme.ease
             }
-        }
-    }
-
-    Rectangle {
-        id: ghost
-
-        readonly property point here: root.mapFromItem(null, drag.at)
-
-        border.color: Theme.accent
-        border.width: 1
-        color: Theme.surface
-        height: Theme.rowHeight
-        opacity: 0.92
-        radius: 6
-        visible: drag.dragging && drag.windowRect.width <= 0
-        width: ghostName.implicitWidth + (Theme.gap * 4)
-        x: Math.max(0, Math.min(root.width - width, ghost.here.x + Theme.gap))
-        y: Math.max(0, Math.min(root.height - height, ghost.here.y + Theme.gap))
-        z: 70
-
-        Label {
-            id: ghostName
-
-            anchors.centerIn: parent
-            color: palette.windowText
-            text: drag.dragging ? Panels.titleOf(drag.panelId, Languages.spoken) : ""
         }
     }
 }

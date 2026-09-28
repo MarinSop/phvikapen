@@ -22,6 +22,13 @@ TestCase {
         return view.mapFromItem(item, 0, 0);
     }
 
+    // The line that says where a panel would land is reckoned on the screens, so that a drag can
+    // cross from one window to another. Measuring it against the view means bringing it back.
+    function hintInView() {
+        const at = view.mapFromGlobal(view.dropHint.x, view.dropHint.y);
+        return Qt.rect(at.x, at.y, view.dropHint.width, view.dropHint.height);
+    }
+
     function aimAt(frame, toX, toY) {
         tryVerify(() => frame.width > 0 && frame.height > 0);
         const at = view.mapFromItem(frame, frame.width / 2, Math.round(10 * Theme.scale));
@@ -192,8 +199,9 @@ TestCase {
 
         compare(view.dropKind, "tab");
         const left = testCase.cornerOf(tab).x;
-        verify(view.dropHint.width > 0, "no line was drawn for the tab it would become");
-        verify(view.dropHint.x + view.dropHint.width <= left + 1, "the line runs over the tab beside it");
+        const line = testCase.hintInView();
+        verify(line.width > 0, "no line was drawn for the tab it would become");
+        verify(line.x + line.width <= left + 1, "the line runs over the tab beside it");
         mouseRelease(view, onto.x, onto.y);
     }
 
@@ -209,7 +217,7 @@ TestCase {
 
         compare(view.dropKind, "edge");
         const foot = testCase.cornerOf(pages).y + pages.height;
-        verify(Math.abs(view.dropHint.y - (foot - 3)) <= 2, "the line was not drawn on the edge the panel would land against");
+        verify(Math.abs(testCase.hintInView().y - (foot - 3)) <= 2, "the line was not drawn on the edge the panel would land against");
         mouseRelease(view, onto.x, onto.y);
     }
 
@@ -385,6 +393,37 @@ TestCase {
         // Put down, it is an ordinary tab again wherever it landed.
         const settled = findChild(testCase.settled(was[0]), "panelTab_" + was[0]);
         tryVerify(() => settled !== null && settled.contentItem.opacity === 1, 2000, "the tab never came back");
+    }
+
+    function test_q_aPanelIsCarriedOutOfItsOwnWindowOntoTheOther() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const sections = testCase.settled("sections");
+        const sheet = view.sheetRect();
+        testCase.carry(sections, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+        tryVerify(() => workspace.isAfloat("sections"), 2000, "the panel did not come loose");
+        workspace.setPanelLoose("~0", true);
+        const holder = findChild(view, "loosePanelHolder_~0");
+        verify(holder !== null, "no window of its own was made");
+        tryVerify(() => holder.own !== null && holder.own.visible, 2000, "the window of its own never showed");
+        // A window cannot be reached by name from outside, so the frame is looked for inside it.
+        const free = findChild(holder.own.contentItem, "panelFrame_~0");
+        verify(free !== null, "the free window has no frame of its own");
+        tryVerify(() => free.width > 0 && free.height > 0);
+
+        // Picked up inside its own window, and carried out of it onto the right edge of the other.
+        mousePress(free, free.width / 2, Math.round(10 * Theme.scale));
+        mouseMove(free, (free.width / 2) + 20, Math.round(10 * Theme.scale) + 20);
+        tryVerify(() => view.dragging, 2000, "the panel was never picked up");
+        wait(Theme.calm + 50);
+        const wanted = view.mapToGlobal(view.width - 6, view.height / 2);
+        const onto = free.mapFromGlobal(wanted.x, wanted.y);
+        mouseMove(free, onto.x, onto.y);
+
+        tryVerify(() => view.dropKind === "edge", 2000, "the other window never offered it a place");
+        mouseRelease(free, onto.x, onto.y);
+
+        tryVerify(() => !workspace.isAfloat("sections"), 2000, "it did not land in the other window");
+        tryVerify(() => testCase.pathOf("sections") !== null, 2000, "it is not part of the docked tree");
     }
 
     height: 640

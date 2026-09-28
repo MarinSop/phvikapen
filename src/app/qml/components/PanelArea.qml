@@ -57,11 +57,11 @@ Item {
                 if (!root.drag.dragging) {
                     return;
                 }
-                const local = slot.mapFromItem(null, root.drag.at);
+                const local = slot.mapFromGlobal(root.drag.at.x, root.drag.at.y);
                 if (local.x < 0 || local.y < 0 || local.x > slot.width || local.y > slot.height) {
                     return;
                 }
-                const corner = slot.mapToItem(null, 0, 0);
+                const corner = slot.mapToGlobal(0, 0);
                 const left = local.x;
                 const right = slot.width - local.x;
                 const top = local.y;
