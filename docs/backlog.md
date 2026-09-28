@@ -134,10 +134,6 @@ into a real problem earlier.
   carried a long way looks as though it is in two places.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
-- **The first section of a new notebook is named in English.** Pages and layers are named in the
-  language the reader asked for, but the section a notebook is created with is named by the part
-  that writes the file, which has no words of its own. Handing that name in from the window would
-  put it right.
 - **There is no tool for text.** The palette holds only what the application can do: pick, drag the
   page, draw, highlight, draw a shape and erase.
 - **The menus are only checked by their commands.** Tests trigger the commands behind the menus, not

@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace phvikapen::core {
@@ -56,10 +57,30 @@ TEST(NotebookOutlineTest, ANewNotebookHasOneSectionWithOneBlankPage) {
     ASSERT_TRUE(outline.has_value()) << outline.error().message;
     EXPECT_EQ(outline->title, notebook.path().stem().string());
     ASSERT_EQ(outline->sections.size(), 1U);
-    EXPECT_EQ(outline->sections.front().title, "Section 1");
+    // The section a notebook is created with carries no name, as its first page carries none:
+    // whatever shows it names it in the reader's own language.
+    EXPECT_TRUE(outline->sections.front().title.empty());
     ASSERT_EQ(outline->sections.front().pages.size(), 1U);
     EXPECT_EQ(outline->sections.front().pages.front().style, PageStyle{});
     EXPECT_EQ(outline->sections.front().pages.front().id.version(), 7);
+}
+
+TEST(NotebookOutlineTest, ASectionWithNoNameIsWrittenDownAsHavingNoName) {
+    const TemporaryNotebook notebook;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const Result<NotebookOutline> outline = store->readOutline();
+    ASSERT_TRUE(outline.has_value()) << outline.error().message;
+    ASSERT_EQ(outline->sections.size(), 1U);
+    const Uuid sectionId = outline->sections.front().id;
+
+    ASSERT_TRUE(store->renameSection(sectionId, "Named").has_value());
+    ASSERT_TRUE(store->renameSection(sectionId, std::string_view{}).has_value());
+
+    const Result<NotebookOutline> again = store->readOutline();
+    ASSERT_TRUE(again.has_value()) << again.error().message;
+    ASSERT_EQ(again->sections.size(), 1U);
+    EXPECT_TRUE(again->sections.front().title.empty());
 }
 
 TEST(NotebookOutlineTest, OpeningAgainAddsNothing) {

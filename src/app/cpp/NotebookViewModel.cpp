@@ -1720,13 +1720,15 @@ void NotebookViewModel::forgetThumbnail(const core::Uuid& pageId) {
 }
 
 void NotebookViewModel::publishOutline() {
+    const std::span<const core::SectionInfo> named = m_outline.sections();
     std::vector<OutlineItem> sections;
-    sections.reserve(m_outline.sections().size());
-    for (const core::SectionInfo& section : m_outline.sections()) {
+    sections.reserve(named.size());
+    for (std::size_t at = 0; at < named.size(); ++at) {
         sections.push_back(OutlineItem{
-            .title = QString::fromStdString(section.title),
+            .title = named[at].title.empty() ? tr("Section %1").arg(at + 1)
+                                             : QString::fromStdString(named[at].title),
             .thumbnail = {},
-            .count = static_cast<int>(section.pages.size()),
+            .count = static_cast<int>(named[at].pages.size()),
         });
     }
 
@@ -2596,7 +2598,9 @@ void NotebookViewModel::publishFound(std::vector<core::FoundWord> hits) {
         if (const std::optional<core::PagePlace> place = m_outline.placeOf(hit.pageId)) {
             const std::optional<std::size_t> index = m_outline.sectionIndex(place->sectionId);
             if (index) {
-                section = QString::fromStdString(m_outline.sections()[*index].title);
+                const core::SectionInfo& named = m_outline.sections()[*index];
+                section = named.title.empty() ? tr("Section %1").arg(*index + 1)
+                                              : QString::fromStdString(named.title);
             }
         }
         results.append(QVariantMap{

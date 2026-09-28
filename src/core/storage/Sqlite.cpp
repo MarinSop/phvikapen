@@ -101,8 +101,11 @@ Result<void> Statement::bindReal(int index, double value) {
 }
 
 Result<void> Statement::bindText(int index, std::string_view text) {
-    return checkBind(sqlite3_bind_text(m_statement, index, text.data(),
-                                       static_cast<int>(text.size()), SQLITE_TRANSIENT));
+    // A view over nothing carries no pointer at all, and handing that to SQLite is not the same as
+    // handing it no letters. Empty text is written down as empty text.
+    const char* const letters = text.empty() ? "" : text.data();
+    return checkBind(sqlite3_bind_text(m_statement, index, letters, static_cast<int>(text.size()),
+                                       SQLITE_TRANSIENT));
 }
 
 Result<void> Statement::bindNull(int index) {

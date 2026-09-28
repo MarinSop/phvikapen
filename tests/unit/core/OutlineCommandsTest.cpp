@@ -289,7 +289,7 @@ TEST(OutlineCommandsTest, SectionsCanBeRenamedAndReordered) {
     ASSERT_TRUE(move.revert());
     ASSERT_TRUE(rename.revert());
     EXPECT_EQ(notebook.outline.sections().front().id, first);
-    EXPECT_EQ(notebook.outline.sections().front().title, "Section 1");
+    EXPECT_TRUE(notebook.outline.sections().front().title.empty());
     EXPECT_EQ(notebook.inFile(), notebook.outline.contents());
     EXPECT_TRUE(notebook.errors.empty());
 }

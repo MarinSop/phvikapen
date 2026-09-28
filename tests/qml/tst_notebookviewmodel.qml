@@ -1678,6 +1678,21 @@ TestCase {
         tryCompare(notebook.layers, "count", 2, 2000, "a layer could not be added to a new section");
     }
 
+    function test_theSectionANotebookIsCreatedWithIsNamedInTheReadersLanguage() {
+        const notebook = openNotebook(newNotebookPath());
+
+        compare(notebook.sectionCount, 1);
+        const named = notebook.sections.data(notebook.sections.index(0, 0), Qt.UserRole + 1);
+        // The part that writes the file has no words of its own, so it leaves the name empty and
+        // whatever shows it names it. An empty name reaching the window would be the bug.
+        verify(named !== "", "the section a notebook is created with has no name");
+        compare(named, qsTr("Section 1"), "the section was not named by the window");
+
+        notebook.renameSection(0, "Dnevnik");
+
+        compare(notebook.sections.data(notebook.sections.index(0, 0), Qt.UserRole + 1), "Dnevnik");
+    }
+
     function test_sectionsHoldTheirOwnPages() {
         const notebook = openNotebook(newNotebookPath());
         notebook.addPage();

@@ -331,8 +331,6 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 6> kPaperCol
     std::pair<std::string_view, std::string_view>{"margin", "INTEGER NOT NULL DEFAULT 1"},
 };
 
-constexpr std::string_view kDefaultSectionTitle = "Section 1";
-
 [[nodiscard]] Paper toPaper(std::int64_t value) noexcept {
     return value >= 0 && value <= static_cast<std::int64_t>(Paper::Custom)
                ? static_cast<Paper>(value)
@@ -2200,9 +2198,9 @@ Result<void> NotebookStore::ensureOutline(std::string_view defaultTitle) {
         Uuid7Generator ids;
         const Uuid sectionId = ids.next();
         const std::array sectionOrder{sectionId};
-        if (const Result<void> inserted =
-                insertSection(sectionId, kDefaultSectionTitle, sectionOrder);
-            !inserted) {
+        // The section a notebook is created with has no name of its own, as its first page has
+        // none: whatever shows it names it in the reader's own language.
+        if (const Result<void> inserted = insertSection(sectionId, "", sectionOrder); !inserted) {
             return inserted;
         }
     }
