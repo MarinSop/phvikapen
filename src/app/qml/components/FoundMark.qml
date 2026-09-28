@@ -11,7 +11,6 @@ Item {
 
     required property InkCanvas canvas
     required property NotebookViewModel notebook
-
     readonly property var pointed: root.notebook === null ? ({}) : root.notebook.pointedWord
     readonly property bool pointing: root.pointed.columnLeft !== undefined
     readonly property point origin: root.canvas === null ? Qt.point(0, 0) : root.canvas.viewOrigin

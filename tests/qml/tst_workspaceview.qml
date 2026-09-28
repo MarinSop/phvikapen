@@ -364,6 +364,29 @@ TestCase {
         tryVerify(() => settledSecond !== null && Math.abs(testCase.cornerOf(settledSecond).x - restingAt) <= 4 || testCase.cornerOf(settledSecond).x < restingAt, 2000, "the gap never closed");
     }
 
+    function test_p_aCarriedTabLeavesTheStripRatherThanFading() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const pages = testCase.settled("pages");
+        const sections = testCase.settled("sections");
+        const onto = view.mapFromItem(pages, pages.width / 2, Math.round(10 * Theme.scale));
+        testCase.carry(sections, onto.x, onto.y);
+        tryVerify(() => testCase.pathOf("sections") === testCase.pathOf("pages"), 2000);
+        const together = testCase.settled("pages");
+        const was = testCase.stackOf("pages").panels.slice();
+
+        const tab = testCase.carryTab(together, was[0], Math.round(view.width - 30), Math.round(view.height / 2));
+
+        tryVerify(() => tab.carried, 2000, "the tab was never picked up");
+        tryVerify(() => tab.contentItem.opacity === 0, 2000, "the carried tab still shows its name in the strip");
+        tryVerify(() => tab.background.color.a < 0.01, 2000, "the carried tab is still drawn in the strip");
+
+        mouseRelease(view, Math.round(view.width - 30), Math.round(view.height / 2));
+
+        // Put down, it is an ordinary tab again wherever it landed.
+        const settled = findChild(testCase.settled(was[0]), "panelTab_" + was[0]);
+        tryVerify(() => settled !== null && settled.contentItem.opacity === 1, 2000, "the tab never came back");
+    }
+
     height: 640
     name: "WorkspaceView"
     visible: true

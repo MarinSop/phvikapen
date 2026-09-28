@@ -27,9 +27,11 @@ TabButton {
     objectName: "panelTab_" + root.panelId
     rightPadding: Theme.gap
 
+    // A carried tab leaves the strip: what stays behind is the space it came out of, not a second
+    // tab. The name following the pointer is the only one there is, so a tab carried a long way is
+    // never in two places.
     background: Rectangle {
-        color: root.carried ? Theme.hover : root.current ? Theme.surface : root.hovered ? Theme.hover : "transparent"
-        opacity: root.carried ? 0.6 : 1
+        color: root.carried ? "transparent" : root.current ? Theme.surface : root.hovered ? Theme.hover : "transparent"
         radius: 6
 
         Behavior on color {
@@ -45,7 +47,7 @@ TabButton {
             color: Theme.accent
             height: 2
             radius: 1
-            visible: root.current
+            visible: root.current && !root.carried
             width: parent.width - (Theme.gap * 2)
         }
     }
@@ -56,6 +58,7 @@ TabButton {
         elide: Text.ElideRight
         font.bold: root.current
         horizontalAlignment: Text.AlignHCenter
+        opacity: root.carried ? 0 : 1
         text: root.title
         verticalAlignment: Text.AlignVCenter
     }

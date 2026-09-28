@@ -129,9 +129,10 @@ into a real problem earlier.
   window of its own, which goes anywhere the screens reach and is remembered where it was left, but
   a panel dragged out of a free window has nowhere to land: the drag knows only the one window it
   began in. Docking a free panel is done through its header, not by carrying it back.
-- **A carried tab is faded, not lifted.** A name follows the pointer and the tabs open a gap for it,
-  but the tab itself stays in the strip with its colour dimmed rather than leaving it, so a tab
-  carried a long way looks as though it is in two places.
+- **A carried tab leaves a gap of its own width behind.** The tab is not drawn in the strip while it
+  is carried, so it is never in two places, but the space it came out of stays open at its old width
+  rather than closing up behind it, and the strip does not draw an outline of where it will land
+  beyond the gap the other tabs open.
 - **Layers are chosen one at a time.** Several cannot be marked out together to be moved, hidden or
   locked in one go.
 - **There is no tool for text.** The palette holds only what the application can do: pick, drag the
