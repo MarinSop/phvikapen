@@ -3012,7 +3012,9 @@ void NotebookViewModel::restoreTrashed(int index) {
         for (const core::SectionInfo& section : m_outline.sections()) {
             order.push_back(section.id);
         }
-        order.push_back(item.id);
+        order.insert(order.begin()
+                         + static_cast<std::ptrdiff_t>(std::min(item.wasAt, order.size())),
+                     item.id);
         m_storage->submit([id = item.id, order](core::NotebookStore& store) {
             return store.restoreSection(id, order);
         });
@@ -3026,7 +3028,11 @@ void NotebookViewModel::restoreTrashed(int index) {
         for (const core::PageInfo& page : m_outline.sections()[*section].pages) {
             order.push_back(page.id);
         }
-        order.push_back(item.id);
+        // It goes back where it stood, not on the end: a page thrown away by mistake is wanted
+        // back in its place, and where it stood is still written down beside it.
+        order.insert(order.begin()
+                         + static_cast<std::ptrdiff_t>(std::min(item.wasAt, order.size())),
+                     item.id);
         m_storage->submit(
             [sectionId = item.sectionId, id = item.id, order](core::NotebookStore& store) {
                 return store.restorePage(sectionId, id, order);

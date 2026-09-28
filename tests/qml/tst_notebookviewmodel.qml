@@ -30,6 +30,14 @@ TestCase {
         mouseRelease(canvas, fromX + 40, fromY + 20);
     }
 
+    function pageNames(notebook) {
+        const names = [];
+        for (let step = 0; step < notebook.pages.count; ++step) {
+            names.push(notebook.pages.data(notebook.pages.index(step, 0), Qt.UserRole + 1));
+        }
+        return names;
+    }
+
     function layerNames(notebook) {
         const names = [];
         for (let step = 0; step < notebook.layers.count; ++step) {
@@ -786,6 +794,29 @@ TestCase {
 
         tryCompare(notebook, "pageCount", 2);
         tryCompare(notebook.trash, "count", 0);
+        compare(notebook.errorMessage, "");
+    }
+
+    function test_aPageThatIsPutBackGoesBackWhereItStood() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPage();
+        notebook.addPage();
+        tryCompare(notebook, "pageCount", 3);
+        notebook.renamePage(0, "One");
+        notebook.renamePage(1, "Two");
+        notebook.renamePage(2, "Three");
+        tryVerify(() => pageNames(notebook).join(",") === "One,Two,Three", 4000);
+
+        notebook.deletePage(1);
+        tryCompare(notebook, "pageCount", 2);
+        notebook.refreshTrash();
+        tryCompare(notebook.trash, "count", 1);
+
+        notebook.restoreTrashed(0);
+
+        tryCompare(notebook, "pageCount", 3);
+        // It goes back between the two it stood between, not on the end.
+        tryVerify(() => pageNames(notebook).join(",") === "One,Two,Three", 4000, "the page did not go back where it stood");
         compare(notebook.errorMessage, "");
     }
 

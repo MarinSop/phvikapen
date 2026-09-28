@@ -7,9 +7,9 @@ into a real problem earlier.
 
 ## Correctness and data safety
 
-- **The trash is not undoable and keeps no order.** A page that is put back goes to the end of its
-  section, not where it was, and emptying the trash cannot be undone, which is the point but is
-  only guarded by asking twice.
+- **Emptying the trash cannot be undone.** A page or a section put back goes back where it stood,
+  because where it stood is written down beside it, but emptying the trash is final, which is the
+  point and is only guarded by asking twice.
 - **The crash test only kills the writing thread's process.** A second process is killed while it
   writes and the notebook still opens with everything before the kill, but power loss, a full disk
   and a killed graphics driver are untested.

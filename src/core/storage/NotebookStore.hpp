@@ -34,6 +34,8 @@ struct TrashedItem {
     std::string title;
     bool wholeSection{};
     bool sectionTrashed{};
+    // Where it stood before it was thrown away, so that putting it back puts it back there.
+    std::size_t wasAt{};
 
     friend bool operator==(const TrashedItem&, const TrashedItem&) = default;
 };

@@ -2977,12 +2977,30 @@ Result<void> NotebookStore::setPageMedia(const Uuid& pageId,
         .and_then([&] { return expectChange(m_database, "no such page"); });
 }
 
+namespace {
+
+enum class TrashColumn : std::uint8_t {
+    Id,
+    SectionId,
+    Title,
+    WholeSection,
+    SectionTrashed,
+    WasAt,
+};
+
+[[nodiscard]] constexpr int column(TrashColumn which) noexcept {
+    return static_cast<int>(which);
+}
+
+}
+
 Result<std::vector<TrashedItem>> NotebookStore::trashedItems() const {
     Result<sqlite::Statement> statement = sqlite::Statement::prepare(
         m_database,
-        "SELECT id, id, title, 1, 0 FROM sections WHERE trashed = 1 "
+        "SELECT id, id, title, 1, 0, ordinal FROM sections WHERE trashed = 1 "
         "UNION ALL "
-        "SELECT pages.id, pages.section_id, pages.title, 0, sections.trashed FROM pages "
+        "SELECT pages.id, pages.section_id, pages.title, 0, sections.trashed, pages.ordinal "
+        "FROM pages "
         "JOIN sections ON sections.id = pages.section_id WHERE pages.trashed = 1 "
         "ORDER BY 4 DESC, 3;");
     if (!statement) {
@@ -2999,11 +3017,13 @@ Result<std::vector<TrashedItem>> NotebookStore::trashedItems() const {
             break;
         }
         items.push_back(TrashedItem{
-            .id = statement->id(0),
-            .sectionId = statement->id(1),
-            .title = statement->text(2),
-            .wholeSection = statement->integer(3) != 0,
-            .sectionTrashed = statement->integer(4) != 0,
+            .id = statement->id(column(TrashColumn::Id)),
+            .sectionId = statement->id(column(TrashColumn::SectionId)),
+            .title = statement->text(column(TrashColumn::Title)),
+            .wholeSection = statement->integer(column(TrashColumn::WholeSection)) != 0,
+            .sectionTrashed = statement->integer(column(TrashColumn::SectionTrashed)) != 0,
+            .wasAt = static_cast<std::size_t>(
+                std::max<std::int64_t>(0, statement->integer(column(TrashColumn::WasAt)))),
         });
     }
     return items;
