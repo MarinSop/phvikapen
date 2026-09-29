@@ -558,8 +558,17 @@ TEST(PagePainterTest, ABoxGivenAColourIsFilledWithItAndTheRestAreLeftClear) {
 TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnBelowTheOnesAtItsHead) {
     const core::Rect area{.right = 200.0F, .bottom = 200.0F};
     constexpr core::CellAt kWhich{.row = 0, .column = 1};
-    const auto drawnRisen = [&area, kWhich](core::CellRise rise) {
-        std::array tables{ruled(core::Color{.red = 255}, "IIII")};
+    // A rising only moves what is written when the box is taller than the line of words, and how
+    // tall that line is depends on the machine's own font, so the rows are made far taller than any
+    // font would need.
+    constexpr float kTallRow = 80.0F;
+    const auto tall = [] {
+        core::PlacedTable placed = ruled(core::Color{.red = 255}, "IIII");
+        placed.table.rows = {kTallRow, kTallRow};
+        return placed;
+    };
+    const auto drawnRisen = [&area, kWhich, tall](core::CellRise rise) {
+        std::array tables{tall()};
         tables.front().table =
             core::withRangeRisen(tables.front().table, kWhich, kWhich, rise).value();
         const PageContents page{
@@ -577,8 +586,7 @@ TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnBelowTheOnesAtItsHea
     const QImage atHead = drawnRisen(core::CellRise::Top);
     const QImage atFoot = drawnRisen(core::CellRise::Bottom);
 
-    const core::Rect box =
-        core::areaOfCell(ruled(core::Color{.red = 255}, "IIII").table, kWhich).inflated(-4.0F);
+    const core::Rect box = core::areaOfCell(tall().table, kWhich).inflated(-4.0F);
     const std::optional<int> head = firstRowWith(atHead, QColor(0, 0, 0), box);
     const std::optional<int> foot = firstRowWith(atFoot, QColor(0, 0, 0), box);
     ASSERT_TRUE(head.has_value()) << "nothing was written at the head of the box";
