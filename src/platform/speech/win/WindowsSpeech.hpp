@@ -16,6 +16,7 @@
 
 class QBuffer;
 class QAudioDecoder;
+class QTimer;
 
 namespace phvikapen::platform::speech {
 
@@ -43,6 +44,7 @@ private:
 
     void takeSamples();
     void samplesDone();
+    void nothingCameOfIt();
     void listen();
     void stopDecoding();
 
@@ -51,6 +53,9 @@ private:
     QObject m_home;
     std::unique_ptr<QBuffer> m_held;
     std::unique_ptr<QAudioDecoder> m_decoder;
+    // A recording that is not sound at all can leave the decoder saying nothing, neither done nor
+    // in trouble, so a reading that stops making progress is given up rather than left waiting.
+    std::unique_ptr<QTimer> m_waiting;
     QByteArray m_sound;
     QByteArray m_samples;
     QAudioFormat m_format;

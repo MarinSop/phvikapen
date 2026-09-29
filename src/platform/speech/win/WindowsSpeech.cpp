@@ -19,6 +19,7 @@
 #include <QFile>
 #include <QMetaObject>
 #include <QString>
+#include <QTimer>
 #include <QUuid>
 #include <Qt>
 
@@ -48,9 +49,14 @@ constexpr quint16 kPlainSamples = 1;
 constexpr int kRiffBesides = 36;
 
 // How long to wait on the reader before looking again, and how much waiting in a row means the
-// reader has nothing more to say.
-constexpr DWORD kWaitFor = 500;
-constexpr int kQuietRounds = 240;
+// reader has nothing more to say. Short enough that giving up is answered at once rather than after
+// the reader has finished thinking.
+constexpr DWORD kWaitFor = 200;
+constexpr int kQuietRounds = 50;
+
+// How long the decoder may say nothing at all before the reading is given up. It is started again
+// with every piece of sound that arrives, so a long recording is never cut short.
+constexpr int kNoProgressFor = 4000;
 
 constexpr std::int64_t kPerMilli = 10000;
 constexpr std::int64_t kThousand = 1000;
@@ -165,6 +171,17 @@ constexpr std::size_t kMostDigits = 16;
         return nullptr;
     }
     return one;
+}
+
+// Whether the machine carries any reader for speech at all. A machine with no speech language pack
+// carries none, and listening to nothing would only wait.
+[[nodiscard]] bool anyReaderAtAll() {
+    const winrt::com_ptr<IEnumSpObjectTokens> found = readersOf({});
+    if (!found) {
+        return false;
+    }
+    ULONG how = 0;
+    return SUCCEEDED(found->GetCount(&how)) && how > 0;
 }
 
 // What the reader carries between it and the recording. All three are held together, because the
@@ -285,6 +302,11 @@ void letGoOf(const SPEVENT& happening) {
                                                                  const QAudioFormat& format,
                                                                  const std::string& language,
                                                                  const std::atomic_bool& wanted) {
+    if (!anyReaderAtAll()) {
+        return core::makeError(core::ErrorCode::Unsupported,
+                               "this machine carries no reader for speech; one comes with a "
+                               "speech language pack");
+    }
     const WAVEFORMATEX wave = waveOf(format);
     const Listening open = openListening(file, wave, language);
     const std::vector<core::Saying> words =
@@ -393,10 +415,30 @@ void WindowsSpeech::read(std::span<const std::byte> sound, const std::string& la
             }
         },
         Qt::QueuedConnection);
+    m_waiting = std::make_unique<QTimer>();
+    m_waiting->setSingleShot(true);
+    m_waiting->setInterval(kNoProgressFor);
+    // The timer is let go of as part of giving up, which cannot happen while it is still firing.
+    QObject::connect(
+        m_waiting.get(), &QTimer::timeout, &m_home, [this] { nothingCameOfIt(); },
+        Qt::QueuedConnection);
     m_decoder->start();
+    m_waiting->start();
+}
+
+void WindowsSpeech::nothingCameOfIt() {
+    const Answer answer = m_answer;
+    giveUp();
+    if (answer) {
+        (*answer)(core::makeError(core::ErrorCode::Unsupported,
+                                  "this recording could not be turned into samples"));
+    }
 }
 
 void WindowsSpeech::takeSamples() {
+    if (m_waiting) {
+        m_waiting->start();
+    }
     while (m_decoder && m_decoder->bufferAvailable()) {
         const QAudioBuffer got = m_decoder->read();
         if (!got.isValid()) {
@@ -459,6 +501,7 @@ void WindowsSpeech::listen() {
 }
 
 void WindowsSpeech::stopDecoding() {
+    m_waiting.reset();
     if (m_decoder) {
         m_decoder->stop();
         m_decoder.reset();
