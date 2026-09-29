@@ -5,6 +5,7 @@ target_link_libraries(phvikapen_qml_tests
         phvikapen_ui
         phvikapen_uiplugin
         Qt6::Quick
+        Qt6::QuickControls2
         Qt6::QuickTest
         Qt6::Gui
         phvikapen_warnings

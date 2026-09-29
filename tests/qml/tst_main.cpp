@@ -9,6 +9,7 @@
 #include <QPdfWriter>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QQuickStyle>
 #include <QRect>
 #include <QSettings>
 #include <QStandardPaths>
@@ -22,6 +23,9 @@ class Setup : public QObject {
 public slots:
 
     static void applicationAvailable() {
+        // The tests must meet the controls the application is built out of. Left to itself, a
+        // machine picks its own style, and on Windows that one refuses to be dressed at all.
+        QQuickStyle::setStyle(QStringLiteral("FluentWinUI3"));
         QStandardPaths::setTestModeEnabled(true);
         QSettings::setDefaultFormat(QSettings::IniFormat);
         QCoreApplication::setOrganizationName(QStringLiteral("PhvikaPenTests"));
