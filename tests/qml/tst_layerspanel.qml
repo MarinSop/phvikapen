@@ -76,13 +76,13 @@ TestCase {
 
         testCase.clickOn(0, "layerShown0");
         testCase.clickOn(0, "layerLocked0");
-        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === false);
-        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === true);
+        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === false, 5000, "the layer was not put out of sight");
+        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === true, 5000, "the layer was not locked");
 
         testCase.clickOn(0, "layerShown0");
         testCase.clickOn(0, "layerLocked0");
-        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === true);
-        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false);
+        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === true, 5000, "the layer was not shown again");
+        tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false, 5000, "the layer was not unlocked");
     }
 
     function test_f_sendingToALayerIsOffUntilSomethingIsPickedUp() {
