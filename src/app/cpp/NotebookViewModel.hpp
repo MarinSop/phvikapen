@@ -1009,6 +1009,9 @@ private:
     std::vector<core::ContentId> m_pictureQueue;
     std::map<core::ContentId, std::vector<core::PictureWord>> m_pictureFound;
     std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
+    // Asked of the reader once, because a reader is there on every machine and a language for it to
+    // read is not.
+    bool m_canReadPictures{};
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;
     QString m_shownRecording;
