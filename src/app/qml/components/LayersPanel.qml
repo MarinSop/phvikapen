@@ -149,7 +149,10 @@ Pane {
                     }
 
                     ColumnLayout {
+                        // What a line says about itself gives way, however long it grows, so that the
+                        // marks for hiding and locking are never pushed out of reach.
                         Layout.fillWidth: true
+                        Layout.minimumWidth: 0
                         spacing: 0
 
                         Label {
@@ -189,7 +192,9 @@ Pane {
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             color: palette.placeholderText
+                            elide: Text.ElideRight
                             font.pixelSize: Math.round(11 * Theme.scale)
                             text: line.locked ? qsTr("%n thing(s), locked", "", line.count) : qsTr("%n thing(s)", "", line.count)
                             visible: !line.renaming

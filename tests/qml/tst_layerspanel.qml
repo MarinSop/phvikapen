@@ -16,29 +16,41 @@ TestCase {
 
     // A mark asks for the other of what it shows, and a change reaches the list before it reaches
     // the line drawn from it, so a mark clicked too early asks for what has already happened. The
-    // mark says for itself when it has caught up.
+    // mark says for itself when it has caught up, and the click is aimed at where the mark stands on
+    // the panel rather than at the mark, which the list may be about to draw again.
     function clickWhenItShows(index, name, active) {
+        let at = null;
         tryVerify(() => {
             const row = testCase.rowAt(index);
             if (row === null) {
                 return false;
             }
             const mark = findChild(row, name);
-            return mark !== null && mark.width > 0 && mark.active === active;
-        }, 5000, "the mark never came to show what the line says");
-        const mark = findChild(testCase.rowAt(index), name);
+            if (mark === null || mark.width <= 0 || mark.active !== active) {
+                return false;
+            }
+            const spot = testCase.mapFromItem(mark, mark.width / 2, mark.height / 2);
+            if (spot.x < 0 || spot.y < 0 || spot.x >= testCase.width || spot.y >= testCase.height) {
+                return false;
+            }
+            at = spot;
+            return true;
+        }, 5000, "the mark never came to stand where it could be clicked showing what the line says");
         const tapped = createTemporaryObject(spyComponent, testCase, {
-            target: mark,
+            target: findChild(testCase.rowAt(index), name),
             signalName: "clicked"
         });
-        mouseClick(mark, mark.width / 2, mark.height / 2);
+        mouseClick(testCase, at.x, at.y);
         tryVerify(() => tapped.count === 1, 4000, "the click never reached " + name);
         // Left where it was, the pointer keeps the mark under it and a hint of what it does comes up
         // over the line, which would take the next click for itself.
         mouseMove(testCase, testCase.width - 1, testCase.height - 1);
     }
 
+    // The list is made to answer for any change still waiting in the model, so that the line handed
+    // back is the one that will be standing there when it is clicked, not one about to be drawn again.
     function rowAt(index) {
+        testCase.layerList().forceLayout();
         return testCase.layerList().itemAtIndex(index);
     }
 
@@ -115,6 +127,24 @@ TestCase {
         const model = notebooks.current.layers;
 
         compare(model.data(model.index(0, 0), Qt.UserRole + 5), 0);
+    }
+
+    // A line says its name and how much stands on it, and what it says grows with the language and
+    // with the machine's own letters. However crowded the line becomes, the marks for hiding and
+    // locking must stay where they can be reached.
+    function test_i_theMarksStayInReachOnACrowdedLine() {
+        const model = notebooks.current.layers;
+        const was = testCase.width;
+        testCase.width = 170;
+        try {
+            testCase.clickWhenItShows(0, "layerLocked0", false);
+            tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === true, 5000, "the layer was not locked from a crowded line");
+
+            testCase.clickWhenItShows(0, "layerLocked0", true);
+            tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false, 5000, "the layer was not unlocked from a crowded line");
+        } finally {
+            testCase.width = was;
+        }
     }
 
     height: 400
