@@ -98,7 +98,17 @@ using winrt::Windows::Storage::Streams::InMemoryRandomAccessStream;
             }
         }
     }
-    return OcrEngine::TryCreateFromUserProfileLanguages();
+    if (const OcrEngine reader = OcrEngine::TryCreateFromUserProfileLanguages()) {
+        return reader;
+    }
+    // A machine whose own languages carry no reader may still carry one for another language, and
+    // reading the words in one language is better than refusing to read at all.
+    for (const Language& one : OcrEngine::AvailableRecognizerLanguages()) {
+        if (const OcrEngine reader = OcrEngine::TryCreateFromLanguage(one)) {
+            return reader;
+        }
+    }
+    return nullptr;
 }
 
 [[nodiscard]] float shareOf(double along, double whole) {
