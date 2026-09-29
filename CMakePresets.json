@@ -177,7 +177,8 @@
         "rhs": "Windows"
       },
       "environment": {
-        "PATH": "$env{QT_ROOT_DIR}/bin;$penv{PATH}"
+        "PATH": "$env{QT_ROOT_DIR}/bin;$penv{PATH}",
+        "QT_FORCE_STDERR_LOGGING": "1"
       }
     },
     {
