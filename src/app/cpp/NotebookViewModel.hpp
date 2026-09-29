@@ -514,6 +514,8 @@ public:
     // Whether this machine can read the words in a picture at all.
     Q_INVOKABLE [[nodiscard]] bool canReadPictures() const;
 
+    Q_INVOKABLE [[nodiscard]] QStringList pictureLanguages() const;
+
     // Reads the words in a picture. What comes back arrives through `pictureRead`, because
     // reading takes long enough that nothing may wait for it. Asking again for a picture already
     // read hands back what was read before.
@@ -1011,7 +1013,7 @@ private:
     std::unique_ptr<platform::ocr::IReadPicture> m_pictureReader;
     // Asked of the reader once, because a reader is there on every machine and a language for it to
     // read is not.
-    bool m_canReadPictures{};
+    QStringList m_pictureLanguages;
     RecordingListModel m_recordingsModel;
     SayingListModel m_sayingsModel;
     QString m_shownRecording;

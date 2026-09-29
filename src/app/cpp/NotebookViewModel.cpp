@@ -209,7 +209,11 @@ constexpr qreal kFineEnough = 0.01;
 
 NotebookViewModel::NotebookViewModel(QObject* parent)
     : QObject(parent), m_pictureReader{platform::ocr::openReadPicture()} {
-    m_canReadPictures = m_pictureReader != nullptr && !m_pictureReader->languages().empty();
+    if (m_pictureReader != nullptr) {
+        for (const std::string& one : m_pictureReader->languages()) {
+            m_pictureLanguages.append(QString::fromStdString(one));
+        }
+    }
     m_mediaTimer.setSingleShot(true);
     m_mediaTimer.setInterval(kMediaRedrawDelay);
     connect(&m_mediaTimer, &QTimer::timeout, this, &NotebookViewModel::redrawMedia);
@@ -5727,7 +5731,11 @@ void NotebookViewModel::putHandful(const Handful& handful,
 }
 
 bool NotebookViewModel::canReadPictures() const {
-    return m_canReadPictures;
+    return !m_pictureLanguages.isEmpty();
+}
+
+QStringList NotebookViewModel::pictureLanguages() const {
+    return m_pictureLanguages;
 }
 
 const core::Picture* NotebookViewModel::pictureNamed(const QString& pictureId) const {
@@ -5855,7 +5863,7 @@ void NotebookViewModel::readWhatIsInPicture(const QString& pictureId, const core
         emit pictureUnread(pictureId, QString::fromStdString(asset.error().message));
         return;
     }
-    if (!m_canReadPictures) {
+    if (!canReadPictures()) {
         emit pictureUnread(pictureId, tr("This machine cannot read the words in a picture."));
         return;
     }
@@ -5871,7 +5879,7 @@ void NotebookViewModel::readWhatIsInPicture(const QString& pictureId, const core
 void NotebookViewModel::askTheReaderAboutPicture(const QString& pictureId,
                                                  const core::ContentId& source,
                                                  const QString& language) {
-    if (!m_canReadPictures) {
+    if (!canReadPictures()) {
         emit pictureUnread(pictureId, tr("This machine cannot read the words in a picture."));
         return;
     }
@@ -5947,7 +5955,7 @@ void NotebookViewModel::readPicture(const QString& pictureId, const QString& lan
 }
 
 void NotebookViewModel::readEveryPicture(const QString& language) {
-    if (!m_canReadPictures || !m_pictureQueue.empty() || !m_storage) {
+    if (!canReadPictures() || !m_pictureQueue.empty() || !m_storage) {
         return;
     }
     core::StorageThread* const storage = &*m_storage;
