@@ -80,12 +80,16 @@ using winrt::Windows::Storage::Streams::InMemoryRandomAccessStream;
     const std::uint32_t high = decoder.PixelHeight();
     const std::uint32_t longest = std::max(wide, high);
     const BitmapTransform transform;
-    transform.ScaledWidth(narrowedTo(wide, longest, most));
-    transform.ScaledHeight(narrowedTo(high, longest, most));
+    // A size is given only where the picture must be made smaller, so that a reader naming no size
+    // of its own can never be taken to mean the picture should come down to a single point.
+    if (most > 0 && longest > most) {
+        transform.ScaledWidth(narrowedTo(wide, longest, most));
+        transform.ScaledHeight(narrowedTo(high, longest, most));
+    }
     return decoder
         .GetSoftwareBitmapAsync(BitmapPixelFormat::Bgra8, BitmapAlphaMode::Premultiplied, transform,
                                 ExifOrientationMode::RespectExifOrientation,
-                                ColorManagementMode::ColorManageToSRgb)
+                                ColorManagementMode::DoNotColorManage)
         .get();
 }
 
