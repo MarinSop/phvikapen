@@ -16,12 +16,19 @@
 #include <QTemporaryDir>
 #include <QtQuickTest/quicktest.h>
 
+#include <cstdio>
+
 class Setup : public QObject {
     Q_OBJECT
 
 public slots:
 
     static void applicationAvailable() {
+        // Written to a pipe, what a test says is held back until there is enough of it, and a test
+        // run that ends badly takes the whole lot with it. Saying it as it happens costs nothing
+        // and is the difference between a report and a silence.
+        std::setvbuf(stdout, nullptr, _IONBF, 0);
+        std::setvbuf(stderr, nullptr, _IONBF, 0);
         QStandardPaths::setTestModeEnabled(true);
         QSettings::setDefaultFormat(QSettings::IniFormat);
         QCoreApplication::setOrganizationName(QStringLiteral("PhvikaPenTests"));
