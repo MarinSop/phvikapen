@@ -27,7 +27,15 @@ TestCase {
             return mark !== null && mark.width > 0 && mark.active === active;
         }, 5000, "the mark never came to show what the line says");
         const mark = findChild(testCase.rowAt(index), name);
+        const tapped = createTemporaryObject(spyComponent, testCase, {
+            target: mark,
+            signalName: "clicked"
+        });
         mouseClick(mark, mark.width / 2, mark.height / 2);
+        tryVerify(() => tapped.count === 1, 4000, "the click never reached " + name);
+        // Left where it was, the pointer keeps the mark under it and a hint of what it does comes up
+        // over the line, which would take the next click for itself.
+        mouseMove(testCase, testCase.width - 1, testCase.height - 1);
     }
 
     function rowAt(index) {
@@ -171,5 +179,12 @@ TestCase {
 
         actions: actions
         anchors.fill: parent
+    }
+
+    Component {
+        id: spyComponent
+
+        SignalSpy {
+        }
     }
 }

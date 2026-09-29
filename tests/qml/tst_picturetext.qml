@@ -85,7 +85,7 @@ TestCase {
         notebook.readPicture(pictureId, "");
 
         tryVerify(() => read.count > 0 || refused.count > 0, 10000, "reading the picture said nothing at all, neither words nor a reason");
-        verify(read.count > 0, refused.count > 0 ? "reading was refused: " + refused.signalArguments[0][1] : "nothing came back from reading the picture");
+        verify(read.count > 0, refused.count > 0 ? "reading was refused: " + refused.signalArguments[0][1] + " (the reader reads " + notebook.pictureLanguages().join(", ") + ")" : "nothing came back from reading the picture");
         const words = read.signalArguments[0][1];
         verify(words.length > 0, "no words came back");
         compare(notebook.wordsInPicture(pictureId), words, "what was read was not kept");
