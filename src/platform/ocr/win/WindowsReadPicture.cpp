@@ -1,3 +1,7 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "platform/ocr/win/WindowsReadPicture.hpp"
 
 #include "core/Error.hpp"
