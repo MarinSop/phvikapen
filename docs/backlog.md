@@ -223,12 +223,18 @@ written so that all of them can share it. They are listed in the order they are 
   and ink already picked up is let go of the moment its layer is locked. A picture or a table on a
   locked layer can still be taken hold of, because what answers a tap for those is decided by the
   page rather than by the canvas.
-- **What the Windows picture reader makes of a real picture has never been seen.** Windows reads a
-  picture with the reader it carries, against the same interface macOS uses, and the build is
-  proven on Windows on ARM by the pipeline. What it reads out of real handwriting or a real
-  photograph, in Croatian or any other language, has only been read on macOS so far. The reader
-  also reads only the languages whose packs the machine has, so a machine without a Croatian pack
-  reads Croatian words as whatever language it does have.
+- **The Windows picture reader has never been seen to read anything.** Windows reads a picture with
+  the reader it carries, against the same interface macOS uses, and the build is proven on Windows
+  on ARM by the pipeline. On the machine the pipeline runs on, that reader names `en-US` as the
+  language it reads and then makes nothing at all of a sheet carrying nothing but large black
+  lettering on white, which macOS reads without trouble. Whether the fault is in the machine's own
+  reading, which a build machine may carry only in part, or in the bitmap handed to it, cannot be
+  told apart without a Windows on ARM machine to run it on. The tests for what a reader makes of a
+  picture stand aside there and say so; everything the notebook itself does with an answer is
+  measured on both. What the reader makes of real handwriting or a real photograph, in Croatian or
+  any other language, has only been seen on macOS. The reader also reads only the languages whose
+  packs the machine has, so a machine without a Croatian pack reads Croatian words as whatever
+  language it does have.
 - **Reading every picture is asked for, not done on its own.** One command reads every picture in a
   notebook that nothing has been read out of yet, and it can be stopped, but nothing starts it by
   itself, and a picture nothing could be read out of is tried once more the next time the notebook
