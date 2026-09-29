@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.4)
 
 project(PhvikaPen
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "Pen-first note-taking application"
     LANGUAGES CXX
 )
