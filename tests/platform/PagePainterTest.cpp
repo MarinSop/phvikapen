@@ -19,6 +19,7 @@
 #include <QPainter>
 
 #include <array>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -37,7 +38,11 @@ namespace {
     return sheet;
 }
 
-[[nodiscard]] bool hasColorIn(const QImage& sheet, const QColor& wanted, const core::Rect& where) {
+// The first row of the picture inside `where` that carries the colour, or nothing where none does.
+// Comparing rows tells where words sit without pinning how tall the letters of a machine's own font
+// happen to be.
+[[nodiscard]] std::optional<int> firstRowWith(const QImage& sheet, const QColor& wanted,
+                                              const core::Rect& where) {
     const int fromX = std::max(0, static_cast<int>(where.left));
     const int fromY = std::max(0, static_cast<int>(where.top));
     const int toX = std::min(sheet.width(), static_cast<int>(where.right));
@@ -48,11 +53,15 @@ namespace {
             if (std::abs(found.red() - wanted.red()) < 16
                 && std::abs(found.green() - wanted.green()) < 16
                 && std::abs(found.blue() - wanted.blue()) < 16) {
-                return true;
+                return y;
             }
         }
     }
-    return false;
+    return std::nullopt;
+}
+
+[[nodiscard]] bool hasColorIn(const QImage& sheet, const QColor& wanted, const core::Rect& where) {
+    return firstRowWith(sheet, wanted, where).has_value();
 }
 
 [[nodiscard]] bool hasColorNear(const QImage& sheet, const QColor& wanted) {
@@ -544,40 +553,37 @@ TEST(PagePainterTest, ABoxGivenAColourIsFilledWithItAndTheRestAreLeftClear) {
     EXPECT_TRUE(hasColorIn(sheet, QColor(255, 0, 0), core::areaOf(table)));
 }
 
-TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnThere) {
-    std::array tables{ruled(core::Color{.red = 255}, "IIII")};
-    tables.front().table =
-        core::withRangeRisen(tables.front().table, core::CellAt{.row = 0, .column = 1},
-                             core::CellAt{.row = 0, .column = 1}, core::CellRise::Bottom)
-            .value();
+// Where the words of a box sit is settled by the box, not by how tall the letters of one machine's
+// font happen to be, so the two risings are drawn and compared against each other.
+TEST(PagePainterTest, WordsAskedToSitAtTheFootOfABoxAreDrawnBelowTheOnesAtItsHead) {
     const core::Rect area{.right = 200.0F, .bottom = 200.0F};
-    const PageContents page{
-        .style = core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
-        .strokes = kNoStrokes,
-        .texts = {},
-        .pictures = {},
-        .tables = tables,
-        .layers = {},
+    constexpr core::CellAt kWhich{.row = 0, .column = 1};
+    const auto drawnRisen = [&area, kWhich](core::CellRise rise) {
+        std::array tables{ruled(core::Color{.red = 255}, "IIII")};
+        tables.front().table =
+            core::withRangeRisen(tables.front().table, kWhich, kWhich, rise).value();
+        const PageContents page{
+            .style =
+                core::PageStyle{.paper = core::Paper::A5, .background = core::Background::Blank},
+            .strokes = kNoStrokes,
+            .texts = {},
+            .pictures = {},
+            .tables = tables,
+            .layers = {},
+        };
+        return paint(page, area);
     };
 
-    const QImage sheet = paint(page, area);
+    const QImage atHead = drawnRisen(core::CellRise::Top);
+    const QImage atFoot = drawnRisen(core::CellRise::Bottom);
 
     const core::Rect box =
-        core::areaOfCell(tables.front().table, core::CellAt{.row = 0, .column = 1});
-    const core::Rect upper{
-        .left = box.left + 4.0F,
-        .top = box.top + 4.0F,
-        .right = box.right - 4.0F,
-        .bottom = box.top + (box.height() / 2.0F),
-    };
-    const core::Rect lower{
-        .left = box.left + 4.0F,
-        .top = box.top + (box.height() / 2.0F),
-        .right = box.right - 4.0F,
-        .bottom = box.bottom - 4.0F,
-    };
-    EXPECT_TRUE(hasColorIn(sheet, QColor(0, 0, 0), lower));
-    EXPECT_FALSE(hasColorIn(sheet, QColor(0, 0, 0), upper));
+        core::areaOfCell(ruled(core::Color{.red = 255}, "IIII").table, kWhich).inflated(-4.0F);
+    const std::optional<int> head = firstRowWith(atHead, QColor(0, 0, 0), box);
+    const std::optional<int> foot = firstRowWith(atFoot, QColor(0, 0, 0), box);
+    ASSERT_TRUE(head.has_value()) << "nothing was written at the head of the box";
+    ASSERT_TRUE(foot.has_value()) << "nothing was written at the foot of the box";
+    EXPECT_GT(*foot, *head);
 }
 
 TEST(PagePainterTest, AJoinedBoxIsNeverRuledThroughTheMiddle) {
