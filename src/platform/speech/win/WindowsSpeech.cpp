@@ -83,10 +83,10 @@ constexpr std::size_t kMostDigits = 16;
     const auto rate =
         static_cast<DWORD>(format.sampleRate() > 0 ? format.sampleRate() : kSampleRate);
     WAVEFORMATEX wave{};
-    wave.wFormatTag = WAVE_FORMAT_PCM;
+    wave.wFormatTag = static_cast<WORD>(WAVE_FORMAT_PCM);
     wave.nChannels = channels;
     wave.nSamplesPerSec = rate;
-    wave.wBitsPerSample = kBitsPerSample;
+    wave.wBitsPerSample = static_cast<WORD>(kBitsPerSample);
     wave.nBlockAlign = static_cast<WORD>(channels * kBytesPerSample);
     wave.nAvgBytesPerSec = rate * wave.nBlockAlign;
     wave.cbSize = 0;
@@ -309,9 +309,10 @@ whatWasSaid(const std::wstring& file, const QAudioFormat& format, const std::str
         core::makeError(core::ErrorCode::Unknown, "this recording could not be read");
     try {
         got = heardThere(file, format, language, wanted);
-    } catch (const winrt::hresult_error&) {
+    } catch (const winrt::hresult_error& failure) {
         got = core::makeError(core::ErrorCode::Unsupported,
-                              "this machine carries no reader for speech in that language");
+                              "this machine could not read the recording: "
+                                  + winrt::to_string(failure.message()));
     } catch (const std::exception& failure) {
         got = core::makeError(core::ErrorCode::Unknown, failure.what());
     }
@@ -376,8 +377,10 @@ void WindowsSpeech::read(std::span<const std::byte> sound, const std::string& la
     QObject::connect(
         m_decoder.get(), &QAudioDecoder::finished, &m_home, [this] { samplesDone(); },
         Qt::QueuedConnection);
+    // The decoder names its trouble with a signal that shares its name with the reading of it, so
+    // the one that carries a reason is asked for by hand.
     QObject::connect(
-        m_decoder.get(), &QAudioDecoder::errorOccurred, &m_home,
+        m_decoder.get(), QOverload<QAudioDecoder::Error>::of(&QAudioDecoder::error), &m_home,
         [this] {
             const std::string why =
                 m_decoder ? m_decoder->errorString().toStdString() : std::string{};
@@ -402,8 +405,7 @@ void WindowsSpeech::takeSamples() {
         if (!m_format.isValid()) {
             m_format = got.format();
         }
-        m_samples.append(static_cast<const char*>(got.constData()),
-                         static_cast<qsizetype>(got.byteCount()));
+        m_samples.append(got.constData<char>(), got.byteCount());
     }
 }
 
