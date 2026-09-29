@@ -14,10 +14,19 @@ TestCase {
         return model.data(model.index(index, 0), Qt.UserRole + 2);
     }
 
-    function clickOn(index, name) {
-        tryVerify(() => testCase.rowAt(index) !== null && findChild(testCase.rowAt(index), name) !== null);
+    // A mark asks for the other of what it shows, and a change reaches the list before it reaches
+    // the line drawn from it, so a mark clicked too early asks for what has already happened. The
+    // mark says for itself when it has caught up.
+    function clickWhenItShows(index, name, active) {
+        tryVerify(() => {
+            const row = testCase.rowAt(index);
+            if (row === null) {
+                return false;
+            }
+            const mark = findChild(row, name);
+            return mark !== null && mark.width > 0 && mark.active === active;
+        }, 5000, "the mark never came to show what the line says");
         const mark = findChild(testCase.rowAt(index), name);
-        tryVerify(() => mark.width > 0 && mark.height > 0, 5000, "the mark never took a size");
         mouseClick(mark, mark.width / 2, mark.height / 2);
     }
 
@@ -73,16 +82,14 @@ TestCase {
     function test_e_lockingAndHidingShowOnTheLine() {
         const model = notebooks.current.layers;
 
-        // Each mark says what it will do next from what the line says now, so the line must have
-        // taken in one change before the next is asked for.
-        testCase.clickOn(0, "layerShown0");
+        testCase.clickWhenItShows(0, "layerShown0", false);
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === false, 5000, "the layer was not put out of sight");
-        testCase.clickOn(0, "layerLocked0");
+        testCase.clickWhenItShows(0, "layerLocked0", false);
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === true, 5000, "the layer was not locked");
 
-        testCase.clickOn(0, "layerShown0");
+        testCase.clickWhenItShows(0, "layerShown0", true);
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === true, 5000, "the layer was not shown again");
-        testCase.clickOn(0, "layerLocked0");
+        testCase.clickWhenItShows(0, "layerLocked0", true);
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false, 5000, "the layer was not unlocked");
     }
 
