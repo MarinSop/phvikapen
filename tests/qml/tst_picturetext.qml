@@ -24,11 +24,7 @@ TestCase {
 
     // A small picture with plain words drawn on it, written out as a file the machine can open.
     function pictureOfWords(path, words) {
-        saying.said = words;
-        wait(60);
-        const shot = grabImage(saying);
-        shot.save(path);
-        return shot.width > 0;
+        return paper.writeWords(path, words);
     }
 
     function test_a_aPictureThatIsNotOnThePageIsRefused() {
@@ -448,23 +444,6 @@ TestCase {
     visible: true
     when: windowShown
     width: 400
-
-    Rectangle {
-        id: saying
-
-        property string said: "Hello"
-
-        color: "white"
-        height: 120
-        width: 360
-
-        Text {
-            anchors.centerIn: parent
-            color: "black"
-            font.pixelSize: 48
-            text: saying.said
-        }
-    }
 
     Component {
         id: canvasComponent

@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QCoreApplication>
+#include <QFont>
 #include <QImage>
 #include <QObject>
 #include <QPageSize>
@@ -42,9 +43,47 @@ public slots:
         engine->rootContext()->setContextProperty(QStringLiteral("samplePdf"), writeSamplePdf());
         engine->rootContext()->setContextProperty(QStringLiteral("samplePicture"),
                                                   writeSamplePicture());
+        engine->rootContext()->setContextProperty(QStringLiteral("paper"), this);
+    }
+
+public:
+    // Words written onto a sheet with a brush rather than grabbed from what is on screen: a machine
+    // with no screen behind it hands back what it drew on some platforms and not on others, and a
+    // reader given a blank sheet cannot be told apart from a reader that reads nothing.
+    Q_INVOKABLE static bool writeWords(const QString& path, const QString& words) {
+        constexpr int kWide = 480;
+        constexpr int kHigh = 200;
+        constexpr int kLetters = 56;
+        QImage sheet{kWide, kHigh, QImage::Format_RGB32};
+        sheet.fill(Qt::white);
+        QPainter painter{&sheet};
+        QFont face = painter.font();
+        face.setPixelSize(kLetters);
+        painter.setFont(face);
+        painter.setPen(QColor{Qt::black});
+        painter.drawText(sheet.rect(), Qt::AlignCenter, words);
+        painter.end();
+        return anyLetteringIn(sheet) && sheet.save(path);
     }
 
 private:
+    [[nodiscard]] static bool anyLetteringIn(const QImage& sheet) {
+        constexpr int kDark = 100;
+        constexpr int kEnough = 40;
+        int dark = 0;
+        for (int y = 0; y < sheet.height(); ++y) {
+            for (int x = 0; x < sheet.width(); ++x) {
+                if (qGray(sheet.pixel(x, y)) < kDark) {
+                    ++dark;
+                    if (dark >= kEnough) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     [[nodiscard]] QString writeSamplePdf() const {
         const QString path = m_directory.filePath(QStringLiteral("sample.pdf"));
         QPdfWriter writer{path};
