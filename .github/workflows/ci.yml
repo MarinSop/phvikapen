@@ -45,7 +45,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
-          modules: qtshadertools
+          modules: qtmultimedia qtshadertools
           cache: true
 
       - name: Restore built dependencies
@@ -87,7 +87,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
-          modules: qtshadertools
+          modules: qtmultimedia qtshadertools
           cache: true
 
       - name: Restore built dependencies
@@ -160,7 +160,7 @@ jobs:
           host: windows_arm64
           target: desktop
           arch: win64_msvc2022_arm64
-          modules: qtshadertools
+          modules: qtmultimedia qtshadertools
           cache: true
 
       - name: Restore built dependencies
