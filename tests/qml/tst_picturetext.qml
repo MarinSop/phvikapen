@@ -55,7 +55,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/words.png";
         verify(pictureOfWords(path, "Hello"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const told = createTemporaryObject(spyComponent, testCase, {
             target: notebook,
@@ -74,7 +74,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/words.png";
         verify(pictureOfWords(path, "Budget"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         const read = createTemporaryObject(spyComponent, testCase, {
@@ -97,7 +97,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/words.png";
         verify(pictureOfWords(path, "Friday"));
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         const read = createTemporaryObject(spyComponent, testCase, {
@@ -128,7 +128,7 @@ TestCase {
             if (!first.canReadPictures()) {
                 skip("this machine cannot read the words in a picture");
             }
-            first.addPicture(Qt.resolvedUrl("file://" + picture));
+            first.addPicture(AppInfo.fileUrl(picture));
             tryVerify(() => first.pickedPicture !== "", 4000);
             const read = createTemporaryObject(spyComponent, testCase, {
                 target: first,
@@ -175,7 +175,7 @@ TestCase {
         }
         const picture = temporaryDirectory + "/searched-words.png";
         verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + picture));
+        notebook.addPicture(AppInfo.fileUrl(picture));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const read = createTemporaryObject(spyComponent, testCase, {
             target: notebook,
@@ -205,7 +205,7 @@ TestCase {
             if (!first.canReadPictures()) {
                 skip("this machine cannot read the words in a picture");
             }
-            first.addPicture(Qt.resolvedUrl("file://" + picture));
+            first.addPicture(AppInfo.fileUrl(picture));
             tryVerify(() => first.pickedPicture !== "", 4000);
             middle = first.pickedPictureBox;
             // Nothing is asked about the picture, so nothing has been read out of it.
@@ -247,7 +247,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/where-words.png";
         verify(pictureOfWords(path, "Reykjavik"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         compare(notebook.wordsFoundInPicture(pictureId).length, 0, "nothing has been read yet");
@@ -281,7 +281,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/typed-words.png";
         verify(pictureOfWords(path, "Reykjavik"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         const read = createTemporaryObject(spyComponent, testCase, {
@@ -308,7 +308,7 @@ TestCase {
         }
         const path = temporaryDirectory + "/two-runs.png";
         verify(pictureOfWords(path, "Reykjavik\nGothenburg"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         const read = createTemporaryObject(spyComponent, testCase, {
@@ -372,7 +372,7 @@ TestCase {
         }
         const picture = temporaryDirectory + "/pointed-words.png";
         verify(pictureOfWords(picture, "Reykjavik"), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + picture));
+        notebook.addPicture(AppInfo.fileUrl(picture));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const read = createTemporaryObject(spyComponent, testCase, {
             target: notebook,
@@ -424,7 +424,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/words.png";
         verify(pictureOfWords(path, "Kept"));
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000);
         const pictureId = notebook.pickedPicture;
         const before = notebook.areaOfWhatIsPicked();

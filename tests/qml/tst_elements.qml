@@ -307,7 +307,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/looped-picture.png";
         verify(pictureFile(path), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000, "the picture never went on the page");
         const which = notebook.pickedPicture;
         const canvas = notebook.canvas;
@@ -349,7 +349,7 @@ TestCase {
         const notebook = openNotebook(newNotebookPath());
         const path = temporaryDirectory + "/element-picture.png";
         verify(pictureFile(path), "the picture could not be written");
-        notebook.addPicture(Qt.resolvedUrl("file://" + path));
+        notebook.addPicture(AppInfo.fileUrl(path));
         tryVerify(() => notebook.pickedPicture !== "", 4000, "the picture never went on the page");
 
         verify(library.anythingToKeep(notebook), "a picture on its own is not worth keeping");
