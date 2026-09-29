@@ -16,10 +16,9 @@ TestCase {
 
     function clickOn(index, name) {
         tryVerify(() => testCase.rowAt(index) !== null && findChild(testCase.rowAt(index), name) !== null);
-        const row = testCase.rowAt(index);
-        const mark = findChild(row, name);
-        const at = row.mapFromItem(mark, mark.width / 2, mark.height / 2);
-        mouseClick(row, at.x, at.y);
+        const mark = findChild(testCase.rowAt(index), name);
+        tryVerify(() => mark.width > 0 && mark.height > 0, 5000, "the mark never took a size");
+        mouseClick(mark, mark.width / 2, mark.height / 2);
     }
 
     function rowAt(index) {
@@ -74,14 +73,16 @@ TestCase {
     function test_e_lockingAndHidingShowOnTheLine() {
         const model = notebooks.current.layers;
 
+        // Each mark says what it will do next from what the line says now, so the line must have
+        // taken in one change before the next is asked for.
         testCase.clickOn(0, "layerShown0");
-        testCase.clickOn(0, "layerLocked0");
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === false, 5000, "the layer was not put out of sight");
+        testCase.clickOn(0, "layerLocked0");
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === true, 5000, "the layer was not locked");
 
         testCase.clickOn(0, "layerShown0");
-        testCase.clickOn(0, "layerLocked0");
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 3) === true, 5000, "the layer was not shown again");
+        testCase.clickOn(0, "layerLocked0");
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false, 5000, "the layer was not unlocked");
     }
 
