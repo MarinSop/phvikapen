@@ -1075,6 +1075,8 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
     m_sweeps.push_back(sweep);
 
     bool changed = noteTouched(*page, sweep, whole);
+    // Type cannot be rubbed out letter by letter: a box the eraser passes over goes whole.
+    changed = noteErasedTexts(*page, sweep) || changed;
 
     if (whole) {
         if (changed) {
@@ -1104,12 +1106,33 @@ void NotebookViewModel::erase(const core::InkSample& from, const core::InkSample
     }
 }
 
+bool NotebookViewModel::noteErasedTexts(const core::Page& page, const core::EraserSweep& sweep) {
+    const core::Rect reach = sweep.bounds();
+    bool found = false;
+    for (const core::PlacedText& placed : page.texts()) {
+        // A box that has not been measured yet still stands a line of its own words tall.
+        core::Rect area = core::areaOf(placed.box);
+        if (area.height() <= 0.0F) {
+            area.bottom = area.top + placed.box.style.size;
+        }
+        if (!core::isOpenToTheHand(page.layers(), placed.layer)
+            || std::ranges::find(m_erasedTexts, placed.box.id) != m_erasedTexts.end()
+            || !area.intersects(reach)) {
+            continue;
+        }
+        m_erasedTexts.push_back(placed.box.id);
+        found = true;
+    }
+    return found;
+}
+
 void NotebookViewModel::finishErasing() {
     const auto kept = m_pages.find(m_erasedPage.isNil() ? m_currentPage : m_erasedPage);
     core::Page* const page = kept == m_pages.end() ? nullptr : kept->second.get();
     m_erasedPage = core::Uuid{};
-    if (m_erasing.empty() || page == nullptr || !m_storage) {
+    if ((m_erasing.empty() && m_erasedTexts.empty()) || page == nullptr || !m_storage) {
         m_erasing.clear();
+        m_erasedTexts.clear();
         m_erasePieces.clear();
         m_sweeps.clear();
         return;
@@ -1129,14 +1152,28 @@ void NotebookViewModel::finishErasing() {
     }
 
     std::vector<core::Uuid> erasedIds = std::exchange(m_erasing, {});
+    const std::vector<core::Uuid> erasedTexts = std::exchange(m_erasedTexts, {});
     m_erasePieces.clear();
     m_sweeps.clear();
-    runCommand(std::make_unique<core::SplitStrokesCommand>(page, &*m_storage, std::move(erasedIds),
-                                                           std::move(pieces)));
+    if (erasedTexts.empty()) {
+        runCommand(std::make_unique<core::SplitStrokesCommand>(
+            page, &*m_storage, std::move(erasedIds), std::move(pieces)));
+        return;
+    }
+
+    std::vector<std::unique_ptr<core::ICommand>> steps;
+    steps.push_back(std::make_unique<core::SplitStrokesCommand>(
+        page, &*m_storage, std::move(erasedIds), std::move(pieces)));
+    for (const core::Uuid& textId : erasedTexts) {
+        steps.push_back(std::make_unique<core::RemoveTextCommand>(page, &*m_storage, textId));
+    }
+    runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
+    publishTexts();
 }
 
 void NotebookViewModel::undo() {
     m_erasing.clear();
+    m_erasedTexts.clear();
     m_erasePieces.clear();
     m_sweeps.clear();
     m_preview.clear();
@@ -1149,6 +1186,7 @@ void NotebookViewModel::undo() {
 
 void NotebookViewModel::redo() {
     m_erasing.clear();
+    m_erasedTexts.clear();
     m_erasePieces.clear();
     m_sweeps.clear();
     m_preview.clear();

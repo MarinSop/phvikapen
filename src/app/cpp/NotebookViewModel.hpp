@@ -821,6 +821,8 @@ private:
     void selectInside(std::span<const core::Point> polygon);
 
     void pickUnder(const core::Point& at, float reach);
+
+    bool noteErasedTexts(const core::Page& page, const core::EraserSweep& sweep);
     void moveSelection(float dx, float dy);
     void pickColour(const core::InkSample& at, int sheet);
     void showPickedColour(const core::Color& colour);
@@ -985,6 +987,7 @@ private:
     std::optional<core::StorageThread> m_storage;
     core::UndoStack m_history;
     std::vector<core::Uuid> m_erasing;
+    std::vector<core::Uuid> m_erasedTexts;
     std::vector<core::EraserSweep> m_sweeps;
     std::map<core::Uuid, std::vector<core::Stroke>> m_erasePieces;
     std::optional<platform::pdf::PdfRenderer> m_pdf;

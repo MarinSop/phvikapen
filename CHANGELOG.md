@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The eraser takes a box of type as well as ink. Type cannot be rubbed out letter by letter, so a
+  box the eraser passes over goes whole, and one undo puts it back along with whatever ink went with
+  it in the same sweep.
+
 - A line is taken by touching it. With the loop tool in hand, a tap takes whatever lies under it and
   a loop goes on taking everything wholly inside it, so picking up what was just written no longer
   needs a loop drawn round it. What a touch takes behaves as anything picked up does: it can be

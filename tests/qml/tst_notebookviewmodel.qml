@@ -761,6 +761,32 @@ TestCase {
         canvas.erasing = false;
     }
 
+    // Type cannot be rubbed out letter by letter, so the eraser takes a box whole when it passes
+    // over it, and one undo puts the box back.
+    function test_theEraserTakesABoxOfTypeWithIt() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.writeDownAt("Rubbed out", 120, 120, {});
+        tryCompare(notebook.texts, "count", 1, 4000, "the box was never put on the page");
+        notebook.pickedText = "";
+        const canvas = notebook.canvas;
+        const onGlass = (x, y) => Qt.point((x - canvas.viewOrigin.x) * canvas.zoom, (y - canvas.viewOrigin.y) * canvas.zoom);
+        const middle = onGlass(126, 126);
+        canvas.eraserRadius = 20;
+        canvas.erasing = true;
+
+        mousePress(canvas, middle.x, middle.y);
+        mouseMove(canvas, middle.x + 6, middle.y, -1, Qt.LeftButton);
+        mouseRelease(canvas, middle.x + 6, middle.y);
+
+        tryCompare(notebook.texts, "count", 0, 4000, "the eraser went over the box and left it there");
+
+        notebook.undo();
+
+        tryCompare(notebook.texts, "count", 1, 4000, "taking it back did not put the box back");
+        compare(notebook.errorMessage, "");
+        canvas.erasing = false;
+    }
+
     function test_theEraserLeavesUntouchedStrokesAlone() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 40, 40);
