@@ -136,6 +136,27 @@ TestCase {
         verify(!actions.moveToActiveLayer.enabled, "nothing is in hand, so there is nothing to send");
     }
 
+    // What is picked up can be sent to any layer, or to one made for it, from the menu the paper
+    // offers. The lines are made from the list of layers, so a layer added appears among them.
+    function test_ga_whatIsPickedCanBeSentToAnyLayer() {
+        const menu = createTemporaryObject(layerMenuComponent, testCase, {
+            actions: actions
+        });
+        const model = notebooks.current.layers;
+
+        tryVerify(() => menu.count === model.count + 2, 4000, "the menu does not offer every layer");
+        verify(findChild(menu, "moveToNewLayerItem") !== null, "there is no way to send it to a layer of its own");
+
+        const named = [];
+        for (let line = 0; line < menu.count; ++line) {
+            const item = menu.itemAt(line);
+            if (item !== null && item.objectName === "moveToLayerItem") {
+                named.push(item.text);
+            }
+        }
+        compare(named, [testCase.nameOfRow(0), testCase.nameOfRow(1), testCase.nameOfRow(2)], "the layers are not offered as the list reads them");
+    }
+
     function test_h_theLineShowsWhatStandsOnIt() {
         tryVerify(() => testCase.rowAt(0) !== null && findChild(testCase.rowAt(0), "layerPreview0") !== null);
         const drawn = findChild(testCase.rowAt(0), "layerPreview0");
@@ -228,6 +249,13 @@ TestCase {
 
         actions: actions
         anchors.fill: parent
+    }
+
+    Component {
+        id: layerMenuComponent
+
+        MoveToLayerMenu {
+        }
     }
 
     Component {

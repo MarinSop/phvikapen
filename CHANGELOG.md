@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- What is picked up can be sent to another layer from the menu the paper offers, to any layer the
+  page carries or to one made for it. Sending it to the layer in hand was there already; this is the
+  same thing without having to take that layer in hand first.
+
 - The eraser takes a box of type as well as ink. Type cannot be rubbed out letter by letter, so a
   box the eraser passes over goes whole, and one undo puts it back along with whatever ink went with
   it in the same sweep.

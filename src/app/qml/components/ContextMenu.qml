@@ -15,6 +15,8 @@ Menu {
     readonly property bool onTable: !root.actions.hasSelection && !root.actions.hasTextBox && root.actions.hasTable
     readonly property bool onPage: !root.actions.hasSelection && !root.actions.hasTextBox && !root.actions.hasTable
 
+    signal layerWanted
+
     // Opened where the reader asked, and never off the edge of the window.
     function openAt(at) {
         const room = root.parent;
@@ -87,6 +89,14 @@ Menu {
     MenuCommand {
         action: root.actions.rotateRight
         visible: root.onSelection
+    }
+
+    MenuCommand {
+        objectName: "contextMoveToLayer"
+        text: qsTr("Move to Layer…")
+        visible: root.onSelection || root.onText || root.onTable
+
+        onTriggered: root.layerWanted()
     }
 
     MenuCommand {

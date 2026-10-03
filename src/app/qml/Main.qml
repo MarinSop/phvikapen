@@ -463,6 +463,15 @@ ApplicationWindow {
 
         actions: appActions
         parent: workspace
+
+        onLayerWanted: layerChoice.openAt(Qt.point(contextMenu.x, contextMenu.y))
+    }
+
+    MoveToLayerMenu {
+        id: layerChoice
+
+        actions: appActions
+        parent: workspace
     }
 
     MessageBar {

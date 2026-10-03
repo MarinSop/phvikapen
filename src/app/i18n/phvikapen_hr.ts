@@ -485,6 +485,13 @@
     </message>
 </context>
 <context>
+    <name>ContextMenu</name>
+    <message>
+        <source>Move to Layer…</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ElementsPanel</name>
     <message>
         <source>Dismiss</source>
@@ -1105,6 +1112,17 @@
     <message>
         <source>Draw on the page</source>
         <translation>Nacrtaj na stranicu</translation>
+    </message>
+</context>
+<context>
+    <name>MoveToLayerMenu</name>
+    <message>
+        <source>Move to Layer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New Layer</source>
+        <translation type="unfinished">Novi sloj</translation>
     </message>
 </context>
 <context>
