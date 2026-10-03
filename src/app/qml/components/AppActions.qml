@@ -185,7 +185,10 @@ Item {
         shortcut: root.pageKeys("copyAsText")
         text: qsTr("Copy as Text")
 
-        onTriggered: root.notebook.copySelectionAsText()
+        onTriggered: {
+            root.reading(qsTr("Reading the handwriting…"));
+            root.notebook.copySelectionAsText();
+        }
     }
     readonly property Action convertToText: Action {
         enabled: root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting
@@ -193,7 +196,10 @@ Item {
         shortcut: root.pageKeys("convertToText")
         text: qsTr("Convert to Text")
 
-        onTriggered: root.notebook.convertSelectionToText(root.tools.textStyle)
+        onTriggered: {
+            root.reading(qsTr("Reading the handwriting…"));
+            root.notebook.convertSelectionToText(root.tools.textStyle);
+        }
     }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
@@ -748,6 +754,7 @@ Item {
     signal hintsWanted
     signal importWanted
     signal newNotebookWanted
+    signal reading(string what)
     signal pageSetupWanted
     signal pictureWanted
     signal settingsWanted

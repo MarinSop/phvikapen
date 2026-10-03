@@ -700,6 +700,7 @@ signals:
     void found(const QVariantList& words);
     void pointedWordChanged();
     void copiedAsText(const QString& text);
+    void convertedToText(const QString& text);
     void pickedTextChanged();
     void pickedBoxChanged();
     void pickedPictureChanged();

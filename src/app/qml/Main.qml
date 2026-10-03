@@ -155,7 +155,7 @@ ApplicationWindow {
         continuousPages: settings.continuousPages
         reopenLast: settings.reopenNotebooks
 
-        onErrorMessage: message => messageBar.show(message)
+        onErrorMessage: message => messageBar.wentWrong(message)
     }
 
     UpdateViewModel {
@@ -226,6 +226,7 @@ ApplicationWindow {
 
         onAboutWanted: aboutDialog.open()
         onLinkWanted: linkDialog.makeOne()
+        onReading: what => messageBar.busy(what)
         onPictureTextWanted: pictureId => pictureTextDialog.readFrom(pictureId)
         onLinkChangeWanted: linkId => {
             if (root.notebook === null) {
@@ -323,7 +324,7 @@ ApplicationWindow {
 
                 onWordTapped: said => {
                     appActions.copyToClipboard(said);
-                    messageBar.show(qsTr("“%1” was copied.").arg(said));
+                    messageBar.wellDone(messageBar.about(qsTr("Copied to clipboard"), said));
                 }
                 onWordWanted: (said, at) => {
                     const onto = canvas.mapFromItem(null, at);
@@ -623,7 +624,7 @@ ApplicationWindow {
 
     Connections {
         function onFailed(message) {
-            messageBar.show(message);
+            messageBar.wentWrong(message);
         }
 
         target: updates
@@ -636,23 +637,48 @@ ApplicationWindow {
 
         function onErrorMessageChanged() {
             if (root.notebook !== null && root.notebook.errorMessage !== "") {
-                messageBar.show(root.notebook.errorMessage);
+                messageBar.settled();
+                messageBar.wentWrong(root.notebook.errorMessage);
             }
         }
 
+        function onConvertedToText(text) {
+            messageBar.settled();
+            messageBar.wellDone(messageBar.about(qsTr("Handwriting converted to text"), text));
+        }
+
+        function onCopiedAsText(text) {
+            messageBar.settled();
+            messageBar.wellDone(messageBar.about(qsTr("Copied to clipboard"), text));
+        }
+
+        function onPictureRead(pictureId, words) {
+            messageBar.settled();
+            messageBar.wellDone(messageBar.about(qsTr("Text read from the picture"), words));
+        }
+
+        function onPictureUnread(pictureId, why) {
+            messageBar.settled();
+            messageBar.wentWrong(why);
+        }
+
+        function onReadingPicture(pictureId) {
+            messageBar.busy(qsTr("Reading the words in the picture…"));
+        }
+
         function onExported(path) {
-            messageBar.show(qsTr("Saved as %1").arg(path));
+            messageBar.wellDone(qsTr("Saved as %1").arg(path));
         }
 
         function onSaved(path) {
-            messageBar.show(qsTr("Saved to %1").arg(path));
+            messageBar.wellDone(qsTr("Saved to %1").arg(path));
         }
 
         // A link out of the application is opened by the machine, never by the application itself,
         // and only after it has been found to be somewhere it is willing to send a reader.
         function onGoingOut(where) {
             if (!Qt.openUrlExternally(where)) {
-                messageBar.show(qsTr("This machine could not open %1").arg(where));
+                messageBar.wentWrong(qsTr("This machine could not open %1").arg(where));
             }
         }
 

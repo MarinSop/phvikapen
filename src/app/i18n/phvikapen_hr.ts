@@ -95,6 +95,10 @@
         <translation>Kopiraj kao tekst</translation>
     </message>
     <message>
+        <source>Reading the handwriting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Convert to Text</source>
         <translation>Pretvori u tekst</translation>
     </message>
@@ -956,8 +960,8 @@
         <translation>Provjeravati nove verzije?</translation>
     </message>
     <message>
-        <source>“%1” was copied.</source>
-        <translation>„%1“ je kopirano.</translation>
+        <source>Copied to clipboard</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Leave PhvikaPen</source>
@@ -1006,6 +1010,18 @@
     <message>
         <source>Import</source>
         <translation>Uvoz</translation>
+    </message>
+    <message>
+        <source>Handwriting converted to text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Text read from the picture</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reading the words in the picture…</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Saved as %1</source>
@@ -1554,10 +1570,6 @@
 </context>
 <context>
     <name>PagesPanel</name>
-    <message>
-        <source>Page options</source>
-        <translation>Opcije stranice</translation>
-    </message>
     <message>
         <source>Open a notebook to see its pages.</source>
         <translation>Otvori bilježnicu da bi se vidjele njezine stranice.</translation>

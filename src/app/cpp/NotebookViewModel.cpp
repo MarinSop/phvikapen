@@ -6449,6 +6449,7 @@ void NotebookViewModel::convertSelectionToText(QVariantMap style) {
         runCommand(std::make_unique<core::BundleCommand>(std::move(steps)));
         publishTexts();
         setPickedText(QString::fromStdString(box.id.toString()));
+        emit convertedToText(QString::fromStdString(block->text));
     });
 }
 

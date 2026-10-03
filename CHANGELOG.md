@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- One place where the application says how what you asked for went, at the foot of the window and
+  out of the way of the paper. A note says plainly whether something came off or did not, a note
+  about something still being worked on turns until it is settled, and several notes stand one above
+  the other and each goes again on its own. Copying handwriting, reading handwriting into type and
+  reading the words in a picture all say so now, and say what they made of it where that is short
+  enough to read at a glance.
+
 ### Changed
 
 - What can be done to a page is asked of the page itself, by a right click or by holding the pointer
