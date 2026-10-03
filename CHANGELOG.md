@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Searching a notebook happens as it is typed, a moment after the typing stops, and the button that
+  had to be pressed to set it going is gone. What was found stands under the section and the page it
+  was found on rather than as one long list with the place written out beside every line, and a
+  section can be shut to put what is under it out of the way.
+
 ### Fixed
 
 - Merge Boxes and Split Box stood in the bar above the page as two empty squares. A command in that

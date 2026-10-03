@@ -589,8 +589,8 @@
         <translation>Što je napisano</translation>
     </message>
     <message>
-        <source>Find</source>
-        <translation>Traži</translation>
+        <source>This notebook</source>
+        <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
         <source>Reading %1 more picture(s)…</source>

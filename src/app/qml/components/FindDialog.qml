@@ -11,6 +11,65 @@ AppDialog {
     property NotebookViewModel notebook: null
     property bool searched: false
     property var results: []
+    property var shut: ({})
+
+    // What was found, gathered under the section and the page it was found on, so where a word was
+    // written is read off the list rather than worked out line by line. Every find keeps the place
+    // it has in what came back, which is what the notebook is asked to go to.
+    readonly property var rows: {
+        const gathered = [];
+        const places = ({});
+        for (let at = 0; at < root.results.length; ++at) {
+            const hit = root.results[at];
+            const section = hit.sectionTitle === undefined ? "" : hit.sectionTitle;
+            const page = hit.pageTitle === undefined ? "" : hit.pageTitle;
+            const key = section + "\u0000" + page;
+            if (places[key] === undefined) {
+                places[key] = {
+                    "section": section,
+                    "page": page,
+                    "hits": []
+                };
+                gathered.push(places[key]);
+            }
+            places[key].hits.push({
+                "text": hit.text,
+                "at": at
+            });
+        }
+
+        const rows = [];
+        let standing = null;
+        for (const place of gathered) {
+            if (place.section !== standing) {
+                standing = place.section;
+                rows.push({
+                    "kind": "section",
+                    "said": place.section === "" ? qsTr("This notebook") : place.section,
+                    "section": place.section,
+                    "at": -1
+                });
+            }
+            if (root.shut[place.section] === true) {
+                continue;
+            }
+            rows.push({
+                "kind": "page",
+                "said": place.page,
+                "section": place.section,
+                "at": -1
+            });
+            for (const hit of place.hits) {
+                rows.push({
+                    "kind": "hit",
+                    "said": hit.text,
+                    "section": place.section,
+                    "at": hit.at
+                });
+            }
+        }
+        return rows;
+    }
 
     function search() {
         if (root.notebook === null) {
@@ -18,6 +77,12 @@ AppDialog {
         }
         root.searched = true;
         root.notebook.find(field.text);
+    }
+
+    function openOrShut(section) {
+        const now = Object.assign({}, root.shut);
+        now[section] = !now[section];
+        root.shut = now;
     }
 
     height: 420
@@ -29,6 +94,7 @@ AppDialog {
     onOpened: {
         root.searched = false;
         root.results = [];
+        root.shut = ({});
         field.forceActiveFocus();
         field.selectAll();
     }
@@ -41,6 +107,14 @@ AppDialog {
         target: root.notebook
     }
 
+    Timer {
+        id: waiting
+
+        interval: 250
+
+        onTriggered: root.search()
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
@@ -49,6 +123,7 @@ AppDialog {
             Layout.fillWidth: true
             spacing: 6
 
+            // Searched as it is typed, a moment after the typing stops rather than at every letter.
             TextField {
                 id: field
 
@@ -56,15 +131,11 @@ AppDialog {
                 objectName: "findField"
                 placeholderText: qsTr("What was written")
 
-                onAccepted: root.search()
-            }
-
-            Button {
-                enabled: root.notebook !== null
-                objectName: "findButton"
-                text: qsTr("Find")
-
-                onClicked: root.search()
+                onAccepted: {
+                    waiting.stop();
+                    root.search();
+                }
+                onTextChanged: waiting.restart()
             }
         }
 
@@ -123,41 +194,49 @@ AppDialog {
             Layout.fillHeight: true
             Layout.fillWidth: true
             clip: true
-            model: root.results
+            model: root.rows
             objectName: "findResults"
-            spacing: 2
+            spacing: 0
 
             ScrollBar.vertical: ScrollBar {
             }
             delegate: ItemDelegate {
-                id: hit
+                id: line
 
-                required property int index
                 required property var modelData
 
-                objectName: "findResult"
+                enabled: line.modelData.kind !== "page"
+                objectName: line.modelData.kind === "hit" ? "findResult" : line.modelData.kind === "section" ? "findSection" : "findPage"
                 width: found.width
 
-                contentItem: ColumnLayout {
-                    spacing: 0
+                contentItem: RowLayout {
+                    spacing: Theme.gap
 
                     Label {
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                        font.bold: true
-                        text: hit.modelData.text
+                        color: palette.placeholderText
+                        text: root.shut[line.modelData.section] === true ? "▸" : "▾"
+                        visible: line.modelData.kind === "section"
                     }
 
                     Label {
                         Layout.fillWidth: true
-                        color: palette.placeholderText
+                        Layout.leftMargin: line.modelData.kind === "hit" ? Theme.rowHeight : line.modelData.kind === "page" ? Theme.gap : 0
+                        color: line.modelData.kind === "hit" ? palette.windowText : palette.placeholderText
                         elide: Text.ElideRight
-                        text: hit.modelData.sectionTitle === "" ? hit.modelData.pageTitle : hit.modelData.sectionTitle + " — " + hit.modelData.pageTitle
+                        font.bold: line.modelData.kind === "section"
+                        text: line.modelData.said
                     }
                 }
 
                 onClicked: {
-                    root.notebook.goToFound(hit.index);
+                    if (line.modelData.kind === "section") {
+                        root.openOrShut(line.modelData.section);
+                        return;
+                    }
+                    if (line.modelData.kind !== "hit") {
+                        return;
+                    }
+                    root.notebook.goToFound(line.modelData.at);
                     root.close();
                 }
             }
