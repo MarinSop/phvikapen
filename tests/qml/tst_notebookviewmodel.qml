@@ -1148,6 +1148,47 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    // Which picture belongs to which page is settled by the page, not by where it stands in the
+    // list, so carrying a page up or down the list must leave every picture where it belongs.
+    function test_everyPageKeepsItsPictureWhenThePagesAreReordered() {
+        const notebook = openNotebook(newNotebookPath());
+        const drawing = [120, 200, 280];
+        for (let sheet = 0; sheet < drawing.length; ++sheet) {
+            if (sheet > 0) {
+                notebook.addPage();
+                tryCompare(notebook.pages, "count", sheet + 1);
+            }
+            draw(notebook, drawing[sheet], 120);
+        }
+
+        const pictureOf = row => notebook.pages.data(notebook.pages.index(row, 0), Qt.UserRole + 3);
+        const everyPicture = () => {
+            for (let row = 0; row < notebook.pages.count; ++row) {
+                notebook.wantThumbnail(row);
+            }
+            const seen = [];
+            for (let row = 0; row < notebook.pages.count; ++row) {
+                tryVerify(() => pictureOf(row) !== "", 4000, "page " + row + " was left without a picture");
+                seen.push(pictureOf(row));
+            }
+            return seen;
+        };
+
+        const before = everyPicture();
+        verify(new Set(before).size === before.length, "two pages were given the same picture");
+
+        notebook.movePage(0, 2);
+        const after = everyPicture();
+        compare(after[2], before[0], "the page that was carried lost its own picture");
+        compare(after[0], before[1]);
+        compare(after[1], before[2]);
+
+        notebook.movePage(2, 0);
+        const back = everyPicture();
+        compare(back.join("|"), before.join("|"), "carrying the page back did not put the pictures back");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_aNewPageGetsItsOwnPictureAndCanStillBePicked() {
         const notebook = openNotebook(newNotebookPath());
         draw(notebook, 120, 120);

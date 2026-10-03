@@ -824,7 +824,8 @@ private:
                core::EraseMode mode, int sheet);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
-    void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow);
+    void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow,
+                      bool redrawsPage = true);
     [[nodiscard]] QString freePageName(std::size_t section) const;
     void nameEveryPage(std::size_t section);
     void publishOutline();

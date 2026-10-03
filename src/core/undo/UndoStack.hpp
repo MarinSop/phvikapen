@@ -25,6 +25,10 @@ public:
     [[nodiscard]] virtual Result<void> revert() = 0;
 
     [[nodiscard]] virtual std::optional<Uuid> pageToShow() const { return std::nullopt; }
+
+    // Whether what is drawn on that page is now different, so that the small picture of it must be
+    // drawn again. Carrying a page about or giving it a name leaves what stands on it as it was.
+    [[nodiscard]] virtual bool redrawsPage() const { return true; }
 };
 
 class UndoStack {

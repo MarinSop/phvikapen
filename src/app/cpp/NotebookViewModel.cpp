@@ -1446,15 +1446,18 @@ void NotebookViewModel::renameSection(int index, const QString& title) {
 
 void NotebookViewModel::runCommand(std::unique_ptr<core::ICommand> command) {
     const std::optional<core::Uuid> pageToShow = command->pageToShow();
-    finishChange(m_history.run(std::move(command)), pageToShow);
+    const bool redrawsPage = command->redrawsPage();
+    finishChange(m_history.run(std::move(command)), pageToShow, redrawsPage);
 }
 
 void NotebookViewModel::finishChange(const core::Result<void>& change,
-                                     std::optional<core::Uuid> pageToShow) {
+                                     std::optional<core::Uuid> pageToShow, bool redrawsPage) {
     if (!change) {
         reportError(QString::fromStdString(change.error().message));
     }
-    forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
+    if (redrawsPage) {
+        forgetThumbnail(pageToShow ? *pageToShow : m_currentPage);
+    }
     publishLayers();
     markEdited();
     m_reader.nudge();

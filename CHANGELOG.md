@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Carrying a page up or down the list threw away the small picture of it, which left the line bare
+  until a new one had been drawn. Every change at all threw away the picture of whatever page it
+  pointed at, whether or not anything on that page had moved. A change now says whether what is
+  drawn on the page is different, and carrying a page about or giving it a name says it is not, so
+  the picture stays exactly where it belongs however often the pages are reordered.
+
 ### Removed
 
 - Equations and working sums out. Solve is gone from Edit, from the bar above the page and from the

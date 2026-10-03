@@ -77,6 +77,8 @@ public:
     Result<void> revert() override;
     [[nodiscard]] std::optional<Uuid> pageToShow() const override;
 
+    [[nodiscard]] bool redrawsPage() const override { return false; }
+
 private:
     [[nodiscard]] Result<void> moveTo(PagePlace place);
 
@@ -95,6 +97,8 @@ public:
     Result<void> apply() override;
     Result<void> revert() override;
     [[nodiscard]] std::optional<Uuid> pageToShow() const override;
+
+    [[nodiscard]] bool redrawsPage() const override { return false; }
 
 private:
     Outline* m_outline;
