@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Writing follows the pen again. The evening out of a slow line was reaching so far, and settling so
+  far behind the pen, that a stroke could be seen straightening itself after it had been drawn. It
+  reaches as far as it did before that, settles as soon as it did, and no longer holds a stroke open
+  waiting to learn where its corners are. A slowly drawn line wobbles a little again, which is the
+  price of a line that goes where the pen went.
+
 ## [0.3.0] - 2026-09-29
 
 ### Added

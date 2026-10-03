@@ -1,7 +1,6 @@
 #include "core/ink/StrokeSpline.hpp"
 
 #include "core/ink/InkSample.hpp"
-#include "core/ink/StrokeTurns.hpp"
 
 #include <algorithm>
 #include <array>
@@ -15,10 +14,7 @@ namespace phvikapen::core {
 namespace {
 
 constexpr float kMinimumKnotInterval = 1e-4F;
-// How close together the curve is hung from the samples. A hand drawing slowly leaves them a
-// fraction of a unit apart, and a curve threaded through every one of those follows how coarsely
-// the pen reports where it is rather than where the hand went.
-constexpr float kKnotSpacing = 0.4F;
+constexpr float kMinimumDistance = 1e-3F;
 constexpr float kMinimumSpacing = 0.1F;
 constexpr std::size_t kMaximumSubdivisions = 256;
 constexpr float kTwice = 2.0F;
@@ -73,6 +69,37 @@ struct Vector {
     return lerp(b1, b2, t1, t2, t);
 }
 
+// A corner is a turn back on itself, or a sharp turn its neighbours do not share.
+constexpr float kReversal = 1.83F;
+constexpr float kSharpTurn = 0.92F;
+constexpr float kLoneTurn = 0.35F;
+
+[[nodiscard]] float turnAt(std::span<const InkSample> samples, std::size_t index) noexcept {
+    if (index == 0 || index + 1 >= samples.size()) {
+        return 0.0F;
+    }
+    const InkSample& before = samples[index - 1];
+    const InkSample& here = samples[index];
+    const InkSample& after = samples[index + 1];
+    const float inX = here.x - before.x;
+    const float inY = here.y - before.y;
+    const float outX = after.x - here.x;
+    const float outY = after.y - here.y;
+    if (std::hypot(inX, inY) <= kMinimumDistance || std::hypot(outX, outY) <= kMinimumDistance) {
+        return 0.0F;
+    }
+    return std::abs(std::atan2((inX * outY) - (inY * outX), (inX * outX) + (inY * outY)));
+}
+
+[[nodiscard]] bool isCorner(std::span<const InkSample> samples, std::size_t index) noexcept {
+    const float turn = turnAt(samples, index);
+    if (turn >= kReversal) {
+        return true;
+    }
+    return turn >= kSharpTurn && turnAt(samples, index - 1) <= kLoneTurn * turn
+           && turnAt(samples, index + 1) <= kLoneTurn * turn;
+}
+
 // How far the direction of the curve swings between the two ends of one piece of it.
 [[nodiscard]] float swing(std::span<const Vector, 4> points) noexcept {
     const float inX = points[2].x - points[0].x;
@@ -80,23 +107,6 @@ struct Vector {
     const float outX = points[3].x - points[1].x;
     const float outY = points[3].y - points[1].y;
     return std::abs(std::atan2((inX * outY) - (inY * outX), (inX * outX) + (inY * outY)));
-}
-
-// The samples the curve is hung from: far enough apart to say where the hand went, with both ends
-// of the stroke always among them so that the ink starts and stops where the pen did.
-[[nodiscard]] std::vector<InkSample> knotsOf(std::span<const InkSample> samples) {
-    std::vector<InkSample> knots;
-    knots.reserve(samples.size());
-    for (const InkSample& sample : samples) {
-        if (knots.empty()
-            || std::hypot(sample.x - knots.back().x, sample.y - knots.back().y) > kKnotSpacing) {
-            knots.push_back(sample);
-        }
-    }
-    if (knots.size() > 1 && knots.back() != samples.back()) {
-        knots.back() = samples.back();
-    }
-    return knots;
 }
 
 [[nodiscard]] InkSample interpolate(const InkSample& from, const InkSample& to, Vector at,
@@ -120,12 +130,19 @@ struct Vector {
 }
 
 std::vector<InkSample> fitSpline(std::span<const InkSample> samples, float spacing) {
-    std::vector<InkSample> distinct = knotsOf(samples);
+    std::vector<InkSample> distinct;
+    distinct.reserve(samples.size());
+    for (const InkSample& sample : samples) {
+        if (distinct.empty()
+            || std::hypot(sample.x - distinct.back().x, sample.y - distinct.back().y)
+                   > kMinimumDistance) {
+            distinct.push_back(sample);
+        }
+    }
     if (distinct.size() < 2) {
         return distinct;
     }
     const float step = std::max(spacing, kMinimumSpacing);
-    const std::vector<bool> corners = cornersAlong(distinct, kTurnReach);
 
     std::vector<InkSample> fitted;
     fitted.push_back(distinct.front());
@@ -136,10 +153,11 @@ std::vector<InkSample> fitSpline(std::span<const InkSample> samples, float spaci
         const Vector start = position(from);
         const Vector end = position(to);
         const std::array<Vector, 4> points{
-            i == 0 || corners[i] ? reflect(start, end) : position(distinct[i - 1]),
+            i == 0 || isCorner(distinct, i) ? reflect(start, end) : position(distinct[i - 1]),
             start,
             end,
-            i + 1 == last || corners[i + 1] ? reflect(end, start) : position(distinct[i + 2]),
+            i + 1 == last || isCorner(distinct, i + 1) ? reflect(end, start)
+                                                       : position(distinct[i + 2]),
         };
 
         const float length = std::hypot(end.x - start.x, end.y - start.y);

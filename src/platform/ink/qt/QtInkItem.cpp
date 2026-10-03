@@ -46,10 +46,8 @@ constexpr std::size_t kMostSheetsDrawn = 16;
 // How far down the window the page that is being read is taken from.
 constexpr float kReadingLine = 0.3F;
 constexpr float kHalfWidth = 0.5F;
-// How far the smoothing reaches at its strongest, in pixels of the window. A hand drawing slowly
-// shakes over a few pixels at a time, so a reach of about that is what it takes to even out; the
-// line settles behind the pen rather than under it, so none of it is paid for in lag.
-constexpr float kSteadiestReach = 10.0F;
+// How far the smoothing reaches at its strongest, in pixels of the window: about a millimetre.
+constexpr float kSteadiestReach = 4.5F;
 // Four samples to a pixel keep the edge of the ink smooth.
 constexpr int kInkSamples = 4;
 
@@ -1406,8 +1404,8 @@ void QtInkItem::beginStroke(const InkSample& sample) {
     m_activeStroke.emplace(m_ids.next(), m_style);
     m_activeStroke->append(sample);
     // Gentle at first and strong only near the top of the scale, measured on the glass.
-    const auto asked = static_cast<float>(m_smoothing);
-    m_steadier.emplace(asked * std::sqrt(asked) * kSteadiestReach / m_viewport.scale());
+    const auto amount = static_cast<float>(m_smoothing * m_smoothing);
+    m_steadier.emplace(amount * kSteadiestReach / m_viewport.scale());
     m_steadier->append(sample);
     m_activeIsTranslucent = m_style.color.alpha < core::Color::kOpaque;
     m_activeStrokeFirstVertex = activeVertices().size();

@@ -24,7 +24,6 @@ target_sources(phvikapen_core
         ink/StrokeSpline.cpp
         ink/StrokeSteadier.cpp
         ink/StrokeTransform.cpp
-        ink/StrokeTurns.cpp
         math/Answer.cpp
         math/Drawing.cpp
         math/Equation.cpp
@@ -81,7 +80,6 @@ target_sources(phvikapen_core
             ink/StrokeSpline.hpp
             ink/StrokeSteadier.hpp
             ink/StrokeTransform.hpp
-            ink/StrokeTurns.hpp
             math/Answer.hpp
             math/Drawing.hpp
             math/Equation.hpp

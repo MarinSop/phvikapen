@@ -2,7 +2,6 @@
 
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
-#include "core/ink/StrokeTurns.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -19,9 +18,6 @@ constexpr float kNothing = 1e-6F;
 constexpr float kHalf = 0.5F;
 // The weights reach three standard deviations out, where a Gaussian has all but faded.
 constexpr float kSpread = 3.0F;
-// How far past a sample the pen must be before whether it stands at a corner is settled: a stretch
-// to tell how the line turns there, and another to tell whether anything close by turns more.
-constexpr float kCornersSettleAfter = 2.0F * kTurnReach;
 
 [[nodiscard]] float falloff(float offset, float half) noexcept {
     const float closeness = 1.0F - ((offset / half) * (offset / half));
@@ -49,24 +45,18 @@ void StrokeSteadier::append(const InkSample& sample) {
                 : before + std::hypot(sample.x - m_drawn.back().x, sample.y - m_drawn.back().y);
         m_drawn.push_back(sample);
         m_along.push_back(along);
-        m_turn.push_back(0.0F);
-        m_corner.push_back(false);
         m_steadied.push_back(sample);
     }
 
-    // Only the samples close enough to the old end to have felt it are worked out again. A sample
-    // feels a corner as far ahead as the averaging reaches, and a corner that far ahead is only
-    // settled a stretch after that, so both are waited out.
-    const float felt = (kSpread * m_reach) + kCornersSettleAfter;
+    // Only the samples close enough to the old end to have felt it are worked out again.
     std::size_t first = m_drawn.size() - 1;
-    while (first > 0 && before - m_along[first - 1] <= felt) {
+    while (first > 0 && before - m_along[first - 1] <= kSpread * m_reach) {
         --first;
     }
     m_unsettled = std::min(m_unsettled, first);
 }
 
 std::span<const InkSample> StrokeSteadier::settled() {
-    findTurns();
     for (std::size_t i = m_unsettled; i < m_drawn.size(); ++i) {
         steady(i);
     }
@@ -74,51 +64,10 @@ std::span<const InkSample> StrokeSteadier::settled() {
     return m_steadied;
 }
 
-void StrokeSteadier::findTurns() {
-    if (m_drawn.size() < 3 || m_reach <= kNothing) {
-        return;
-    }
-    // Whatever is worked out again is worked out from the same sample on, and that sample lies at
-    // least a settling stretch back from the end: any turn before it is already what it will stay.
-    const std::size_t from = m_unsettled;
-    for (std::size_t i = from; i < m_drawn.size(); ++i) {
-        m_turn[i] = turnAt(m_drawn, m_along, i, kTurnReach);
-    }
-    for (std::size_t i = from; i < m_drawn.size(); ++i) {
-        m_corner[i] = isCornerAt(m_turn, m_along, i, kTurnReach);
-    }
-}
-
-float StrokeSteadier::roomBefore(std::size_t index) const noexcept {
-    const float most = kSpread * m_reach;
-    for (std::size_t i = index; i > 0 && m_along[index] - m_along[i - 1] <= most; --i) {
-        if (m_corner[i - 1]) {
-            return m_along[index] - m_along[i - 1];
-        }
-    }
-    return std::min(most, m_along[index]);
-}
-
-float StrokeSteadier::roomAfter(std::size_t index) const noexcept {
-    const float most = kSpread * m_reach;
-    const std::size_t last = m_corner.size();
-    for (std::size_t i = index + 1; i < last && m_along[i] - m_along[index] <= most; ++i) {
-        if (m_corner[i]) {
-            return m_along[i] - m_along[index];
-        }
-    }
-    return std::min(most, m_along.back() - m_along[index]);
-}
-
 void StrokeSteadier::steady(std::size_t index) {
     const InkSample& here = m_drawn[index];
     const float at = m_along[index];
-    if (m_corner[index]) {
-        m_steadied[index] = here;
-        return;
-    }
-    // The averaging reaches as far as it may, and no further than the nearest corner either side.
-    const float half = std::min(roomBefore(index), roomAfter(index));
+    const float half = std::min({kSpread * m_reach, at, m_along.back() - at});
     if (half <= kNothing) {
         m_steadied[index] = here;
         return;

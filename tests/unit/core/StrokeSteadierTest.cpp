@@ -116,51 +116,6 @@ TEST(StrokeSteadierTest, AHandThatSlowsDownDoesNotBendTheLine) {
     }
 }
 
-TEST(StrokeSteadierTest, ASlowDiagonalStaircaseComesOutAsTheStraightLineItWasMeantToBe) {
-    // What a pen reporting whole pixels leaves when a hand draws a diagonal slowly: a staircase of
-    // single steps, which is the line that wavers however carefully it is drawn.
-    std::vector<InkSample> samples;
-    for (int i = 0; i < 30; ++i) {
-        const auto along = static_cast<float>(i);
-        samples.push_back(sampleAt(along + 1.0F, along));
-        samples.push_back(sampleAt(along + 1.0F, along + 1.0F));
-    }
-
-    const std::vector<InkSample> steady = steadied(samples, 3.0F);
-
-    ASSERT_EQ(steady.size(), samples.size());
-    float worst = 0.0F;
-    for (std::size_t i = 10; i + 10 < steady.size(); ++i) {
-        worst = std::max(worst, std::abs(steady[i].y - (steady[i].x - 0.5F)));
-    }
-    EXPECT_LT(worst, 0.25F);
-    // The staircase itself strays half a unit either side of the line the hand meant.
-    EXPECT_GT(std::abs(samples[20].y - (samples[20].x - 0.5F)), 0.4F);
-}
-
-TEST(StrokeSteadierTest, ACornerStaysWhereItWasHoweverStronglyTheLineIsEvenedOut) {
-    std::vector<InkSample> samples;
-    for (int i = 0; i <= 40; ++i) {
-        samples.push_back(sampleAt(static_cast<float>(i) * 0.5F, 0.0F));
-    }
-    for (int i = 1; i <= 40; ++i) {
-        samples.push_back(sampleAt(20.0F, static_cast<float>(i) * 0.5F));
-    }
-
-    const std::vector<InkSample> steady = steadied(samples, 8.0F);
-
-    ASSERT_EQ(steady.size(), samples.size());
-    EXPECT_FLOAT_EQ(steady[40].x, 20.0F);
-    EXPECT_FLOAT_EQ(steady[40].y, 0.0F);
-    // Neither arm of the corner is pulled across it.
-    for (std::size_t i = 0; i <= 40; ++i) {
-        EXPECT_LE(steady[i].y, 0.01F) << i;
-    }
-    for (std::size_t i = 41; i < steady.size(); ++i) {
-        EXPECT_LE(steady[i].x, 20.01F) << i;
-    }
-}
-
 TEST(StrokeSteadierTest, SettlingAsThePenMovesGivesTheSameLineAsSettlingAtTheEnd) {
     std::vector<InkSample> samples;
     for (int i = 0; i < 300; ++i) {
