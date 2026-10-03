@@ -61,9 +61,13 @@ AppDialog {
         target: root.notebook
     }
 
+    // As wide as it needs and never wider than the window it stands in, so nothing runs off the edge
+    // on a small screen.
     ColumnLayout {
+        readonly property int widest: Math.round(480 * Theme.scale)
+
         spacing: Theme.gap
-        width: Math.round(420 * Theme.scale)
+        width: root.parent === null ? widest : Math.min(widest, root.parent.width - (4 * Theme.gap))
 
         RowLayout {
             Layout.fillWidth: true
@@ -86,19 +90,23 @@ AppDialog {
             }
         }
 
+        // The box is as deep as what was read, up to a depth past which it is read by scrolling: a
+        // line or two of words is not given a window the depth of a page to sit in the middle of.
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.round(200 * Theme.scale)
+            Layout.preferredHeight: Math.min(Math.round(260 * Theme.scale), Math.max(Math.round(44 * Theme.scale), found.implicitHeight))
             clip: true
             visible: root.words !== ""
 
             TextArea {
                 id: found
 
+                horizontalAlignment: TextEdit.AlignLeft
                 objectName: "pictureTextFound"
                 readOnly: true
                 selectByMouse: true
                 text: root.words
+                verticalAlignment: TextEdit.AlignTop
                 wrapMode: TextEdit.Wrap
             }
         }

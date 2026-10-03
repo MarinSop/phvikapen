@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A command with a long name in a menu was written over the keys it answers to. What a command is
+  called now has the room between the tick and its keys and is cut short rather than written over
+  them, so neither can ever be unreadable however narrow the menu comes out.
+- The window of words read out of a picture was a fixed width that could run off the edge of a small
+  screen, and it gave a line or two of words a box the depth of a page to sit in the middle of. It
+  is now never wider than the window it stands in, and the box is as deep as what was read, up to a
+  depth past which it is read by scrolling. The words start at the top left, as text does.
+
 - A layer put out of sight took its ink with it and left everything else standing: a picture, a box
   of type, a table or an imported page on that layer went on being drawn as though the layer were
   still shown. The ink was told of the change and nothing else was, so a layer now says what it has

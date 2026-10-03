@@ -754,6 +754,7 @@ Item {
     signal hintsWanted
     signal importWanted
     signal newNotebookWanted
+    signal copied(string text)
     signal reading(string what)
     signal pageSetupWanted
     signal pictureWanted
@@ -810,6 +811,7 @@ Item {
 
     function copyToClipboard(text) {
         Clipboard.put(text);
+        root.copied(text);
     }
 
     function isPanelOpen(panelId) {

@@ -15,6 +15,32 @@ TestCase {
         compare(titles, ["File", "Edit", "View", "Insert", "Help"]);
     }
 
+    // What a command is called and the keys it answers to stand at opposite ends of its line, so a
+    // menu must be wide enough for both with room between them. A name that runs into its keys is
+    // unreadable, and so is one that runs off the end of the menu.
+    function test_a2_aMenuIsWideEnoughForItsNamesAndItsKeys() {
+        for (let which = 0; which < menuBar.count; ++which) {
+            const menu = menuBar.menuAt(which);
+            menu.open();
+            tryVerify(() => menu.opened, 2000, menu.title + " never opened");
+            for (let line = 0; line < menu.count; ++line) {
+                const item = menu.itemAt(line);
+                if (item === null || !item.visible || item.shortcutText === undefined || item.shortcutText === "") {
+                    continue;
+                }
+                const named = findChild(item, "commandName");
+                const keyed = findChild(item, "commandKeys");
+                verify(named !== null && keyed !== null, item.text + " has no name or no keys to measure");
+                const nameEnds = named.mapToItem(item, named.width, 0).x;
+                const keysBegin = keyed.mapToItem(item, 0, 0).x;
+                verify(keysBegin >= nameEnds, menu.title + " / " + item.text + " runs into its keys by " + (nameEnds - keysBegin) + " pixels");
+                verify(keyed.mapToItem(item, keyed.width, 0).x <= item.width + 1, menu.title + " / " + item.text + " runs its keys off the end of the line");
+            }
+            menu.close();
+            tryVerify(() => !menu.opened, 2000);
+        }
+    }
+
     function test_b_commandsCarryTheirShortcut() {
         verify(AppInfo.shortcutText(actions.undo.shortcut).length > 0);
         verify(AppInfo.shortcutText(actions.copy.shortcut).length > 0);

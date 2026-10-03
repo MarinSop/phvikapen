@@ -31,19 +31,26 @@ MenuItem {
             width: 18
         }
 
+        // What a command is called is given the room between the tick and its keys, and cut short
+        // rather than written over them where a menu comes out narrower than it asked to be.
         Label {
             id: label
 
             anchors.left: parent.left
             anchors.leftMargin: root.checkable ? 18 : 0
+            anchors.right: keys.visible ? keys.left : parent.right
+            anchors.rightMargin: keys.visible ? Theme.rowHeight : 0
             anchors.verticalCenter: parent.verticalCenter
             color: root.enabled ? palette.windowText : palette.placeholderText
+            elide: Text.ElideRight
+            objectName: "commandName"
             text: root.text
         }
 
         Label {
             id: keys
 
+            objectName: "commandKeys"
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             color: palette.placeholderText

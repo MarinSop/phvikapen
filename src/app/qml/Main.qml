@@ -226,6 +226,7 @@ ApplicationWindow {
 
         onAboutWanted: aboutDialog.open()
         onLinkWanted: linkDialog.makeOne()
+        onCopied: text => messageBar.wellDone(messageBar.about(qsTr("Copied to clipboard"), text))
         onReading: what => messageBar.busy(what)
         onPictureTextWanted: pictureId => pictureTextDialog.readFrom(pictureId)
         onLinkChangeWanted: linkId => {
@@ -322,10 +323,7 @@ ApplicationWindow {
                 notebook: root.notebook
                 tools: toolState
 
-                onWordTapped: said => {
-                    appActions.copyToClipboard(said);
-                    messageBar.wellDone(messageBar.about(qsTr("Copied to clipboard"), said));
-                }
+                onWordTapped: said => appActions.copyToClipboard(said)
                 onWordWanted: (said, at) => {
                     const onto = canvas.mapFromItem(null, at);
                     root.notebook.writeDownAt(said, onto.x, onto.y, toolState.textStyle);
