@@ -184,6 +184,15 @@ into a real problem earlier.
   way to step from one to the next without going back to the list.
 - **The language is whatever the machine has.** The reader Windows carries reads the languages whose
   handwriting is installed; the application neither says which those are nor offers to install one.
+- **The reader is asked for nothing in particular.** `WindowsHandwriting::read` hands its strokes to
+  an `InkAnalyzer` with everything left as it comes. `InkAnalyzer::AnalyzerOptions` can be set to
+  `InkAnalysisOptions::WritingOnly`, which tells it the strokes are writing rather than possibly
+  drawings, and that is what a reader asked to turn a chosen handful into type should be told: a
+  word taken for a drawing is dropped altogether. Reading a whole page in the background wants the
+  opposite, or at least a choice, because a page holds drawings as well, so the asking has to carry
+  which of the two it is. None of it can be tried from the development machine, which reads no
+  handwriting at all, and the build machine's reader makes nothing of a plain picture either, so
+  this waits on a Windows on ARM machine to measure it against.
 - **Nothing is read on macOS**, so the searching can only be tried on the target device.
 - **Words are read, not text.** A page holds strokes; there is no typed text on a page yet, so what
   is read can be copied out but not put back onto the paper.

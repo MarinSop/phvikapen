@@ -26,6 +26,29 @@ constexpr float kSureEnough = 0.3F;
     return text == nil ? std::string{} : std::string{[text UTF8String]};
 }
 
+// The languages of the machine that the reader knows, in the order the reader of them prefers.
+// Asked for nothing in particular, a reader left to itself reads English, which makes poor work of
+// a page written in anything else.
+[[nodiscard]] NSArray<NSString*>* readableHere(VNRecognizeTextRequest* asking) {
+    NSError* trouble = nil;
+    NSArray<NSString*>* const known = [asking supportedRecognitionLanguagesAndReturnError:&trouble];
+    if (trouble != nil || known.count == 0) {
+        return nil;
+    }
+    NSMutableArray<NSString*>* const wanted = [NSMutableArray array];
+    for (NSString* const spoken in [NSLocale preferredLanguages]) {
+        for (NSString* const one in known) {
+            if ([one isEqualToString:spoken] || [one hasPrefix:[spoken stringByAppendingString:@"-"]]
+                || [spoken hasPrefix:[one stringByAppendingString:@"-"]]) {
+                if (![wanted containsObject:one]) {
+                    [wanted addObject:one];
+                }
+            }
+        }
+    }
+    return wanted.count == 0 ? nil : wanted;
+}
+
 }
 
 // The words in a picture, read by the reader macOS carries. It is given the bytes of the file
@@ -119,6 +142,8 @@ void AppleReadPicture::read(std::span<const std::byte> picture, const std::strin
         if (!language.empty()) {
             asking.recognitionLanguages =
                 @[ [NSString stringWithUTF8String:language.c_str()] ];
+        } else if (NSArray<NSString*>* const wanted = readableHere(asking); wanted != nil) {
+            asking.recognitionLanguages = wanted;
         }
         m_asked = asking;
 

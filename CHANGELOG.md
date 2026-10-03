@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The words in a picture are read in the languages the machine is set to, where none is asked for.
+  A reader left to itself reads English, which makes poor work of a page written in anything else.
+
 - A search of handwriting forgives a letter. A reader of handwriting mistakes about that many, so a
   word is found by what was asked for even where one letter of it was read as another, left out or
   put in, and the same holds for every word of a search of several. Two letters wrong is still a
