@@ -58,6 +58,7 @@ Item {
                     required property string modelData
                     readonly property bool open: tabBar.currentIndex === tab.index
 
+                    objectName: "notebookTab" + tab.index
                     height: tabBar.height
                     width: Math.min(200, name.implicitWidth + 52)
                     Drag.active: tabDrag.active
@@ -141,6 +142,8 @@ Item {
 
                     Menu {
                         id: tabMenu
+
+                        objectName: "notebookTabMenu"
 
                         MenuItem {
                             text: qsTr("Rename…")

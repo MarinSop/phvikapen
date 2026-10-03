@@ -213,6 +213,8 @@ Pane {
                 Menu {
                     id: oneMenu
 
+                    objectName: "elementMenu"
+
                     MenuItem {
                         objectName: "putElementItem"
                         text: qsTr("Put on the page")

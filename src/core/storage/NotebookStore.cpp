@@ -395,7 +395,7 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 6> kPaperCol
         return false;
     }
     for (std::size_t step = 1; step < wanted.size(); ++step) {
-        if (!folded(words[from + step].text).contains(wanted[step])) {
+        if (!readsAs(folded(words[from + step].text), wanted[step])) {
             return false;
         }
     }
@@ -814,8 +814,10 @@ struct Hit {
     if (!statement) {
         return std::unexpected{statement.error()};
     }
+    // Looked up by the first letters of the asking, which leaves room for the rest of it to have
+    // been misread, and every word that comes back is then read against the whole of it.
     if (const Result<void> bound =
-            statement->bindText(1, "%" + escapedForLike(wanted.front()) + "%");
+            statement->bindText(1, "%" + escapedForLike(stemOf(wanted.front())) + "%");
         !bound) {
         return std::unexpected{bound.error()};
     }
@@ -834,6 +836,9 @@ struct Hit {
         const auto ordinal =
             static_cast<std::size_t>(statement->integer(column(WrittenColumn::Ordinal)));
         InkWord word = wordFrom(*statement, column(WrittenColumn::Text));
+        if (!readsAs(folded(word.text), wanted.front())) {
+            continue;
+        }
         if (wanted.size() > 1) {
             if (!read.contains(pageId)) {
                 Result<std::vector<InkWord>> words = store.wordsOfPage(pageId);

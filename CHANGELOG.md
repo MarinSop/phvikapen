@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A search of handwriting forgives a letter. A reader of handwriting mistakes about that many, so a
+  word is found by what was asked for even where one letter of it was read as another, left out or
+  put in, and the same holds for every word of a search of several. Two letters wrong is still a
+  different word, and an asking of fewer than five letters forgives nothing, where one letter in
+  three would be a different word altogether.
+
 ### Fixed
 
 - A panel carried into the middle of the sheet to leave it floating was taken for a panel aimed at a

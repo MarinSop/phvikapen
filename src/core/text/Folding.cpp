@@ -134,6 +134,60 @@ constexpr std::array kPlainLetters{
 
 }
 
+namespace {
+
+// Whether two plain words differ by no more than one letter put in, taken out or written as
+// another. Counted letter by letter from both ends, which is all a single difference needs.
+[[nodiscard]] bool oneLetterApart(std::string_view left, std::string_view right) noexcept {
+    const std::size_t longer = std::max(left.size(), right.size());
+    const std::size_t shorter = std::min(left.size(), right.size());
+    if (longer - shorter > 1) {
+        return false;
+    }
+    std::size_t head = 0;
+    while (head < shorter && left[head] == right[head]) {
+        ++head;
+    }
+    if (head == shorter) {
+        return true;
+    }
+    std::size_t tail = 0;
+    while (tail < shorter - head
+           && left[left.size() - 1 - tail] == right[right.size() - 1 - tail]) {
+        ++tail;
+    }
+    return head + tail >= shorter - (longer == shorter ? 1 : 0);
+}
+
+}
+
+bool readsAs(std::string_view word, std::string_view wanted) {
+    if (wanted.empty() || word.contains(wanted)) {
+        return true;
+    }
+    if (wanted.size() < kForgivingFrom) {
+        return false;
+    }
+    for (std::size_t width = wanted.size() - 1; width <= wanted.size() + 1; ++width) {
+        if (width == 0 || width > word.size()) {
+            continue;
+        }
+        for (std::size_t at = 0; at + width <= word.size(); ++at) {
+            if (oneLetterApart(word.substr(at, width), wanted)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+std::string_view stemOf(std::string_view wanted) {
+    if (wanted.size() < kForgivingFrom) {
+        return wanted;
+    }
+    return wanted.substr(0, kStemLength);
+}
+
 std::string folded(std::string_view text) {
     std::string plain;
     plain.reserve(text.size());

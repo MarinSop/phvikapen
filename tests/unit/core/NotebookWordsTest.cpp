@@ -125,6 +125,32 @@ TEST(NotebookWordsTest, FindsAWordHoweverItWasTyped) {
     EXPECT_TRUE(store->findWords("   ").value().empty());
 }
 
+// A reader of handwriting mistakes about a letter, so a word is found by what was asked for even
+// where one letter of it was read as another, left out or put in. Two letters wrong is a different
+// word, and a short asking forgives nothing at all.
+TEST(NotebookWordsTest, FindsAWordAReaderMisreadByOneLetter) {
+    const TemporaryNotebook notebook;
+    Result<NotebookStore> store = NotebookStore::open(notebook.path());
+    ASSERT_TRUE(store.has_value()) << store.error().message;
+    const NotebookOutline outline = store->readOutline().value();
+    const Uuid page = outline.sections.front().pages.front().id;
+    ASSERT_TRUE(store->setWordsOfPage(page, 0,
+                                      std::vector<InkWord>{
+                                          wordAt("Reykjauik", 10.0F),
+                                          wordAt("hand", 60.0F),
+                                      }));
+
+    const Result<std::vector<FoundWord>> found = store->findWords("Reykjavik");
+    ASSERT_TRUE(found.has_value()) << found.error().message;
+    ASSERT_EQ(found->size(), 1U) << "a word misread by one letter was not found";
+    EXPECT_EQ(found->front().word.text, "Reykjauik");
+
+    EXPECT_TRUE(store->findWords("Gothenburg").value().empty());
+    EXPECT_TRUE(store->findWords("Reykjauuuk").value().empty())
+        << "two letters wrong is a different word";
+    EXPECT_TRUE(store->findWords("band").value().empty()) << "a short asking forgives nothing";
+}
+
 TEST(NotebookWordsTest, FindsSeveralWordsOnlyWhereTheyFollowEachOther) {
     const TemporaryNotebook notebook;
     Result<NotebookStore> store = NotebookStore::open(notebook.path());
