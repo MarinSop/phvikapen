@@ -49,8 +49,12 @@ Item {
         Item {
             id: slot
 
-            readonly property real edgeReach: Math.round(26 * Theme.scale)
-            readonly property real cornerReach: Math.round(72 * Theme.scale)
+            // How close to an edge or a corner a panel must be carried before one is offered. Both
+            // are a share of the room at most, so that the middle of a small sheet is still a
+            // middle: a reach fixed in pixels swallows it whole and leaves nowhere to let a panel
+            // simply float.
+            readonly property real edgeReach: Math.min(Math.round(26 * Theme.scale), slot.width / 8, slot.height / 8)
+            readonly property real cornerReach: Math.min(Math.round(72 * Theme.scale), slot.width / 5, slot.height / 5)
             readonly property real armLength: Math.round(56 * Theme.scale)
 
             function reportAim() {

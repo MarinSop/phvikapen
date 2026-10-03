@@ -251,6 +251,31 @@ TestCase {
         verify(window.width < sheet.width / 2, "the window was stretched along the edge");
     }
 
+    // How close to a corner a panel must be carried before one is offered is a share of the room at
+    // most. A reach fixed in pixels swallows the middle of a small sheet whole, and then there is
+    // nowhere left to carry a panel to simply let it float.
+    function test_ja_theMiddleOfASmallSheetIsStillAMiddle() {
+        tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
+        const slot = view.middleSlot;
+        const was = testCase.width;
+        testCase.width = 560;
+        try {
+            tryVerify(() => slot.width > 0 && slot.width < 300, 2000, "the sheet was not made small");
+            verify(slot.cornerReach <= slot.width / 5, "the corners reach further than a fifth of the room");
+            verify(slot.edgeReach <= slot.width / 8, "the edges reach further than an eighth of the room");
+
+            const sections = testCase.settled("sections");
+            const sheet = view.sheetRect();
+            testCase.aimAt(sections, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+
+            compare(view.dropKind, "", "the middle of the sheet offered a place to dock in");
+            mouseRelease(view, sheet.x + (sheet.width / 2), sheet.y + (sheet.height / 2));
+            tryVerify(() => workspace.isAfloat("sections"), 2000, "the panel did not come loose in the middle");
+        } finally {
+            testCase.width = was;
+        }
+    }
+
     function test_k_aWindowCarriedBackOntoAnEdgeDocksAgain() {
         tryVerify(() => view.middleSlot !== null && view.middleSlot.width > 0);
         const sections = testCase.settled("sections");

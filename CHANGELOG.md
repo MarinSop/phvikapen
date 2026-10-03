@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A panel carried into the middle of the sheet to leave it floating was taken for a panel aimed at a
+  corner. How close to an edge or a corner a panel must be carried was fixed in pixels, and on a
+  window no larger than a few of those reaches the corners met in the middle and left nowhere to
+  carry a panel to. Both reaches are now a share of the room at most, so the middle of a sheet is
+  still a middle however small the window.
+
 ### Added
 
 - What is picked up can be sent to another layer from the menu the paper offers, to any layer the
