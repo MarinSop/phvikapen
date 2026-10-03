@@ -5,6 +5,7 @@
 #include "core/id/Uuid.hpp"
 #include "core/ink/InkSample.hpp"
 #include "core/ink/Stroke.hpp"
+#include "core/ink/StrokeHitTest.hpp"
 #include "core/model/Layer.hpp"
 #include "core/model/Page.hpp"
 
@@ -62,6 +63,20 @@ bool inside(std::span<const Point> polygon, Point point) noexcept {
         }
     }
     return within;
+}
+
+std::optional<Uuid> strokeUnder(const Page& page, Point at, float reach) {
+    const EraserSweep touch{.from = at, .to = at, .radius = std::max(reach, 0.0F)};
+    std::optional<Uuid> found;
+    for (const PlacedStroke& placed : page.strokes()) {
+        if (!isOpenToTheHand(page.layers(), placed.layer)) {
+            continue;
+        }
+        if (touches(placed.stroke, touch)) {
+            found = placed.stroke.id();
+        }
+    }
+    return found;
 }
 
 std::vector<Uuid> strokesInside(const Page& page, std::span<const Point> polygon) {

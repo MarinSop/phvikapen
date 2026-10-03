@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <optional>
 #include <vector>
 
 namespace phvikapen::core {
@@ -42,6 +43,72 @@ TEST(StrokeSelectionTest, ALineIsNotAShape) {
     const std::array line{Point{.x = 0.0F, .y = 0.0F}, Point{.x = 10.0F, .y = 10.0F}};
 
     EXPECT_FALSE(inside(line, Point{.x = 5.0F, .y = 5.0F}));
+}
+
+TEST(StrokeSelectionTest, TakesTheStrokeUnderATouch) {
+    Uuid7Generator ids;
+    const Stroke here = line(ids, 20.0F, 40.0F, 30.0F);
+    const Stroke elsewhere = line(ids, 20.0F, 40.0F, 90.0F);
+    const Uuid only = ids.next();
+    Page page{ids.next(),
+              {
+                  PlacedStroke{.ordinal = 0, .stroke = here, .layer = only},
+                  PlacedStroke{.ordinal = 1, .stroke = elsewhere, .layer = only},
+              },
+              {},
+              {},
+              {},
+              {Layer{.id = only, .name = "only"}}};
+
+    const std::optional<Uuid> touched = strokeUnder(page, Point{.x = 30.0F, .y = 30.0F}, 4.0F);
+
+    ASSERT_TRUE(touched.has_value());
+    EXPECT_EQ(*touched, here.id());
+}
+
+TEST(StrokeSelectionTest, ATouchOnBarePaperTakesNothing) {
+    Uuid7Generator ids;
+    const Stroke drawn = line(ids, 20.0F, 40.0F, 30.0F);
+    const Uuid only = ids.next();
+    Page page{ids.next(), {PlacedStroke{.ordinal = 0, .stroke = drawn, .layer = only}},
+              {},         {},
+              {},         {Layer{.id = only, .name = "only"}}};
+
+    EXPECT_FALSE(strokeUnder(page, Point{.x = 80.0F, .y = 80.0F}, 4.0F).has_value());
+}
+
+TEST(StrokeSelectionTest, ATouchWhereTwoStrokesCrossTakesTheOneOver) {
+    Uuid7Generator ids;
+    const Stroke under = line(ids, 10.0F, 50.0F, 30.0F);
+    Stroke over{ids.next(), StrokeStyle{.width = 2.0F}};
+    for (int step = 0; step <= 10; ++step) {
+        over.append(InkSample{.x = 30.0F, .y = 10.0F + (static_cast<float>(step) * 4.0F)});
+    }
+    const Uuid only = ids.next();
+    Page page{ids.next(),
+              {
+                  PlacedStroke{.ordinal = 0, .stroke = under, .layer = only},
+                  PlacedStroke{.ordinal = 1, .stroke = over, .layer = only},
+              },
+              {},
+              {},
+              {},
+              {Layer{.id = only, .name = "only"}}};
+
+    const std::optional<Uuid> touched = strokeUnder(page, Point{.x = 30.0F, .y = 30.0F}, 3.0F);
+
+    ASSERT_TRUE(touched.has_value());
+    EXPECT_EQ(*touched, over.id());
+}
+
+TEST(StrokeSelectionTest, LeavesInkOnALayerOutOfReachWhereItIs) {
+    Uuid7Generator ids;
+    const Stroke held = line(ids, 20.0F, 40.0F, 30.0F);
+    const Uuid shut = ids.next();
+    Page page{ids.next(), {PlacedStroke{.ordinal = 0, .stroke = held, .layer = shut}}, {}, {},
+              {},         {Layer{.id = shut, .name = "shut", .locked = true}}};
+
+    EXPECT_FALSE(strokeUnder(page, Point{.x = 30.0F, .y = 30.0F}, 4.0F).has_value());
 }
 
 TEST(StrokeSelectionTest, LeavesInkOnALockedLayerWhereItIs) {

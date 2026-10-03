@@ -34,6 +34,9 @@ public:
 
     virtual void selectionDrawn(std::span<const core::Point> shape) = 0;
 
+    // A loop takes what is wholly inside it; a touch takes whatever lies under it, within `reach`.
+    virtual void thingTouched(const core::Point& at, float reach) = 0;
+
     virtual void selectionMoved(float dx, float dy) = 0;
 
     virtual void colourWanted(const core::InkSample& at, int sheet) = 0;

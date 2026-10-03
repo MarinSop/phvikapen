@@ -746,6 +746,8 @@ private:
                          core::EraseMode mode, int sheet) override;
         void eraseFinished() override;
         void selectionDrawn(std::span<const core::Point> shape) override;
+
+        void thingTouched(const core::Point& at, float reach) override;
         void selectionMoved(float dx, float dy) override;
         void colourWanted(const core::InkSample& at, int sheet) override;
         void colourSeen(const core::Color& colour) override;
@@ -817,6 +819,8 @@ private:
     // Which page a sheet of the column is, or the page being read when the sheet is not one.
     [[nodiscard]] core::Uuid pageOfSheet(int sheet) const;
     void selectInside(std::span<const core::Point> polygon);
+
+    void pickUnder(const core::Point& at, float reach);
     void moveSelection(float dx, float dy);
     void pickColour(const core::InkSample& at, int sheet);
     void showPickedColour(const core::Color& colour);

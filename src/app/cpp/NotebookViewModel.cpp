@@ -926,6 +926,10 @@ void NotebookViewModel::Sink::selectionDrawn(std::span<const core::Point> shape)
     m_owner->selectInside(shape);
 }
 
+void NotebookViewModel::Sink::thingTouched(const core::Point& at, float reach) {
+    m_owner->pickUnder(at, reach);
+}
+
 void NotebookViewModel::Sink::selectionMoved(float dx, float dy) {
     m_owner->moveSelection(dx, dy);
 }
@@ -2709,6 +2713,19 @@ void NotebookViewModel::selectInside(std::span<const core::Point> polygon) {
         return;
     }
     m_canvas->showSelection(core::strokesInside(*page, polygon));
+}
+
+void NotebookViewModel::pickUnder(const core::Point& at, float reach) {
+    const core::Page* const page = currentPageData();
+    if (page == nullptr || m_canvas.isNull()) {
+        return;
+    }
+    const std::optional<core::Uuid> touched = core::strokeUnder(*page, at, reach);
+    std::vector<core::Uuid> picked;
+    if (touched) {
+        picked.push_back(*touched);
+    }
+    m_canvas->showSelection(std::move(picked));
 }
 
 void NotebookViewModel::moveSelection(float dx, float dy) {

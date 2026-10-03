@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A line is taken by touching it. With the loop tool in hand, a tap takes whatever lies under it and
+  a loop goes on taking everything wholly inside it, so picking up what was just written no longer
+  needs a loop drawn round it. What a touch takes behaves as anything picked up does: it can be
+  carried, sized, turned, copied and asked what can be done to it.
+
 ### Changed
 
 - Searching a notebook happens as it is typed, a moment after the typing stops, and the button that

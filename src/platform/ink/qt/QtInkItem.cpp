@@ -41,6 +41,9 @@ constexpr float kSheetGap = 24.0F;
 // and how far it may wander in that time.
 constexpr auto kHoldForMenu = std::chrono::milliseconds{650};
 constexpr qreal kHoldSlack = 10.0;
+// A loop drawn no larger than this, measured on the glass, was a touch rather than a loop, and what
+// is under a touch is taken instead. The same measure is how close to a line a touch has to land.
+constexpr float kTouchSlack = 6.0F;
 // Two sheets never stand this close, so anything nearer belongs to the same one.
 constexpr float kSameSheet = 0.5F;
 constexpr std::size_t kMostSheetsDrawn = 16;
@@ -688,7 +691,14 @@ void QtInkItem::finishMarquee() {
         return;
     }
     const core::Rect box = core::shapedBox(m_marquee->from, m_marquee->to, m_shapeKeys);
+    const core::Point touched = m_marquee->to;
     m_marquee.reset();
+    const float slack = kTouchSlack / m_viewport.scale();
+    if (m_sink != nullptr && box.width() <= slack && box.height() <= slack) {
+        m_sink->thingTouched(onSheet(touched), slack);
+        rebuildBuffers();
+        return;
+    }
     if (m_sink != nullptr && box.width() > 0.0F && box.height() > 0.0F) {
         const std::array corners{
             core::Point{.x = box.left, .y = box.top},

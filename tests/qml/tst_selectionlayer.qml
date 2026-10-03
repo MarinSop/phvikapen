@@ -84,6 +84,38 @@ TestCase {
         compare(notebook.errorMessage, "");
     }
 
+    // A touch takes the line under it. Drawing a loop round something is one gesture too many for
+    // a pen when all that is wanted is the line that was just written.
+    function test_ab_aTouchTakesTheLineUnderIt() {
+        const notebook = openNotebook(newNotebookPath());
+        openLayer(notebook, pickingTools());
+        testCase.draw(notebook, 60, 60);
+        tryCompare(notebook, "strokeCount", 1);
+        notebook.canvas.selecting = true;
+
+        notebook.canvas.selectEverything();
+        tryVerify(() => notebook.canvas.selectedCount === 1, 2000);
+        const area = notebook.areaOfWhatIsPicked();
+        const canvas = notebook.canvas;
+        const onGlass = (x, y) => Qt.point((x - canvas.viewOrigin.x) * canvas.zoom, (y - canvas.viewOrigin.y) * canvas.zoom);
+        const middle = onGlass(area.columnX + (area.width / 2), area.columnY + (area.height / 2));
+        notebook.canvas.clearSelection();
+        tryCompare(notebook.canvas, "selectedCount", 0);
+
+        mouseClick(notebook.canvas, middle.x, middle.y);
+
+        tryCompare(notebook.canvas, "selectedCount", 1, 4000, "a touch on the line took nothing");
+
+        notebook.canvas.clearSelection();
+        tryCompare(notebook.canvas, "selectedCount", 0);
+
+        const bare = onGlass(area.columnX + area.width + 200, area.columnY + area.height + 200);
+        mouseClick(notebook.canvas, bare.x, bare.y);
+
+        tryCompare(notebook.canvas, "selectedCount", 0, 2000, "a touch on bare paper took something");
+        compare(notebook.errorMessage, "");
+    }
+
     function test_b_pickedInkIsTurnedByItsKnob() {
         const notebook = openNotebook(newNotebookPath());
         const layer = pickedInk(notebook, pickingTools());

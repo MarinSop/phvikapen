@@ -16,6 +16,10 @@ namespace phvikapen::core {
 
 [[nodiscard]] std::vector<Uuid> strokesInside(const Page& page, std::span<const Point> polygon);
 
+// The stroke under a point, within `reach` of it: the last of those it could be, which is the one
+// lying over the others. A loop takes what is wholly inside it; a touch takes what is under it.
+[[nodiscard]] std::optional<Uuid> strokeUnder(const Page& page, Point at, float reach);
+
 [[nodiscard]] std::optional<Rect> boundsOf(const Page& page, std::span<const Uuid> strokeIds);
 
 [[nodiscard]] Stroke moved(const Stroke& stroke, float dx, float dy);
