@@ -395,6 +395,7 @@ ToolBar {
         }
 
         NumberField {
+            hasSlider: true
             maximum: 8
             minimum: 1
             number: root.notebook === null || !root.tables ? 1 : Math.round(root.notebook.pickedTableBox.ruleWidth)

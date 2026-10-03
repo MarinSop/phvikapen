@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import PhvikaPen.Ui
 
@@ -41,6 +42,28 @@ TestCase {
         slider.close();
         wait(50);
         verify(!slider.opened);
+    }
+
+    // A command standing in the bar must say what it is. One with no glyph of its own says it in
+    // words and takes the width they need, rather than standing there as a square with nothing in it.
+    function test_cb_aCommandWithNoGlyphSaysWhatItIsInWords() {
+        const plain = createTemporaryObject(quickButtonComponent, testCase, {
+            label: "Merge boxes",
+            text: "Merge Boxes"
+        });
+
+        verify(plain.glyphless, "a button with no glyph did not know it");
+        compare(plain.display, AbstractButton.TextOnly);
+        verify(plain.implicitWidth > plain.implicitHeight, "the words were given no room");
+
+        const drawn = createTemporaryObject(quickButtonComponent, testCase, {
+            label: "Table",
+            text: "Table",
+            "icon.source": Icons.table
+        });
+
+        verify(!drawn.glyphless);
+        compare(drawn.display, AbstractButton.IconOnly);
     }
 
     function test_d_theShapesAreButtonsOfTheirOwn() {
@@ -105,6 +128,13 @@ TestCase {
     visible: true
     when: windowShown
     width: 900
+
+    Component {
+        id: quickButtonComponent
+
+        QuickButton {
+        }
+    }
 
     ToolViewModel {
         id: tools

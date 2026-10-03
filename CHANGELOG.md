@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Merge Boxes and Split Box stood in the bar above the page as two empty squares. A command in that
+  bar is shown by its glyph, and those two have none, so one with no glyph of its own now says what
+  it is in words and is given the width they need.
+- How thick a table is ruled is set the way every other number in that bar is set, by a slider that
+  comes up when it is pressed, rather than by stepping one at a time.
+
 - A command with a long name in a menu was written over the keys it answers to. What a command is
   called now has the room between the tick and its keys and is cut short rather than written over
   them, so neither can ever be unreadable however narrow the menu comes out.
