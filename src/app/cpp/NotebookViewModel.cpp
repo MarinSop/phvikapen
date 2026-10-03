@@ -2940,10 +2940,35 @@ void NotebookViewModel::copySelectionAsText() {
 }
 
 void NotebookViewModel::pasteStrokes() {
+    paste({});
+}
+
+void NotebookViewModel::pasteStrokesAt(qreal x, qreal y) {
+    paste(core::Point{.x = static_cast<float>(x), .y = static_cast<float>(y)});
+}
+
+void NotebookViewModel::paste(std::optional<core::Point> at) {
     core::Page* const page = currentPageData();
     if (page == nullptr || m_canvas.isNull() || m_clipboard.empty() || !canPutSomethingDown()
         || !m_storage) {
         return;
+    }
+
+    // Asked for somewhere in particular, what was copied is carried there by its top left corner;
+    // asked for with no place in mind, it lands a little aside of where it was copied from.
+    float acrossBy = kPasteOffset;
+    float downBy = kPasteOffset;
+    if (at) {
+        std::optional<core::Rect> around;
+        for (const core::Stroke& stroke : m_clipboard) {
+            if (const std::optional<core::Rect> bounds = stroke.boundingBox()) {
+                around = around ? around->united(*bounds) : *bounds;
+            }
+        }
+        if (around) {
+            acrossBy = at->x - around->left;
+            downBy = at->y - around->top;
+        }
     }
 
     std::int64_t ordinal = page->nextOrdinal();
@@ -2952,7 +2977,7 @@ void NotebookViewModel::pasteStrokes() {
     pasted.reserve(m_clipboard.size());
     ids.reserve(m_clipboard.size());
     for (const core::Stroke& stroke : m_clipboard) {
-        const core::Stroke shifted = core::moved(stroke, kPasteOffset, kPasteOffset);
+        const core::Stroke shifted = core::moved(stroke, acrossBy, downBy);
         core::Stroke fresh{m_ids.next(), shifted.style()};
         for (const core::InkSample& sample : shifted.samples()) {
             fresh.append(sample);
@@ -2970,7 +2995,7 @@ void NotebookViewModel::pasteStrokes() {
     m_clipboard.clear();
     for (const core::PlacedStroke& placed : page->strokes()) {
         if (std::ranges::find(ids, placed.stroke.id()) != ids.end()) {
-            m_clipboard.push_back(core::moved(placed.stroke, -kPasteOffset, -kPasteOffset));
+            m_clipboard.push_back(core::moved(placed.stroke, -acrossBy, -downBy));
         }
     }
     m_canvas->showSelection(std::move(ids));

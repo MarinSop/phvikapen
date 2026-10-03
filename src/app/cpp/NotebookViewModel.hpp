@@ -667,6 +667,8 @@ public:
     // Read what is picked and put it on the clipboard as text.
     Q_INVOKABLE void copySelectionAsText();
     Q_INVOKABLE void pasteStrokes();
+
+    Q_INVOKABLE void pasteStrokesAt(qreal x, qreal y);
     Q_INVOKABLE void recolourSelection(const QColor& color);
 
     Q_PROPERTY(bool hasCopiedStrokes READ hasCopiedStrokes NOTIFY clipboardChanged FINAL)
@@ -824,6 +826,8 @@ private:
                core::EraseMode mode, int sheet);
     void finishErasing();
     void runCommand(std::unique_ptr<core::ICommand> command);
+    void paste(std::optional<core::Point> at);
+
     void finishChange(const core::Result<void>& change, std::optional<core::Uuid> pageToShow,
                       bool redrawsPage = true);
     [[nodiscard]] QString freePageName(std::size_t section) const;

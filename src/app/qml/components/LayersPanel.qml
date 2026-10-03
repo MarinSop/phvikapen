@@ -223,7 +223,6 @@ Pane {
                 Component.onCompleted: line.askForPreview()
                 onDoubleClicked: line.renaming = true
                 onPanelReadyChanged: line.askForPreview()
-                onPressAndHold: lineMenu.popup()
                 onPreviewChanged: line.askForPreview()
 
                 ReorderHandler {
@@ -242,6 +241,7 @@ Pane {
                     acceptedModifiers: Qt.NoModifier
                     gesturePolicy: TapHandler.DragThreshold
 
+                    onLongPressed: lineMenu.popup()
                     onPressedChanged: {
                         if (pressed) {
                             root.notebook.activeLayer = line.layerId;
@@ -267,6 +267,8 @@ Pane {
 
                 Menu {
                     id: lineMenu
+
+                    objectName: "layerLineMenu"
 
                     MenuItem {
                         text: qsTr("Rename")

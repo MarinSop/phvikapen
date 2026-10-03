@@ -138,27 +138,6 @@ Pane {
                     }
 
                     QuickButton {
-                        id: options
-
-                        icon.source: Icons.settings
-                        label: qsTr("Page options")
-                        objectName: "pageOptionsButton"
-                        opacity: row.hovered || row.highlighted ? 1 : 0
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Theme.quick
-                                easing.type: Theme.ease
-                            }
-                        }
-
-                        onClicked: {
-                            root.notebook.currentPage = row.index;
-                            rowMenu.openAt(rowMenu.parent.mapFromItem(options, 0, options.height));
-                        }
-                    }
-
-                    QuickButton {
                         enabled: root.ready && root.notebook.pageCount > 1
                         icon.source: Icons.close
                         label: qsTr("Delete page")
@@ -178,7 +157,6 @@ Pane {
 
                 Component.onCompleted: row.askForThumbnail()
                 onPanelReadyChanged: row.askForThumbnail()
-                onPressAndHold: rowMenu.popup()
                 onThumbnailChanged: row.askForThumbnail()
 
                 ReorderHandler {
@@ -196,6 +174,7 @@ Pane {
                     acceptedButtons: Qt.LeftButton
                     gesturePolicy: TapHandler.DragThreshold
 
+                    onLongPressed: rowMenu.popup()
                     onPressedChanged: {
                         if (pressed) {
                             root.notebook.currentPage = row.index;

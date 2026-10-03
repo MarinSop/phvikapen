@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- What can be done to a page is asked of the page itself, by a right click or by holding the pointer
+  down on its line, rather than by a button standing on every line whether it was wanted or not.
+- What was copied is put down where the menu was asked for. Holding the pointer down somewhere on the
+  paper and asking for Paste leaves it there, instead of a little aside of wherever it was copied
+  from. Asked for from the Edit menu, it lands beside the copy as it always did.
+
 ### Fixed
+
+- Holding the pointer down on a line in the Pages, Sections or Layers panel asked nothing at all.
+  Taking hold of a line is answered by a handler of its own, and a handler that takes the press owns
+  it: the line underneath is never told the press was held, so the holding was reported to something
+  that could not hear it. The handler that takes the press now reports the holding itself.
+
 
 - Carrying a page up or down the list threw away the small picture of it, which left the line bare
   until a new one had been drawn. Every change at all threw away the picture of whatever page it

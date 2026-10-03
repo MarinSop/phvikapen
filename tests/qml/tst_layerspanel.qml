@@ -113,6 +113,25 @@ TestCase {
         tryVerify(() => model.data(model.index(0, 0), Qt.UserRole + 4) === false, 5000, "the layer was not unlocked");
     }
 
+    // Holding the pointer down on a line asks what can be done to it, the same menu a right click
+    // asks for. The handler that takes the press is the one that must report the holding: a line
+    // that leaves it to the delegate underneath is never told the press was held at all.
+    function test_ea_holdingALineAsksWhatCanBeDoneToIt() {
+        const row = testCase.rowAt(0);
+        const menu = findChild(row, "layerLineMenu");
+        verify(menu !== null, "the line has no menu of its own");
+
+        mouseClick(row, row.width / 2, row.height / 2, Qt.RightButton);
+        tryVerify(() => menu.opened, 2000, "a right click did not ask what can be done to the layer");
+        menu.close();
+        tryVerify(() => !menu.opened, 2000);
+
+        mousePress(row, row.width / 2, row.height / 2);
+        tryVerify(() => menu.opened, 4000, "holding the pointer down did not ask what can be done to the layer");
+        mouseRelease(row, row.width / 2, row.height / 2);
+        menu.close();
+    }
+
     function test_f_sendingToALayerIsOffUntilSomethingIsPickedUp() {
         verify(!actions.moveToActiveLayer.enabled, "nothing is in hand, so there is nothing to send");
     }

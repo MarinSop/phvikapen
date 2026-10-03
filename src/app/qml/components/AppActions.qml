@@ -15,6 +15,8 @@ Item {
     required property ToolViewModel tools
     required property WorkspaceViewModel workspace
     required property MathViewModel maths
+    property point askedAt
+    property bool askedOnPage: false
     required property ElementsViewModel library
     required property RecordingViewModel sound
     required property TimeKeeperViewModel timeKeeper
@@ -199,7 +201,16 @@ Item {
         shortcut: root.pageKeys("paste")
         text: qsTr("Paste")
 
-        onTriggered: root.notebook.pasteStrokes()
+        // Asked for from a menu opened on the paper, what was copied lands where that menu was
+        // asked for. The place is good for that one paste; the next one lands beside the copy.
+        onTriggered: {
+            if (root.askedOnPage) {
+                root.askedOnPage = false;
+                root.notebook.pasteStrokesAt(root.askedAt.x, root.askedAt.y);
+                return;
+            }
+            root.notebook.pasteStrokes();
+        }
     }
     readonly property Action insertPicture: Action {
         enabled: root.hasNotebook

@@ -57,16 +57,23 @@ TestCase {
         tryCompare(notebooks.current, "currentPage", wanted, 2000, "the page was not chosen because the finger moved");
     }
 
-    function test_d_theCogOpensTheOptionsOfThatPage() {
+    // What can be done to a page is asked of the page itself, by a right click or by holding the
+    // pointer down on it, rather than by a button standing on every line.
+    function test_d_aPageLineAsksWhatCanBeDoneToIt() {
         const row = testCase.rowOfPage(1);
-        const cog = findChild(row, "pageOptionsButton");
-        verify(cog !== null);
-
-        mouseClick(cog, cog.width / 2, cog.height / 2);
-
+        verify(findChild(row, "pageOptionsButton") === null, "a line still carries a button of its own");
         const options = findChild(row, "pageOptionsMenu");
-        verify(options !== null, "the cog has no menu of its own");
-        tryVerify(() => options.opened, 2000, "the cog did not open the options of the page");
+        verify(options !== null, "the line has no menu of its own");
+
+        mouseClick(row, row.width / 2, row.height / 2, Qt.RightButton);
+
+        tryVerify(() => options.opened, 2000, "a right click did not ask what can be done to the page");
+        options.close();
+        tryVerify(() => !options.opened, 2000);
+
+        mousePress(row, row.width / 2, row.height / 2);
+        tryVerify(() => options.opened, 4000, "holding the pointer down did not ask what can be done to the page");
+        mouseRelease(row, row.width / 2, row.height / 2);
         compare(notebooks.current.currentPage, 1);
         options.close();
     }

@@ -310,6 +310,8 @@ ApplicationWindow {
                 const onPage = Qt.point((at.x / canvas.zoom) + canvas.viewOrigin.x, (at.y / canvas.zoom) + canvas.viewOrigin.y);
                 const link = root.notebook.linkUnder(onPage.x, onPage.y);
                 appActions.linkInHand = link.linkId === undefined ? "" : link.linkId;
+                appActions.askedAt = onPage;
+                appActions.askedOnPage = true;
                 contextMenu.openAt(canvas.mapToItem(workspace, at.x, at.y));
             }
 

@@ -138,8 +138,6 @@ Pane {
                     }
                 }
 
-                onPressAndHold: rowMenu.popup()
-
                 ReorderHandler {
                     id: carry
 
@@ -155,6 +153,7 @@ Pane {
                     acceptedButtons: Qt.LeftButton
                     gesturePolicy: TapHandler.DragThreshold
 
+                    onLongPressed: rowMenu.popup()
                     onPressedChanged: {
                         if (pressed) {
                             root.notebook.currentSection = row.index;
