@@ -7,128 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- The words in a picture are read in the languages the machine is set to, where none is asked for.
-  A reader left to itself reads English, which makes poor work of a page written in anything else.
-
-- A search of handwriting forgives a letter. A reader of handwriting mistakes about that many, so a
-  word is found by what was asked for even where one letter of it was read as another, left out or
-  put in, and the same holds for every word of a search of several. Two letters wrong is still a
-  different word, and an asking of fewer than five letters forgives nothing, where one letter in
-  three would be a different word altogether.
-
-### Fixed
-
-- A panel carried into the middle of the sheet to leave it floating was taken for a panel aimed at a
-  corner. How close to an edge or a corner a panel must be carried was fixed in pixels, and on a
-  window no larger than a few of those reaches the corners met in the middle and left nowhere to
-  carry a panel to. Both reaches are now a share of the room at most, so the middle of a sheet is
-  still a middle however small the window.
-
-### Added
-
-- What is picked up can be sent to another layer from the menu the paper offers, to any layer the
-  page carries or to one made for it. Sending it to the layer in hand was there already; this is the
-  same thing without having to take that layer in hand first.
-
-- The eraser takes a box of type as well as ink. Type cannot be rubbed out letter by letter, so a
-  box the eraser passes over goes whole, and one undo puts it back along with whatever ink went with
-  it in the same sweep.
-
-- A line is taken by touching it. With the loop tool in hand, a tap takes whatever lies under it and
-  a loop goes on taking everything wholly inside it, so picking up what was just written no longer
-  needs a loop drawn round it. What a touch takes behaves as anything picked up does: it can be
-  carried, sized, turned, copied and asked what can be done to it.
-
-### Changed
-
-- Searching a notebook happens as it is typed, a moment after the typing stops, and the button that
-  had to be pressed to set it going is gone. What was found stands under the section and the page it
-  was found on rather than as one long list with the place written out beside every line, and a
-  section can be shut to put what is under it out of the way.
-
-### Fixed
-
-- Merge Boxes and Split Box stood in the bar above the page as two empty squares. A command in that
-  bar is shown by its glyph, and those two have none, so one with no glyph of its own now says what
-  it is in words and is given the width they need.
-- How thick a table is ruled is set the way every other number in that bar is set, by a slider that
-  comes up when it is pressed, rather than by stepping one at a time.
-
-- A command with a long name in a menu was written over the keys it answers to. What a command is
-  called now has the room between the tick and its keys and is cut short rather than written over
-  them, so neither can ever be unreadable however narrow the menu comes out.
-- The window of words read out of a picture was a fixed width that could run off the edge of a small
-  screen, and it gave a line or two of words a box the depth of a page to sit in the middle of. It
-  is now never wider than the window it stands in, and the box is as deep as what was read, up to a
-  depth past which it is read by scrolling. The words start at the top left, as text does.
-
-- A layer put out of sight took its ink with it and left everything else standing: a picture, a box
-  of type, a table or an imported page on that layer went on being drawn as though the layer were
-  still shown. The ink was told of the change and nothing else was, so a layer now says what it has
-  become to everything standing on it.
-
-### Added
-
-- One place where the application says how what you asked for went, at the foot of the window and
-  out of the way of the paper. A note says plainly whether something came off or did not, a note
-  about something still being worked on turns until it is settled, and several notes stand one above
-  the other and each goes again on its own. Copying handwriting, reading handwriting into type and
-  reading the words in a picture all say so now, and say what they made of it where that is short
-  enough to read at a glance.
-
-### Changed
-
-- What can be done to a page is asked of the page itself, by a right click or by holding the pointer
-  down on its line, rather than by a button standing on every line whether it was wanted or not.
-- What was copied is put down where the menu was asked for. Holding the pointer down somewhere on the
-  paper and asking for Paste leaves it there, instead of a little aside of wherever it was copied
-  from. Asked for from the Edit menu, it lands beside the copy as it always did.
-
-### Fixed
-
-- Holding the pointer down on a line in the Pages, Sections or Layers panel asked nothing at all.
-  Taking hold of a line is answered by a handler of its own, and a handler that takes the press owns
-  it: the line underneath is never told the press was held, so the holding was reported to something
-  that could not hear it. The handler that takes the press now reports the holding itself.
-
-
-- Carrying a page up or down the list threw away the small picture of it, which left the line bare
-  until a new one had been drawn. Every change at all threw away the picture of whatever page it
-  pointed at, whether or not anything on that page had moved. A change now says whether what is
-  drawn on the page is different, and carrying a page about or giving it a name says it is not, so
-  the picture stays exactly where it belongs however often the pages are reordered.
-
-### Removed
-
-- Equations and working sums out. Solve is gone from Edit, from the bar above the page and from the
-  menu under the pointer, the Maths panel is gone from View, and a sum typed into a box of text is
-  no longer answered on its own as it is being typed. None of it was good enough to be in the way of
-  writing. What it was built out of is still in the repository, so it can be offered again when
-  there is something better to offer.
-
-### Fixed
-
-- Nothing in the application could be worked with the pen but the paper itself: no slider, no button
-  on a layer line, no grip on what was picked up, no option in a menu opened by holding the pen
-  down. A tablet event is never handed to a control; the window system makes a mouse event of it
-  instead, and only where the tablet event was left alone. The canvas was taking every one of them
-  for itself, across the whole window, so the mouse event was never made and nothing else ever heard
-  the pen. Worse, a press over a menu was read as a press on the paper underneath, which is why
-  reaching for an option let go of what was picked and asked the paper what could be done there.
-  The canvas now reads a tablet event only for the pressure and the tilt it carries and leaves it
-  alone, so the pen reaches whatever is under it, menus and popups first, exactly as a mouse does.
-
-### Changed
-
-- Writing follows the pen again. The evening out of a slow line was reaching so far, and settling so
-  far behind the pen, that a stroke could be seen straightening itself after it had been drawn. It
-  reaches as far as it did before that, settles as soon as it did, and no longer holds a stroke open
-  waiting to learn where its corners are. A slowly drawn line wobbles a little again, which is the
-  price of a line that goes where the pen went.
-
-## [0.3.0] - 2026-09-29
+## [0.3.0] - 2026-10-03
 
 ### Added
 
@@ -179,7 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handwriting is taken away, and a box of type in its place says the same thing, in about the size
   the hand wrote it. It can be corrected and moved like any other typed text, and one undo brings
   the handwriting back.
-
 - A menu of what can be done right here, opened by a right click, by the button on the barrel of a
   pen, or by holding the pen still for a moment. It offers what suits what is picked up: cut, copy,
   duplicate, delete, convert to text and turning for a piece of drawing; paste, select everything,
@@ -205,10 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drawn — which is what makes the window comfortable to work with a pen rather than a mouse. All of
   them can be put back to what they came with in one press.
 - A Tools menu, listing every tool with its key and what the eraser takes.
-
 - A setting for versions that are still being tried out. Off, only finished versions are offered;
   on, the newest beta is offered as well and installs itself the same way.
-
 - A notebook can hold pictures that stand on a page: which picture it is, where it stands, how
   large it is drawn and how far it has been turned. A picture is kept once, by what it contains, so
   the same picture on ten pages costs the room of one, and putting one down, moving it, turning it
@@ -269,6 +145,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Equation, from the Insert menu or on Ctrl+Shift+E, puts a box down where the reader is looking
   with the caret already in it, so a sum can be typed straight away without reaching for the text
   tool. Work out sits on the bar above the window as well as in the menus.
+- What is picked up can be sent to another layer from the menu the paper offers, to any layer the
+  page carries or to one made for it. Sending it to the layer in hand was there already; this is the
+  same thing without having to take that layer in hand first.
+- The eraser takes a box of type as well as ink. Type cannot be rubbed out letter by letter, so a
+  box the eraser passes over goes whole, and one undo puts it back along with whatever ink went with
+  it in the same sweep.
+- A line is taken by touching it. With the loop tool in hand, a tap takes whatever lies under it and
+  a loop goes on taking everything wholly inside it, so picking up what was just written no longer
+  needs a loop drawn round it. What a touch takes behaves as anything picked up does: it can be
+  carried, sized, turned, copied and asked what can be done to it.
+- One place where the application says how what you asked for went, at the foot of the window and
+  out of the way of the paper. A note says plainly whether something came off or did not, a note
+  about something still being worked on turns until it is settled, and several notes stand one above
+  the other and each goes again on its own. Copying handwriting, reading handwriting into type and
+  reading the words in a picture all say so now, and say what they made of it where that is short
+  enough to read at a glance.
+
+### Changed
+
+- A tool is chosen from the palette down the side, so the menus no longer offer the same list a
+  second time.
+- What the eraser takes is one control saying which of the two it is, rather than two buttons each
+  saying half of it.
+- The two ways of bringing something in are told apart by what they do: Insert ▸ Picture on This
+  Page puts a picture on the page being read, and Insert ▸ Document as New Pages opens a document
+  or picture as pages of its own.
+- Copy as Text, Convert to Text and Solve carry a mark of their own on the bar, which showed empty
+  buttons before, and what was called Work Out is called Solve.
+- Smoothing averages each sample with its neighbours along the line instead of over time, so it
+  evens out a shaky hand without pulling the line behind the pen or rounding off what was written.
+  Both ends of a stroke stay where the pen was, the setting is gentle at first and strong only near
+  the top of its scale, and its reach is measured on the screen, the same at every zoom.
+- A pen rounds the turns it makes with its tip instead of meeting them in a point; drawn shapes keep
+  square corners.
+- A light touch still leaves a line: width follows a curve with a floor rather than the raw pressure.
+- The edges of the ink, the highlighter included, are drawn with several samples to a pixel.
+- Curves are cut into as many pieces as their bend needs, and round tips into as many sides as their
+  size needs, so both stay round when zoomed in. Exported pages end their strokes round as well.
+- The words in a picture are read in the languages the machine is set to, where none is asked for.
+  A reader left to itself reads English, which makes poor work of a page written in anything else.
+- A search of handwriting forgives a letter. A reader of handwriting mistakes about that many, so a
+  word is found by what was asked for even where one letter of it was read as another, left out or
+  put in, and the same holds for every word of a search of several. Two letters wrong is still a
+  different word, and an asking of fewer than five letters forgives nothing, where one letter in
+  three would be a different word altogether.
+- Searching a notebook happens as it is typed, a moment after the typing stops, and the button that
+  had to be pressed to set it going is gone. What was found stands under the section and the page it
+  was found on rather than as one long list with the place written out beside every line, and a
+  section can be shut to put what is under it out of the way.
+- What can be done to a page is asked of the page itself, by a right click or by holding the pointer
+  down on its line, rather than by a button standing on every line whether it was wanted or not.
+- What was copied is put down where the menu was asked for. Holding the pointer down somewhere on the
+  paper and asking for Paste leaves it there, instead of a little aside of wherever it was copied
+  from. Asked for from the Edit menu, it lands beside the copy as it always did.
+- Writing follows the pen again. The evening out of a slow line was reaching so far, and settling so
+  far behind the pen, that a stroke could be seen straightening itself after it had been drawn. It
+  reaches as far as it did before that, settles as soon as it did, and no longer holds a stroke open
+  waiting to learn where its corners are. A slowly drawn line wobbles a little again, which is the
+  price of a line that goes where the pen went.
 
 ### Fixed
 
@@ -354,32 +289,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Writing on Windows follows the pen. Windows hands over several positions of the pen at once, all
   stamped with the same time, and all but the first were dropped, which cut the corners of letters
   and set lines wobbling. Every position is kept now.
-
-### Changed
-
-- A tool is chosen from the palette down the side, so the menus no longer offer the same list a
-  second time.
-- What the eraser takes is one control saying which of the two it is, rather than two buttons each
-  saying half of it.
-- The two ways of bringing something in are told apart by what they do: Insert ▸ Picture on This
-  Page puts a picture on the page being read, and Insert ▸ Document as New Pages opens a document
-  or picture as pages of its own.
-- Copy as Text, Convert to Text and Solve carry a mark of their own on the bar, which showed empty
-  buttons before, and what was called Work Out is called Solve.
-- Smoothing averages each sample with its neighbours along the line instead of over time, so it
-  evens out a shaky hand without pulling the line behind the pen or rounding off what was written.
-  Both ends of a stroke stay where the pen was, the setting is gentle at first and strong only near
-  the top of its scale, and its reach is measured on the screen, the same at every zoom.
-- A pen rounds the turns it makes with its tip instead of meeting them in a point; drawn shapes keep
-  square corners.
-- A light touch still leaves a line: width follows a curve with a floor rather than the raw pressure.
-- The edges of the ink, the highlighter included, are drawn with several samples to a pixel.
-- Curves are cut into as many pieces as their bend needs, and round tips into as many sides as their
-  size needs, so both stay round when zoomed in. Exported pages end their strokes round as well.
+- A panel carried into the middle of the sheet to leave it floating was taken for a panel aimed at a
+  corner. How close to an edge or a corner a panel must be carried was fixed in pixels, and on a
+  window no larger than a few of those reaches the corners met in the middle and left nowhere to
+  carry a panel to. Both reaches are now a share of the room at most, so the middle of a sheet is
+  still a middle however small the window.
+- Merge Boxes and Split Box stood in the bar above the page as two empty squares. A command in that
+  bar is shown by its glyph, and those two have none, so one with no glyph of its own now says what
+  it is in words and is given the width they need.
+- How thick a table is ruled is set the way every other number in that bar is set, by a slider that
+  comes up when it is pressed, rather than by stepping one at a time.
+- A command with a long name in a menu was written over the keys it answers to. What a command is
+  called now has the room between the tick and its keys and is cut short rather than written over
+  them, so neither can ever be unreadable however narrow the menu comes out.
+- The window of words read out of a picture was a fixed width that could run off the edge of a small
+  screen, and it gave a line or two of words a box the depth of a page to sit in the middle of. It
+  is now never wider than the window it stands in, and the box is as deep as what was read, up to a
+  depth past which it is read by scrolling. The words start at the top left, as text does.
+- A layer put out of sight took its ink with it and left everything else standing: a picture, a box
+  of type, a table or an imported page on that layer went on being drawn as though the layer were
+  still shown. The ink was told of the change and nothing else was, so a layer now says what it has
+  become to everything standing on it.
+- Holding the pointer down on a line in the Pages, Sections or Layers panel asked nothing at all.
+  Taking hold of a line is answered by a handler of its own, and a handler that takes the press owns
+  it: the line underneath is never told the press was held, so the holding was reported to something
+  that could not hear it. The handler that takes the press now reports the holding itself.
+- Carrying a page up or down the list threw away the small picture of it, which left the line bare
+  until a new one had been drawn. Every change at all threw away the picture of whatever page it
+  pointed at, whether or not anything on that page had moved. A change now says whether what is
+  drawn on the page is different, and carrying a page about or giving it a name says it is not, so
+  the picture stays exactly where it belongs however often the pages are reordered.
+- Nothing in the application could be worked with the pen but the paper itself: no slider, no button
+  on a layer line, no grip on what was picked up, no option in a menu opened by holding the pen
+  down. A tablet event is never handed to a control; the window system makes a mouse event of it
+  instead, and only where the tablet event was left alone. The canvas was taking every one of them
+  for itself, across the whole window, so the mouse event was never made and nothing else ever heard
+  the pen. Worse, a press over a menu was read as a press on the paper underneath, which is why
+  reaching for an option let go of what was picked and asked the paper what could be done there.
+  The canvas now reads a tablet event only for the pressure and the tilt it carries and leaves it
+  alone, so the pen reaches whatever is under it, menus and popups first, exactly as a mouse does.
 
 ### Removed
 
 - The One Euro filter, which smoothing no longer needs.
+- Equations and working sums out. Solve is gone from Edit, from the bar above the page and from the
+  menu under the pointer, the Maths panel is gone from View, and a sum typed into a box of text is
+  no longer answered on its own as it is being typed. None of it was good enough to be in the way of
+  writing. What it was built out of is still in the repository, so it can be offered again when
+  there is something better to offer.
 
 ## [0.2.0] - 2026-09-19
 
