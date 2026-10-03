@@ -4611,6 +4611,12 @@ void NotebookViewModel::changeLayers(std::vector<core::Layer> wanted) {
                                                            std::move(wanted)));
     letGoOfWhatIsShut();
     publishLayers();
+    // A layer governs everything standing on it, not the ink alone, so all of it is published
+    // again.
+    publishPictures();
+    publishTexts();
+    publishTables();
+    publishMedia();
     refreshCanvas();
 }
 

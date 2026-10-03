@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A layer put out of sight took its ink with it and left everything else standing: a picture, a box
+  of type, a table or an imported page on that layer went on being drawn as though the layer were
+  still shown. The ink was told of the change and nothing else was, so a layer now says what it has
+  become to everything standing on it.
+
 ### Added
 
 - One place where the application says how what you asked for went, at the foot of the window and

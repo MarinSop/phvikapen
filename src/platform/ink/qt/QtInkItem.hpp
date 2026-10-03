@@ -61,6 +61,7 @@ class QtInkItem : public QQuickRhiItem, public IInkBackend {
     Q_PROPERTY(qreal corner READ corner WRITE setCorner NOTIFY shapeChanged FINAL)
     Q_PROPERTY(qreal smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
     Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
+    Q_PROPERTY(int pictureCount READ pictureCount NOTIFY mediaChanged FINAL)
     Q_PROPERTY(QRectF selectionRect READ selectionRect NOTIFY selectionChanged FINAL)
     Q_PROPERTY(qreal selectionMargin READ selectionMargin CONSTANT FINAL)
     Q_PROPERTY(bool markSelection READ markSelection WRITE setMarkSelection NOTIFY
@@ -209,6 +210,8 @@ public:
     void setTyping(bool typing);
 
     [[nodiscard]] int selectedCount() const noexcept { return static_cast<int>(m_selected.size()); }
+
+    [[nodiscard]] int pictureCount() const noexcept { return static_cast<int>(m_pictures.size()); }
 
     [[nodiscard]] const std::vector<core::Uuid>& selection() const noexcept { return m_selected; }
 

@@ -36,6 +36,25 @@ TestCase {
         return tools;
     }
 
+    // A layer governs everything standing on it, not the ink alone. Putting a layer out of sight
+    // must take its pictures with it, and the canvas is only told what to draw when it is told
+    // again, so hiding a layer has to say so to all of it.
+    function test_aPictureGoesOutOfSightWithItsLayer() {
+        const notebook = openNotebook(newNotebookPath());
+        notebook.addPicture(AppInfo.fileUrl(samplePicture));
+        tryVerify(() => notebook.pickedPicture !== "", 4000, "the picture never went on the page");
+        const layerId = notebook.activeLayer;
+        tryCompare(notebook.canvas, "pictureCount", 1, 4000, "the picture was never given to the canvas");
+
+        notebook.showLayer(layerId, false);
+
+        tryCompare(notebook.canvas, "pictureCount", 0, 4000, "the picture was still drawn on a layer out of sight");
+
+        notebook.showLayer(layerId, true);
+
+        tryCompare(notebook.canvas, "pictureCount", 1, 4000, "showing the layer again did not bring the picture back");
+    }
+
     function test_aPictureCanBeTakenHoldOfAgainAfterItIsLetGo() {
         const notebook = openNotebook(newNotebookPath());
         const tools = pickingTools();
