@@ -35,14 +35,6 @@ Pane {
         onTapped: root.forceActiveFocus()
     }
 
-    Connections {
-        function onPageAdded(index) {
-            root.renaming = index;
-        }
-
-        target: root.notebook
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 4

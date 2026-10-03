@@ -174,55 +174,10 @@ Item {
         QuickButton {
             Layout.rightMargin: 6
             icon.source: Icons.plus
-            label: qsTr("Open or create a notebook")
+            label: qsTr("New notebook")
             objectName: "notebooksButton"
 
-            onClicked: libraryMenu.popup()
-
-            Menu {
-                id: libraryMenu
-
-                MenuItem {
-                    text: qsTr("New notebook…")
-
-                    onTriggered: {
-                        newField.text = root.notebooks.suggestedName();
-                        newDialog.open();
-                    }
-                }
-
-                MenuSeparator {
-                }
-
-                Repeater {
-                    model: root.notebooks.library
-
-                    MenuItem {
-                        required property string modelData
-
-                        text: modelData
-
-                        onTriggered: root.notebooks.openNotebook(modelData)
-                    }
-                }
-            }
-        }
-    }
-
-    AppDialog {
-        id: newDialog
-
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        title: qsTr("New notebook")
-
-        onAccepted: root.notebooks.createNotebook(newField.text.trim())
-
-        TextField {
-            id: newField
-
-            width: 240
-
-            onAccepted: newDialog.accept()
+            onClicked: root.notebooks.createNotebook(root.notebooks.suggestedName())
         }
     }
 
