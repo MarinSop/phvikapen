@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Nothing in the application could be worked with the pen but the paper itself: no slider, no button
+  on a layer line, no grip on what was picked up, no option in a menu opened by holding the pen
+  down. A tablet event is never handed to a control; the window system makes a mouse event of it
+  instead, and only where the tablet event was left alone. The canvas was taking every one of them
+  for itself, across the whole window, so the mouse event was never made and nothing else ever heard
+  the pen. Worse, a press over a menu was read as a press on the paper underneath, which is why
+  reaching for an option let go of what was picked and asked the paper what could be done there.
+  The canvas now reads a tablet event only for the pressure and the tilt it carries and leaves it
+  alone, so the pen reaches whatever is under it, menus and popups first, exactly as a mouse does.
+
 ### Changed
 
 - Writing follows the pen again. The evening out of a slow line was reaching so far, and settling so

@@ -348,7 +348,9 @@ protected:
 private:
     void observeWindow(QQuickWindow* window);
     void showPointerAt(const QPointF& position, bool inside);
-    [[nodiscard]] bool handleTabletEvent(QTabletEvent& event);
+    void notePen(const QTabletEvent& event);
+
+    [[nodiscard]] core::InkSample sampleFrom(const QMouseEvent& event) const;
     [[nodiscard]] bool handleNativeGesture(const QNativeGestureEvent& event);
     [[nodiscard]] core::InkSample onPage(core::InkSample sample) const noexcept;
     [[nodiscard]] core::ViewSize viewSize() const noexcept;
@@ -483,6 +485,17 @@ private:
     bool m_pointerInside{false};
     std::optional<QPointF> m_touchCentroid;
     qreal m_touchSpread{0.0};
+
+    // What the pen last reported. A tablet event is never delivered to an item, only the mouse
+    // event the window system makes of it, which carries no pressure or tilt of its own.
+    struct PenTip {
+        qreal pressure{1.0};
+        qreal tiltX{0.0};
+        qreal tiltY{0.0};
+        bool rubbing{false};
+    };
+
+    PenTip m_penTip;
     QPointer<QQuickWindow> m_observedWindow;
 };
 

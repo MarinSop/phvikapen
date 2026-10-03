@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QHoverEvent>
 #include <QImage>
+#include <QInputDevice>
 #include <QLineF>
 #include <QMouseEvent>
 #include <QNativeGestureEvent>
@@ -73,12 +74,13 @@ constexpr int kInkSamples = 4;
     return steady;
 }
 
-[[nodiscard]] core::Point toPoint(const QPointF& point) {
-    return {.x = static_cast<float>(point.x()), .y = static_cast<float>(point.y())};
+[[nodiscard]] bool byPen(const QMouseEvent& event) {
+    const QPointingDevice* const device = event.pointingDevice();
+    return device != nullptr && device->type() == QInputDevice::DeviceType::Stylus;
 }
 
-[[nodiscard]] InkSample makeSample(const QMouseEvent& event) {
-    return makeSample(event.position(), 1.0, 0.0, 0.0, event.timestamp());
+[[nodiscard]] core::Point toPoint(const QPointF& point) {
+    return {.x = static_cast<float>(point.x()), .y = static_cast<float>(point.y())};
 }
 
 }
@@ -1099,7 +1101,7 @@ void QtInkItem::mousePressEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    press(onPage(makeSample(*event)), false);
+    press(onPage(sampleFrom(*event)), byPen(*event) && m_penTip.rubbing);
     watchForHold(event->position());
     event->accept();
 }
@@ -1114,7 +1116,7 @@ void QtInkItem::mouseMoveEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    move(onPage(makeSample(*event)));
+    move(onPage(sampleFrom(*event)));
     event->accept();
 }
 
@@ -1125,7 +1127,7 @@ void QtInkItem::mouseReleaseEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    release(onPage(makeSample(*event)));
+    release(onPage(sampleFrom(*event)));
     event->accept();
 }
 
@@ -1151,9 +1153,9 @@ void QtInkItem::mouseUngrabEvent() {
 }
 
 bool QtInkItem::eventFilter(QObject* watched, QEvent* event) {
-    auto* const tabletEvent = dynamic_cast<QTabletEvent*>(event);
-    if (tabletEvent != nullptr && watched == m_observedWindow && handleTabletEvent(*tabletEvent)) {
-        return true;
+    const auto* const tabletEvent = dynamic_cast<QTabletEvent*>(event);
+    if (tabletEvent != nullptr && watched == m_observedWindow) {
+        notePen(*tabletEvent);
     }
     return QQuickRhiItem::eventFilter(watched, event);
 }
@@ -1168,58 +1170,26 @@ void QtInkItem::observeWindow(QQuickWindow* window) {
     }
 }
 
-bool QtInkItem::handleTabletEvent(QTabletEvent& event) {
-    if (m_typing && !isTracking()) {
-        return false;
-    }
-    const QPointF position = mapFromScene(event.scenePosition());
-    const InkSample sample = onPage(
-        makeSample(position, event.pressure(), event.xTilt(), event.yTilt(), event.timestamp()));
-    noteKeys(event.modifiers());
-    showPointerAt(position, contains(position));
+// A tablet event is read for what the pen is doing and left alone otherwise. Accepting it would
+// stop the window system making a mouse event of it, and a mouse event is the only thing an item or
+// a control is ever given: accepting one press over a menu takes that menu's turn away from it.
+void QtInkItem::notePen(const QTabletEvent& event) {
+    m_penTip = PenTip{
+        .pressure = event.pressure(),
+        .tiltX = event.xTilt(),
+        .tiltY = event.yTilt(),
+        .rubbing = event.pointerType() == QPointingDevice::PointerType::Eraser,
+    };
+    showPointerAt(mapFromScene(event.scenePosition()),
+                  contains(mapFromScene(event.scenePosition())));
+}
 
-    switch (event.type()) {
-    case QEvent::TabletPress:
-        if (!isVisible() || !isEnabled() || !contains(position)) {
-            return false;
-        }
-        // The button on the barrel of the pen asks what can be done here, as it does elsewhere.
-        if (event.button() == Qt::RightButton) {
-            forgetHold();
-            emit menuWanted(position);
-            break;
-        }
-        press(sample, event.pointerType() == QPointingDevice::PointerType::Eraser);
-        watchForHold(position);
-        break;
-    case QEvent::TabletMove:
-        if (QLineF{m_holdAt, position}.length() > kHoldSlack) {
-            forgetHold();
-        }
-        if (m_menuOpened) {
-            break;
-        }
-        if (!isTracking()) {
-            return false;
-        }
-        move(sample);
-        break;
-    case QEvent::TabletRelease:
-        forgetHold();
-        if (std::exchange(m_menuOpened, false)) {
-            break;
-        }
-        if (!isTracking()) {
-            return false;
-        }
-        release(sample);
-        break;
-    default:
-        return false;
+core::InkSample QtInkItem::sampleFrom(const QMouseEvent& event) const {
+    if (!byPen(event)) {
+        return makeSample(event.position(), 1.0, 0.0, 0.0, event.timestamp());
     }
-
-    event.accept();
-    return true;
+    return makeSample(event.position(), m_penTip.pressure, m_penTip.tiltX, m_penTip.tiltY,
+                      event.timestamp());
 }
 
 void QtInkItem::watchForHold(const QPointF& at) {
