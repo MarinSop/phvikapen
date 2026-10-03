@@ -99,10 +99,6 @@
         <translation>Pretvori u tekst</translation>
     </message>
     <message>
-        <source>Solve</source>
-        <translation>Izračunaj</translation>
-    </message>
-    <message>
         <source>Paste</source>
         <translation>Zalijepi</translation>
     </message>
@@ -201,10 +197,6 @@
     <message>
         <source>Page Setup</source>
         <translation>Postavke stranice</translation>
-    </message>
-    <message>
-        <source>Maths</source>
-        <translation>Matematika</translation>
     </message>
     <message>
         <source>Time</source>
@@ -1201,14 +1193,6 @@
         <translation>Izbriši…</translation>
     </message>
     <message>
-        <source>Open or create a notebook</source>
-        <translation>Otvori ili napravi bilježnicu</translation>
-    </message>
-    <message>
-        <source>New notebook…</source>
-        <translation>Nova bilježnica…</translation>
-    </message>
-    <message>
         <source>New notebook</source>
         <translation>Nova bilježnica</translation>
     </message>
@@ -1294,10 +1278,6 @@
     <message>
         <source>To text</source>
         <translation>U tekst</translation>
-    </message>
-    <message>
-        <source>Solve</source>
-        <translation>Izračunaj</translation>
     </message>
     <message>
         <source>Sit at top</source>
@@ -1626,10 +1606,6 @@
     <message>
         <source>Layers</source>
         <translation>Slojevi</translation>
-    </message>
-    <message>
-        <source>Maths</source>
-        <translation>Matematika</translation>
     </message>
     <message>
         <source>Page Setup</source>
@@ -2224,10 +2200,6 @@
         <translation>Pretvori u tekst</translation>
     </message>
     <message>
-        <source>Work out what was written</source>
-        <translation>Izračunaj što je napisano</translation>
-    </message>
-    <message>
         <source>Clear page</source>
         <translation>Očisti stranicu</translation>
     </message>
@@ -2294,10 +2266,6 @@
     <message>
         <source>Pages list</source>
         <translation>Popis stranica</translation>
-    </message>
-    <message>
-        <source>Maths panel</source>
-        <translation>Ploča s matematikom</translation>
     </message>
     <message>
         <source>Elements panel</source>

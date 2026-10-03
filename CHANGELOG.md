@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Equations and working sums out. Solve is gone from Edit, from the bar above the page and from the
+  menu under the pointer, the Maths panel is gone from View, and a sum typed into a box of text is
+  no longer answered on its own as it is being typed. None of it was good enough to be in the way of
+  writing. What it was built out of is still in the repository, so it can be offered again when
+  there is something better to offer.
+
 ### Fixed
 
 - Nothing in the application could be worked with the pen but the paper itself: no slider, no button

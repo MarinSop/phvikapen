@@ -313,14 +313,6 @@ ToolBar {
             visible: root.picksInk
         }
 
-        QuickButton {
-            action: root.actions.solve
-            label: qsTr("Solve")
-            objectName: "solveButton"
-            shortcutText: AppInfo.shortcutText(root.actions.solve.shortcut)
-            visible: root.picksInk || root.types
-        }
-
         ToolSeparator {
             visible: root.tables
         }

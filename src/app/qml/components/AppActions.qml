@@ -193,14 +193,6 @@ Item {
 
         onTriggered: root.notebook.convertSelectionToText(root.tools.textStyle)
     }
-    readonly property Action solve: Action {
-        enabled: root.hasTextBox || (root.hasSelection && root.notebook !== null && root.notebook.readsHandwriting)
-        icon.source: Icons.solve
-        shortcut: root.pageKeys("solve")
-        text: qsTr("Solve")
-
-        onTriggered: root.solveWhatIsPicked()
-    }
     readonly property Action paste: Action {
         enabled: root.notebook !== null && root.notebook.hasCopiedStrokes
         icon.source: Icons.paste
@@ -387,15 +379,6 @@ Item {
         text: qsTr("Page Setup")
 
         onTriggered: root.workspace.togglePanel(Panels.pageSetup)
-    }
-    readonly property Action showMathsPanel: Action {
-        checkable: true
-        checked: root.isPanelOpen(Panels.maths)
-        icon.source: Icons.solve
-        shortcut: root.settings.keysFor("mathsPanel")
-        text: qsTr("Maths")
-
-        onTriggered: root.workspace.togglePanel(Panels.maths)
     }
     readonly property Action showTimePanel: Action {
         checkable: true
@@ -809,22 +792,6 @@ Item {
 
     function copyToClipboard(text) {
         Clipboard.put(text);
-    }
-
-    // A sum with nothing unknown in it is answered where it stands. One with a letter in it is an
-    // equation to be solved, and that is what the maths panel is for.
-    function solveWhatIsPicked() {
-        const said = root.hasTextBox ? root.notebook.wordsOf(root.notebook.pickedText) : "";
-        if (said !== "" && /[A-Za-z]/.test(said.replace(/sqrt/g, ""))) {
-            root.askMaths(said);
-            return;
-        }
-        root.notebook.solveSelection(root.tools.textStyle);
-    }
-
-    function askMaths(said) {
-        root.maths.ask(said);
-        root.workspace.showPanel(Panels.maths);
     }
 
     function isPanelOpen(panelId) {

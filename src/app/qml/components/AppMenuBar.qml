@@ -131,11 +131,6 @@ MenuBar {
         }
 
         MenuCommand {
-            action: root.actions.solve
-            objectName: "solveItem"
-        }
-
-        MenuCommand {
             action: root.actions.paste
         }
 
@@ -249,11 +244,6 @@ MenuBar {
             MenuCommand {
                 action: root.actions.showPageSetupPanel
                 objectName: "pageSetupPanelItem"
-            }
-
-            MenuCommand {
-                action: root.actions.showMathsPanel
-                objectName: "mathsPanelItem"
             }
 
             MenuCommand {

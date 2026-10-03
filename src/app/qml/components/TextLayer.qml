@@ -74,20 +74,6 @@ Item {
         }
     }
 
-    // A sum typed with an equals sign at the end is worked out where it stands, the way a
-    // calculator would, and the answer is put after the sign so that typing can go on.
-    function workOutWhatWasTyped() {
-        if (!root.settings.quickMaths || root.editingId === "") {
-            return;
-        }
-        const answer = root.maths.quickAnswer(editor.text);
-        if (answer === "") {
-            return;
-        }
-        editor.text = editor.text + " " + answer;
-        editor.cursorPosition = editor.length;
-    }
-
     // A box is put down where it was asked for, ready to be typed in.
     function putABoxAt(x, y) {
         const at = root.columnPointOf(Qt.point(x, y));
@@ -210,7 +196,6 @@ Item {
                 wrapMode: TextEdit.Wrap
 
                 Keys.onEscapePressed: root.leave()
-                onTextChanged: root.workOutWhatWasTyped()
             }
         }
 

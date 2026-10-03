@@ -140,12 +140,6 @@ namespace {
             .keys = "Ctrl+Shift+R",
         },
         Command{
-            .id = "solve",
-            .name = QT_TRANSLATE_NOOP("Shortcuts", "Work out what was written"),
-            .group = CommandGroup::Edit,
-            .keys = "Ctrl+Shift+A",
-        },
-        Command{
             .id = "clearPage",
             .name = QT_TRANSLATE_NOOP("Shortcuts", "Clear page"),
             .group = CommandGroup::Edit,
@@ -251,12 +245,6 @@ namespace {
             .name = QT_TRANSLATE_NOOP("Shortcuts", "Pages list"),
             .group = CommandGroup::View,
             .keys = "Ctrl+2",
-        },
-        Command{
-            .id = "mathsPanel",
-            .name = QT_TRANSLATE_NOOP("Shortcuts", "Maths panel"),
-            .group = CommandGroup::View,
-            .keys = "Ctrl+Shift+M",
         },
         Command{
             .id = "elementsPanel",
