@@ -38,11 +38,11 @@ constexpr float kSureEnough = 0.3F;
     NSMutableArray<NSString*>* const wanted = [NSMutableArray array];
     for (NSString* const spoken in [NSLocale preferredLanguages]) {
         for (NSString* const one in known) {
-            if ([one isEqualToString:spoken] || [one hasPrefix:[spoken stringByAppendingString:@"-"]]
-                || [spoken hasPrefix:[one stringByAppendingString:@"-"]]) {
-                if (![wanted containsObject:one]) {
-                    [wanted addObject:one];
-                }
+            const BOOL same = [one isEqualToString:spoken]
+                || [one hasPrefix:[spoken stringByAppendingString:@"-"]]
+                || [spoken hasPrefix:[one stringByAppendingString:@"-"]];
+            if (same && ![wanted containsObject:one]) {
+                [wanted addObject:one];
             }
         }
     }

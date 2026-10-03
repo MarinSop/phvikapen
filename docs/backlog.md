@@ -129,6 +129,13 @@ into a real problem earlier.
 
 ## The window
 
+- **A panel docked against an edge takes the whole of it.** A panel dropped on the left or the right
+  of something splits it across, so the two share the width and each takes the full height of what
+  they split. A panel that is to stand half as tall has to be dropped on the top or the bottom edge
+  of a panel instead, and its share is then dragged by the bar between them. Choosing a height while
+  docking against a side edge would mean splitting both ways at once from one drop, which is a
+  different idea of what a drop means and would want designing rather than fixing. A panel is never
+  dropped *over* another: a drop always splits or joins the tabs, which is measured.
 - **Two windows over the same patch of screen both offer a carried panel a place.** A drag is now
   reckoned on the screens, so a panel carried out of its own window lands in another one, and every
   window draws the lines and the name. Where two windows overlap, both report what is under the hand
